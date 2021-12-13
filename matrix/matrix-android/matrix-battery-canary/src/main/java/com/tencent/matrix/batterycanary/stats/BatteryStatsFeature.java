@@ -110,19 +110,19 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
     }
 
     @WorkerThread
-    public List<BatteryRecord> readRecords(int dayOffset) {
+    public List<BatteryRecord> readRecords(int dayOffset, String proc) {
         if (mBatteryRecorder != null) {
             final String date = getDateString(dayOffset);
-            return mBatteryRecorder.read(date);
+            return mBatteryRecorder.read(date, proc);
         }
         return Collections.emptyList();
     }
 
     @WorkerThread
-    public BatteryRecords readBatteryRecords(int dayOffset) {
+    public BatteryRecords readBatteryRecords(int dayOffset, String proc) {
         BatteryRecords batteryRecords = new BatteryRecords();
         batteryRecords.date = getDateString(dayOffset);
-        batteryRecords.records = readRecords(dayOffset);
+        batteryRecords.records = readRecords(dayOffset, proc);
         return batteryRecords;
     }
 
@@ -134,17 +134,17 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
     }
 
     @WorkerThread
-    List<BatteryRecord> readRecords(String date) {
+    List<BatteryRecord> readRecords(String date, String proc) {
         if (mBatteryRecorder != null) {
-            return mBatteryRecorder.read(date);
+            return mBatteryRecorder.read(date, proc);
         }
         return Collections.emptyList();
     }
 
     @WorkerThread
-    void cleanRecords(String date) {
+    void cleanRecords(String date, String proc) {
         if (mBatteryRecorder != null) {
-            mBatteryRecorder.clean(date);
+            mBatteryRecorder.clean(date, proc);
         }
     }
 

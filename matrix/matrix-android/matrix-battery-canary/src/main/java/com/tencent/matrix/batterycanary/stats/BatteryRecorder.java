@@ -1,6 +1,7 @@
 package com.tencent.matrix.batterycanary.stats;
 
 import android.os.Process;
+import android.text.TextUtils;
 
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.util.MatrixLog;
@@ -21,9 +22,9 @@ public interface BatteryRecorder {
 
     void write(String date, BatteryRecord record);
 
-    List<BatteryRecord> read(String date);
+    List<BatteryRecord> read(String date, String proc);
 
-    void clean(String date);
+    void clean(String date, String proc);
 
 
     class MMKVRecorder implements BatteryRecorder {
@@ -38,22 +39,15 @@ public interface BatteryRecorder {
             this.mmkv = mmkv;
         }
 
-        protected String getKeyPrefix(String date) {
-            if (sProcNameSuffix == null) {
-                String processName = BatteryCanaryUtil.getProcessName();
-                if (processName.contains(":")) {
-                    sProcNameSuffix = processName.substring(processName.lastIndexOf(":") + 1);
-                } else {
-                    sProcNameSuffix = "main";
-                }
-            }
-            return MAGIC + "-" + date + "-" + sProcNameSuffix;
+        protected String getKeyPrefix(String date, String proc) {
+            return MAGIC + "-" + date + (TextUtils.isEmpty(proc) ? "" : "-" + proc);
         }
 
         @Override
         public void write(String date, BatteryRecord record) {
-            String key = getKeyPrefix(date) + "-" + pid + "-" + inc.getAndIncrement();
             try {
+                String proc = getProcNameSuffix();
+                String key = getKeyPrefix(date, proc) + "-" + pid + "-" + inc.getAndIncrement();
                 byte[] bytes = BatteryRecord.encode(record);
                 mmkv.encode(key, bytes);
             } catch (Exception e) {
@@ -62,13 +56,13 @@ public interface BatteryRecorder {
         }
 
         @Override
-        public List<BatteryRecord> read(String date) {
+        public List<BatteryRecord> read(String date, String proc) {
             String[] keys = mmkv.allKeys();
             if (keys == null || keys.length == 0) {
                 return Collections.emptyList();
             }
             List<BatteryRecord> records = new ArrayList<>(Math.min(16, keys.length));
-            String keyPrefix = getKeyPrefix(date);
+            String keyPrefix = getKeyPrefix(date, proc);
             for (String item : keys) {
                 if (item.startsWith(keyPrefix)) {
                     try {
@@ -92,12 +86,12 @@ public interface BatteryRecorder {
         }
 
         @Override
-        public void clean(String date) {
+        public void clean(String date, String proc) {
             String[] keys = mmkv.allKeys();
             if (keys == null || keys.length == 0) {
                 return;
             }
-            String keyPrefix = getKeyPrefix(date);
+            String keyPrefix = getKeyPrefix(date, proc);
             for (String item : keys) {
                 if (item.startsWith(keyPrefix)) {
                     try {
@@ -107,6 +101,18 @@ public interface BatteryRecorder {
                     }
                 }
             }
+        }
+
+        public static String getProcNameSuffix() {
+            if (sProcNameSuffix == null) {
+                String processName = BatteryCanaryUtil.getProcessName();
+                if (processName.contains(":")) {
+                    sProcNameSuffix = processName.substring(processName.lastIndexOf(":") + 1);
+                } else {
+                    sProcNameSuffix = "main";
+                }
+            }
+            return sProcNameSuffix;
         }
     }
 }

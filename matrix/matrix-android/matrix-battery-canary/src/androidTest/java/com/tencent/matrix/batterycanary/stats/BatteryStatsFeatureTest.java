@@ -82,7 +82,7 @@ public class BatteryStatsFeatureTest {
                 latch.countDown();
             }
         };
-        recorder.clean(BatteryStatsFeature.getDateString(0));
+        recorder.clean(BatteryStatsFeature.getDateString(0), "main");
 
         BatteryMonitorConfig config = new BatteryMonitorConfig.Builder()
                 .enable(JiffiesMonitorFeature.class)
@@ -101,44 +101,30 @@ public class BatteryStatsFeatureTest {
         Matrix.with().getPlugins().add(plugin);
         monitor.enableForegroundLoopCheck(false);
 
-        BatteryCanary.getMonitorFeature(BatteryStatsFeature.class, new Consumer<BatteryStatsFeature>() {
-            @Override
-            public void accept(BatteryStatsFeature batteryStatsFeature) {
-                List<BatteryRecord> records = batteryStatsFeature.readRecords(0);
-                Assert.assertTrue(records.isEmpty());
-            }
-        });
+        BatteryStatsFeature batteryStatsFeature = BatteryCanary.getMonitorFeature(BatteryStatsFeature.class);
+        Assert.assertNotNull(batteryStatsFeature);
+        List<BatteryRecord> records = batteryStatsFeature.readRecords(0, "main");
+        Assert.assertTrue(records.isEmpty());
 
         monitor.start();
-        BatteryCanary.getMonitorFeature(AppStatMonitorFeature.class, new Consumer<AppStatMonitorFeature>() {
-            @Override
-            public void accept(AppStatMonitorFeature appStatMonitorFeature) {
-                appStatMonitorFeature.onForeground(true);
-                appStatMonitorFeature.onStatScene("UI 1");
-                appStatMonitorFeature.onStatScene("UI 2");
-                appStatMonitorFeature.onStatScene("UI 3");
 
-                appStatMonitorFeature.onForeground(false);
-                BatteryCanary.getMonitorFeature(DeviceStatMonitorFeature.class, new Consumer<DeviceStatMonitorFeature>() {
-                    @Override
-                    public void accept(DeviceStatMonitorFeature deviceStatMonitorFeature) {
-                        deviceStatMonitorFeature.onStatDevStat(AppStats.DEV_STAT_CHARGING);
-                        deviceStatMonitorFeature.onStatDevStat(AppStats.DEV_STAT_SCREEN_OFF);
-                        deviceStatMonitorFeature.onStatDevStat(AppStats.DEV_STAT_UN_CHARGING);
-                    }
-                });
+        batteryStatsFeature.onForeground(true);
+        batteryStatsFeature.statsScene("UI 1");
+        batteryStatsFeature.statsScene("UI 2");
+        batteryStatsFeature.statsScene("UI 3");
+        batteryStatsFeature.onForeground(false);
+        batteryStatsFeature.statsDevStat(AppStats.DEV_STAT_CHARGING);
+        batteryStatsFeature.statsDevStat(AppStats.DEV_STAT_SCREEN_OFF);
+        batteryStatsFeature.statsDevStat(AppStats.DEV_STAT_UN_CHARGING);
+        batteryStatsFeature.onForeground(true);
 
-                appStatMonitorFeature.onForeground(true);
-            }
-        });
         monitor.stop();
-
 
         latch.await();
         BatteryCanary.getMonitorFeature(BatteryStatsFeature.class, new Consumer<BatteryStatsFeature>() {
             @Override
             public void accept(BatteryStatsFeature batteryStatsFeature) {
-                List<BatteryRecord> records = batteryStatsFeature.readRecords(0);
+                List<BatteryRecord> records = batteryStatsFeature.readRecords(0, "main");
                 Assert.assertEquals("Records list: " + records,11, records.size());
             }
         });

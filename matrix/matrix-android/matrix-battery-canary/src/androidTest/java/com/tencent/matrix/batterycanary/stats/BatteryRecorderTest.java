@@ -78,22 +78,72 @@ public class BatteryRecorderTest {
         MMKV mmkv = MMKV.defaultMMKV();
         mmkv.clearAll();
         BatteryRecorder.MMKVRecorder recorder = new BatteryRecorder.MMKVRecorder(mmkv);
-        recorder.clean(date);
-        Assert.assertTrue(recorder.read(date).isEmpty());
+        recorder.clean(date, "main");
+        Assert.assertTrue(recorder.read(date, "main").isEmpty());
 
         recorder.write(date, record);
-        Assert.assertTrue(recorder.read(BatteryStatsFeature.getDateString(-1)).isEmpty());
+        Assert.assertTrue(recorder.read(BatteryStatsFeature.getDateString(-1), "main").isEmpty());
 
-        List<BatteryRecord> records = recorder.read(date);
+        List<BatteryRecord> records = recorder.read(date, "main");
         Assert.assertEquals(1, records.size());
         Assert.assertTrue(records.get(0) instanceof BatteryRecord.EventStatRecord);
         Assert.assertEquals(record.id, ((BatteryRecord.EventStatRecord) records.get(0)).id);
         Assert.assertEquals(record.event, ((BatteryRecord.EventStatRecord) records.get(0)).event);
 
-        recorder.clean(BatteryStatsFeature.getDateString(-1));
-        Assert.assertFalse(recorder.read(date).isEmpty());
-        recorder.clean(date);
-        Assert.assertTrue(recorder.read(date).isEmpty());
+        recorder.clean(BatteryStatsFeature.getDateString(-1), "main");
+        Assert.assertFalse(recorder.read(date, "main").isEmpty());
+        recorder.clean(date, "main");
+        Assert.assertTrue(recorder.read(date, "main").isEmpty());
     }
 
+    @Test
+    public void testRecorderWithEventRecordWithMultiProc() {
+        BatteryMonitorConfig config = new BatteryMonitorConfig.Builder().enable(JiffiesMonitorFeature.class).build();
+        BatteryMonitorCore core = new BatteryMonitorCore(config);
+        core.start();
+        BatteryMonitorPlugin plugin = new BatteryMonitorPlugin(config);
+        Matrix.with().getPlugins().add(plugin);
+
+
+
+        String date = BatteryStatsFeature.getDateString(0);
+        MMKV mmkv = MMKV.defaultMMKV();
+        mmkv.clearAll();
+
+        BatteryRecorder.MMKVRecorder recorder = new BatteryRecorder.MMKVRecorder(mmkv);
+        Assert.assertTrue(recorder.read(date, "main").isEmpty());
+
+        BatteryRecord.EventStatRecord record = new BatteryRecord.EventStatRecord();
+        record.id = 22;
+        record.event = "EVENT";
+
+        recorder.write(date, record);
+        Assert.assertTrue(recorder.read(BatteryStatsFeature.getDateString(-1), "main").isEmpty());
+
+        List<BatteryRecord> records = recorder.read(date, "main");
+        Assert.assertEquals(1, records.size());
+        Assert.assertTrue(records.get(0) instanceof BatteryRecord.EventStatRecord);
+        Assert.assertEquals(record.id, ((BatteryRecord.EventStatRecord) records.get(0)).id);
+        Assert.assertEquals(record.event, ((BatteryRecord.EventStatRecord) records.get(0)).event);
+
+        Assert.assertTrue(recorder.read(BatteryStatsFeature.getDateString(0), "sub1").isEmpty());
+        Assert.assertTrue(recorder.read(BatteryStatsFeature.getDateString(0), "sub2").isEmpty());
+
+        recorder.clean(BatteryStatsFeature.getDateString(-1), "main");
+        Assert.assertFalse(recorder.read(date, "main").isEmpty());
+
+        recorder.clean(date, "sub1");
+        recorder.clean(date, "sub2");
+        Assert.assertFalse(recorder.read(date, "main").isEmpty());
+        records = recorder.read(date, "main");
+        Assert.assertEquals(1, records.size());
+        Assert.assertTrue(records.get(0) instanceof BatteryRecord.EventStatRecord);
+        Assert.assertEquals(record.id, ((BatteryRecord.EventStatRecord) records.get(0)).id);
+        Assert.assertEquals(record.event, ((BatteryRecord.EventStatRecord) records.get(0)).event);
+
+        recorder.clean(date, "main");
+        Assert.assertTrue(recorder.read(date, "main").isEmpty());
+
+        mmkv.clearAll();
+    }
 }
