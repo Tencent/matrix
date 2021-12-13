@@ -29,6 +29,12 @@ internal open class DispatcherStateOwner(
 
     companion object {
         private val dispatchOwners = HashMap<String, DispatcherStateOwner>()
+
+        fun ownersToProcessTokens(context: Context) =
+            dispatchOwners.values
+                .map { ProcessToken.current(context, it.name, it.attachedSource.active()) }
+                .toTypedArray()
+
         fun dispatchOn(name: String) {
             dispatchOwners[name]?.dispatchOn()
         }
@@ -46,7 +52,7 @@ internal open class DispatcherStateOwner(
             }
             MatrixLog.i(ProcessSupervisor.tag, "syncStates")
             dispatchOwners.forEach {
-                if (it.value.active()) {
+                if (it.value.active().also { b -> MatrixLog.i(ProcessSupervisor.tag, "supervisor sync ${it.key} $b") }) {
                     DispatchReceiver.dispatchAppStateOn(context, it.key)
                 } else {
                     DispatchReceiver.dispatchAppStateOff(context, it.key)
@@ -61,8 +67,8 @@ internal open class DispatcherStateOwner(
                     override fun on() {
                         MatrixLog.d(ProcessSupervisor.tag, "${it.key} turned ON")
                         safeApply("${ProcessSupervisor.tag}.${it.key}") {
-                            supervisorProxy?.stateTurnOn(
-                                ProcessToken.current(application, it.key)
+                            supervisorProxy?.onStateChanged(
+                                ProcessToken.current(application, it.key, true)
                             )
                         }
                     }
@@ -70,8 +76,8 @@ internal open class DispatcherStateOwner(
                     override fun off() {
                         MatrixLog.d(ProcessSupervisor.tag, "${it.key} turned OFF")
                         safeApply("${ProcessSupervisor.tag}.${it.key}") {
-                            supervisorProxy?.stateTurnOff(
-                                ProcessToken.current(application, it.key)
+                            supervisorProxy?.onStateChanged(
+                                ProcessToken.current(application, it.key, false)
                             )
                         }
                     }

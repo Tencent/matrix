@@ -144,7 +144,7 @@ object ProcessSupervisor : IProcessListener by DispatchReceiver {
                 DispatchReceiver.uninstallPacemaker()
                 supervisorProxy = ISupervisorProxy.Stub.asInterface(service)
                 MatrixLog.i(TAG, "on Supervisor Connected $supervisorProxy")
-                supervisorProxy?.safeApply(tag) { stateRegister(ProcessToken.current(app)) }
+                supervisorProxy?.safeApply(tag) { stateRegister(DispatcherStateOwner.ownersToProcessTokens(app)) }
                 DispatcherStateOwner.attach(supervisorProxy, application!!)
             }
 

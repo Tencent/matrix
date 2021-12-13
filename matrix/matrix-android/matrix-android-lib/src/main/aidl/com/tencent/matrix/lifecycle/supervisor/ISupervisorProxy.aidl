@@ -6,9 +6,9 @@ package com.tencent.matrix.lifecycle.supervisor;
 import com.tencent.matrix.lifecycle.supervisor.ProcessToken;
 
 interface ISupervisorProxy {
-    void stateRegister(in ProcessToken token);
-    void stateTurnOn(in ProcessToken token);
-    void stateTurnOff(in ProcessToken token);
+    void stateRegister(in ProcessToken[] tokens);
+
+    void onStateChanged(in ProcessToken token);
 
     void onProcessBackground(in ProcessToken token);
     void onProcessForeground(in ProcessToken token);

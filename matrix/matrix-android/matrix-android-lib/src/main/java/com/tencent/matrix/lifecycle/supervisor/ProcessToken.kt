@@ -13,14 +13,16 @@ class ProcessToken : Parcelable {
     val pid: Int
     val name: String
     val statefulName: String
+    val state: Boolean
 
     companion object {
 
         @JvmStatic
-        fun current(context: Context, statefulName: String = "") = ProcessToken(
+        fun current(context: Context, statefulName: String = "", state: Boolean = false) = ProcessToken(
             Process.myPid(),
             MatrixUtil.getProcessName(context),
-            statefulName
+            statefulName,
+            state
         )
 
         @JvmField
@@ -35,11 +37,12 @@ class ProcessToken : Parcelable {
         }
     }
 
-    constructor(pid: Int, processName: String, statefulName: String) {
+    constructor(pid: Int, processName: String, statefulName: String, state: Boolean) {
         this.binder = Binder()
         this.pid = pid
         this.name = processName
         this.statefulName = statefulName
+        this.state = state
     }
 
     constructor(src: Parcel) {
@@ -47,6 +50,7 @@ class ProcessToken : Parcelable {
         this.pid = src.readInt()
         this.name = src.readString() ?: ""
         this.statefulName = src.readString() ?: ""
+        this.state = src.readInt() != 0
     }
 
     override fun describeContents(): Int {
@@ -58,6 +62,7 @@ class ProcessToken : Parcelable {
         dest.writeInt(pid)
         dest.writeString(name)
         dest.writeString(statefulName)
+        dest.writeInt(if (state) 1 else 0)
     }
 
     fun linkToDeath(recipient: IBinder.DeathRecipient) {
@@ -81,6 +86,6 @@ class ProcessToken : Parcelable {
     }
 
     override fun toString(): String {
-        return "ProcessToken(pid=$pid, name='$name', statefulName = $statefulName)"
+        return "ProcessToken(pid=$pid, name='$name', statefulName = $statefulName, state = $state)"
     }
 }

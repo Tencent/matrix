@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Binder
 import android.os.IBinder
+import android.os.Process
 import com.tencent.matrix.lifecycle.StatefulOwner
 import com.tencent.matrix.util.MatrixHandlerThread
 import com.tencent.matrix.util.MatrixLog
@@ -71,36 +72,52 @@ class SupervisorService : Service() {
     }
 
     private val binder = object : ISupervisorProxy.Stub() {
-        override fun stateRegister(token: ProcessToken) {
+        override fun stateRegister(tokens: Array<ProcessToken>) {
             val pid = Binder.getCallingPid()
-            token.linkToDeath {
-                safeApply(TAG) {
-                    val dead = tokenRecord.removeToken(pid)
-                    val lruRemoveSuccess = backgroundProcessLru.remove(dead)
-                    val proxyRemoveSuccess = RemoteProcessLifecycleProxy.removeProxy(dead)
-                    MatrixLog.i(TAG, "$pid-$dead was dead. is LRU kill? ${!lruRemoveSuccess && !proxyRemoveSuccess}")
-                    DispatchReceiver.dispatchDeath(applicationContext, dead.name, dead.pid, !lruRemoveSuccess && !proxyRemoveSuccess)
+
+            MatrixLog.d(TAG, "supervisor called register, tokens(${tokens.size}): ${tokens.contentToString()}")
+
+            tokens.first().apply {
+                tokenRecord.addToken(this)
+                backgroundProcessLru.moveOrAddFirst(this)
+                asyncLog("CREATED: [$pid-${name}] -> [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}")
+
+                linkToDeath {
+                    safeApply(TAG) {
+                        val dead = tokenRecord.removeToken(pid)
+                        val lruRemoveSuccess = backgroundProcessLru.remove(dead)
+                        val proxyRemoveSuccess = RemoteProcessLifecycleProxy.removeProxy(dead)
+                        MatrixLog.i(
+                            TAG,
+                            "$pid-$dead was dead. is LRU kill? ${!lruRemoveSuccess && !proxyRemoveSuccess}"
+                        )
+                        DispatchReceiver.dispatchDeath(
+                            applicationContext,
+                            dead.name,
+                            dead.pid,
+                            !lruRemoveSuccess && !proxyRemoveSuccess
+                        )
+                    }
                 }
             }
-            tokenRecord.addToken(token)
-            backgroundProcessLru.moveOrAddFirst(token)
-            RemoteProcessLifecycleProxy.getProxy(token) // register proxy
+
+            tokens.forEach {
+                MatrixLog.d(TAG, "register: ${it.name}, ${it.statefulName}, ${it.state}")
+                RemoteProcessLifecycleProxy.getProxy(it).onStateChanged(it.state)
+            }
+
+            if (tokenRecord.isEmpty()) {
+                MatrixLog.i(TAG, "stateRegister: no other process registered, ignore state changes")
+                return
+            }
             DispatcherStateOwner.syncStates(applicationContext) // sync state for new process
-            asyncLog("CREATED: [$pid-${token.name}] -> [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}")
         }
 
-        override fun stateTurnOn(token: ProcessToken) {
-            MatrixLog.d(TAG, "stateTurnOn: $token")
+        override fun onStateChanged(token: ProcessToken) {
+            MatrixLog.i(TAG, "onStateChanged: ${token.statefulName} ${token.state}")
             val pid = Binder.getCallingPid()
             Assert.assertEquals(pid, token.pid)
-            RemoteProcessLifecycleProxy.getProxy(token).onRemoteStateTurnedOn()
-        }
-
-        override fun stateTurnOff(token: ProcessToken) {
-            MatrixLog.d(TAG, "stateTurnOff: $token")
-            val pid = Binder.getCallingPid()
-            Assert.assertEquals(pid, token.pid)
-            RemoteProcessLifecycleProxy.getProxy(token).onRemoteStateTurnedOff()
+            RemoteProcessLifecycleProxy.getProxy(token).onStateChanged(token.state)
         }
 
         override fun onProcessBackground(token: ProcessToken) {
@@ -135,7 +152,13 @@ class SupervisorService : Service() {
         override fun onProcessKillCanceled(token: ProcessToken) {
             val pid = Binder.getCallingPid()
             Assert.assertEquals(pid, token.pid)
-            safeApply(TAG) { targetKilledCallback?.invoke(LRU_KILL_CANCELED, token.name, token.pid) }
+            safeApply(TAG) {
+                targetKilledCallback?.invoke(
+                    LRU_KILL_CANCELED,
+                    token.name,
+                    token.pid
+                )
+            }
         }
     }
 
@@ -150,6 +173,11 @@ class SupervisorService : Service() {
 
 
         DispatcherStateOwner.observe { stateName, state ->
+            if (tokenRecord.isEmpty()) {
+                MatrixLog.i(TAG, "observe: no other process registered, ignore state changes")
+                return@observe
+            }
+            MatrixLog.d(TAG, "supervisor dispatch $stateName $state")
             if (state) {
                 DispatchReceiver.dispatchAppStateOn(applicationContext, stateName)
             } else {
@@ -210,6 +238,9 @@ class SupervisorService : Service() {
             throw IllegalStateException("token with pid=$pid not found")
         }
 
+        fun isEmpty(): Boolean =
+            pidToToken.isEmpty() || pidToToken.all { it.key == Process.myPid() }
+
         fun removeToken(name: String): ProcessToken {
             val rm = nameToToken.remove(name)
             rm?.let {
@@ -250,8 +281,12 @@ class SupervisorService : Service() {
             }
         }
 
-        fun onRemoteStateTurnedOn() = turnOn()
-        fun onRemoteStateTurnedOff() = turnOff()
+        fun onStateChanged(state: Boolean) = if (state) {
+            turnOn()
+        } else {
+            turnOff()
+        }
+
         override fun toString(): String {
             return "OwnerProxy_${token.name}_${token.pid}_${token.statefulName}"
         }
