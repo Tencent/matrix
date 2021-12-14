@@ -45,8 +45,12 @@ public interface BatteryRecorder {
 
         @Override
         public void write(String date, BatteryRecord record) {
+            String proc = getProcNameSuffix();
+            write(date, record, proc);
+        }
+
+        public void write(String date, BatteryRecord record, String proc) {
             try {
-                String proc = getProcNameSuffix();
                 String key = getKeyPrefix(date, proc) + "-" + pid + "-" + inc.getAndIncrement();
                 byte[] bytes = BatteryRecord.encode(record);
                 mmkv.encode(key, bytes);
