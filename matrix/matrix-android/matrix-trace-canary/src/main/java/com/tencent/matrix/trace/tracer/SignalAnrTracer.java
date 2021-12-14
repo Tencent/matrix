@@ -69,7 +69,7 @@ public class SignalAnrTracer extends Tracer {
     public static boolean hasInstance = false;
     private static long anrMessageWhen = 0L;
     private static String anrMessageString = "";
-    private static String cpuset = "";
+    private static String cgroup = "";
 
     static {
         System.loadLibrary("trace-canary");
@@ -114,24 +114,37 @@ public class SignalAnrTracer extends Tracer {
         sSignalAnrDetectedListener = listener;
     }
 
-    public static String readCpuSet() {
+//    public static String readCpuSet() {
+//        try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream("/proc/self/cgroup")))) {
+//            String line;
+//            while ((line = reader.readLine()) != null) {
+//                if (line.contains("cpuset") || line.contains("cpu")) {
+//                    return line;
+//                }
+//            }
+//        } catch (Throwable t) {
+//            t.printStackTrace();
+//        }
+//        return "";
+//    }
+
+    public static String readCgroup() {
+        StringBuilder ret = new StringBuilder();
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream("/proc/self/cgroup")))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                if (line.contains("cpuset") || line.contains("cpu")) {
-                    return line;
-                }
+                ret.append(line).append("\n");
             }
         } catch (Throwable t) {
             t.printStackTrace();
         }
-        return "";
+        return ret.toString();
     }
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Keep
     private static void onANRDumped() {
-        cpuset = readCpuSet();
+        cgroup = readCgroup();
         currentForeground = AppForegroundUtil.isInterestingToUser();
         boolean needReport = isMainThreadBlocked();
 
@@ -169,7 +182,7 @@ public class SignalAnrTracer extends Tracer {
         try {
             String stackTrace = Utils.getMainThreadJavaStackTrace();
             if (sSignalAnrDetectedListener != null) {
-                sSignalAnrDetectedListener.onAnrDetected(stackTrace, anrMessageString, anrMessageWhen, fromProcessErrorState, cpuset);
+                sSignalAnrDetectedListener.onAnrDetected(stackTrace, anrMessageString, anrMessageWhen, fromProcessErrorState, cgroup);
                 return;
             }
 
