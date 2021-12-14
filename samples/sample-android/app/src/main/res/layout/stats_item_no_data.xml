@@ -58,6 +58,7 @@
 
 
             <TextView
+                android:textColor="@color/FG_2"
                 android:id="@+id/tv_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"

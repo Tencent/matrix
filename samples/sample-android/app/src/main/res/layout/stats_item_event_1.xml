@@ -20,7 +20,7 @@
                 android:layout_width="1px"
                 android:layout_height="match_parent"
                 android:layout_centerInParent="true"
-                android:background="#000" />
+                android:background="@color/BW_70" />
         </RelativeLayout>
 
         <!--  Left  -->
@@ -36,7 +36,8 @@
                 android:layout_height="wrap_content"
                 android:layout_centerVertical="true"
                 android:gravity="right"
-                android:text="20:00" />
+                android:text="20:00"
+                android:textColor="@color/BW_70" />
 
             <RelativeLayout
                 android:id="@+id/layout_timeline"
@@ -50,7 +51,7 @@
                     android:layout_width="1px"
                     android:layout_height="match_parent"
                     android:layout_centerInParent="true"
-                    android:background="#000" />
+                    android:background="@color/BW_70" />
 
                 <View
                     android:layout_width="match_parent"
@@ -58,7 +59,7 @@
                     android:layout_alignParentRight="true"
                     android:layout_centerInParent="true"
                     android:layout_toRightOf="@+id/timeline_y"
-                    android:background="#000" />
+                    android:background="@color/BW_70" />
             </RelativeLayout>
 
         </RelativeLayout>
@@ -81,7 +82,7 @@
                 android:layout_height="1px"
                 android:layout_centerVertical="true"
                 android:layout_marginRight="10dp"
-                android:background="#000" />
+                android:background="@color/BW_70" />
 
 
             <TextView
@@ -90,7 +91,8 @@
                 android:layout_height="wrap_content"
                 android:layout_centerVertical="true"
                 android:layout_toRightOf="@+id/padding"
-                android:text="前台" />
+                android:text="前台"
+                android:textColor="@color/FG_0" />
         </RelativeLayout>
 
 

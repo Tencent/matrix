@@ -132,6 +132,7 @@ public class BatteryStatsLoader {
         if (batteryRecords.records.isEmpty()) {
             // N0 DATA
             BatteryStatsAdapter.NoDataItem item = new BatteryStatsAdapter.NoDataItem();
+            item.text = "NO DATA";
             dataList.add(0, item);
 
         } else {

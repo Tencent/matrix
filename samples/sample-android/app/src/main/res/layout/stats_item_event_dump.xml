@@ -20,7 +20,7 @@
                 android:layout_width="1px"
                 android:layout_height="match_parent"
                 android:layout_centerInParent="true"
-                android:background="#000" />
+                android:background="@color/BW_70" />
         </RelativeLayout>
 
         <!--  Left  -->
@@ -36,7 +36,8 @@
                 android:layout_height="wrap_content"
                 android:layout_centerVertical="true"
                 android:gravity="right"
-                android:text="20:00" />
+                android:text="20:00"
+                android:textColor="@color/FG_2" />
 
             <RelativeLayout
                 android:id="@+id/layout_timeline"
@@ -49,7 +50,7 @@
                     android:layout_width="1px"
                     android:layout_height="match_parent"
                     android:layout_centerInParent="true"
-                    android:background="#000" />
+                    android:background="@color/BW_70" />
             </RelativeLayout>
 
         </RelativeLayout>
@@ -68,6 +69,7 @@
             tools:background="#4000">
 
             <TextView
+                android:textColor="@color/FG_0"
                 android:id="@+id/tv_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
