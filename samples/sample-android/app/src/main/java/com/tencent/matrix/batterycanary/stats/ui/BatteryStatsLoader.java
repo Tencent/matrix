@@ -1,10 +1,15 @@
 package com.tencent.matrix.batterycanary.stats.ui;
 
+import android.os.Handler;
+import android.os.Looper;
+import android.text.TextUtils;
+
 import com.tencent.matrix.batterycanary.BatteryCanary;
 import com.tencent.matrix.batterycanary.monitor.AppStats;
 import com.tencent.matrix.batterycanary.stats.BatteryRecord;
 import com.tencent.matrix.batterycanary.stats.BatteryStatsFeature;
 import com.tencent.matrix.batterycanary.utils.Consumer;
+import com.tencent.matrix.util.MatrixLog;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,10 +19,13 @@ import java.util.List;
  * @since 2021/12/10
  */
 public class BatteryStatsLoader {
+    private static final String TAG = "Matrix.battery.loader";
     private static final int DAY_LIMIT = 7;
 
     final BatteryStatsAdapter mStatsAdapter;
+    final Handler mUiHandler = new Handler(Looper.getMainLooper());
     int mDayOffset = 0;
+    String mProc = "";
 
     public BatteryStatsLoader(BatteryStatsAdapter statsAdapter) {
         mStatsAdapter = statsAdapter;
@@ -27,8 +35,18 @@ public class BatteryStatsLoader {
         return mStatsAdapter.dataList;
     }
 
+    public void reset(String proc) {
+        mProc = proc;
+        mDayOffset = 0;
+        postClearDataSet();
+    }
+
     public void load() {
-        load(mDayOffset);
+        if (TextUtils.isEmpty(mProc)) {
+            MatrixLog.w(TAG, "Call #reset first!");
+            return;
+        }
+        load(mDayOffset, false);
     }
 
     public boolean loadMore() {
@@ -36,7 +54,7 @@ public class BatteryStatsLoader {
             return false;
         }
         mDayOffset--;
-        load(mDayOffset);
+        load(mDayOffset, true);
         return true;
     }
 
@@ -54,20 +72,20 @@ public class BatteryStatsLoader {
         return currHeader;
     }
 
-    protected void load(final int dayOffset) {
+    protected void load(final int dayOffset, final boolean append) {
         BatteryCanary.getMonitorFeature(BatteryStatsFeature.class, new Consumer<BatteryStatsFeature>() {
             @Override
             public void accept(BatteryStatsFeature batteryStatsFeature) {
-                List<BatteryRecord> records = batteryStatsFeature.readRecords(dayOffset);
+                List<BatteryRecord> records = batteryStatsFeature.readRecords(dayOffset, mProc);
                 BatteryStatsFeature.BatteryRecords batteryRecords = new BatteryStatsFeature.BatteryRecords();
                 batteryRecords.date = BatteryStatsFeature.getDateString(dayOffset);
                 batteryRecords.records = records;
-                add(batteryRecords);
+                add(batteryRecords, append);
             }
         });
     }
 
-    public void add(BatteryStatsFeature.BatteryRecords batteryRecords) {
+    public void add(BatteryStatsFeature.BatteryRecords batteryRecords, boolean append) {
         List<BatteryStatsAdapter.Item> dataList = onCreateDataItem(batteryRecords);
 
         // Footer
@@ -80,9 +98,31 @@ public class BatteryStatsLoader {
             dataList.add(footerItem);
         }
 
-        int position = mStatsAdapter.getDataList().size() - 1;
-        mStatsAdapter.getDataList().addAll(dataList);
-        mStatsAdapter.notifyItemRangeChanged(Math.max(position, 0), dataList.size());
+        // Notify
+        postUpdateDataSet(dataList);
+    }
+
+    private void postUpdateDataSet(final List<BatteryStatsAdapter.Item> dataList) {
+        mUiHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                int start = mStatsAdapter.getDataList().size() - 1;
+                int length = dataList.size();
+                mStatsAdapter.getDataList().addAll(dataList);
+                mStatsAdapter.notifyItemRangeChanged(Math.max(start, 0), length);
+            }
+        });
+    }
+
+    private void postClearDataSet() {
+        mUiHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                int length = mStatsAdapter.getDataList().size();
+                mStatsAdapter.getDataList().clear();
+                mStatsAdapter.notifyItemRangeRemoved(0, length);
+            }
+        });
     }
 
     protected List<BatteryStatsAdapter.Item> onCreateDataItem(BatteryStatsFeature.BatteryRecords batteryRecords) {

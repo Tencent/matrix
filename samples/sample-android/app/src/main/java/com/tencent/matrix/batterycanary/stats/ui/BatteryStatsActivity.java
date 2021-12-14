@@ -5,18 +5,23 @@ import android.os.Process;
 import android.os.SystemClock;
 import android.util.ArrayMap;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.View;
+import android.widget.PopupMenu;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.tencent.matrix.batterycanary.monitor.AppStats;
 import com.tencent.matrix.batterycanary.stats.BatteryRecord;
 import com.tencent.matrix.batterycanary.stats.BatteryStatsFeature;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import sample.tencent.matrix.R;
@@ -34,6 +39,40 @@ public class BatteryStatsActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_battery_stats);
+
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        toolbar.setTitle("电量统计报告");
+        setSupportActionBar(toolbar);
+
+        final TextView procTv = findViewById(R.id.tv_proc);
+        String proc = com.tencent.matrix.batterycanary.stats.BatteryRecorder.MMKVRecorder.getProcNameSuffix();
+        procTv.setText(":" + proc);
+
+        procTv.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(final View v) {
+                List<String> procs = Arrays.asList("main", "appbrand", "tools", "toolsmp", "push");
+                PopupMenu menu = new PopupMenu(v.getContext(), procTv);
+                for (String item : procs) {
+                    menu.getMenu().add("Process :" + item);
+                }
+                menu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+                    @Override
+                    public boolean onMenuItemClick(MenuItem item) {
+                        String title = item.getTitle().toString();
+                        if (title.contains(":")) {
+                            String proc = title.substring(title.lastIndexOf(":") + 1);
+                            procTv.setText(":" + proc);
+                            mStatsLoader.reset(proc);
+                            mStatsLoader.load();
+                            updateHeader(0);
+                        }
+                        return false;
+                    }
+                });
+                menu.show();
+            }
+        });
 
         RecyclerView recyclerView = findViewById(R.id.rv_battery_stats);
         final LinearLayoutManager layoutManager = new LinearLayoutManager(this);
@@ -61,6 +100,7 @@ public class BatteryStatsActivity extends AppCompatActivity {
         });
 
         // load today's data
+        mStatsLoader.reset(proc);
         mStatsLoader.load();
         updateHeader(0);
 
@@ -141,7 +181,7 @@ public class BatteryStatsActivity extends AppCompatActivity {
         BatteryStatsFeature.BatteryRecords batteryRecords = new BatteryStatsFeature.BatteryRecords();
         batteryRecords.date = BatteryStatsFeature.getDateString(0);
         batteryRecords.records = records;
-        mStatsLoader.add(batteryRecords);
+        mStatsLoader.add(batteryRecords, true);
     }
 
 
