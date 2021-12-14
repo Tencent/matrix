@@ -102,9 +102,18 @@ object ProcessSupervisor : IProcessListener by DispatchReceiver {
     // @formatter:off
     val appUIForegroundOwner: StatefulOwner = DispatcherStateOwner(ReduceOperators.OR, MatrixProcessLifecycleOwner.startedStateOwner, "StartedStateOwner")
     val appExplicitBackgroundOwner: IBackgroundStatefulOwner = object : DispatcherStateOwner(ReduceOperators.AND, ExplicitBackgroundOwner, "ExplicitBackgroundOwner"), IBackgroundStatefulOwner {}
-    val appStagedBackgroundOwner: IBackgroundStatefulOwner = object : DispatcherStateOwner(ReduceOperators.AND, StagedBackgroundOwner, "StagedBackgroundOwner"), IBackgroundStatefulOwner {}
     val appDeepBackgroundOwner: IBackgroundStatefulOwner = object : DispatcherStateOwner(ReduceOperators.AND, DeepBackgroundOwner, "DeepBackgroundOwner"), IBackgroundStatefulOwner {}
     // @formatter:on
+
+    private class AppStagedBackgroundOwner(
+        private val delegate: MultiSourceStatefulOwner = MultiSourceStatefulOwner(
+            ReduceOperators.AND,
+            appExplicitBackgroundOwner,
+            appDeepBackgroundOwner.reverse()
+        )
+    ) : IBackgroundStatefulOwner, IStatefulOwner by delegate
+
+    val appStagedBackgroundOwner: IBackgroundStatefulOwner = AppStagedBackgroundOwner()
 
     fun init(app: Application, config: SupervisorConfig?): Boolean {
         if (config == null || !config.enable) {
@@ -144,7 +153,13 @@ object ProcessSupervisor : IProcessListener by DispatchReceiver {
                 DispatchReceiver.uninstallPacemaker()
                 supervisorProxy = ISupervisorProxy.Stub.asInterface(service)
                 MatrixLog.i(TAG, "on Supervisor Connected $supervisorProxy")
-                supervisorProxy?.safeApply(tag) { stateRegister(DispatcherStateOwner.ownersToProcessTokens(app)) }
+                supervisorProxy?.safeApply(tag) {
+                    stateRegister(
+                        DispatcherStateOwner.ownersToProcessTokens(
+                            app
+                        )
+                    )
+                }
                 DispatcherStateOwner.attach(supervisorProxy, application!!)
             }
 

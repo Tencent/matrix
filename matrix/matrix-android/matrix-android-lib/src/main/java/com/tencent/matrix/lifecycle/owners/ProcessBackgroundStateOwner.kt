@@ -8,7 +8,7 @@ import java.util.concurrent.TimeUnit
 private val MAX_CHECK_INTERVAL = TimeUnit.MINUTES.toMillis(1)
 private const val MAX_CHECK_TIMES = 20
 
-interface IBackgroundStatefulOwner: IStatefulOwner
+interface IBackgroundStatefulOwner : IStatefulOwner
 
 /**
  * State-ON:
@@ -89,6 +89,7 @@ object ExplicitBackgroundOwner : StatefulOwner(), IBackgroundStatefulOwner {
      */
     override fun active(): Boolean {
         return if (MatrixProcessLifecycleOwner.startedStateOwner.active()) {
+            turnOff()
             false
         } else {
             checkTask.checkAndPostIfNeeded()
@@ -158,6 +159,7 @@ object StagedBackgroundOwner : StatefulOwner(), IBackgroundStatefulOwner {
 
     override fun active(): Boolean {
         return if (!ExplicitBackgroundOwner.active()) {
+            turnOff()
             false
         } else {
             checkTask.checkAndPostIfNeeded()
@@ -167,13 +169,6 @@ object StagedBackgroundOwner : StatefulOwner(), IBackgroundStatefulOwner {
 }
 
 object DeepBackgroundOwner : StatefulOwner(), IBackgroundStatefulOwner {
-
-    private const val TAG = "Matrix.background.Deep"
-
-    private fun StatefulOwner.reverse(): IStatefulOwner = object : IStatefulOwner by this {
-        override fun active() = !this@reverse.active()
-            .also { MatrixLog.d(TAG, "${this@reverse.javaClass.name} is active? $it") }
-    }
 
     private val delegate = ImmutableMultiSourceStatefulOwner(
         ReduceOperators.AND,

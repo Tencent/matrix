@@ -12,6 +12,10 @@ interface IStateful {
     fun active(): Boolean
 }
 
+fun IStatefulOwner.reverse(): IStatefulOwner = object : IStatefulOwner by this {
+    override fun active() = !this@reverse.active()
+}
+
 interface IStateObserver {
     fun on()
     fun off()
@@ -24,6 +28,11 @@ interface IStateObservable {
 }
 
 interface IStatefulOwner : IStateful, IStateObservable
+
+interface IMultiSourceOwner {
+    fun addSourceOwner(owner: StatefulOwner)
+    fun removeSourceOwner(owner: StatefulOwner)
+}
 
 private open class ObserverWrapper(val observer: IStateObserver, val switchOwner: StatefulOwner) {
     open fun isAttachedTo(owner: LifecycleOwner?) = false
@@ -179,7 +188,7 @@ class LifecycleDelegateStatefulOwner private constructor(
 open class MultiSourceStatefulOwner(
     private val reduceOperator: (statefuls: Collection<IStateful>) -> Boolean,
     vararg statefulOwners: IStatefulOwner
-) : StatefulOwner(), IStateObserver {
+) : StatefulOwner(), IStateObserver, IMultiSourceOwner {
 
     private val sourceOwners = ConcurrentLinkedQueue<IStatefulOwner>()
 
@@ -204,16 +213,28 @@ open class MultiSourceStatefulOwner(
         }
     }
 
-    open fun addSourceOwner(owner: StatefulOwner) = register(owner)
+    override fun addSourceOwner(owner: StatefulOwner) = register(owner)
 
     open fun addSourceOwner(owner: LifecycleOwner): StatefulOwner =
         owner.toStateOwner().also { addSourceOwner(it) }
 
-    open fun removeSourceOwner(owner: StatefulOwner) = unregister(owner)
+    override fun removeSourceOwner(owner: StatefulOwner) = unregister(owner)
 
     override fun on() = onStateChanged()
 
     override fun off() = onStateChanged()
+
+    override fun active() = if (sourceOwners.isEmpty()) {
+        super.active()
+    } else {
+        reduceOperator(sourceOwners).also {
+            if (it) {
+                turnOn()
+            } else {
+                turnOff()
+            }
+        }
+    }
 
     /**
      * Callback function while state of any source owners is changed.

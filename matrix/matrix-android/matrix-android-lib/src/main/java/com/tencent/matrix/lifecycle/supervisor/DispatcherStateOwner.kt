@@ -10,7 +10,6 @@ import com.tencent.matrix.lifecycle.owners.ExplicitBackgroundOwner
 import com.tencent.matrix.util.MatrixHandlerThread
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.safeApply
-import java.lang.IllegalStateException
 
 /**
  * cross process StatefulOwner
@@ -52,7 +51,13 @@ internal open class DispatcherStateOwner(
             }
             MatrixLog.i(ProcessSupervisor.tag, "syncStates")
             dispatchOwners.forEach {
-                if (it.value.active().also { b -> MatrixLog.i(ProcessSupervisor.tag, "supervisor sync ${it.key} $b") }) {
+                // TODO: 2021/12/14 remove log
+                if (it.value.active().also { b ->
+                        MatrixLog.i(
+                            ProcessSupervisor.tag,
+                            "supervisor sync ${it.key} $b"
+                        )
+                    }) {
                     DispatchReceiver.dispatchAppStateOn(context, it.key)
                 } else {
                     DispatchReceiver.dispatchAppStateOff(context, it.key)
