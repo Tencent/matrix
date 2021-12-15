@@ -219,7 +219,7 @@ public class TestBatteryActivity extends Activity {
 
     public void onCheckoutBatteryStats(View view) {
         if (BatteryCanary.getMonitorFeature(BatteryStatsFeature.class) == null) {
-            Toast.makeText(this, "BatteryStatsFeature is not enabled, pls check ''", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "BatteryStatsFeature is not enabled, pls check 'BatteryCanaryInitHelper' to enable advanced features.", Toast.LENGTH_LONG).show();
             return;
         }
         Intent intent = new Intent(this, BatteryStatsActivity.class);

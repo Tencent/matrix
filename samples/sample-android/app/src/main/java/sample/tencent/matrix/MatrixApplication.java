@@ -37,6 +37,7 @@ import com.tencent.sqlitelint.config.SQLiteLintConfig;
 import java.io.File;
 
 import sample.tencent.matrix.battery.BatteryCanaryInitHelper;
+import sample.tencent.matrix.battery.BatteryCanarySimpleInitHelper;
 import sample.tencent.matrix.config.DynamicConfigImplDemo;
 import sample.tencent.matrix.listener.TestPluginListener;
 import sample.tencent.matrix.resource.ManualDumpActivity;
@@ -183,6 +184,7 @@ public class MatrixApplication extends Application {
     private BatteryMonitorPlugin configureBatteryCanary(Context context) {
         // Configuration of battery plugin is really complicated.
         // See it in BatteryCanaryInitHelper.
+        // return BatteryCanarySimpleInitHelper.createMonitor(context);  // for simplified showcase
         return BatteryCanaryInitHelper.createMonitor(context);
     }
 
