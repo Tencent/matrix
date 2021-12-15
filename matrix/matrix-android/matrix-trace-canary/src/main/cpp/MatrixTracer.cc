@@ -33,6 +33,7 @@
 #include <xhook_ext.h>
 #include <linux/prctl.h>
 #include <sys/prctl.h>
+#include <sys/resource.h>
 
 #include <thread>
 #include <memory>
@@ -89,15 +90,10 @@ static struct StacktraceJNI {
 int (*original_setpriority)(int __which, id_t __who, int __priority);
 int my_setpriority(int __which, id_t __who, int __priority) {
 
-    if (__priority <= 0) {
-        return original_setpriority(__which, __who, __priority);
-    }
-    if (__who == 0 && getpid() == gettid()) {
+    if ((__who == 0 && getpid() == gettid()) || __who == getpid()) {
+        int priorityBefore = getpriority(__which, __who);
         JNIEnv *env = JniInvocation::getEnv();
-        env->CallStaticVoidMethod(gJ.ThreadPriorityDetective, gJ.ThreadPriorityDetective_onMainThreadPriorityModified, __priority);
-    } else if (__who == getpid()) {
-        JNIEnv *env = JniInvocation::getEnv();
-        env->CallStaticVoidMethod(gJ.ThreadPriorityDetective, gJ.ThreadPriorityDetective_onMainThreadPriorityModified, __priority);
+        env->CallStaticVoidMethod(gJ.ThreadPriorityDetective, gJ.ThreadPriorityDetective_onMainThreadPriorityModified, priorityBefore, __priority);
     }
 
     return original_setpriority(__which, __who, __priority);
@@ -416,7 +412,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *) {
 
 
     gJ.ThreadPriorityDetective_onMainThreadPriorityModified =
-            env->GetStaticMethodID(threadPriorityDetectiveCls, "onMainThreadPriorityModified", "(I)V");
+            env->GetStaticMethodID(threadPriorityDetectiveCls, "onMainThreadPriorityModified", "(II)V");
     gJ.ThreadPriorityDetective_onMainThreadTimerSlackModified =
             env->GetStaticMethodID(threadPriorityDetectiveCls, "onMainThreadTimerSlackModified", "(J)V");
 
