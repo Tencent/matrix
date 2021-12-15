@@ -146,6 +146,7 @@ public class SignalAnrTracer extends Tracer {
     @Keep
     private synchronized static void onANRDumped() {
         stackTrace = Utils.getMainThreadJavaStackTrace();
+        MatrixLog.i(TAG, "onANRDumped, stackTrace = %s", stackTrace);
         cgroup = readCgroup();
         currentForeground = AppForegroundUtil.isInterestingToUser();
         boolean needReport = isMainThreadBlocked();
