@@ -34,6 +34,7 @@ public class OpenGLInfo {
         this.nativeStackPtr = clone.nativeStackPtr;
         this.type = clone.type;
         this.activityInfo = clone.activityInfo;
+        this.memoryInfo = clone.memoryInfo;
     }
 
     public OpenGLInfo(TYPE type, int id, String threadId, EGLContext eglContext) {

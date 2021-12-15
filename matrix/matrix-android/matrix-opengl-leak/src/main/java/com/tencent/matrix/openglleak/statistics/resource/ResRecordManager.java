@@ -199,6 +199,20 @@ public class ResRecordManager {
         }
     }
 
+    public List<OpenGLInfo> getAllItem() {
+        List<OpenGLInfo> retList = new LinkedList<>();
+
+        synchronized (mInfoList) {
+            for (OpenGLInfo item : mInfoList) {
+                if (null != item) {
+                    retList.add(item);
+                }
+            }
+        }
+
+        return retList;
+    }
+
     public void dumpGLToFile(String filePath) {
         File targetFile = new File(filePath);
 
