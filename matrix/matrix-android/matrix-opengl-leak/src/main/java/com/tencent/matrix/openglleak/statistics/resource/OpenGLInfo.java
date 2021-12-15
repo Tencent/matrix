@@ -112,8 +112,8 @@ public class OpenGLInfo {
         return activityInfo;
     }
 
-    public boolean isEglContextAlive() {
-        return ResRecordManager.getInstance().isEglContextAlive(this);
+    public boolean isEglContextReleased() {
+        return ResRecordManager.getInstance().isEglContextReleased(this);
     }
 
     @Override

@@ -178,24 +178,24 @@ public class ResRecordManager {
         }
     }
 
-    public boolean isEglContextAlive(OpenGLInfo info) {
+    public boolean isEglContextReleased(OpenGLInfo info) {
         synchronized (mReleaseContext) {
             long eglContextNativeHandle = info.getEglContextNativeHandle();
             if (0L == eglContextNativeHandle) {
-                return false;
+                return true;
             }
 
             for (long item : mReleaseContext) {
                 if (item == eglContextNativeHandle) {
-                    return false;
+                    return true;
                 }
             }
 
-            boolean ret = EGLHelper.isEglContextAlive(info.getEglContext());
-            if (!ret) {
+            boolean alive = EGLHelper.isEglContextAlive(info.getEglContext());
+            if (!alive) {
                 mReleaseContext.add(info.getEglContextNativeHandle());
             }
-            return ret;
+            return !alive;
         }
     }
 
