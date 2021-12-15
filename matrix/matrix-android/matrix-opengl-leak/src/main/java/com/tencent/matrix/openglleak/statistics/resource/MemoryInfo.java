@@ -152,14 +152,17 @@ public class MemoryInfo {
     }
 
     public long getSize() {
+        long actualSize = 0L;
         if (this.resType == OpenGLInfo.TYPE.TEXTURE) {
             for (FaceInfo faceInfo : faces) {
                 if (faceInfo != null) {
-                    this.size += faceInfo.getSize();
+                    actualSize += faceInfo.getSize();
                 }
             }
+        } else {
+            actualSize = size;
         }
-        return size;
+        return actualSize;
     }
 
     public long getEglContextId() {
