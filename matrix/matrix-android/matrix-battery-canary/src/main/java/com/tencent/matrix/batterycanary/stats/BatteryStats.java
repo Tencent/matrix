@@ -70,26 +70,30 @@ public interface BatteryStats {
 
         @Override
         public BatteryRecord.ReportRecord statsMonitors(final CompositeMonitors monitors) {
+            final BatteryRecord.ReportRecord statRecord = new BatteryRecord.ReportRecord();
             final AppStats appStats = monitors.getAppStats();
-            final BatteryRecord.ReportRecord reportRecord = new BatteryRecord.ReportRecord();
-            reportRecord.scope = monitors.getScope();
-            reportRecord.windowMillis = appStats.duringMillis;
+            if (appStats == null) {
+                return statRecord;
+            }
+
+            statRecord.scope = monitors.getScope();
+            statRecord.windowMillis = appStats.duringMillis;
 
             // Thread Entry
             final Delta<JiffiesSnapshot> jiffiesDelta = monitors.getDelta(JiffiesSnapshot.class);
             if (jiffiesDelta != null) {
-                reportRecord.threadInfoList = new ArrayList<>();
+                statRecord.threadInfoList = new ArrayList<>();
                 for (ThreadJiffiesEntry threadJiffies : jiffiesDelta.dlt.threadEntries.getList().subList(0, Math.min(jiffiesDelta.dlt.threadEntries.getList().size(), 5))) {
                     BatteryRecord.ReportRecord.ThreadInfo threadInfo = new BatteryRecord.ReportRecord.ThreadInfo();
                     threadInfo.stat = threadJiffies.stat;
                     threadInfo.tid = threadJiffies.tid;
                     threadInfo.name = threadJiffies.name;
                     threadInfo.jiffies = threadJiffies.get();
-                    reportRecord.threadInfoList.add(threadInfo);
+                    statRecord.threadInfoList.add(threadInfo);
                 }
             }
 
-            reportRecord.entryList = new ArrayList<>();
+            statRecord.entryList = new ArrayList<>();
 
             // DevStat Entry
             createEntryInfo(new Consumer<EntryInfo>() {
@@ -140,7 +144,7 @@ public interface BatteryStats {
                         }
                     });
 
-                    reportRecord.entryList.add(entryInfo);
+                    statRecord.entryList.add(entryInfo);
                 }
             });
 
@@ -157,7 +161,7 @@ public interface BatteryStats {
                     entryInfo.entries.put("充电时间占比", appStats.devChargingRatio + "%");
                     entryInfo.entries.put("息屏时间占比 (排除充电)", appStats.devSceneOffRatio + "%");
 
-                    reportRecord.entryList.add(entryInfo);
+                    statRecord.entryList.add(entryInfo);
                 }
             });
 
@@ -187,11 +191,11 @@ public interface BatteryStats {
                         }
                     });
 
-                    reportRecord.entryList.add(entryInfo);
+                    statRecord.entryList.add(entryInfo);
                 }
             });
 
-            return reportRecord;
+            return statRecord;
         }
 
         protected void createEntryInfo(Consumer<EntryInfo> consumer) {

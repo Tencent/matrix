@@ -23,6 +23,7 @@ import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.BatteryCanary;
 import com.tencent.matrix.batterycanary.BatteryEventDelegate;
 import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
+import com.tencent.matrix.batterycanary.TestUtils;
 import com.tencent.matrix.batterycanary.monitor.AppStats;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCallback;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
@@ -71,6 +72,10 @@ public class BatteryStatsFeatureTest {
 
     @Test
     public void testBatteryStatsWithMonitors() throws InterruptedException {
+        if (TestUtils.isAssembleTest()) {
+            return;
+        }
+
         final CountDownLatch latch = new CountDownLatch(11);
 
         MMKV mmkv = MMKV.defaultMMKV();

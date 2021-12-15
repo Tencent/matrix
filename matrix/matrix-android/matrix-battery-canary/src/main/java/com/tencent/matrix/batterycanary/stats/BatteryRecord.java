@@ -11,6 +11,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import androidx.annotation.CallSuper;
+
 /**
  * @author Kaede
  * @since 2021/12/10
@@ -23,9 +25,6 @@ public abstract class BatteryRecord implements Parcelable {
     public static final int RECORD_TYPE_SCENE_STAT = 4;
     public static final int RECORD_TYPE_EVENT_STAT = 5;
     public static final int RECORD_TYPE_REPORT = 6;
-
-    public int version;
-    public long millis = System.currentTimeMillis();
 
     public static byte[] encode(BatteryRecord record) {
         int type;
@@ -97,14 +96,29 @@ public abstract class BatteryRecord implements Parcelable {
         }
     }
 
+    public int version;
+    public long millis;
+
+    protected BatteryRecord() {
+        version = 0;
+        millis = System.currentTimeMillis();
+    }
+
+    protected BatteryRecord(Parcel in) {
+        version = in.readInt();
+        millis = in.readLong();
+    }
+
     @Override
     public int describeContents() {
         return 0;
     }
 
     @Override
+    @CallSuper
     public void writeToParcel(Parcel dest, int flags) {
-        throw new RuntimeException("Stub!");
+        dest.writeInt(version);
+        dest.writeLong(millis);
     }
 
     public static class ProcStatRecord extends BatteryRecord implements Parcelable {
@@ -120,8 +134,7 @@ public abstract class BatteryRecord implements Parcelable {
         }
 
         protected ProcStatRecord(Parcel in) {
-            version = in.readInt();
-            millis = in.readLong();
+            super(in);
             procStat = in.readInt();
             pid = in.readInt();
         }
@@ -145,8 +158,7 @@ public abstract class BatteryRecord implements Parcelable {
 
         @Override
         public void writeToParcel(Parcel dest, int flags) {
-            dest.writeInt(version);
-            dest.writeLong(millis);
+            super.writeToParcel(dest, flags);
             dest.writeInt(procStat);
             dest.writeInt(pid);
         }
@@ -159,10 +171,10 @@ public abstract class BatteryRecord implements Parcelable {
         public int devStat;
 
         public DevStatRecord() {
-            version = VERSION;
         }
 
         protected DevStatRecord(Parcel in) {
+            super(in);
             version = in.readInt();
             millis = in.readLong();
             devStat = in.readInt();
@@ -187,8 +199,7 @@ public abstract class BatteryRecord implements Parcelable {
 
         @Override
         public void writeToParcel(Parcel dest, int flags) {
-            dest.writeInt(version);
-            dest.writeLong(millis);
+            super.writeToParcel(dest, flags);
             dest.writeInt(devStat);
         }
     }
@@ -204,8 +215,7 @@ public abstract class BatteryRecord implements Parcelable {
         }
 
         protected AppStatRecord(Parcel in) {
-            version = in.readInt();
-            millis = in.readLong();
+            super(in);
             appStat = in.readInt();
         }
 
@@ -228,8 +238,7 @@ public abstract class BatteryRecord implements Parcelable {
 
         @Override
         public void writeToParcel(Parcel dest, int flags) {
-            dest.writeInt(version);
-            dest.writeLong(millis);
+            super.writeToParcel(dest, flags);
             dest.writeInt(appStat);
         }
     }
@@ -244,8 +253,7 @@ public abstract class BatteryRecord implements Parcelable {
         }
 
         protected SceneStatRecord(Parcel in) {
-            version = in.readInt();
-            millis = in.readLong();
+            super(in);
             scene = in.readString();
         }
 
@@ -268,8 +276,7 @@ public abstract class BatteryRecord implements Parcelable {
 
         @Override
         public void writeToParcel(Parcel dest, int flags) {
-            dest.writeInt(version);
-            dest.writeLong(millis);
+            super.writeToParcel(dest, flags);
             dest.writeString(scene);
         }
     }
@@ -286,8 +293,7 @@ public abstract class BatteryRecord implements Parcelable {
         }
 
         protected EventStatRecord(Parcel in) {
-            version = in.readInt();
-            millis = in.readLong();
+            super(in);
             id = in.readLong();
             event = in.readString();
         }
@@ -311,8 +317,7 @@ public abstract class BatteryRecord implements Parcelable {
 
         @Override
         public void writeToParcel(Parcel dest, int flags) {
-            dest.writeInt(version);
-            dest.writeLong(millis);
+            super.writeToParcel(dest, flags);
             dest.writeLong(id);
             dest.writeString(event);
         }
@@ -332,9 +337,7 @@ public abstract class BatteryRecord implements Parcelable {
         }
 
         protected ReportRecord(Parcel in) {
-            millis = in.readLong();
-            id = in.readLong();
-            event = in.readString();
+            super(in);
             scope = in.readString();
             windowMillis = in.readLong();
             threadInfoList = in.createTypedArrayList(ReportRecord.ThreadInfo.CREATOR);
@@ -360,9 +363,7 @@ public abstract class BatteryRecord implements Parcelable {
 
         @Override
         public void writeToParcel(Parcel dest, int flags) {
-            dest.writeLong(millis);
-            dest.writeLong(id);
-            dest.writeString(event);
+            super.writeToParcel(dest, flags);
             dest.writeString(scope);
             dest.writeLong(windowMillis);
             dest.writeTypedList(threadInfoList);
