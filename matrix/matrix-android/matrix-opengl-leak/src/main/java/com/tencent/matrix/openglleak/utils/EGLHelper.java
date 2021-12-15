@@ -7,12 +7,7 @@ import android.opengl.EGLDisplay;
 import android.opengl.EGLSurface;
 import android.opengl.GLES20;
 import android.os.Build;
-
 import androidx.annotation.RequiresApi;
-
-import com.tencent.matrix.util.MatrixLog;
-
-import java.lang.reflect.Constructor;
 
 public class EGLHelper {
 
@@ -81,24 +76,6 @@ public class EGLHelper {
         GLES20.glFlush();
     }
 
-    public static boolean isEglContextAlive(long eglContextNativeHandle) {
-        EGLContext context = null;
-        try {
-            Class clazz = EGLContext.class;
-            Constructor constructor = clazz.getDeclaredConstructor(new Class[]{long.class});
-            constructor.setAccessible(true);
-            context = (EGLContext) constructor.newInstance(eglContextNativeHandle);
-        } catch (Exception e) {
-            MatrixLog.e(TAG, "EGLContext newInstance error");
-        }
-
-        if (null == context) {
-            return false;
-        }
-
-        return isEglContextAlive(context);
-    }
-
     public static boolean isEglContextAlive(EGLContext context) {
         EGLDisplay defaultDisplay = EGL14.eglGetDisplay(EGL14.EGL_DEFAULT_DISPLAY);
 
@@ -117,4 +94,5 @@ public class EGLHelper {
 
         return true;
     }
+
 }

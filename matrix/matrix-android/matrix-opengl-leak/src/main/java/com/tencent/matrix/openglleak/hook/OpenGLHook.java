@@ -137,13 +137,8 @@ public class OpenGLHook {
         if (ids.length > 0) {
             final AtomicInteger counter = new AtomicInteger(ids.length);
 
-            long eglContextId = 0L;
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
-            }
-
             for (final int id : ids) {
-                final OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.TEXTURE, id, threadId, eglContextId, javaStack, nativeStackPtr, ActivityRecorder.getInstance().getCurrentActivityInfo(), counter);
+                final OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.TEXTURE, id, threadId, EGL14.eglGetCurrentContext(), javaStack, nativeStackPtr, ActivityRecorder.getInstance().getCurrentActivityInfo(), counter);
                 ExecuteCenter.getInstance().post(new Runnable() {
                     @Override
                     public void run() {
@@ -160,14 +155,8 @@ public class OpenGLHook {
 
     public static void onGlDeleteTextures(int[] ids, String threadId) {
         if (ids.length > 0) {
-
-            long eglContextId = 0L;
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
-            }
-
             for (int id : ids) {
-                final OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.TEXTURE, id, threadId, eglContextId);
+                final OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.TEXTURE, id, threadId, EGL14.eglGetCurrentContext());
                 ExecuteCenter.getInstance().post(new Runnable() {
                     @Override
                     public void run() {
@@ -186,13 +175,8 @@ public class OpenGLHook {
         if (ids.length > 0) {
             AtomicInteger counter = new AtomicInteger(ids.length);
 
-            long eglContextId = 0L;
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
-            }
-
             for (int id : ids) {
-                final OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.BUFFER, id, threadId, eglContextId, javaStack, nativeStackPtr, ActivityRecorder.getInstance().getCurrentActivityInfo(), counter);
+                final OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.BUFFER, id, threadId, EGL14.eglGetCurrentContext(), javaStack, nativeStackPtr, ActivityRecorder.getInstance().getCurrentActivityInfo(), counter);
                 ExecuteCenter.getInstance().post(new Runnable() {
                     @Override
                     public void run() {
@@ -209,14 +193,8 @@ public class OpenGLHook {
 
     public static void onGlDeleteBuffers(int[] ids, String threadId) {
         if (ids.length > 0) {
-
-            long eglContextId = 0L;
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
-            }
-
             for (int id : ids) {
-                final OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.BUFFER, id, threadId, eglContextId);
+                final OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.BUFFER, id, threadId, EGL14.eglGetCurrentContext());
                 ExecuteCenter.getInstance().post(new Runnable() {
                     @Override
                     public void run() {
@@ -235,13 +213,8 @@ public class OpenGLHook {
         if (ids.length > 0) {
             AtomicInteger counter = new AtomicInteger(ids.length);
 
-            long eglContextId = 0L;
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
-            }
-
             for (int id : ids) {
-                final OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.FRAME_BUFFERS, id, threadId, eglContextId, javaStack, nativeStackPtr, ActivityRecorder.getInstance().getCurrentActivityInfo(), counter);
+                final OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.FRAME_BUFFERS, id, threadId, EGL14.eglGetCurrentContext(), javaStack, nativeStackPtr, ActivityRecorder.getInstance().getCurrentActivityInfo(), counter);
                 ExecuteCenter.getInstance().post(new Runnable() {
                     @Override
                     public void run() {
@@ -258,14 +231,8 @@ public class OpenGLHook {
 
     public static void onGlDeleteFramebuffers(int[] ids, String threadId) {
         if (ids.length > 0) {
-
-            long eglContextId = 0L;
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
-            }
-
             for (int id : ids) {
-                final OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.FRAME_BUFFERS, id, threadId, eglContextId);
+                final OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.FRAME_BUFFERS, id, threadId, EGL14.eglGetCurrentContext());
                 ExecuteCenter.getInstance().post(new Runnable() {
                     @Override
                     public void run() {
@@ -284,13 +251,8 @@ public class OpenGLHook {
         if (ids.length > 0) {
             AtomicInteger counter = new AtomicInteger(ids.length);
 
-            long eglContextId = 0L;
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
-            }
-
             for (int id : ids) {
-                final OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.RENDER_BUFFERS, id, threadId, eglContextId, javaStack, nativeStackPtr, ActivityRecorder.getInstance().getCurrentActivityInfo(), counter);
+                final OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.RENDER_BUFFERS, id, threadId, EGL14.eglGetCurrentContext(), javaStack, nativeStackPtr, ActivityRecorder.getInstance().getCurrentActivityInfo(), counter);
                 ExecuteCenter.getInstance().post(new Runnable() {
                     @Override
                     public void run() {
@@ -307,14 +269,8 @@ public class OpenGLHook {
 
     public static void onGlDeleteRenderbuffers(int[] ids, String threadId) {
         if (ids.length > 0) {
-
-            long eglContextId = 0L;
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-                eglContextId = EGL14.eglGetCurrentContext().getNativeHandle();
-            }
-
             for (int id : ids) {
-                final OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.RENDER_BUFFERS, id, threadId, eglContextId);
+                final OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.RENDER_BUFFERS, id, threadId, EGL14.eglGetCurrentContext());
                 ExecuteCenter.getInstance().post(new Runnable() {
                     @Override
                     public void run() {

@@ -3,6 +3,7 @@ package com.tencent.matrix.openglleak.statistics.resource;
 import android.annotation.SuppressLint;
 
 import com.tencent.matrix.openglleak.utils.AutoWrapBuilder;
+import com.tencent.matrix.openglleak.utils.EGLHelper;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -24,6 +25,7 @@ public class ResRecordManager {
 
     private final List<Callback> mCallbackList = new LinkedList<>();
     private final List<OpenGLInfo> mInfoList = new LinkedList<>();
+    private final List<Long> mReleaseContext = new LinkedList<>();
 
     private ResRecordManager() {
 
@@ -170,6 +172,30 @@ public class ResRecordManager {
     public void clear() {
         synchronized (mInfoList) {
             mInfoList.clear();
+        }
+        synchronized (mReleaseContext) {
+            mReleaseContext.clear();
+        }
+    }
+
+    public boolean isEglContextAlive(OpenGLInfo info) {
+        synchronized (mReleaseContext) {
+            long eglContextNativeHandle = info.getEglContextNativeHandle();
+            if (0L == eglContextNativeHandle) {
+                return false;
+            }
+
+            for (long item : mReleaseContext) {
+                if (item == eglContextNativeHandle) {
+                    return false;
+                }
+            }
+
+            boolean ret = EGLHelper.isEglContextAlive(info.getEglContext());
+            if (!ret) {
+                mReleaseContext.add(info.getEglContextNativeHandle());
+            }
+            return ret;
         }
     }
 
