@@ -70,6 +70,7 @@ public class SignalAnrTracer extends Tracer {
     private static long anrMessageWhen = 0L;
     private static String anrMessageString = "";
     private static String cgroup = "";
+    private static String stackTrace = "";
 
     static {
         System.loadLibrary("trace-canary");
@@ -143,7 +144,8 @@ public class SignalAnrTracer extends Tracer {
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Keep
-    private static void onANRDumped() {
+    private synchronized static void onANRDumped() {
+        stackTrace = Utils.getMainThreadJavaStackTrace();
         cgroup = readCgroup();
         currentForeground = AppForegroundUtil.isInterestingToUser();
         boolean needReport = isMainThreadBlocked();
@@ -178,9 +180,8 @@ public class SignalAnrTracer extends Tracer {
         }
     }
 
-    private static void report(boolean fromProcessErrorState) {
+    private synchronized static void report(boolean fromProcessErrorState) {
         try {
-            String stackTrace = Utils.getMainThreadJavaStackTrace();
             if (sSignalAnrDetectedListener != null) {
                 sSignalAnrDetectedListener.onAnrDetected(stackTrace, anrMessageString, anrMessageWhen, fromProcessErrorState, cgroup);
                 return;
