@@ -124,6 +124,7 @@ public class OpenGLInfo {
                 ", type='" + type.toString() + '\'' +
                 ", threadId='" + threadId + '\'' +
                 ", eglContextNativeHandle='" + getEglContextNativeHandle() + '\'' +
+                ", eglContextReleased='" + isEglContextReleased() + '\'' +
                 ", javaStack='" + javaStack + '\'' +
                 ", nativeStack='" + getNativeStack() + '\'' +
                 ", nativeStackPtr=" + nativeStackPtr +
