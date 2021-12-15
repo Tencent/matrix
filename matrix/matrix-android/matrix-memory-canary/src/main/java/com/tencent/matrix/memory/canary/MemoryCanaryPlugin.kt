@@ -13,15 +13,14 @@ import com.tencent.matrix.util.MatrixUtil
 
 @Suppress("ArrayInDataClass")
 data class MemoryCanaryConfig(
-    val appStagedBgSumPssMonitorConfig: AppBgSumPssMonitorConfig =
+    val appBgSumPssMonitorConfigs: Array<AppBgSumPssMonitorConfig> = arrayOf(
         AppBgSumPssMonitorConfig(bgStatefulOwner = ProcessSupervisor.appStagedBackgroundOwner),
-    val appDeepBgSumPssMonitorConfig: AppBgSumPssMonitorConfig =
-        AppBgSumPssMonitorConfig(bgStatefulOwner = ProcessSupervisor.appDeepBackgroundOwner),
-    val procStagedBgMemoryMonitorConfig: ProcessBgMemoryMonitorConfig =
+        AppBgSumPssMonitorConfig(bgStatefulOwner = ProcessSupervisor.appDeepBackgroundOwner)
+    ),
+    val processBgMemoryMonitorConfigs: Array<ProcessBgMemoryMonitorConfig> = arrayOf(
         ProcessBgMemoryMonitorConfig(bgStatefulOwner = StagedBackgroundOwner),
-    val procDeepBgMemoryMonitorConfig: ProcessBgMemoryMonitorConfig =
-        ProcessBgMemoryMonitorConfig(bgStatefulOwner = DeepBackgroundOwner),
-    val baseActivities: Array<String> = emptyArray()
+        ProcessBgMemoryMonitorConfig(bgStatefulOwner = DeepBackgroundOwner)
+    ),
 )
 
 class MemoryCanaryPlugin(
@@ -38,11 +37,14 @@ class MemoryCanaryPlugin(
         memoryCanaryConfig.apply {
             if (ProcessSupervisor.isSupervisor) {
                 MatrixLog.d(tag, "supervisor is ${MatrixUtil.getProcessName(application)}")
-                AppBgSumPssMonitor(appStagedBgSumPssMonitorConfig).init()
-                AppBgSumPssMonitor(appDeepBgSumPssMonitorConfig).init()
+
+                appBgSumPssMonitorConfigs.forEach {
+                    AppBgSumPssMonitor(it).init()
+                }
             }
-            ProcessBgMemoryMonitor(procStagedBgMemoryMonitorConfig).init()
-            ProcessBgMemoryMonitor(procDeepBgMemoryMonitorConfig).init()
+            processBgMemoryMonitorConfigs.forEach {
+                ProcessBgMemoryMonitor(it).init()
+            }
         }
     }
 

@@ -2,6 +2,7 @@ package sample.tencent.matrix.kt.memory.canary
 
 import android.app.Application
 import com.tencent.matrix.memory.canary.MemoryCanaryConfig
+import com.tencent.matrix.memory.canary.monitor.AppBgSumPssMonitorConfig
 import sample.tencent.matrix.kt.memory.canary.monitor.BackgroundMemoryMonitorBoot
 
 /**
@@ -14,10 +15,14 @@ class MemoryCanaryBoot {
         @JvmStatic
         fun configure(app: Application): MemoryCanaryConfig {
             return MemoryCanaryConfig(
-                appStagedBgSumPssMonitorConfig = BackgroundMemoryMonitorBoot.appStagedBgMemoryMonitorConfig,
-                appDeepBgSumPssMonitorConfig = BackgroundMemoryMonitorBoot.appDeepBgMemoryMonitorConfig,
-                procStagedBgMemoryMonitorConfig = BackgroundMemoryMonitorBoot.procStagedBgMemoryMonitorConfig,
-                procDeepBgMemoryMonitorConfig = BackgroundMemoryMonitorBoot.procDeepBgMemoryMonitorConfig
+                appBgSumPssMonitorConfigs = arrayOf(
+                    BackgroundMemoryMonitorBoot.appStagedBgMemoryMonitorConfig,
+                    BackgroundMemoryMonitorBoot.appDeepBgMemoryMonitorConfig
+                ),
+                processBgMemoryMonitorConfigs = arrayOf(
+                    BackgroundMemoryMonitorBoot.procStagedBgMemoryMonitorConfig,
+                    BackgroundMemoryMonitorBoot.procDeepBgMemoryMonitorConfig
+                )
             )
         }
     }
