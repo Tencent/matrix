@@ -1,18 +1,20 @@
 package com.tencent.matrix.batterycanary.monitor;
 
 import android.app.ActivityManager;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 
 import com.tencent.matrix.batterycanary.BuildConfig;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature;
 import com.tencent.matrix.batterycanary.stats.BatteryRecorder;
+import com.tencent.matrix.batterycanary.stats.BatteryStats;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.Callable;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 /**
  * @author Kaede
@@ -59,6 +61,7 @@ public class BatteryMonitorConfig {
     public List<String> threadWatchList = Collections.emptyList();
     public final List<MonitorFeature> features = new ArrayList<>(3);
     public BatteryRecorder batteryRecorder;
+    public BatteryStats batteryStats;
 
     private BatteryMonitorConfig() {
     }
@@ -91,6 +94,7 @@ public class BatteryMonitorConfig {
                 + ", threadWatchList=" + threadWatchList
                 + ", features=" + features
                 + ", batteryRecorder=" + batteryRecorder
+                + ", batteryStats=" + batteryStats
                 + '}';
     }
 
@@ -268,6 +272,11 @@ public class BatteryMonitorConfig {
             return this;
         }
 
+        public Builder setStats(BatteryStats stats) {
+            config.batteryStats = stats;
+            return this;
+        }
+
         public BatteryMonitorConfig build() {
             Collections.sort(config.features, new Comparator<MonitorFeature>() {
                 @Override
@@ -275,6 +284,10 @@ public class BatteryMonitorConfig {
                     return Integer.compare(o2.weight(), o1.weight());
                 }
             });
+
+            if (config.batteryStats == null) {
+                config.batteryStats = new BatteryStats.BatteryStatsImpl();
+            }
             return config;
         }
     }
