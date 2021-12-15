@@ -58,22 +58,23 @@
 
         <!--  Title  -->
         <LinearLayout
-            android:background="?attr/selectableItemBackground"
             android:id="@+id/layout_title"
             android:layout_width="match_parent"
             android:layout_height="45dp"
             android:layout_toLeftOf="@+id/layout_right"
             android:layout_toRightOf="@+id/layout_left"
+            android:background="?attr/selectableItemBackground"
             android:gravity="center_vertical"
             android:orientation="vertical"
             tools:background="#4000">
 
             <TextView
-                android:textColor="@color/FG_0"
                 android:id="@+id/tv_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="电量报告" />
+                android:text="电量报告"
+                android:textColor="@color/FG_0"
+                android:textStyle="normal|bold" />
         </LinearLayout>
 
 

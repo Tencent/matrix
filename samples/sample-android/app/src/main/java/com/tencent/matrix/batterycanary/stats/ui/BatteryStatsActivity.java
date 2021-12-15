@@ -79,7 +79,21 @@ public class BatteryStatsActivity extends AppCompatActivity {
         recyclerView.setLayoutManager(layoutManager);
         BatteryStatsAdapter adapter = new BatteryStatsAdapter();
         recyclerView.setAdapter(adapter);
+        adapter.registerAdapterDataObserver(new RecyclerView.AdapterDataObserver() {
+            @Override
+            public void onChanged() {
+                // update header
+                int topPosition = layoutManager.findFirstVisibleItemPosition();
+                updateHeader(topPosition);
+            }
+        });
         mStatsLoader = new BatteryStatsLoader(adapter);
+        // mStatsLoader.setLoadListener(new BatteryStatsLoader.OnLoadListener() {
+        //     @Override
+        //     public void onLoadFinish(BatteryStatsAdapter adapter) {
+        //
+        //     }
+        // });
         recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
@@ -102,7 +116,6 @@ public class BatteryStatsActivity extends AppCompatActivity {
         // load today's data
         mStatsLoader.reset(proc);
         mStatsLoader.load();
-        updateHeader(0);
 
         // load mocking data
         // loadMockingData();

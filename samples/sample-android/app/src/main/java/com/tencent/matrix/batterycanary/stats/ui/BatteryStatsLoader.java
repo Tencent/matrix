@@ -19,6 +19,10 @@ import java.util.List;
  * @since 2021/12/10
  */
 public class BatteryStatsLoader {
+    public interface OnLoadListener {
+        void onLoadFinish(BatteryStatsAdapter adapter);
+    }
+
     private static final String TAG = "Matrix.battery.loader";
     private static final int DAY_LIMIT = 7;
 
@@ -26,6 +30,7 @@ public class BatteryStatsLoader {
     final Handler mUiHandler = new Handler(Looper.getMainLooper());
     int mDayOffset = 0;
     String mProc = "";
+    OnLoadListener mOnLoadListener;
 
     public BatteryStatsLoader(BatteryStatsAdapter statsAdapter) {
         mStatsAdapter = statsAdapter;
@@ -33,6 +38,10 @@ public class BatteryStatsLoader {
 
     public List<BatteryStatsAdapter.Item> getDateSet() {
         return mStatsAdapter.dataList;
+    }
+
+    public void setLoadListener(OnLoadListener onLoadListener) {
+        mOnLoadListener = onLoadListener;
     }
 
     public void reset(String proc) {
@@ -110,6 +119,14 @@ public class BatteryStatsLoader {
                 int length = dataList.size();
                 mStatsAdapter.getDataList().addAll(dataList);
                 mStatsAdapter.notifyItemRangeChanged(Math.max(start, 0), length);
+                mUiHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (mOnLoadListener != null) {
+                            mOnLoadListener.onLoadFinish(mStatsAdapter);
+                        }
+                    }
+                });
             }
         });
     }
