@@ -7,6 +7,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import com.tencent.matrix.batterycanary.R;
 import com.tencent.matrix.batterycanary.stats.BatteryRecord;
 
 import java.text.DateFormat;
@@ -20,7 +21,6 @@ import java.util.Map;
 import androidx.annotation.NonNull;
 import androidx.arch.core.util.Function;
 import androidx.recyclerview.widget.RecyclerView;
-import sample.tencent.matrix.R;
 
 /**
  * @author Kaede
@@ -300,7 +300,7 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
                         View entryItemView = findEntryItemView.apply(i);
                         TextView left = entryItemView.findViewById(R.id.tv_key);
                         TextView right = entryItemView.findViewById(R.id.tv_value);
-                        BatteryStatsAdapter.EventDumpItem.ThreadInfo threadInfo = i <= item.threadInfoList.size() ? item.threadInfoList.get(i - 1) : null;
+                        EventDumpItem.ThreadInfo threadInfo = i <= item.threadInfoList.size() ? item.threadInfoList.get(i - 1) : null;
                         left.setVisibility(threadInfo != null ? View.VISIBLE : View.GONE);
                         right.setVisibility(threadInfo != null ? View.VISIBLE : View.GONE);
                         if (threadInfo != null) {
@@ -331,7 +331,7 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
                             throw new IndexOutOfBoundsException("entryList section out of bound: " + i);
                     }
 
-                    BatteryStatsAdapter.EventDumpItem.EntryInfo entryInfo = i <= item.entryList.size() ? item.entryList.get(i - 1) : null;
+                    EventDumpItem.EntryInfo entryInfo = i <= item.entryList.size() ? item.entryList.get(i - 1) : null;
                     entryView.setVisibility(entryInfo != null ? View.VISIBLE : View.GONE);
                     if (entryInfo != null) {
                         TextView left = entryView.findViewById(R.id.tv_header_left);

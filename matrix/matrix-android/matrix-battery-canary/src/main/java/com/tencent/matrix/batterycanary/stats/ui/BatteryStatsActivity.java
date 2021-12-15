@@ -4,13 +4,12 @@ import android.os.Bundle;
 import android.os.Process;
 import android.os.SystemClock;
 import android.util.ArrayMap;
-import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.PopupMenu;
 import android.widget.TextView;
-import android.widget.Toast;
 
+import com.tencent.matrix.batterycanary.R;
 import com.tencent.matrix.batterycanary.monitor.AppStats;
 import com.tencent.matrix.batterycanary.stats.BatteryRecord;
 import com.tencent.matrix.batterycanary.stats.BatteryStatsFeature;
@@ -24,9 +23,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import sample.tencent.matrix.R;
-
-import static sample.tencent.matrix.MatrixApplication.getContext;
 
 public class BatteryStatsActivity extends AppCompatActivity {
 

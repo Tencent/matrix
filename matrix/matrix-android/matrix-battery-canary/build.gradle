@@ -37,7 +37,7 @@ dependencies {
     testImplementation 'org.jmockit:jmockit:1.28'
     testImplementation 'com.google.code.gson:gson:2.8.6'
     androidTestImplementation 'commons-io:commons-io:2.6'
-    androidTestImplementation 'androidx.core:core:1.3.2'
+    // androidTestImplementation 'androidx.core:core:1.3.2'
     androidTestImplementation 'androidx.annotation:annotation:1.0.0'
     androidTestImplementation 'androidx.test.ext:junit:1.1.1'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.1.0'
@@ -47,6 +47,9 @@ dependencies {
     implementation project(':matrix-android-lib')
     api project(path: ':matrix-trace-canary')
     implementation 'com.tencent:mmkv:1.2.11'
+
+    api "androidx.appcompat:appcompat:1.1.0"
+    api 'androidx.recyclerview:recyclerview:1.1.0'
 }
 
 version = rootProject.ext.VERSION_NAME

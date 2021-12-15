@@ -47,7 +47,7 @@ import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot.ThreadJiffiesEntry;
 import com.tencent.matrix.batterycanary.stats.BatteryStatsFeature;
 import com.tencent.matrix.batterycanary.utils.Consumer;
-import com.tencent.matrix.batterycanary.stats.ui.BatteryStatsActivity;
+import sample.tencent.matrix.battery.stats.BatteryStatsActivity;
 import com.tencent.matrix.util.MatrixLog;
 
 import androidx.annotation.NonNull;

@@ -4,10 +4,9 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    tools:context=".battery.stats.BatteryStatsActivity">
+    tools:context="com.tencent.matrix.batterycanary.stats.ui.BatteryStatsActivity">
 
     <androidx.appcompat.widget.Toolbar
-        style="@style/AppTheme"
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
