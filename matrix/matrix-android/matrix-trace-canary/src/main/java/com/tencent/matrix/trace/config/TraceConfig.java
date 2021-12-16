@@ -327,7 +327,7 @@ public class TraceConfig implements IDefaultConfig {
             return this;
         }
 
-        public Builder enableTouchEventTraceEnable(boolean enable) {
+        public Builder enableTouchEventTrace(boolean enable) {
             config.defaultTouchEventTraceEnable = enable;
             return this;
         }
