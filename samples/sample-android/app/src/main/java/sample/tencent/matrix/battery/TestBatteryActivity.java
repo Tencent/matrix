@@ -36,7 +36,6 @@ import android.widget.Toast;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.BatteryCanary;
-import com.tencent.matrix.batterycanary.BatteryEventDelegate;
 import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCallback;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCallback.BatteryPrinter.Printer;
@@ -81,16 +80,9 @@ public class TestBatteryActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.test_battery);
 
+        BatteryCanaryInitHelper.startBatteryMonitor(this);
+
         BatteryMonitorPlugin plugin = Matrix.with().getPluginByClass(BatteryMonitorPlugin.class);
-        if (!plugin.isPluginStarted()) {
-            if (!BatteryEventDelegate.isInit()) {
-                BatteryEventDelegate.init(this.getApplication());
-            }
-
-            MatrixLog.i(TAG, "plugin-battery start");
-            plugin.start();
-        }
-
         mCompositeMonitors = new CompositeMonitors(plugin.core(), "manual_dump")
                 .metricAll()
                 .sample(CpuFreqSnapshot.class, 1000L)

@@ -21,5 +21,4 @@ public final class BatteryCanarySimpleInitHelper {
                 .enable(JiffiesMonitorFeature.class)
                 .build());
     }
-
 }

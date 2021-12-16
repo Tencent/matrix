@@ -9,7 +9,9 @@ import android.os.Debug;
 import android.telephony.SubscriptionInfo;
 import android.util.Log;
 
+import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.BatteryCanary;
+import com.tencent.matrix.batterycanary.BatteryEventDelegate;
 import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
 import com.tencent.matrix.batterycanary.monitor.AppStats;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCallback;
@@ -41,6 +43,7 @@ import com.tencent.matrix.batterycanary.stats.BatteryRecorder;
 import com.tencent.matrix.batterycanary.stats.BatteryStats;
 import com.tencent.matrix.batterycanary.stats.BatteryStatsFeature;
 import com.tencent.matrix.batterycanary.utils.Consumer;
+import com.tencent.matrix.util.MatrixLog;
 import com.tencent.mmkv.MMKV;
 
 import java.util.concurrent.Callable;
@@ -171,6 +174,18 @@ public final class BatteryCanaryInitHelper {
             public void onActivityDestroyed(@NonNull Activity activity) {
             }
         });
+    }
+
+    public static void startBatteryMonitor(Context context) {
+        BatteryMonitorPlugin plugin = Matrix.with().getPluginByClass(BatteryMonitorPlugin.class);
+        if (plugin!=null && !plugin.isPluginStarted()) {
+            if (!BatteryEventDelegate.isInit()) {
+                BatteryEventDelegate.init((Application) context.getApplicationContext());
+            }
+
+            MatrixLog.i(TAG, "plugin-battery start");
+            plugin.start();
+        }
     }
 
 

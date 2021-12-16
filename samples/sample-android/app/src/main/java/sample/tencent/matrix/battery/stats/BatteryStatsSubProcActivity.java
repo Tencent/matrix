@@ -9,18 +9,14 @@ import android.view.View;
 import android.widget.PopupMenu;
 import android.widget.TextView;
 
-import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.BatteryCanary;
-import com.tencent.matrix.batterycanary.BatteryEventDelegate;
-import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
 import com.tencent.matrix.batterycanary.monitor.AppStats;
 import com.tencent.matrix.batterycanary.stats.BatteryRecord;
 import com.tencent.matrix.batterycanary.stats.BatteryStatsFeature;
+import com.tencent.matrix.batterycanary.stats.ui.BatteryStatsAdapter;
 import com.tencent.matrix.batterycanary.utils.Consumer;
-import com.tencent.matrix.util.MatrixLog;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import androidx.annotation.NonNull;
@@ -29,12 +25,13 @@ import androidx.appcompat.widget.Toolbar;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import sample.tencent.matrix.R;
+import sample.tencent.matrix.battery.BatteryCanaryInitHelper;
 
 public class BatteryStatsSubProcActivity extends AppCompatActivity {
     private static final String TAG = "Matrix.BatteryStatsSubProcActivity";
 
     @NonNull
-    private BatteryStatsLoader mStatsLoader;
+    private MyBatteryStatsLoader mStatsLoader;
     private BatteryStatsAdapter.HeaderItem mCurrHeader;
     private boolean mEnd;
 
@@ -43,15 +40,7 @@ public class BatteryStatsSubProcActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_battery_stats);
 
-        BatteryMonitorPlugin plugin = Matrix.with().getPluginByClass(BatteryMonitorPlugin.class);
-        if (!plugin.isPluginStarted()) {
-            if (!BatteryEventDelegate.isInit()) {
-                BatteryEventDelegate.init(this.getApplication());
-            }
-
-            MatrixLog.i(TAG, "plugin-battery start");
-            plugin.start();
-        }
+        BatteryCanaryInitHelper.startBatteryMonitor(this);
 
         Toolbar toolbar = findViewById(R.id.toolbar);
         toolbar.setTitle("电量统计报告");
@@ -98,7 +87,7 @@ public class BatteryStatsSubProcActivity extends AppCompatActivity {
         RecyclerView recyclerView = findViewById(R.id.rv_battery_stats);
         final LinearLayoutManager layoutManager = new LinearLayoutManager(this);
         recyclerView.setLayoutManager(layoutManager);
-        BatteryStatsAdapter adapter = new BatteryStatsAdapter();
+        MyBatteryStatsAdapter adapter = new MyBatteryStatsAdapter();
         recyclerView.setAdapter(adapter);
         adapter.registerAdapterDataObserver(new RecyclerView.AdapterDataObserver() {
             @Override
@@ -108,7 +97,7 @@ public class BatteryStatsSubProcActivity extends AppCompatActivity {
                 updateHeader(topPosition);
             }
         });
-        mStatsLoader = new BatteryStatsLoader(adapter);
+        mStatsLoader = new MyBatteryStatsLoader(adapter);
         // mStatsLoader.setLoadListener(new BatteryStatsLoader.OnLoadListener() {
         //     @Override
         //     public void onLoadFinish(BatteryStatsAdapter adapter) {
@@ -124,7 +113,7 @@ public class BatteryStatsSubProcActivity extends AppCompatActivity {
                 updateHeader(topPosition);
 
                 // load more
-                if (layoutManager.findLastVisibleItemPosition() == mStatsLoader.mStatsAdapter.getDataList().size() - 1) {
+                if (layoutManager.findLastVisibleItemPosition() == mStatsLoader.getDateSet().size() - 1) {
                     if (!mStatsLoader.loadMore()) {
                         if (!mEnd) {
                             mEnd = true;
