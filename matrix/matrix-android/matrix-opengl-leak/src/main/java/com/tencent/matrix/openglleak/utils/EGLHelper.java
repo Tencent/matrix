@@ -77,20 +77,17 @@ public class EGLHelper {
     }
 
     public static boolean isEglContextAlive(EGLContext context) {
-        EGLDisplay defaultDisplay = EGL14.eglGetDisplay(EGL14.EGL_DEFAULT_DISPLAY);
-
         int[] eglContextAttribList = new int[]{
                 EGL14.EGL_CONTEXT_CLIENT_VERSION, 2,
                 EGL14.EGL_NONE
         };
 
-        EGLContext testContext = EGL14.eglCreateContext(defaultDisplay, mEglConfig, context, eglContextAttribList, 0);
+        EGLContext testContext = EGL14.eglCreateContext(mEGLDisplay, mEglConfig, context, eglContextAttribList, 0);
         if (testContext == EGL14.EGL_NO_CONTEXT) {
             return false;
         }
 
-        EGL14.eglDestroyContext(defaultDisplay, testContext);
-        EGL14.eglTerminate(defaultDisplay);
+        EGL14.eglDestroyContext(mEGLDisplay, testContext);
 
         return true;
     }
