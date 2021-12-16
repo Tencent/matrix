@@ -42,7 +42,8 @@
         <activity android:name=".hooks.TestHooksActivity" />
         <activity
             android:theme="@style/Theme.AppCompat.Light.NoActionBar"
-            android:name=".battery.stats.BatteryStatsActivity"
+            android:name=".battery.stats.BatteryStatsSubProcActivity"
+            android:process=":sub"
             android:exported="true" />
 
         <service android:name=".hooks.OtherProcessService" android:process=":other"/>

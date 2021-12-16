@@ -50,6 +50,14 @@
                 android:text="Checkout BatteryStats Report" />
 
             <Button
+                android:id="@+id/check_battery_stats_sub"
+                style="@style/EntryButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:onClick="onCheckoutBatteryStatsSub"
+                android:text="Checkout BatteryStats Report (:sub)" />
+
+            <Button
                 android:id="@+id/wake_lock_release"
                 style="@style/EntryButton"
                 android:layout_width="match_parent"

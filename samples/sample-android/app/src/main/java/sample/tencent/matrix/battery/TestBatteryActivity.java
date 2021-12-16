@@ -46,14 +46,15 @@ import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot.ThreadJiffiesEntry;
 import com.tencent.matrix.batterycanary.stats.BatteryStatsFeature;
+import com.tencent.matrix.batterycanary.stats.ui.BatteryStatsActivity;
 import com.tencent.matrix.batterycanary.utils.Consumer;
-import sample.tencent.matrix.battery.stats.BatteryStatsActivity;
 import com.tencent.matrix.util.MatrixLog;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import sample.tencent.matrix.R;
+import sample.tencent.matrix.battery.stats.BatteryStatsSubProcActivity;
 
 import static com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot;
 import static com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.Snapshot;
@@ -61,7 +62,6 @@ import static com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFea
 @SuppressLint("LongLogTag")
 public class TestBatteryActivity extends Activity {
     private static final String TAG = "Matrix.TestBatteryActivity";
-    private JiffiesSnapshot mLastJiffiesSnapshot;
     private CompositeMonitors mCompositeMonitors;
 
     // private PendingIntent getAlarmPendingIntent(final Context context, final int id, Intent intent) {
@@ -223,6 +223,15 @@ public class TestBatteryActivity extends Activity {
             return;
         }
         Intent intent = new Intent(this, BatteryStatsActivity.class);
+        this.startActivity(intent);
+    }
+
+    public void onCheckoutBatteryStatsSub(View view) {
+        if (BatteryCanary.getMonitorFeature(BatteryStatsFeature.class) == null) {
+            Toast.makeText(this, "BatteryStatsFeature is not enabled, pls check 'BatteryCanaryInitHelper' to enable advanced features.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        Intent intent = new Intent(this, BatteryStatsSubProcActivity.class);
         this.startActivity(intent);
     }
 

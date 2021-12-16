@@ -5,6 +5,7 @@ import android.app.Activity;
 import android.app.Application;
 import android.content.Context;
 import android.os.Bundle;
+import android.os.Debug;
 import android.telephony.SubscriptionInfo;
 import android.util.Log;
 
@@ -37,6 +38,7 @@ import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature.W
 import com.tencent.matrix.batterycanary.monitor.feature.WifiMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.WifiMonitorFeature.WifiSnapshot;
 import com.tencent.matrix.batterycanary.stats.BatteryRecorder;
+import com.tencent.matrix.batterycanary.stats.BatteryStats;
 import com.tencent.matrix.batterycanary.stats.BatteryStatsFeature;
 import com.tencent.matrix.batterycanary.utils.Consumer;
 import com.tencent.mmkv.MMKV;
@@ -63,6 +65,7 @@ public final class BatteryCanaryInitHelper {
 
         // Init MMKV only when BatteryStatsFeature is & MMKVRecorder is enabled.
         MMKV.initialize(context);
+        MMKV mmkv = MMKV.mmkvWithID("battery-stats.bin", MMKV.MULTI_PROCESS_MODE);
         registerUIStat((Application) context.getApplicationContext());
 
         sBatteryConfig = new BatteryMonitorConfig.Builder()
@@ -108,7 +111,8 @@ public final class BatteryCanaryInitHelper {
 
                 // BatteryStats
                 .enable(BatteryStatsFeature.class)
-                .setRecorder(new BatteryRecorder.MMKVRecorder(MMKV.defaultMMKV()))
+                .setRecorder(new BatteryRecorder.MMKVRecorder(mmkv))
+                .setStats(new BatteryStats.BatteryStatsImpl())
 
                 // Lab Feature:
                 // network monitor
