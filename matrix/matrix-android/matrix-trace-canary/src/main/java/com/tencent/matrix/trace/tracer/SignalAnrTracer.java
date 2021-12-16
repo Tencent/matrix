@@ -115,20 +115,6 @@ public class SignalAnrTracer extends Tracer {
         sSignalAnrDetectedListener = listener;
     }
 
-//    public static String readCpuSet() {
-//        try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream("/proc/self/cgroup")))) {
-//            String line;
-//            while ((line = reader.readLine()) != null) {
-//                if (line.contains("cpuset") || line.contains("cpu")) {
-//                    return line;
-//                }
-//            }
-//        } catch (Throwable t) {
-//            t.printStackTrace();
-//        }
-//        return "";
-//    }
-
     public static String readCgroup() {
         StringBuilder ret = new StringBuilder();
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream("/proc/self/cgroup")))) {
