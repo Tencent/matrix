@@ -57,13 +57,11 @@ public class ThreadPriorityTracer extends Tracer {
 
     @Keep
     private static void onMainThreadPriorityModified(int priorityBefore, int priorityAfter) {
+        if (sMainThreadPriorityModifiedListener != null) {
+            sMainThreadPriorityModifiedListener.onMainThreadPriorityModified(priorityBefore, priorityAfter);
+            return;
+        }
         try {
-
-            if (sMainThreadPriorityModifiedListener != null) {
-                sMainThreadPriorityModifiedListener.onMainThreadPriorityModified(priorityBefore, priorityAfter);
-                return;
-            }
-
             TracePlugin plugin = Matrix.with().getPluginByClass(TracePlugin.class);
             if (null == plugin) {
                 return;
