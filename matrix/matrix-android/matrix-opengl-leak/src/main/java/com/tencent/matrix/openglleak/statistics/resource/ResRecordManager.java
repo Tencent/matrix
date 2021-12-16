@@ -3,6 +3,7 @@ package com.tencent.matrix.openglleak.statistics.resource;
 import android.annotation.SuppressLint;
 
 import com.tencent.matrix.openglleak.utils.AutoWrapBuilder;
+import com.tencent.matrix.openglleak.utils.EGLHelper;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -24,6 +25,7 @@ public class ResRecordManager {
 
     private final List<Callback> mCallbackList = new LinkedList<>();
     private final List<OpenGLInfo> mInfoList = new LinkedList<>();
+    private final List<Long> mReleaseContext = new LinkedList<>();
 
     private ResRecordManager() {
 
@@ -171,6 +173,44 @@ public class ResRecordManager {
         synchronized (mInfoList) {
             mInfoList.clear();
         }
+        synchronized (mReleaseContext) {
+            mReleaseContext.clear();
+        }
+    }
+
+    public boolean isEglContextReleased(OpenGLInfo info) {
+        synchronized (mReleaseContext) {
+            long eglContextNativeHandle = info.getEglContextNativeHandle();
+            if (0L == eglContextNativeHandle) {
+                return true;
+            }
+
+            for (long item : mReleaseContext) {
+                if (item == eglContextNativeHandle) {
+                    return true;
+                }
+            }
+
+            boolean alive = EGLHelper.isEglContextAlive(info.getEglContext());
+            if (!alive) {
+                mReleaseContext.add(info.getEglContextNativeHandle());
+            }
+            return !alive;
+        }
+    }
+
+    public List<OpenGLInfo> getAllItem() {
+        List<OpenGLInfo> retList = new LinkedList<>();
+
+        synchronized (mInfoList) {
+            for (OpenGLInfo item : mInfoList) {
+                if (null != item) {
+                    retList.add(item);
+                }
+            }
+        }
+
+        return retList;
     }
 
     public void dumpGLToFile(String filePath) {
