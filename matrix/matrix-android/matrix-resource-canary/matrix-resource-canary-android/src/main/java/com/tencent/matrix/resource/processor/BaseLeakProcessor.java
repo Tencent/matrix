@@ -78,7 +78,18 @@ public abstract class BaseLeakProcessor {
     public void onDestroy() {
     }
 
+    private static volatile boolean mAnalyzing = false;
+
+    public static boolean isAnalyzing() {
+        return mAnalyzing;
+    }
+
+    private static void setAnalyzing(boolean analyzing) {
+        mAnalyzing = analyzing;
+    }
+
     protected ActivityLeakResult analyze(File hprofFile, String referenceKey) {
+        setAnalyzing(true);
         final HeapSnapshot heapSnapshot;
         ActivityLeakResult result;
         String manufacture = Matrix.with().getPluginByClass(ResourcePlugin.class).getConfig().getManufacture();
@@ -89,6 +100,7 @@ public abstract class BaseLeakProcessor {
         } catch (IOException e) {
             result = ActivityLeakResult.failure(e, 0);
         }
+        setAnalyzing(false);
         return result;
     }
 
