@@ -138,7 +138,7 @@ public class MatrixApplication extends Application {
         SignalAnrTracer signalAnrTracer = new SignalAnrTracer(this, anrFilePath, printTraceFile);
         signalAnrTracer.setSignalAnrDetectedListener(new SignalAnrTracer.SignalAnrDetectedListener() {
             @Override
-            public void onAnrDetected(String stackTrace, String mMessageString, long mMessageWhen, boolean fromProcessErrorState) {
+            public void onAnrDetected(String stackTrace, String mMessageString, long mMessageWhen, boolean fromProcessErrorState, String cpuset) {
                 // got an ANR
             }
         });

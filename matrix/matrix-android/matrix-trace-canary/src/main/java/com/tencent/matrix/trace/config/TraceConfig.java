@@ -317,7 +317,7 @@ public class TraceConfig implements IDefaultConfig {
             return this;
         }
 
-        public Builder enableIdleHandlerTraceEnable(boolean enable) {
+        public Builder enableIdleHandlerTrace(boolean enable) {
             config.defaultIdleHandlerTraceEnable = enable;
             return this;
         }
