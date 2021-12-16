@@ -17,6 +17,7 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 import androidx.annotation.WorkerThread;
 
@@ -50,6 +51,12 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
         if (mBatteryRecorder != null) {
             mStatsThread = MatrixHandlerThread.getNewHandlerThread("matrix-stats", Thread.NORM_PRIORITY);
             mStatsHandler = new Handler(mStatsThread.getLooper());
+            mStatsHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    mBatteryRecorder.updateProc(BatteryRecorder.MMKVRecorder.getProcNameSuffix());
+                }
+            });
         }
 
         BatteryRecord.ProcStatRecord procStatRecord = new BatteryRecord.ProcStatRecord();
@@ -82,6 +89,13 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
                 }
             });
         }
+    }
+
+    public Set<String> getProcSet() {
+        if (mBatteryRecorder != null) {
+            return mBatteryRecorder.getProcSet();
+        }
+        return Collections.emptySet();
     }
 
     public void writeRecord(final BatteryRecord record) {

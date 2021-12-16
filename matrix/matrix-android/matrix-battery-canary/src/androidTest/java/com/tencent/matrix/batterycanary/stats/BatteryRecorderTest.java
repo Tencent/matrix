@@ -17,7 +17,11 @@
 package com.tencent.matrix.batterycanary.stats;
 
 import android.app.Application;
+import android.app.Service;
 import android.content.Context;
+import android.content.Intent;
+import android.os.Debug;
+import android.os.IBinder;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
@@ -32,8 +36,12 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 
+import androidx.annotation.Nullable;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
@@ -60,6 +68,23 @@ public class BatteryRecorderTest {
 
     @After
     public void shutDown() {
+    }
+
+    @Test
+    @SuppressWarnings("ArraysAsListWithZeroOrOneArgument")
+    public void testRecorderWithProcSet() {
+        MMKV mmkv = MMKV.defaultMMKV();
+        mmkv.clearAll();
+        BatteryRecorder.MMKVRecorder recorder = new BatteryRecorder.MMKVRecorder(mmkv);
+        Assert.assertTrue(recorder.getProcSet().isEmpty());
+
+        recorder.updateProc("main");
+        Assert.assertArrayEquals(Arrays.asList("main").toArray(), recorder.getProcSet().toArray());
+
+        recorder.updateProc("sub1");
+        recorder.updateProc("sub2");
+        Assert.assertEquals(3, recorder.getProcSet().size());
+        Assert.assertTrue(recorder.getProcSet().containsAll(Arrays.asList("main", "sub1", "sub2")));
     }
 
     @Test

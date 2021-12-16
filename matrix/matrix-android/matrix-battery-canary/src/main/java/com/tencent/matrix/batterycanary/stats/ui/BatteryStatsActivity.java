@@ -9,13 +9,14 @@ import android.view.View;
 import android.widget.PopupMenu;
 import android.widget.TextView;
 
+import com.tencent.matrix.batterycanary.BatteryCanary;
 import com.tencent.matrix.batterycanary.R;
 import com.tencent.matrix.batterycanary.monitor.AppStats;
 import com.tencent.matrix.batterycanary.stats.BatteryRecord;
 import com.tencent.matrix.batterycanary.stats.BatteryStatsFeature;
+import com.tencent.matrix.batterycanary.utils.Consumer;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import androidx.annotation.NonNull;
@@ -44,29 +45,37 @@ public class BatteryStatsActivity extends AppCompatActivity {
         String proc = com.tencent.matrix.batterycanary.stats.BatteryRecorder.MMKVRecorder.getProcNameSuffix();
         procTv.setText(":" + proc);
 
-        procTv.setOnClickListener(new View.OnClickListener() {
+        BatteryCanary.getMonitorFeature(BatteryStatsFeature.class, new Consumer<BatteryStatsFeature>() {
             @Override
-            public void onClick(final View v) {
-                List<String> procs = Arrays.asList("main", "appbrand", "tools", "toolsmp", "push");
-                PopupMenu menu = new PopupMenu(v.getContext(), procTv);
-                for (String item : procs) {
-                    menu.getMenu().add("Process :" + item);
-                }
-                menu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+            public void accept(final BatteryStatsFeature batteryStatsFeature) {
+                procTv.setOnClickListener(new View.OnClickListener() {
                     @Override
-                    public boolean onMenuItemClick(MenuItem item) {
-                        String title = item.getTitle().toString();
-                        if (title.contains(":")) {
-                            String proc = title.substring(title.lastIndexOf(":") + 1);
-                            procTv.setText(":" + proc);
-                            mStatsLoader.reset(proc);
-                            mStatsLoader.load();
-                            updateHeader(0);
+                    public void onClick(final View v) {
+                        PopupMenu menu = new PopupMenu(v.getContext(), procTv);
+                        menu.getMenu().add("Process :main");
+                        for (String item : batteryStatsFeature.getProcSet()) {
+                            if ("main".equals(item)) {
+                                continue;
+                            }
+                            menu.getMenu().add("Process :" + item);
                         }
-                        return false;
+                        menu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+                            @Override
+                            public boolean onMenuItemClick(MenuItem item) {
+                                String title = item.getTitle().toString();
+                                if (title.contains(":")) {
+                                    String proc = title.substring(title.lastIndexOf(":") + 1);
+                                    procTv.setText(":" + proc);
+                                    mStatsLoader.reset(proc);
+                                    mStatsLoader.load();
+                                    updateHeader(0);
+                                }
+                                return false;
+                            }
+                        });
+                        menu.show();
                     }
                 });
-                menu.show();
             }
         });
 

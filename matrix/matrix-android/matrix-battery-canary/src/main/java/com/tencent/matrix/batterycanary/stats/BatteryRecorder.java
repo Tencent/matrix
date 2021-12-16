@@ -10,7 +10,9 @@ import com.tencent.mmkv.MMKV;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -19,6 +21,10 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public interface BatteryRecorder {
     String TAG = "Matrix.battery.recorder";
+
+    void updateProc(String proc);
+
+    Set<String> getProcSet();
 
     void write(String date, BatteryRecord record);
 
@@ -41,6 +47,28 @@ public interface BatteryRecorder {
 
         protected String getKeyPrefix(String date, String proc) {
             return MAGIC + "-" + date + (TextUtils.isEmpty(proc) ? "" : "-" + proc);
+        }
+
+        @Override
+        public void updateProc(String proc) {
+            if (!TextUtils.isEmpty(proc)) {
+                Set<String> procSet = getProcSet();
+                if (!procSet.contains(proc)) {
+                    if (procSet.isEmpty()) {
+                        procSet = new HashSet<>();
+                    }
+                    procSet.add(proc);
+                    String key = MAGIC + "-proc-set";
+                    mmkv.encode(key, procSet);
+                }
+            }
+        }
+
+        @Override
+        public Set<String> getProcSet() {
+            String key = MAGIC + "-proc-set";
+            Set<String> procSet = mmkv.decodeStringSet(key);
+            return procSet == null ? Collections.<String>emptySet() : procSet;
         }
 
         @Override
