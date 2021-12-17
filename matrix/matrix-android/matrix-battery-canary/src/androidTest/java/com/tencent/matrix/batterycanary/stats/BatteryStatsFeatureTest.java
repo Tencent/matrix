@@ -134,4 +134,60 @@ public class BatteryStatsFeatureTest {
             }
         });
     }
+
+    @Test
+    public void testStatRecords() {
+        if (TestUtils.isAssembleTest()) {
+            return;
+        }
+
+        MMKV mmkv = MMKV.defaultMMKV();
+        mmkv.clearAll();
+
+        String proc = "main";
+        BatteryMonitorConfig config = new BatteryMonitorConfig.Builder()
+                .enable(BatteryStatsFeature.class)
+                .setRecorder(new BatteryRecorder.MMKVRecorder(mmkv))
+                .build();
+
+        final BatteryMonitorCore monitor = new BatteryMonitorCore(config);
+        BatteryMonitorPlugin plugin = new BatteryMonitorPlugin(monitor.getConfig());
+        Matrix.with().getPlugins().add(plugin);
+
+        BatteryStatsFeature batteryStatsFeature = BatteryCanary.getMonitorFeature(BatteryStatsFeature.class);
+        Assert.assertNotNull(batteryStatsFeature);
+        List<BatteryRecord> records = batteryStatsFeature.readRecords(0, proc);
+        Assert.assertTrue(records.isEmpty());
+
+        batteryStatsFeature.setStatsImmediately(true);
+        monitor.start();
+        records = batteryStatsFeature.readRecords(0, proc);
+        Assert.assertEquals(1, records.size());
+        Assert.assertTrue(records.get(0) instanceof BatteryRecord.ProcStatRecord);
+
+        batteryStatsFeature.statsAppStat(22);
+        records = batteryStatsFeature.readRecords(0, proc);
+        BatteryRecord record = records.get(records.size() - 1);
+        Assert.assertTrue(record instanceof BatteryRecord.AppStatRecord);
+        Assert.assertEquals(22, ((BatteryRecord.AppStatRecord) record).appStat);
+
+        batteryStatsFeature.statsDevStat(5);
+        records = batteryStatsFeature.readRecords(0, proc);
+        record = records.get(records.size() - 1);
+        Assert.assertTrue(record instanceof BatteryRecord.DevStatRecord);
+        Assert.assertEquals(5, ((BatteryRecord.DevStatRecord) record).devStat);
+
+        batteryStatsFeature.statsScene("HEY_DUDE!!");
+        records = batteryStatsFeature.readRecords(0, proc);
+        record = records.get(records.size() - 1);
+        Assert.assertTrue(record instanceof BatteryRecord.SceneStatRecord);
+        Assert.assertEquals("HEY_DUDE!!", ((BatteryRecord.SceneStatRecord) record).scene);
+
+        batteryStatsFeature.statsEvent("!!HEY_DUDE!!");
+        records = batteryStatsFeature.readRecords(0, proc);
+        record = records.get(records.size() - 1);
+        Assert.assertTrue(record instanceof BatteryRecord.EventStatRecord);
+        Assert.assertEquals("!!HEY_DUDE!!", ((BatteryRecord.EventStatRecord) record).event);
+        Assert.assertEquals(0, ((BatteryRecord.EventStatRecord) record).id);
+    }
 }

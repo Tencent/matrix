@@ -175,8 +175,6 @@ public abstract class BatteryRecord implements Parcelable {
 
         protected DevStatRecord(Parcel in) {
             super(in);
-            version = in.readInt();
-            millis = in.readLong();
             devStat = in.readInt();
         }
 
@@ -289,6 +287,7 @@ public abstract class BatteryRecord implements Parcelable {
         public String event;
 
         public EventStatRecord() {
+            id = 0;
             version = VERSION;
         }
 

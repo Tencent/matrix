@@ -22,9 +22,13 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Debug;
 import android.os.IBinder;
+import android.os.Process;
+import android.os.SystemClock;
+import android.util.ArrayMap;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
+import com.tencent.matrix.batterycanary.monitor.AppStats;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
@@ -38,6 +42,7 @@ import org.junit.runner.RunWith;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -170,5 +175,86 @@ public class BatteryRecorderTest {
         Assert.assertTrue(recorder.read(date, "main").isEmpty());
 
         mmkv.clearAll();
+    }
+
+    @Test
+    public void testUniversalRecords() throws InterruptedException {
+        MMKV mmkv = MMKV.defaultMMKV();
+        mmkv.clearAll();
+
+        String date = BatteryStatsFeature.getDateString(0);
+        String proc = "main";
+        BatteryRecorder.MMKVRecorder recorder = new BatteryRecorder.MMKVRecorder(mmkv);
+        List<BatteryRecord> reads = recorder.read(date, proc);
+        Assert.assertTrue(reads.isEmpty());
+        int count = 0;
+
+        BatteryRecord.ProcStatRecord procStatRecord = new BatteryRecord.ProcStatRecord();
+        procStatRecord.pid = Process.myPid();
+        procStatRecord.procStat = 22;
+        recorder.write(date, procStatRecord, proc);
+        Thread.sleep(10L);
+        reads = recorder.read(date, proc);
+        Assert.assertFalse(reads.isEmpty());
+        Assert.assertTrue(reads.get(reads.size() - 1) instanceof BatteryRecord.ProcStatRecord);
+        Assert.assertEquals(procStatRecord.pid, ((BatteryRecord.ProcStatRecord) reads.get(reads.size() - 1)).pid);
+        Assert.assertEquals(procStatRecord.procStat, ((BatteryRecord.ProcStatRecord) reads.get(reads.size() - 1)).procStat);
+
+        BatteryRecord.AppStatRecord appStat = new BatteryRecord.AppStatRecord();
+        appStat.appStat = AppStats.APP_STAT_FOREGROUND;
+        recorder.write(date, appStat, proc);
+        Thread.sleep(10L);
+        reads = recorder.read(date, proc);
+        Assert.assertFalse(reads.isEmpty());
+        Assert.assertTrue(reads.get(reads.size() - 1) instanceof BatteryRecord.AppStatRecord);
+        Assert.assertEquals(appStat.appStat, ((BatteryRecord.AppStatRecord) reads.get(reads.size() - 1)).appStat);
+
+        BatteryRecord.SceneStatRecord sceneStatRecord = new BatteryRecord.SceneStatRecord();
+        sceneStatRecord.scene = "Activity 1";
+        recorder.write(date, sceneStatRecord, proc);
+        Thread.sleep(10L);
+        reads = recorder.read(date, proc);
+        Assert.assertFalse(reads.isEmpty());
+        Assert.assertTrue(reads.get(reads.size() - 1) instanceof BatteryRecord.SceneStatRecord);
+        Assert.assertEquals(sceneStatRecord.scene, ((BatteryRecord.SceneStatRecord) reads.get(reads.size() - 1)).scene);
+
+        BatteryRecord.DevStatRecord devStatRecord = new BatteryRecord.DevStatRecord();
+        devStatRecord.devStat = AppStats.DEV_STAT_CHARGING;
+        recorder.write(date, devStatRecord, proc);
+        Thread.sleep(10L);
+        reads = recorder.read(date, proc);
+        Assert.assertFalse(reads.isEmpty());
+        Assert.assertTrue(reads.get(reads.size() - 1) instanceof BatteryRecord.DevStatRecord);
+        Assert.assertEquals(devStatRecord.devStat, ((BatteryRecord.DevStatRecord) reads.get(reads.size() - 1)).devStat);
+
+        BatteryRecord.ReportRecord reportRecord = new BatteryRecord.ReportRecord();
+        reportRecord.scope = "xxx";
+        reportRecord.threadInfoList = new ArrayList<>();
+        for (int i = 0; i < 5; i++) {
+            BatteryRecord.ReportRecord.ThreadInfo threadInfo = new BatteryRecord.ReportRecord.ThreadInfo();
+            threadInfo.stat = "R" + i;
+            threadInfo.tid = 10000 + i;
+            threadInfo.name = "ThreadName_" + i;
+            threadInfo.jiffies = SystemClock.currentThreadTimeMillis() / 10;
+            reportRecord.threadInfoList.add(0, threadInfo);
+        }
+        reportRecord.entryList = new ArrayList<>();
+        for (int i = 0; i < 4; i++) {
+            BatteryRecord.ReportRecord.EntryInfo entryInfo = new BatteryRecord.ReportRecord.EntryInfo();
+            entryInfo.name = "Entry Name " + i;
+            entryInfo.entries = new ArrayMap<>();
+            entryInfo.entries.put("Key 1", "Value 1");
+            entryInfo.entries.put("Key 2", "Value 2");
+            entryInfo.entries.put("Key 3", "Value 3");
+            reportRecord.entryList.add(entryInfo);
+        }
+        recorder.write(date, reportRecord, proc);
+        Thread.sleep(10L);
+        reads = recorder.read(date, proc);
+        Assert.assertFalse(reads.isEmpty());
+        Assert.assertTrue(reads.get(reads.size() - 1) instanceof BatteryRecord.ReportRecord);
+        Assert.assertEquals(reportRecord.scope, ((BatteryRecord.ReportRecord) reads.get(reads.size() - 1)).scope);
+        Assert.assertEquals(5, ((BatteryRecord.ReportRecord) reads.get(reads.size() - 1)).threadInfoList.size());
+        Assert.assertEquals(4, ((BatteryRecord.ReportRecord) reads.get(reads.size() - 1)).entryList.size());
     }
 }

@@ -33,7 +33,7 @@ public interface BatteryStats {
 
     BatteryRecord.SceneStatRecord statsScene(String scene);
 
-    BatteryRecord.EventStatRecord statsEvent(String event);
+    BatteryRecord.EventStatRecord statsEvent(String event, int eventId);
 
     BatteryRecord.ReportRecord statsMonitors(final CompositeMonitors monitors);
 
@@ -62,8 +62,9 @@ public interface BatteryStats {
         }
 
         @Override
-        public BatteryRecord.EventStatRecord statsEvent(String event) {
+        public BatteryRecord.EventStatRecord statsEvent(String event, int eventId) {
             BatteryRecord.EventStatRecord statRecord = new BatteryRecord.EventStatRecord();
+            statRecord.id = eventId;
             statRecord.event = event;
             return statRecord;
         }

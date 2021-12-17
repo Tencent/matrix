@@ -34,12 +34,12 @@ public interface BatteryRecorder {
 
 
     class MMKVRecorder implements BatteryRecorder {
-        private static final String MAGIC = "bs";
-        private static String sProcNameSuffix = null;
+        protected static final String MAGIC = "bs";
+        protected static String sProcNameSuffix = null;
 
-        final int pid = Process.myPid();
-        AtomicInteger inc = new AtomicInteger(0);
-        final MMKV mmkv;
+        protected final int pid = Process.myPid();
+        protected final MMKV mmkv;
+        protected AtomicInteger inc = new AtomicInteger(0);
 
         public MMKVRecorder(MMKV mmkv) {
             this.mmkv = mmkv;
@@ -82,6 +82,7 @@ public interface BatteryRecorder {
                 String key = getKeyPrefix(date, proc) + "-" + pid + "-" + inc.getAndIncrement();
                 byte[] bytes = BatteryRecord.encode(record);
                 mmkv.encode(key, bytes);
+                mmkv.sync();
             } catch (Exception e) {
                 MatrixLog.w(TAG, "record encode failed: " + e.getMessage());
             }
@@ -133,6 +134,10 @@ public interface BatteryRecorder {
                     }
                 }
             }
+        }
+
+        public void flush() {
+            mmkv.sync();
         }
 
         public static String getProcNameSuffix() {

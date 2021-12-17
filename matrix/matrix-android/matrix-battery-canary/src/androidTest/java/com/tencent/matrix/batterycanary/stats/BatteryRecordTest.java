@@ -276,4 +276,26 @@ public class BatteryRecordTest {
             }
         }
     }
+
+    @Test
+    public void testRecordWithType() {
+        BatteryRecord.DevStatRecord devStatRecord = new BatteryRecord.DevStatRecord();
+        devStatRecord.devStat = 5;
+        byte[] bytes = BatteryRecord.encode(devStatRecord);
+        Assert.assertNotNull(devStatRecord);
+        BatteryRecord record = BatteryRecord.decode(bytes);
+        Assert.assertTrue(record instanceof BatteryRecord.DevStatRecord);
+        Assert.assertEquals(devStatRecord.version, devStatRecord.version);
+        Assert.assertEquals(devStatRecord.millis, devStatRecord.millis);
+        Assert.assertEquals(devStatRecord.devStat, devStatRecord.devStat);
+
+        MMKV mmkv = MMKV.defaultMMKV();
+        String key = "test_key";
+        mmkv.encode(key, bytes);
+        bytes = mmkv.decodeBytes(key);
+        record = BatteryRecord.decode(bytes);
+        Assert.assertEquals(devStatRecord.version, devStatRecord.version);
+        Assert.assertEquals(devStatRecord.millis, devStatRecord.millis);
+        Assert.assertEquals(devStatRecord.devStat, devStatRecord.devStat);
+    }
 }

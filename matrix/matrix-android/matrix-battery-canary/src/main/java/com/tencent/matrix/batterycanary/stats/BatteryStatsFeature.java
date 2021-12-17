@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
+import androidx.annotation.VisibleForTesting;
 import androidx.annotation.WorkerThread;
 
 /**
@@ -32,6 +33,7 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
     private Handler mStatsHandler;
     private BatteryRecorder mBatteryRecorder;
     private BatteryStats mBatteryStats;
+    private boolean mStatsImmediately = false;
 
     @Override
     public int weight() {
@@ -91,6 +93,11 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
         }
     }
 
+    @VisibleForTesting
+    public void setStatsImmediately(boolean statsImmediately) {
+        mStatsImmediately = statsImmediately;
+    }
+
     public Set<String> getProcSet() {
         if (mBatteryRecorder != null) {
             return mBatteryRecorder.getProcSet();
@@ -100,8 +107,12 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
 
     public void writeRecord(final BatteryRecord record) {
         if (mBatteryRecorder != null) {
+            final String date = getDateString(0);
+            if (mStatsImmediately) {
+                writeRecord(date, record);
+                return;
+            }
             if (mStatsHandler != null) {
-                final String date = getDateString(0);
                 mStatsHandler.post(new Runnable() {
                     @Override
                     public void run() {
@@ -170,8 +181,12 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
     }
 
     public void statsEvent(String event) {
+        statsEvent(event, 0);
+    }
+
+    public void statsEvent(String event, int eventId) {
         if (mBatteryStats != null) {
-            writeRecord(mBatteryStats.statsEvent(event));
+            writeRecord(mBatteryStats.statsEvent(event, eventId));
         }
     }
 
