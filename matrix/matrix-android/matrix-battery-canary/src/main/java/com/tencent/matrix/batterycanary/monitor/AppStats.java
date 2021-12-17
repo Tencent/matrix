@@ -33,6 +33,7 @@ public class AppStats {
     @IntDef(value = {
             DEV_STAT_CHARGING,
             DEV_STAT_UN_CHARGING,
+            DEV_STAT_SCREEN_ON,
             DEV_STAT_SCREEN_OFF,
             DEV_STAT_SAVE_POWER_MODE
     })

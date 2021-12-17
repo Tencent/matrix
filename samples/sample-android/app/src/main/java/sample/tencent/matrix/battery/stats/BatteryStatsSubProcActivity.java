@@ -204,6 +204,6 @@ public class BatteryStatsSubProcActivity extends AppCompatActivity {
         BatteryStatsFeature.BatteryRecords batteryRecords = new BatteryStatsFeature.BatteryRecords();
         batteryRecords.date = BatteryStatsFeature.getDateString(0);
         batteryRecords.records = records;
-        mStatsLoader.add(batteryRecords, true);
+        mStatsLoader.add(batteryRecords);
     }
 }
