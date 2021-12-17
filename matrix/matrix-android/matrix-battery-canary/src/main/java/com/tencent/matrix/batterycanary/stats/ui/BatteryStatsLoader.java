@@ -68,13 +68,13 @@ public class BatteryStatsLoader {
         return true;
     }
 
-    public BatteryStatsAdapter.HeaderItem getFirstHeader(int topPosition) {
-        BatteryStatsAdapter.HeaderItem currHeader = null;
+    public BatteryStatsAdapter.Item.HeaderItem getFirstHeader(int topPosition) {
+        BatteryStatsAdapter.Item.HeaderItem currHeader = null;
         List<BatteryStatsAdapter.Item> dataList = mStatsAdapter.getDataList();
         for (int i = topPosition; i >= 0; i--) {
             if (topPosition < dataList.size()) {
-                if (dataList.get(i) instanceof BatteryStatsAdapter.HeaderItem) {
-                    currHeader = (BatteryStatsAdapter.HeaderItem) dataList.get(i);
+                if (dataList.get(i) instanceof BatteryStatsAdapter.Item.HeaderItem) {
+                    currHeader = (BatteryStatsAdapter.Item.HeaderItem) dataList.get(i);
                     break;
                 }
             }
@@ -100,10 +100,10 @@ public class BatteryStatsLoader {
 
         // Footer
         if (Math.abs(mDayOffset) >= mDayLimit) {
-            BatteryStatsAdapter.HeaderItem headerItem = new BatteryStatsAdapter.HeaderItem();
+            BatteryStatsAdapter.Item.HeaderItem headerItem = new BatteryStatsAdapter.Item.HeaderItem();
             headerItem.date = "END";
             dataList.add(headerItem);
-            BatteryStatsAdapter.NoDataItem footerItem = new BatteryStatsAdapter.NoDataItem();
+            BatteryStatsAdapter.Item.NoDataItem footerItem = new BatteryStatsAdapter.Item.NoDataItem();
             footerItem.text = "Only keep last " + mDayLimit + " days' data";
             dataList.add(footerItem);
         }
@@ -141,7 +141,7 @@ public class BatteryStatsLoader {
         // Records
         if (batteryRecords.records.isEmpty()) {
             // N0 DATA
-            BatteryStatsAdapter.NoDataItem item = new BatteryStatsAdapter.NoDataItem();
+            BatteryStatsAdapter.Item.NoDataItem item = new BatteryStatsAdapter.Item.NoDataItem();
             item.text = "NO DATA";
             dataList.add(0, item);
 
@@ -154,7 +154,7 @@ public class BatteryStatsLoader {
         }
 
         // Date
-        BatteryStatsAdapter.HeaderItem headerItem = new BatteryStatsAdapter.HeaderItem();
+        BatteryStatsAdapter.Item.HeaderItem headerItem = new BatteryStatsAdapter.Item.HeaderItem();
         headerItem.date = batteryRecords.date;
         dataList.add(0, headerItem);
 
@@ -163,14 +163,14 @@ public class BatteryStatsLoader {
 
     protected BatteryStatsAdapter.Item onCreateDataItem(BatteryRecord record) {
         if (record instanceof BatteryRecord.ProcStatRecord) {
-            BatteryStatsAdapter.EventLevel1Item eventItem = new BatteryStatsAdapter.EventLevel1Item(record);
+            BatteryStatsAdapter.Item.EventLevel1Item eventItem = new BatteryStatsAdapter.Item.EventLevel1Item(record);
             eventItem.text = (((BatteryRecord.ProcStatRecord) record).procStat == BatteryRecord.ProcStatRecord.STAT_PROC_LAUNCH ? "PROCESS INIT" : "PROCESS_ID_" + ((BatteryRecord.ProcStatRecord) record).procStat)
                     + " (pid " + ((BatteryRecord.ProcStatRecord) record).pid + "）";
             return eventItem;
         }
 
         if (record instanceof BatteryRecord.AppStatRecord) {
-            BatteryStatsAdapter.EventLevel1Item eventItem = new BatteryStatsAdapter.EventLevel1Item(record);
+            BatteryStatsAdapter.Item.EventLevel1Item eventItem = new BatteryStatsAdapter.Item.EventLevel1Item(record);
             switch (((BatteryRecord.AppStatRecord) record).appStat) {
                 case AppStats.APP_STAT_FOREGROUND:
                     eventItem.text = "App 切换到前台";
@@ -189,7 +189,7 @@ public class BatteryStatsLoader {
         }
 
         if (record instanceof BatteryRecord.DevStatRecord) {
-            BatteryStatsAdapter.EventLevel2Item eventItem = new BatteryStatsAdapter.EventLevel2Item(record);
+            BatteryStatsAdapter.Item.EventLevel2Item eventItem = new BatteryStatsAdapter.Item.EventLevel2Item(record);
             switch (((BatteryRecord.DevStatRecord) record).devStat) {
                 case AppStats.DEV_STAT_CHARGING:
                     eventItem.text = "CHARGE_ON";
@@ -214,22 +214,22 @@ public class BatteryStatsLoader {
         }
 
         if (record instanceof BatteryRecord.SceneStatRecord) {
-            BatteryStatsAdapter.EventLevel2Item eventItem = new BatteryStatsAdapter.EventLevel2Item(record);
+            BatteryStatsAdapter.Item.EventLevel2Item eventItem = new BatteryStatsAdapter.Item.EventLevel2Item(record);
             eventItem.text = "UI: " + ((BatteryRecord.SceneStatRecord) record).scene;
             return eventItem;
         }
 
         if (record instanceof BatteryRecord.ReportRecord) {
-            return new BatteryStatsAdapter.EventDumpItem((BatteryRecord.ReportRecord) record);
+            return new BatteryStatsAdapter.Item.EventDumpItem((BatteryRecord.ReportRecord) record);
         }
 
         if (record instanceof BatteryRecord.EventStatRecord) {
-            BatteryStatsAdapter.EventLevel2Item eventItem = new BatteryStatsAdapter.EventLevel2Item(record);
+            BatteryStatsAdapter.Item.EventLevel2Item eventItem = new BatteryStatsAdapter.Item.EventLevel2Item(record);
             eventItem.text = "EVENT: " + ((BatteryRecord.EventStatRecord) record).event;
             return eventItem;
         }
 
-        BatteryStatsAdapter.EventLevel2Item eventItem = new BatteryStatsAdapter.EventLevel2Item(record);
+        BatteryStatsAdapter.Item.EventLevel2Item eventItem = new BatteryStatsAdapter.Item.EventLevel2Item(record);
         eventItem.text = "Unknown: " + record.getClass().getName();
         return eventItem;
     }

@@ -21,7 +21,7 @@ public class BatteryStatsActivity extends AppCompatActivity {
 
     @NonNull
     private BatteryStatsLoader mStatsLoader;
-    private BatteryStatsAdapter.HeaderItem mCurrHeader;
+    private BatteryStatsAdapter.Item.HeaderItem mCurrHeader;
     private boolean mEnd;
 
     @Override
@@ -119,7 +119,7 @@ public class BatteryStatsActivity extends AppCompatActivity {
     }
 
     private void updateHeader(final int topPosition) {
-        BatteryStatsAdapter.HeaderItem currHeader = mStatsLoader.getFirstHeader(topPosition);
+        BatteryStatsAdapter.Item.HeaderItem currHeader = mStatsLoader.getFirstHeader(topPosition);
         if (currHeader != null) {
             if (mCurrHeader == null || mCurrHeader != currHeader) {
                 mCurrHeader = currHeader;

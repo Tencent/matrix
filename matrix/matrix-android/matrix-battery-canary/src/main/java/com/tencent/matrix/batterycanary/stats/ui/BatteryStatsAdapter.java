@@ -60,7 +60,8 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
 
     @Override
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
-        ((ViewHolder) holder).bind(dataList.get(position));
+        //noinspection unchecked
+        ((ViewHolder<Item>) holder).bind(dataList.get(position));
     }
 
     @Override
@@ -83,70 +84,70 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
 
     public interface Item {
         int viewType();
-    }
 
-    public static class HeaderItem implements Item {
-        public String date;
+        class HeaderItem implements Item {
+            public String date;
 
-        @Override
-        public int viewType() {
-            return VIEW_TYPE_HEADER;
-        }
-    }
-
-    public static class NoDataItem implements Item {
-        public String text;
-
-        @Override
-        public int viewType() {
-            return VIEW_TYPE_NO_DATA;
-        }
-    }
-
-    public static class EventDumpItem extends BatteryRecord.ReportRecord implements Item {
-        public boolean expand = false;
-        public String desc;
-
-        public EventDumpItem(ReportRecord record) {
-            this.id = record.id;
-            this.event = record.event;
-            this.scope = record.scope;
-            this.windowMillis = record.windowMillis;
-            this.threadInfoList = record.threadInfoList;
-            this.entryList = record.entryList;
+            @Override
+            public int viewType() {
+                return VIEW_TYPE_HEADER;
+            }
         }
 
-        @Override
-        public int viewType() {
-            return VIEW_TYPE_EVENT_DUMP;
-        }
-    }
+        class NoDataItem implements Item {
+            public String text;
 
-    @SuppressLint("ParcelCreator")
-    public static class EventLevel1Item extends BatteryRecord implements Item {
-        public String text;
-
-        public EventLevel1Item(BatteryRecord record) {
-            this.millis = record.millis;
+            @Override
+            public int viewType() {
+                return VIEW_TYPE_NO_DATA;
+            }
         }
 
-        @Override
-        public int viewType() {
-            return VIEW_TYPE_EVENT_LEVEL_1;
+        class EventDumpItem extends BatteryRecord.ReportRecord implements Item {
+            public boolean expand = false;
+            public String desc;
+
+            public EventDumpItem(ReportRecord record) {
+                this.id = record.id;
+                this.event = record.event;
+                this.scope = record.scope;
+                this.windowMillis = record.windowMillis;
+                this.threadInfoList = record.threadInfoList;
+                this.entryList = record.entryList;
+            }
+
+            @Override
+            public int viewType() {
+                return VIEW_TYPE_EVENT_DUMP;
+            }
         }
-    }
 
-    @SuppressLint("ParcelCreator")
-    public static class EventLevel2Item extends BatteryRecord implements Item {
-        public String text;
+        @SuppressLint("ParcelCreator")
+        class EventLevel1Item extends BatteryRecord implements Item {
+            public String text;
 
-        public EventLevel2Item(BatteryRecord record) {
-            this.millis = record.millis;
+            public EventLevel1Item(BatteryRecord record) {
+                this.millis = record.millis;
+            }
+
+            @Override
+            public int viewType() {
+                return VIEW_TYPE_EVENT_LEVEL_1;
+            }
         }
 
-        @Override
-        public int viewType() {
-            return VIEW_TYPE_EVENT_LEVEL_2;
+        @SuppressLint("ParcelCreator")
+        class EventLevel2Item extends BatteryRecord implements Item {
+            public String text;
+
+            public EventLevel2Item(BatteryRecord record) {
+                this.millis = record.millis;
+            }
+
+            @Override
+            public int viewType() {
+                return VIEW_TYPE_EVENT_LEVEL_2;
+            }
         }
     }
 
@@ -166,7 +167,7 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
         }
 
 
-        public static class HeaderHolder extends ViewHolder<HeaderItem> {
+        public static class HeaderHolder extends ViewHolder<Item.HeaderItem> {
             private final TextView mTitleTv;
 
             public HeaderHolder(@NonNull View itemView) {
@@ -175,13 +176,13 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
             }
 
             @Override
-            public void bind(HeaderItem item) {
+            public void bind(Item.HeaderItem item) {
                 mItem = item;
                 mTitleTv.setText(item.date);
             }
         }
 
-        public static class NoDataHolder extends ViewHolder<NoDataItem> {
+        public static class NoDataHolder extends ViewHolder<Item.NoDataItem> {
             private final TextView mTitleTv;
 
             public NoDataHolder(@NonNull View itemView) {
@@ -190,7 +191,7 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
             }
 
             @Override
-            public void bind(NoDataItem item) {
+            public void bind(Item.NoDataItem item) {
                 mItem = item;
                 if (!TextUtils.isEmpty(item.text)) {
                     mTitleTv.setText(item.text);
@@ -198,7 +199,7 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
             }
         }
 
-        public static class EventDumpHolder extends ViewHolder<EventDumpItem> {
+        public static class EventDumpHolder extends ViewHolder<Item.EventDumpItem> {
 
             private final TextView mTimeTv;
             private final TextView mMoreTv;
@@ -244,7 +245,7 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
             }
 
             @Override
-            public void bind(final EventDumpItem item) {
+            public void bind(final Item.EventDumpItem item) {
                 mItem = item;
                 resetView();
                 updateView(item);
@@ -261,7 +262,7 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
             }
 
             @SuppressLint({"SetTextI18n", "CutPasteId"})
-            private void updateView(EventDumpItem item) {
+            private void updateView(Item.EventDumpItem item) {
                 mTimeTv.setText(sTimeFormat.format(new Date(item.millis)));
                 mMoreTv.setText(item.expand ? "▼" : "▲");
                 mExpandView.setVisibility(item.expand ? View.VISIBLE : View.GONE);
@@ -300,7 +301,7 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
                         View entryItemView = findEntryItemView.apply(i);
                         TextView left = entryItemView.findViewById(R.id.tv_key);
                         TextView right = entryItemView.findViewById(R.id.tv_value);
-                        EventDumpItem.ThreadInfo threadInfo = i <= item.threadInfoList.size() ? item.threadInfoList.get(i - 1) : null;
+                        Item.EventDumpItem.ThreadInfo threadInfo = i <= item.threadInfoList.size() ? item.threadInfoList.get(i - 1) : null;
                         left.setVisibility(threadInfo != null ? View.VISIBLE : View.GONE);
                         right.setVisibility(threadInfo != null ? View.VISIBLE : View.GONE);
                         if (threadInfo != null) {
@@ -331,7 +332,7 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
                             throw new IndexOutOfBoundsException("entryList section out of bound: " + i);
                     }
 
-                    EventDumpItem.EntryInfo entryInfo = i <= item.entryList.size() ? item.entryList.get(i - 1) : null;
+                    Item.EventDumpItem.EntryInfo entryInfo = i <= item.entryList.size() ? item.entryList.get(i - 1) : null;
                     entryView.setVisibility(entryInfo != null ? View.VISIBLE : View.GONE);
                     if (entryInfo != null) {
                         TextView left = entryView.findViewById(R.id.tv_header_left);
@@ -383,7 +384,7 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
             }
         }
 
-        public static class EventLevel1Holder extends ViewHolder<EventLevel1Item> {
+        public static class EventLevel1Holder extends ViewHolder<Item.EventLevel1Item> {
 
             private final TextView mTimeTv;
             private final TextView mTitleTv;
@@ -395,14 +396,14 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
             }
 
             @Override
-            public void bind(EventLevel1Item item) {
+            public void bind(Item.EventLevel1Item item) {
                 mItem = item;
                 mTimeTv.setText(sTimeFormat.format(new Date(item.millis)));
                 mTitleTv.setText(item.text);
             }
         }
 
-        public static class EventLevel2Holder extends ViewHolder<EventLevel2Item> {
+        public static class EventLevel2Holder extends ViewHolder<Item.EventLevel2Item> {
 
             private final TextView mTimeTv;
             private final TextView mTitleTv;
@@ -414,7 +415,7 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
             }
 
             @Override
-            public void bind(EventLevel2Item item) {
+            public void bind(Item.EventLevel2Item item) {
                 mItem = item;
                 mTimeTv.setText(sTimeFormat.format(new Date(item.millis)));
                 mTitleTv.setText(item.text);

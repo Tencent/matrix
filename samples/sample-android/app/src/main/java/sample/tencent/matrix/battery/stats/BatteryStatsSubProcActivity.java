@@ -13,7 +13,7 @@ import com.tencent.matrix.batterycanary.BatteryCanary;
 import com.tencent.matrix.batterycanary.monitor.AppStats;
 import com.tencent.matrix.batterycanary.stats.BatteryRecord;
 import com.tencent.matrix.batterycanary.stats.BatteryStatsFeature;
-import com.tencent.matrix.batterycanary.stats.ui.BatteryStatsAdapter;
+import com.tencent.matrix.batterycanary.stats.ui.BatteryStatsAdapter.Item.HeaderItem;
 import com.tencent.matrix.batterycanary.utils.Consumer;
 
 import java.util.ArrayList;
@@ -32,7 +32,7 @@ public class BatteryStatsSubProcActivity extends AppCompatActivity {
 
     @NonNull
     private MyBatteryStatsLoader mStatsLoader;
-    private BatteryStatsAdapter.HeaderItem mCurrHeader;
+    private HeaderItem mCurrHeader;
     private boolean mEnd;
 
     @Override
@@ -132,7 +132,7 @@ public class BatteryStatsSubProcActivity extends AppCompatActivity {
     }
 
     private void updateHeader(final int topPosition) {
-        BatteryStatsAdapter.HeaderItem currHeader = mStatsLoader.getFirstHeader(topPosition);
+        HeaderItem currHeader = mStatsLoader.getFirstHeader(topPosition);
         if (currHeader != null) {
             if (mCurrHeader == null || mCurrHeader != currHeader) {
                 mCurrHeader = currHeader;
