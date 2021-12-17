@@ -115,12 +115,12 @@ public interface BatteryStats {
                                         long cpuJiffiesDelta = delta.dlt.totalCpuJiffies();
                                         float cpuLoad = (float) appJiffiesDelta / cpuJiffiesDelta;
                                         float cpuLoadAvg = cpuLoad * BatteryCanaryUtil.getCpuCoreNum();
-                                        entryInfo.entries.put("Cpu Load", (int) (cpuLoadAvg * 100) + "%");
+                                        entryInfo.entries.put("Cpu Load", (int) (Math.max(cpuLoadAvg, 0) * 100) + "%");
 
                                         final PowerProfile powerProfile = cpuStatFeature.getPowerProfile();
                                         double procSipBgn = delta.bgn.configureProcSip(powerProfile, jiffiesDelta.bgn.totalJiffies.get());
                                         double procSipEnd = delta.end.configureProcSip(powerProfile, jiffiesDelta.end.totalJiffies.get());
-                                        entryInfo.entries.put("Cpu Power", String.format(Locale.US, "%.2f mAh", procSipEnd - procSipBgn));
+                                        entryInfo.entries.put("Cpu Power", String.format(Locale.US, "%.2f mAh", Math.max(procSipEnd - procSipBgn, 0)));
                                     }
                                 }
                             });
