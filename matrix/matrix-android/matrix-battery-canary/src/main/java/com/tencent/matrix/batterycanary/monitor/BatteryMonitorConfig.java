@@ -6,6 +6,7 @@ import com.tencent.matrix.batterycanary.BuildConfig;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature;
 import com.tencent.matrix.batterycanary.stats.BatteryRecorder;
 import com.tencent.matrix.batterycanary.stats.BatteryStats;
+import com.tencent.matrix.batterycanary.utils.CallStackCollector;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -62,6 +63,7 @@ public class BatteryMonitorConfig {
     public final List<MonitorFeature> features = new ArrayList<>(3);
     public BatteryRecorder batteryRecorder;
     public BatteryStats batteryStats;
+    public CallStackCollector callStackCollector;
 
     private BatteryMonitorConfig() {
     }
@@ -95,6 +97,7 @@ public class BatteryMonitorConfig {
                 + ", features=" + features
                 + ", batteryRecorder=" + batteryRecorder
                 + ", batteryStats=" + batteryStats
+                + ", callStackCollector=" + callStackCollector
                 + '}';
     }
 
@@ -287,6 +290,9 @@ public class BatteryMonitorConfig {
 
             if (config.batteryStats == null) {
                 config.batteryStats = new BatteryStats.BatteryStatsImpl();
+            }
+            if (config.callStackCollector == null) {
+                config.callStackCollector = new CallStackCollector();
             }
             return config;
         }

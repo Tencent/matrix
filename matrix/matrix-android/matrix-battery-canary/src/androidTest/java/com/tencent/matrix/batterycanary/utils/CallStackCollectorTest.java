@@ -1,6 +1,7 @@
 package com.tencent.matrix.batterycanary.utils;
 
 import android.content.Context;
+import android.os.Looper;
 import android.os.SystemClock;
 import android.util.Log;
 
@@ -77,22 +78,21 @@ public class CallStackCollectorTest {
             long delta1, delta2;
             long bgnMillis, endMillis;
 
-            Throwable throwable = new Throwable();
-            Thread thread = Thread.currentThread();
             int loopCount = 100000;
 
-            bgnMillis = SystemClock.currentThreadTimeMillis();
+            bgnMillis = SystemClock.uptimeMillis();
             for (int i = 0; i < loopCount; i++) {
-                throwable.getStackTrace();
+                new Throwable().getStackTrace();
             }
-            endMillis = SystemClock.currentThreadTimeMillis();
+            endMillis = SystemClock.uptimeMillis();
             delta1 = endMillis - bgnMillis;
 
-            bgnMillis = SystemClock.currentThreadTimeMillis();
+            bgnMillis = SystemClock.uptimeMillis();
             for (int i = 0; i < loopCount; i++) {
-                thread.getStackTrace();
+                Thread.currentThread().getStackTrace();
+                // Looper.getMainLooper().getThread().getStackTrace();
             }
-            endMillis = SystemClock.currentThreadTimeMillis();
+            endMillis = SystemClock.uptimeMillis();
             delta2 = endMillis - bgnMillis;
 
             Assert.fail("TIME CONSUMED: " + delta1 + " vs " + delta2);
