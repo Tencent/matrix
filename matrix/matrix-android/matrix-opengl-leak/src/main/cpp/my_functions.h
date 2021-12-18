@@ -20,7 +20,6 @@ using namespace std;
 
 #define MEMHOOK_BACKTRACE_MAX_FRAMES MAX_FRAME_SHORT
 #define RENDER_THREAD_NAME "RenderThread"
-#define max(a, b) ((a) > (b) ? (a) : (b))
 
 static System_GlNormal_TYPE system_glGenTextures = NULL;
 static System_GlNormal_TYPE system_glDeleteTextures = NULL;
@@ -63,6 +62,7 @@ static jmethodID method_onGlBufferData;
 static jmethodID method_onGlRenderbufferStorage;
 
 const size_t BUF_SIZE = 1024;
+const int sample_num = 5;
 
 static pthread_once_t g_onceInitTls = PTHREAD_ONCE_INIT;
 static pthread_key_t g_tlsJavaEnv;
@@ -120,6 +120,15 @@ JNIEnv *GET_ENV() {
         }
     }
     return env;
+}
+
+bool do_sample() {
+    int rand_num = rand() % 100;
+    if(rand_num <= sample_num) {
+        return true;
+    } else {
+        return false;
+    }
 }
 
 bool get_java_stacktrace(char *__stack, size_t __size) {
@@ -583,7 +592,7 @@ my_glTexImage2D(GLenum target, GLint level, GLint internalformat, GLsizei width,
 
         jstring java_stack;
         char *javaStack = nullptr;
-        if (is_javastack_enabled) {
+        if (is_javastack_enabled && do_sample()) {
             javaStack = get_java_stack();
             java_stack = env->NewStringUTF(javaStack);
         } else {
@@ -631,7 +640,7 @@ my_glTexImage3D(GLenum target, GLint level, GLint internalformat, GLsizei width,
 
         jstring java_stack;
         char *javaStack = nullptr;
-        if (is_javastack_enabled) {
+        if (is_javastack_enabled && do_sample()) {
             javaStack = get_java_stack();
             java_stack = env->NewStringUTF(javaStack);
         } else {
@@ -728,7 +737,7 @@ my_glBufferData(GLenum target, GLsizeiptr size, const GLvoid *data, GLenum usage
 
         jstring java_stack;
         char *javaStack = nullptr;
-        if (is_javastack_enabled) {
+        if (is_javastack_enabled && do_sample()) {
             javaStack = get_java_stack();
             java_stack = env->NewStringUTF(javaStack);
         } else {
@@ -772,7 +781,7 @@ my_glRenderbufferStorage(GLenum target, GLenum internalformat, GLsizei width, GL
 
         jstring java_stack;
         char *javaStack = nullptr;
-        if (is_javastack_enabled) {
+        if (is_javastack_enabled && do_sample()) {
             javaStack = get_java_stack();
             java_stack = env->NewStringUTF(javaStack);
         } else {
