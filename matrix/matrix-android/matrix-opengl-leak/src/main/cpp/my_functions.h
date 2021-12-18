@@ -124,7 +124,6 @@ JNIEnv *GET_ENV() {
 
 bool do_sample() {
     int rand_num = rand() % 100;
-    __android_log_print(ANDROID_LOG_ERROR, "cclover_test", "rand() is %d", rand_num);
     if(rand_num <= sample_num) {
         return true;
     } else {
