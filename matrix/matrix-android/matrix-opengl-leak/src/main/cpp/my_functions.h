@@ -766,7 +766,7 @@ my_glRenderbufferStorage(GLenum target, GLenum internalformat, GLsizei width, GL
         JNIEnv *env = GET_ENV();
 
         wechat_backtrace::Backtrace *backtracePrt = 0;
-        if (is_stacktrace_enabled && do_sample()) {
+        if (is_stacktrace_enabled) {
             wechat_backtrace::Backtrace backtrace_zero = BACKTRACE_INITIALIZER(
                     MEMHOOK_BACKTRACE_MAX_FRAMES);
 
