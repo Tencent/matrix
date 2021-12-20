@@ -19,6 +19,7 @@ import java.util.Locale;
 import java.util.Map;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.arch.core.util.Function;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -104,10 +105,12 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
         }
 
         class EventDumpItem extends BatteryRecord.ReportRecord implements Item {
+            protected final ReportRecord record;
             public boolean expand = false;
             public String desc;
 
             public EventDumpItem(ReportRecord record) {
+                this.record = record;
                 this.id = record.id;
                 this.event = record.event;
                 this.scope = record.scope;
@@ -242,6 +245,41 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
                 };
                 itemView.findViewById(R.id.layout_title).setOnClickListener(onClickListener);
                 itemView.findViewById(R.id.layout_right).setOnClickListener(onClickListener);
+
+                mEntryViewThread.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        BatteryRecord.ReportRecord.ThreadInfo threadInfo = mItem.record.threadInfoList.get(0);
+                        if (threadInfo != null) {
+                            String status = threadInfo.stat;
+                            switch (threadInfo.stat) {
+                                case "R":
+                                    status = "Running";
+                                    break;
+                                case "S":
+                                    status = "Sleep";
+                                    break;
+                                case "D":
+                                    status = "Dead";
+                                    break;
+                                default:
+                                    break;
+                            }
+                            StringBuilder sb = new StringBuilder("线程名: ").append(threadInfo.name)
+                                    .append("\ntid: ").append(threadInfo.tid)
+                                    .append("\n状态: ").append(status)
+                                    .append("\n运行时间: ").append(Math.max((threadInfo.jiffies * 10L) / (60 * 1000L), 1)).append("min").append(", 占整体时间 ").append(String.format(Locale.US, "%s", (threadInfo.jiffies * 10L * 100) / mItem.windowMillis)).append("%")
+                                    .append("\nJiffies: ").append(threadInfo.jiffies).append(", ").append(threadInfo.jiffies / Math.max(mItem.windowMillis / (60 * 1000L), 1)).append("/min")
+                                    .append("\n\nStack: \n").append(threadInfo.extraInfo.get(BatteryRecord.ReportRecord.EXTRA_THREAD_STACK));
+                            AlertDialog dialog = new AlertDialog.Builder(v.getContext())
+                                    .setTitle("线程异常信息")
+                                    .setMessage(sb.toString())
+                                    .setPositiveButton("确定", null)
+                                    .setCancelable(true).create();
+                            dialog.show();
+                        }
+                    }
+                });
             }
 
             @Override

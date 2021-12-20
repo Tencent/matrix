@@ -323,6 +323,8 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
             public boolean isNewAdded;
             @NonNull
             public String stat;
+            @Nullable
+            public String stack;
 
             public ThreadJiffiesEntry(Long value) {
                 super(value);

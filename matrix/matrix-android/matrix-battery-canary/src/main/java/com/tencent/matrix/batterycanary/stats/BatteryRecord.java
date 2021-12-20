@@ -325,6 +325,7 @@ public abstract class BatteryRecord implements Parcelable {
 
     public static class ReportRecord extends EventStatRecord implements Parcelable {
         public static final int VERSION = 0;
+        public static final String EXTRA_THREAD_STACK = "extra_stack_top";
 
         public String scope;
         public long windowMillis;

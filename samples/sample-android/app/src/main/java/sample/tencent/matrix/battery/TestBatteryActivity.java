@@ -27,6 +27,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.res.Resources;
 import android.os.Bundle;
+import android.os.Process;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
@@ -62,6 +63,8 @@ import static com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFea
 public class TestBatteryActivity extends Activity {
     private static final String TAG = "Matrix.TestBatteryActivity";
     private CompositeMonitors mCompositeMonitors;
+    private Thread mBenchmarkThread;
+    private int mBenchmarkTid = -1;
 
     // private PendingIntent getAlarmPendingIntent(final Context context, final int id, Intent intent) {
     //     PendingIntent pendingIntent;
@@ -149,12 +152,15 @@ public class TestBatteryActivity extends Activity {
     }
 
     private void benchmark() {
-        new Thread(new Runnable() {
+        mBenchmarkThread = new Thread(new Runnable() {
             @Override
             public void run() {
-                while (!isDestroyed()) {}
+                mBenchmarkTid = Process.myTid();
+                while (!isDestroyed()) {
+                }
             }
-        }, "Benchmark").start();
+        }, "Benchmark");
+        mBenchmarkThread.start();
     }
 
     public void onDumpBatteryStats(View view) {
@@ -170,6 +176,20 @@ public class TestBatteryActivity extends Activity {
     void tryDumpBatteryStats() {
         final CompositeMonitors compositeMonitors = mCompositeMonitors.fork();
         compositeMonitors.finish();
+
+        // Figure out thread's callstack if need
+        compositeMonitors.getDelta(JiffiesSnapshot.class, new Consumer<Snapshot.Delta<JiffiesSnapshot>>() {
+            @Override
+            public void accept(Snapshot.Delta<JiffiesSnapshot> jiffiesSnapshotDelta) {
+                if (!jiffiesSnapshotDelta.dlt.threadEntries.getList().isEmpty()) {
+                    for (JiffiesSnapshot.ThreadJiffiesEntry item : jiffiesSnapshotDelta.dlt.threadEntries.getList()) {
+                        if (item.tid == mBenchmarkTid) {
+                            item.stack = compositeMonitors.getMonitor().getConfig().callStackCollector.collect(mBenchmarkThread);
+                        }
+                    }
+                }
+            }
+        });
 
         final Printer printer = new Printer();
         printer.writeTitle();

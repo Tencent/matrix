@@ -1,5 +1,7 @@
 package com.tencent.matrix.batterycanary.stats;
 
+import android.text.TextUtils;
+
 import com.tencent.matrix.batterycanary.monitor.AppStats;
 import com.tencent.matrix.batterycanary.monitor.feature.BlueToothMonitorFeature.BlueToothSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.CompositeMonitors;
@@ -18,6 +20,7 @@ import com.tencent.matrix.batterycanary.utils.Consumer;
 import com.tencent.matrix.batterycanary.utils.PowerProfile;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 
@@ -90,6 +93,16 @@ public interface BatteryStats {
                     threadInfo.tid = threadJiffies.tid;
                     threadInfo.name = threadJiffies.name;
                     threadInfo.jiffies = threadJiffies.get();
+
+                    // stack
+                    if (!TextUtils.isEmpty(threadJiffies.stack)) {
+                        if (!threadInfo.extraInfo.containsKey(BatteryRecord.ReportRecord.EXTRA_THREAD_STACK)) {
+                            if (threadInfo.extraInfo.isEmpty()) {
+                                threadInfo.extraInfo = new HashMap<>();
+                            }
+                            threadInfo.extraInfo.put(BatteryRecord.ReportRecord.EXTRA_THREAD_STACK, threadJiffies.stack);
+                        }
+                    }
                     statRecord.threadInfoList.add(threadInfo);
                 }
             }
