@@ -204,7 +204,7 @@ public interface BatteryMonitorCallback extends
                                     .append("(").append(thread.getState()).append(")")
                                     .append(threadName).append("(").append(thread.getId()).append(")")
                                     .append("\n");
-                            String stack = BatteryCanaryUtil.stackTraceToString(elements);
+                            String stack = mMonitor.getConfig().callStackCollector.collect(elements);
                             // thread stacks
                             for (StackTraceElement item : elements) {
                                 printer.append("|      ").append(item).append("\n");

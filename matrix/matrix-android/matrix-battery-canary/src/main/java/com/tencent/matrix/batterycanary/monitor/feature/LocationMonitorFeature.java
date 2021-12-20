@@ -1,11 +1,11 @@
 package com.tencent.matrix.batterycanary.monitor.feature;
 
-import androidx.annotation.NonNull;
 import android.text.TextUtils;
 
-import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.LocationManagerServiceHooker;
 import com.tencent.matrix.util.MatrixLog;
+
+import androidx.annotation.NonNull;
 
 public final class LocationMonitorFeature extends AbsMonitorFeature {
     private static final String TAG = "Matrix.battery.LocationMonitorFeature";
@@ -24,7 +24,7 @@ public final class LocationMonitorFeature extends AbsMonitorFeature {
             mListener = new LocationManagerServiceHooker.IListener() {
                 @Override
                 public void onRequestLocationUpdates(long minTimeMillis, float minDistance) {
-                    String stack = shouldTracing() ? BatteryCanaryUtil.stackTraceToString(new Throwable().getStackTrace()) : "";
+                    String stack = shouldTracing() ? mCore.getConfig().callStackCollector.collectCurr() : "";
                     MatrixLog.i(TAG, "#onRequestLocationUpdates, time = " + minTimeMillis + ", distance = " + minDistance + ", stack = " + stack);
                     mTracing.setStack(stack);
                     mTracing.onStartScan();

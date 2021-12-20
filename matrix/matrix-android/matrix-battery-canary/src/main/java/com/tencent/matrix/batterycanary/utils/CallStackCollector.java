@@ -14,15 +14,19 @@ public class CallStackCollector {
     }
 
     public String collectUiThread() {
-        return BatteryCanaryUtil.stackTraceToString(Looper.getMainLooper().getThread().getStackTrace());
+        return collect(Looper.getMainLooper().getThread());
     }
 
     public String collect(Throwable throwable) {
-        return BatteryCanaryUtil.stackTraceToString(throwable.getStackTrace());
+        return collect(throwable.getStackTrace());
     }
 
     public String collect(Thread thread) {
-        return BatteryCanaryUtil.stackTraceToString(thread.getStackTrace());
+        return collect(thread.getStackTrace());
+    }
+
+    public String collect(StackTraceElement[] elements) {
+        return BatteryCanaryUtil.stackTraceToString(elements);
     }
 
     public String collect(int tid) {
