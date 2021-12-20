@@ -25,7 +25,7 @@ internal abstract class TimerChecker(
      * 34,55,89,144,233,377,610,987,1597,2584,4181,6765,10946,17711,28657,46368,...,$max
      *
      */
-    class IntervalFactory(private val maxVal: Long) {
+    private class IntervalFactory(private val maxVal: Long) {
         private val initialInterval = arrayOf(13L, 21L)
         private var fibo = initialInterval.copyOf()
 
