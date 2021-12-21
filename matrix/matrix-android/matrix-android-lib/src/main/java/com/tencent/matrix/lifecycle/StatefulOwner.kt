@@ -34,7 +34,7 @@ interface IMultiSourceOwner {
     fun removeSourceOwner(owner: StatefulOwner)
 }
 
-private open class ObserverWrapper(val observer: IStateObserver, val switchOwner: StatefulOwner) {
+private open class ObserverWrapper(val observer: IStateObserver, val statefulOwner: StatefulOwner) {
     open fun isAttachedTo(owner: LifecycleOwner?) = false
 }
 
@@ -52,7 +52,7 @@ private class AutoReleaseObserverWrapper constructor(
 
     @OnLifecycleEvent(Lifecycle.Event.ON_DESTROY)
     fun release() {
-        switchOwner.removeObserver(observer)
+        statefulOwner.removeObserver(observer)
     }
 }
 

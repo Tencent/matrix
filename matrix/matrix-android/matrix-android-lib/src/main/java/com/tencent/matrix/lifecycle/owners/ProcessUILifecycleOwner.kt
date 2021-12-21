@@ -45,18 +45,18 @@ object MatrixProcessLifecycleOwner {
     private var activityManager: ActivityManager? = null
     private var activityInfoArray: Array<ActivityInfo>? = null
 
-    internal fun init(context: Context) {
-        activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-        processName = MatrixUtil.getProcessName(context)
-        packageName = MatrixUtil.getPackageName(context)
+    internal fun init(app: Application) {
+        activityManager = app.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        processName = MatrixUtil.getProcessName(app)
+        packageName = MatrixUtil.getPackageName(app)
         activityInfoArray = safeLetOrNull(TAG) {
-            context.packageManager
+            app.packageManager
                 .getPackageInfo(
                     packageName!!,
                     PackageManager.GET_ACTIVITIES
                 ).activities
         }
-        attach(context)
+        attach(app)
         MatrixLog.i(TAG, "init for [${processName}]")
     }
 
@@ -210,10 +210,9 @@ object MatrixProcessLifecycleOwner {
         }
     }
 
-    private fun attach(context: Context) {
+    private fun attach(app: Application) {
         startedStateOwner.observeForever(DefaultLifecycleObserver())
 
-        val app = context.applicationContext as Application
         app.registerActivityLifecycleCallbacks(object : Application.ActivityLifecycleCallbacks {
 
             override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
@@ -489,7 +488,7 @@ class MatrixProcessLifecycleInitializer {
         private var inited = false
 
         @JvmStatic
-        fun init(@NonNull context: Context, enableFgServiceMonitor: Boolean) {
+        fun init(@NonNull app: Application, enableFgServiceMonitor: Boolean) {
             if (inited) {
                 return
             }
@@ -503,9 +502,9 @@ class MatrixProcessLifecycleInitializer {
                 }
                 return
             }
-            MatrixProcessLifecycleOwner.init(context)
+            MatrixProcessLifecycleOwner.init(app)
             if (enableFgServiceMonitor) {
-                ForegroundServiceLifecycleOwner.init(context)
+                ForegroundServiceLifecycleOwner.init(app)
             }
 //            ActivityRecorder.init(context.applicationContext as Application, baseActivities)
         }
