@@ -110,6 +110,7 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
             public String desc;
 
             public EventDumpItem(ReportRecord record) {
+                this.millis = record.millis;
                 this.record = record;
                 this.id = record.id;
                 this.event = record.event;
@@ -205,6 +206,7 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
         public static class EventDumpHolder extends ViewHolder<Item.EventDumpItem> {
 
             private final TextView mTimeTv;
+            private final TextView mTitleTv;
             private final TextView mMoreTv;
             private final View mExpandView;
 
@@ -222,6 +224,7 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
             public EventDumpHolder(@NonNull View itemView) {
                 super(itemView);
                 mTimeTv = itemView.findViewById(R.id.tv_time);
+                mTitleTv = itemView.findViewById(R.id.tv_title);
                 mMoreTv = itemView.findViewById(R.id.tv_more);
                 mExpandView = itemView.findViewById(R.id.layout_expand);
 
@@ -265,17 +268,28 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
                                 default:
                                     break;
                             }
+
+                            long endMillis = mItem.record.millis;
+                            long bgnMillis = mItem.record.millis - mItem.record.windowMillis;
+                            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
+
                             StringBuilder sb = new StringBuilder("线程名: ").append(threadInfo.name)
                                     .append("\ntid: ").append(threadInfo.tid)
                                     .append("\n状态: ").append(status)
-                                    .append("\n运行时间: ").append(Math.max((threadInfo.jiffies * 10L) / (60 * 1000L), 1)).append("min").append(", 占整体时间 ").append(String.format(Locale.US, "%s", (threadInfo.jiffies * 10L * 100) / mItem.windowMillis)).append("%")
-                                    .append("\nJiffies: ").append(threadInfo.jiffies).append(", ").append(threadInfo.jiffies / Math.max(mItem.windowMillis / (60 * 1000L), 1)).append("/min")
-                                    .append("\n\nStack: \n").append(threadInfo.extraInfo.get(BatteryRecord.ReportRecord.EXTRA_THREAD_STACK));
+                                    .append("\nJiffy 开销: ").append(threadInfo.jiffies).append(", ").append(threadInfo.jiffies / Math.max(mItem.windowMillis / (60 * 1000L), 1)).append("/min")
+                                    .append("\n运行时间: ").append(Math.max((threadInfo.jiffies * 10L) / (60 * 1000L), 1)).append("min").append(", 占整体统计时间 ").append(String.format(Locale.US, "%s", (threadInfo.jiffies * 10L * 100) / mItem.windowMillis)).append("%")
+                                    .append("\n统计时间: ").append(Math.max((mItem.record.windowMillis) / (60 * 1000L), 1)).append("min").append(", ").append(dateFormat.format(new Date(bgnMillis))).append(" ~ ").append(dateFormat.format(new Date(endMillis)))
+                                    .append("\n\nStackTrace: \n").append(threadInfo.extraInfo.get(BatteryRecord.ReportRecord.EXTRA_THREAD_STACK));
+
+                            View layout = LayoutInflater.from(v.getContext()).inflate(R.layout.stats_battery_report, null);
+                            TextView tv = layout.findViewById(R.id.tv_report);
+                            tv.setText(sb.toString());
                             AlertDialog dialog = new AlertDialog.Builder(v.getContext())
                                     .setTitle("线程异常信息")
-                                    .setMessage(sb.toString())
                                     .setPositiveButton("确定", null)
-                                    .setCancelable(true).create();
+                                    .setCancelable(true)
+                                    .setView(layout)
+                                    .create();
                             dialog.show();
                         }
                     }
