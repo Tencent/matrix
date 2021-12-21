@@ -33,6 +33,8 @@ import com.tencent.matrix.iocanary.config.IOConfig;
 import com.tencent.matrix.lifecycle.owners.MatrixProcessLifecycleInitializer;
 import com.tencent.matrix.lifecycle.supervisor.SupervisorConfig;
 import com.tencent.matrix.memory.canary.MemoryCanaryPlugin;
+import com.tencent.matrix.memory.canary.trim.TrimCallback;
+import com.tencent.matrix.memory.canary.trim.TrimMemoryNotifier;
 import com.tencent.matrix.resource.ResourcePlugin;
 import com.tencent.matrix.resource.config.ResourceConfig;
 import com.tencent.matrix.trace.TracePlugin;
@@ -140,6 +142,12 @@ public class MatrixApplication extends Application {
         Matrix.with().startAllPlugins();
 
         LifecycleTest.test1();
+        TrimMemoryNotifier.INSTANCE.addTrimCallback(new TrimCallback() {
+            @Override
+            public void trim() {
+                MatrixLog.i(TAG, "trim memory");
+            }
+        });
 
         MatrixLog.d("Yves-test", "hasCreatedActivities %s", MatrixProcessLifecycleInitializer.hasCreatedActivities());
 
