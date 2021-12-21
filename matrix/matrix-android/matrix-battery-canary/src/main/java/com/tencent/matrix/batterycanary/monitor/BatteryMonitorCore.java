@@ -12,7 +12,6 @@ import com.tencent.matrix.batterycanary.BatteryEventDelegate;
 import com.tencent.matrix.batterycanary.monitor.feature.AbsTaskMonitorFeature.TaskJiffiesSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.AppStatMonitorFeature;
-import com.tencent.matrix.batterycanary.monitor.feature.InternalMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot.ThreadJiffiesEntry;
 import com.tencent.matrix.batterycanary.monitor.feature.LooperTaskMonitorFeature;
@@ -33,7 +32,6 @@ import java.util.concurrent.Callable;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
-import androidx.annotation.WorkerThread;
 
 public class BatteryMonitorCore implements
         LooperTaskMonitorFeature.LooperTaskListener,
@@ -206,16 +204,6 @@ public class BatteryMonitorCore implements
                 mTurnOn = false;
             }
         }
-    }
-
-    /**
-     * Removed to {@link InternalMonitorFeature#configureMonitorConsuming()}
-     */
-    @WorkerThread
-    @Nullable
-    @Deprecated
-    public TaskJiffiesSnapshot configureMonitorConsuming() {
-        return null;
     }
 
     public void onForeground(boolean isForeground) {

@@ -9,14 +9,10 @@ import android.content.IntentFilter;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.annotation.RestrictTo;
-import androidx.annotation.StringDef;
-import androidx.annotation.UiThread;
-import androidx.annotation.VisibleForTesting;
 
+import com.tencent.matrix.batterycanary.monitor.AppStats;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
+import com.tencent.matrix.batterycanary.stats.BatteryStatsFeature;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.util.MatrixLog;
 
@@ -25,6 +21,13 @@ import java.lang.annotation.RetentionPolicy;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.RestrictTo;
+import androidx.annotation.StringDef;
+import androidx.annotation.UiThread;
+import androidx.annotation.VisibleForTesting;
 
 /**
  * @author Kaede
@@ -121,13 +124,29 @@ public final class BatteryEventDelegate {
             public void onReceive(Context context, Intent intent) {
                 String action = intent.getAction();
                 if (action != null) {
+                    int devStat = -1;
                     switch (action) {
                         case Intent.ACTION_SCREEN_ON:
-                        case Intent.ACTION_SCREEN_OFF:
-                        case Intent.ACTION_POWER_CONNECTED:
-                        case Intent.ACTION_POWER_DISCONNECTED:
-                            onSateChangedEvent(intent);
+                            devStat = AppStats.DEV_STAT_SCREEN_ON;
                             break;
+                        case Intent.ACTION_SCREEN_OFF:
+                            devStat = AppStats.DEV_STAT_SCREEN_OFF;
+                            break;
+                        case Intent.ACTION_POWER_CONNECTED:
+                            devStat = AppStats.DEV_STAT_CHARGING;
+                            break;
+                        case Intent.ACTION_POWER_DISCONNECTED:
+                            devStat = AppStats.DEV_STAT_UN_CHARGING;
+                            break;
+                    }
+                    if (devStat != -1) {
+                        if (mCore != null) {
+                            BatteryStatsFeature feat = mCore.getMonitorFeature(BatteryStatsFeature.class);
+                            if (feat != null) {
+                                feat.statsDevStat(devStat);
+                            }
+                        }
+                        onSateChangedEvent(intent);
                     }
                 }
 

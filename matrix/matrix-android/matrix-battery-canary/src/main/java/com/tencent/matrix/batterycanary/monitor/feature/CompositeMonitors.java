@@ -1,5 +1,6 @@
 package com.tencent.matrix.batterycanary.monitor.feature;
 
+import android.os.Bundle;
 import android.os.SystemClock;
 
 import com.tencent.matrix.batterycanary.monitor.AppStats;
@@ -20,6 +21,7 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 
 import androidx.annotation.CallSuper;
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 /**
@@ -28,6 +30,11 @@ import androidx.annotation.Nullable;
  */
 public class CompositeMonitors {
     private static final String TAG = "Matrix.battery.CompositeMonitors";
+
+    public static final String SCOPE_UNKNOWN = "unknown";
+    public static final String SCOPE_CANARY = "canary";
+    public static final String SCOPE_INTERNAL = "internal";
+    public static final String SCOPE_OVERHEAT = "overheat";
 
     // Differing
     protected final List<Class<? extends Snapshot<?>>> mMetrics = new ArrayList<>();
@@ -39,14 +46,31 @@ public class CompositeMonitors {
     protected final Map<Class<? extends Snapshot<?>>, Snapshot.Sampler> mSamplers = new HashMap<>();
     protected final Map<Class<? extends Snapshot<?>>, Snapshot.Sampler.Result> mSampleResults = new HashMap<>();
 
+    // Task Tracing
+    protected final Map<Class<? extends AbsTaskMonitorFeature>, List<Delta<AbsTaskMonitorFeature.TaskJiffiesSnapshot>>> mTaskDeltas = new HashMap<>();
+
+    // Extra Info
+    protected final Bundle mExtras = new Bundle();
+
     @Nullable
     protected BatteryMonitorCore mMonitor;
     @Nullable
     protected AppStats mAppStats;
     protected long mBgnMillis = SystemClock.uptimeMillis();
+    protected String mScope;
 
     public CompositeMonitors(@Nullable BatteryMonitorCore core) {
         mMonitor = core;
+        mScope = SCOPE_UNKNOWN;
+    }
+
+    public CompositeMonitors(@Nullable BatteryMonitorCore core, String scope) {
+        mMonitor = core;
+        mScope = scope;
+    }
+
+    public String getScope() {
+        return mScope;
     }
 
     public void clear() {
@@ -54,10 +78,11 @@ public class CompositeMonitors {
         mDeltas.clear();
         mSamplers.clear();
         mSampleResults.clear();
+        mTaskDeltas.clear();
     }
 
     public CompositeMonitors fork() {
-        CompositeMonitors that = new CompositeMonitors(mMonitor);
+        CompositeMonitors that = new CompositeMonitors(mMonitor, mScope);
         that.mBgnMillis = this.mBgnMillis;
         that.mAppStats = this.mAppStats;
 
@@ -68,6 +93,9 @@ public class CompositeMonitors {
         that.mSampleRegs.putAll(mSampleRegs);
         that.mSamplers.putAll(mSamplers);
         that.mSampleResults.putAll(mSampleResults);
+
+        that.mTaskDeltas.putAll(this.mTaskDeltas);
+        that.mExtras.putAll(this.mExtras);
         return that;
     }
 
@@ -209,15 +237,6 @@ public class CompositeMonitors {
     public CompositeMonitors sample(Class<? extends Snapshot<?>> snapshotClass, long interval) {
         mSampleRegs.put(snapshotClass, interval);
         return this;
-    }
-
-    @Deprecated
-    public void configureAllSnapshot() {
-        start();
-    }
-    @Deprecated
-    public void configureDeltas() {
-        finish();
     }
 
     public void start() {
@@ -408,7 +427,40 @@ public class CompositeMonitors {
         return null;
     }
 
+    public void configureTaskDeltas(final Class<? extends AbsTaskMonitorFeature> featClass) {
+        AbsTaskMonitorFeature taskFeat = getFeature(featClass);
+        if (taskFeat != null) {
+            List<Delta<AbsTaskMonitorFeature.TaskJiffiesSnapshot>> deltas = taskFeat.currentJiffies();
+            taskFeat.clearFinishedJiffies();
+            putTaskDeltas(featClass, deltas);
+        }
+    }
+
+    public void putTaskDeltas(Class<? extends AbsTaskMonitorFeature> key, List<Delta<AbsTaskMonitorFeature.TaskJiffiesSnapshot>> deltas) {
+        mTaskDeltas.put(key, deltas);
+    }
+
+    public List<Delta<AbsTaskMonitorFeature.TaskJiffiesSnapshot>> getTaskDeltas(Class<? extends AbsTaskMonitorFeature> key) {
+        List<Delta<AbsTaskMonitorFeature.TaskJiffiesSnapshot>> deltas = mTaskDeltas.get(key);
+        if (deltas == null) {
+            return Collections.emptyList();
+        }
+        return deltas;
+    }
+
+    public void getTaskDeltas(Class<? extends AbsTaskMonitorFeature> key, Consumer<List<Delta<AbsTaskMonitorFeature.TaskJiffiesSnapshot>>> block) {
+        List<Delta<AbsTaskMonitorFeature.TaskJiffiesSnapshot>> deltas = mTaskDeltas.get(key);
+        if (deltas != null) {
+            block.accept(deltas);
+        }
+    }
+
+    public Bundle getExtras() {
+        return mExtras;
+    }
+
     @Override
+    @NonNull
     public String toString() {
         return "CompositeMonitors{" + "\n" +
                 "Metrics=" + mMetrics + "\n" +
@@ -417,7 +469,9 @@ public class CompositeMonitors {
                 ", SampleRegs=" + mSampleRegs + "\n" +
                 ", Samplers=" + mSamplers + "\n" +
                 ", SampleResults=" + mSampleResults + "\n" +
+                ", TaskDeltas=" + mTaskDeltas + "\n" +
                 ", AppStats=" + mAppStats + "\n" +
+                ", Extras =" + mExtras + "\n" +
                 '}';
     }
 }

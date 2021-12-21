@@ -27,6 +27,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.res.Resources;
 import android.os.Bundle;
+import android.os.Process;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
@@ -36,17 +37,24 @@ import android.widget.Toast;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.BatteryCanary;
-import com.tencent.matrix.batterycanary.BatteryEventDelegate;
 import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
-import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
+import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCallback;
+import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCallback.BatteryPrinter.Printer;
+import com.tencent.matrix.batterycanary.monitor.feature.CompositeMonitors;
+import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature.BatteryTmpSnapshot;
+import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature.CpuFreqSnapshot;
+import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot.ThreadJiffiesEntry;
-import com.tencent.matrix.plugin.Plugin;
+import com.tencent.matrix.batterycanary.stats.BatteryStatsFeature;
+import com.tencent.matrix.batterycanary.stats.ui.BatteryStatsActivity;
+import com.tencent.matrix.batterycanary.utils.Consumer;
 import com.tencent.matrix.util.MatrixLog;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import sample.tencent.matrix.R;
+import sample.tencent.matrix.battery.stats.BatteryStatsSubProcActivity;
 
 import static com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot;
 import static com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.Snapshot;
@@ -54,63 +62,62 @@ import static com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFea
 @SuppressLint("LongLogTag")
 public class TestBatteryActivity extends Activity {
     private static final String TAG = "Matrix.TestBatteryActivity";
-    private JiffiesSnapshot mLastJiffiesSnapshot;
+    private CompositeMonitors mCompositeMonitors;
+    private Thread mBenchmarkThread;
+    private int mBenchmarkTid = -1;
 
-    private PendingIntent getAlarmPendingIntent(final Context context, final int id, Intent intent) {
-        PendingIntent pendingIntent;
-        if (android.os.Build.VERSION.SDK_INT >= 29) {
-            int requestCode = id % 450 + 50;
-            pendingIntent = PendingIntent.getBroadcast(context, requestCode, intent, PendingIntent.FLAG_CANCEL_CURRENT);
-            MatrixLog.i(TAG, "getAlarmPendingIntent() id:%s requestCode:%s", id, requestCode);
-        } else {
-            pendingIntent = PendingIntent.getBroadcast(context, id, intent, PendingIntent.FLAG_CANCEL_CURRENT);
-        }
-        return pendingIntent;
-    }
+    // private PendingIntent getAlarmPendingIntent(final Context context, final int id, Intent intent) {
+    //     PendingIntent pendingIntent;
+    //     if (android.os.Build.VERSION.SDK_INT >= 29) {
+    //         int requestCode = id % 450 + 50;
+    //         pendingIntent = PendingIntent.getBroadcast(context, requestCode, intent, PendingIntent.FLAG_CANCEL_CURRENT);
+    //         MatrixLog.i(TAG, "getAlarmPendingIntent() id:%s requestCode:%s", id, requestCode);
+    //     } else {
+    //         pendingIntent = PendingIntent.getBroadcast(context, id, intent, PendingIntent.FLAG_CANCEL_CURRENT);
+    //     }
+    //     return pendingIntent;
+    // }
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.test_battery);
 
-       Plugin plugin = Matrix.with().getPluginByClass(BatteryMonitorPlugin.class);
-       if (!plugin.isPluginStarted()) {
-           if (!BatteryEventDelegate.isInit()) {
-               BatteryEventDelegate.init(this.getApplication());
-           }
+        BatteryCanaryInitHelper.startBatteryMonitor(this);
 
-           MatrixLog.i(TAG, "plugin-battery start");
-           plugin.start();
-       }
-
+        BatteryMonitorPlugin plugin = Matrix.with().getPluginByClass(BatteryMonitorPlugin.class);
+        mCompositeMonitors = new CompositeMonitors(plugin.core(), "manual_dump")
+                .metricAll()
+                .sample(CpuFreqSnapshot.class, 1000L)
+                .sample(BatteryTmpSnapshot.class, 1000L);
+        mCompositeMonitors.start();
         benchmark();
 
-//
-//        final AlarmManager am = (AlarmManager) getApplicationContext().getSystemService(Context.ALARM_SERVICE);
-//        if (am == null) {
-//            MatrixLog.e(TAG, "am == null");
-//            return;
-//        }
-//
-//        Intent intent = new Intent();
-//        intent.setAction("ALARM_ACTION(" + String.valueOf(Process.myPid()) + ")");
-//        intent.putExtra("ID", 1);
-//        final PendingIntent pendingIntent = getAlarmPendingIntent(getApplicationContext(), (int) 1, intent);
-//        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
-//            am.setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP, 200*1000, pendingIntent);
-//        } else {
-//            am.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, 200*1000, pendingIntent);
-//        }
-
-//        new Thread(new Runnable() {
-//            @Override
-//            public void run() {
-//                final AlarmManager am = (AlarmManager) getApplicationContext().getSystemService(Context.ALARM_SERVICE);
-//                am.cancel(pendingIntent);
-//                pendingIntent.cancel();
-//            }
-//        }).start();
-
+        //
+        // final AlarmManager am = (AlarmManager) getApplicationContext().getSystemService(Context.ALARM_SERVICE);
+        // if (am == null) {
+        //     MatrixLog.e(TAG, "am == null");
+        //     return;
+        // }
+        //
+        // Intent intent = new Intent();
+        // intent.setAction("ALARM_ACTION(" + String.valueOf(Process.myPid()) + ")");
+        // intent.putExtra("ID", 1);
+        // final PendingIntent pendingIntent = getAlarmPendingIntent(getApplicationContext(), (int) 1, intent);
+        // if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
+        //     am.setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP, 200*1000, pendingIntent);
+        // } else {
+        //     am.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, 200*1000, pendingIntent);
+        // }
+        //
+        // new Thread(new Runnable() {
+        //     @Override
+        //     public void run() {
+        //         final AlarmManager am = (AlarmManager) getApplicationContext().getSystemService(Context.ALARM_SERVICE);
+        //         am.cancel(pendingIntent);
+        //         pendingIntent.cancel();
+        //     }
+        // }).start();
 
 
         // Test make notification
@@ -132,61 +139,112 @@ public class TestBatteryActivity extends Activity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        mCompositeMonitors.finish();
 
-//        new Thread(new Runnable() {
-//            @Override
-//            public void run() {
-//                Runtime.getRuntime().gc();
-//                Runtime.getRuntime().runFinalization();
-//                Runtime.getRuntime().gc();
-//            }
-//        }).start();
+       // new Thread(new Runnable() {
+       //     @Override
+       //     public void run() {
+       //         Runtime.getRuntime().gc();
+       //         Runtime.getRuntime().runFinalization();
+       //         Runtime.getRuntime().gc();
+       //     }
+       // }).start();
     }
 
     private void benchmark() {
-        tryDumpBatteryStats();
-        new Thread(new Runnable() {
+        mBenchmarkThread = new Thread(new Runnable() {
             @Override
             public void run() {
-                while (!isDestroyed()) {}
+                mBenchmarkTid = Process.myTid();
+                while (!isDestroyed()) {
+                }
             }
-        }, "Benchmark").start();
+        }, "Benchmark");
+        mBenchmarkThread.start();
     }
 
     public void onDumpBatteryStats(View view) {
+        BatteryCanary.getMonitorFeature(BatteryStatsFeature.class, new Consumer<BatteryStatsFeature>() {
+            @Override
+            public void accept(BatteryStatsFeature batteryStatsFeature) {
+                batteryStatsFeature.statsEvent("Manual Dump BatteryStats");
+            }
+        });
         tryDumpBatteryStats();
     }
 
     void tryDumpBatteryStats() {
-        BatteryCanary.currentJiffies(new BatteryMonitorCore.Callback<JiffiesSnapshot>() {
-            @Override
-            public void onGetJiffies(JiffiesSnapshot currJiffiesSnapshot) {
-                if (mLastJiffiesSnapshot != null) {
-                    // Configure jiffies delta
-                    final Snapshot.Delta<JiffiesSnapshot> delta = currJiffiesSnapshot.diff(mLastJiffiesSnapshot);
-                    findViewById(R.id.tv_battery_stats).post(new Runnable() {
-                        @Override
-                        public void run() {
-                            final String text = BatteryCanaryInitHelper.convertStatsToReadFriendlyText(delta);
-                            Log.i(TAG, "dump jiffies stats: " + text);
-                            TextView.class.cast(findViewById(R.id.tv_battery_stats)).setText(text);
+        final CompositeMonitors compositeMonitors = mCompositeMonitors.fork();
+        compositeMonitors.finish();
 
-                            if (delta.dlt.threadEntries.getList().size() > 0) {
-                                ThreadJiffiesEntry topThread = delta.dlt.threadEntries.getList().get(0);
-                                if (topThread.get() >= 1000) {
-                                    Toast.makeText(
-                                            getApplication(),
-                                            "Abnormal thread found: " + topThread.name + ", jiffies = " + topThread.get(),
-                                            Toast.LENGTH_LONG
-                                    ).show();
-                                }
-                            }
+        // Figure out thread's callstack if need
+        compositeMonitors.getDelta(JiffiesSnapshot.class, new Consumer<Snapshot.Delta<JiffiesSnapshot>>() {
+            @Override
+            public void accept(Snapshot.Delta<JiffiesSnapshot> jiffiesSnapshotDelta) {
+                if (!jiffiesSnapshotDelta.dlt.threadEntries.getList().isEmpty()) {
+                    for (JiffiesSnapshot.ThreadJiffiesEntry item : jiffiesSnapshotDelta.dlt.threadEntries.getList()) {
+                        if (item.tid == mBenchmarkTid) {
+                            item.stack = compositeMonitors.getMonitor().getConfig().callStackCollector.collect(mBenchmarkThread);
                         }
-                    });
+                    }
                 }
-                mLastJiffiesSnapshot = currJiffiesSnapshot;
             }
         });
+
+        final Printer printer = new Printer();
+        printer.writeTitle();
+        new BatteryMonitorCallback.BatteryPrinter.Dumper().dump(compositeMonitors, printer);
+        printer.writeEnding();
+
+        BatteryStatsFeature statsFeat = BatteryCanary.getMonitorFeature(BatteryStatsFeature.class);
+        if (statsFeat != null) {
+            statsFeat.statsMonitors(compositeMonitors);
+        }
+
+        findViewById(R.id.tv_battery_stats).post(new Runnable() {
+            @Override
+            public void run() {
+                String text = printer.toString();
+                Log.i(TAG, "dump jiffies stats: " + text);
+                TextView tv = findViewById(R.id.tv_battery_stats);
+                tv.setVisibility(View.VISIBLE);
+                tv.setText(text);
+
+                compositeMonitors.getDelta(JiffiesMonitorFeature.JiffiesSnapshot.class, new Consumer<Snapshot.Delta<JiffiesSnapshot>>() {
+                    @Override
+                    public void accept(Snapshot.Delta<JiffiesSnapshot> jiffiesSnapshotDelta) {
+                        if (jiffiesSnapshotDelta.dlt.threadEntries.getList().size() > 0) {
+                            ThreadJiffiesEntry topThread = jiffiesSnapshotDelta.dlt.threadEntries.getList().get(0);
+                            if (topThread.get() >= 1000) {
+                                Toast.makeText(
+                                        getApplication(),
+                                        "Abnormal thread found: " + topThread.name + ", jiffies = " + topThread.get(),
+                                        Toast.LENGTH_LONG
+                                ).show();
+                            }
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    public void onCheckoutBatteryStats(View view) {
+        if (BatteryCanary.getMonitorFeature(BatteryStatsFeature.class) == null) {
+            Toast.makeText(this, "BatteryStatsFeature is not enabled, pls check 'BatteryCanaryInitHelper' to enable advanced features.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        Intent intent = new Intent(this, BatteryStatsActivity.class);
+        this.startActivity(intent);
+    }
+
+    public void onCheckoutBatteryStatsSub(View view) {
+        if (BatteryCanary.getMonitorFeature(BatteryStatsFeature.class) == null) {
+            Toast.makeText(this, "BatteryStatsFeature is not enabled, pls check 'BatteryCanaryInitHelper' to enable advanced features.", Toast.LENGTH_LONG).show();
+            return;
+        }
+        Intent intent = new Intent(this, BatteryStatsSubProcActivity.class);
+        this.startActivity(intent);
     }
 
     void tryNotify() {
