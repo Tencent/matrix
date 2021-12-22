@@ -19,7 +19,7 @@ android {
 
         externalNativeBuild {
             cmake {
-                arguments = ['-DANDROID_STL=c++_shared', "-DEnableLOG=${gradle.enableLog() ? "ON" : "OFF"}" as String]
+                arguments = ["-DEnableLOG=${gradle.enableLog() ? "ON" : "OFF"}" as String]
             }
 
             exportHeaders {
@@ -36,6 +36,29 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    flavorDimensions 'link'
+    productFlavors {
+        shared_link {
+            dimension 'link'
+            ext.artifactIdSuffix = ''
+            externalNativeBuild {
+                cmake {
+                    arguments = ['-DANDROID_STL=c++_shared']
+                }
+            }
+        }
+
+        static_link {
+            dimension 'link'
+            ext.artifactIdSuffix = '-static'
+            externalNativeBuild {
+                cmake {
+                    arguments = ['-DANDROID_STL=c++_static']
+                }
+            }
         }
     }
 

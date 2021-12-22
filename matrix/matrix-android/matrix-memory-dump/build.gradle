@@ -31,6 +31,13 @@ android {
             path "CMakeLists.txt"
         }
     }
+
+    flavorDimensions 'link'
+    productFlavors {
+        shared_link {
+            dimension 'link'
+        }
+    }
 }
 
 dependencies {

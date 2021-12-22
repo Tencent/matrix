@@ -56,6 +56,13 @@ android {
         }
     }
 
+    flavorDimensions 'link'
+    productFlavors {
+        shared_link {
+            dimension 'link'
+        }
+    }
+
     packagingOptions {
         pickFirst 'lib/armeabi-v7a/libc++_shared.so'
         pickFirst 'lib/arm64-v8a/libc++_shared.so'
