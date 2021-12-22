@@ -461,9 +461,7 @@ static inline void dump_stacks(FILE *log_file,
 
             if (caller_so_name.empty()) { // fallback
                 LOGD(TAG, "fallback getting so name -> caller = %p", stack_meta_it.second.caller);
-                // fixme hard coding
-                if (/*so_name.find("com.tencent.mm") == std::string::npos ||*/
-                        so_name.find("libwechatbacktrace.so") != std::string::npos ||
+                if (so_name.find("libwechatbacktrace.so") != std::string::npos ||
                         so_name.find("libmatrix-hooks.so") != std::string::npos) {
                     return;
                 }
@@ -641,7 +639,7 @@ void dump(bool enable_mmap, const char *log_path, const char *json_path) {
 
     dump_impl(log_file, json_file, enable_mmap);
 
-    DUMP_RECORD("/sdcard/Android/data/com.tencent.mm/memory-record.dump");
+    DUMP_RECORD(log_path);
 
     if (log_file) {
         fflush(log_file);
