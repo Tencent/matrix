@@ -103,8 +103,6 @@ Java_com_tencent_matrix_hook_pthread_PthreadHook_dumpNative(JNIEnv *env, jobject
         const char *path = env->GetStringUTFChars(jpath, NULL);
         pthread_dump_json(path);
         env->ReleaseStringUTFChars(jpath, path);
-    } else {
-        pthread_dump_json();
     }
 }
 
@@ -114,7 +112,7 @@ Java_com_tencent_matrix_hook_pthread_PthreadHook_enableQuickenNative(JNIEnv *env
 }
 
 JNIEXPORT void JNICALL
-Java_com_tencent_matrix_hook_pthread_PthreadHook_enableLoggerNative(JNIEnv *, jclass, jboolean enable) {
+Java_com_tencent_matrix_hook_pthread_PthreadHook_enableLoggerNative(JNIEnv *, jobject , jboolean enable) {
     enable_hook_logger(enable);
 }
 
