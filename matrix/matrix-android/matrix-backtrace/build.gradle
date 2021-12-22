@@ -20,7 +20,8 @@ android {
         externalNativeBuild {
             cmake {
                 targets = ['wechatbacktrace', 'unwindstack']
-                arguments = ["-DEnableLOG=${gradle.enableLog() ? "ON" : "OFF"}" as String,
+                arguments = ['-DANDROID_STL=c++_shared',
+                             "-DEnableLOG=${gradle.enableLog() ? "ON" : "OFF"}" as String,
                              "-DQUT_STATISTIC_ENABLE=${gradle.enableLog() ? "ON" : "OFF"}" as String]
             }
 
@@ -56,29 +57,6 @@ android {
     externalNativeBuild {
         cmake {
             path "CMakeLists.txt"
-        }
-    }
-
-    flavorDimensions 'link'
-    productFlavors {
-        shared_link {
-            dimension 'link'
-            ext.artifactIdSuffix = ''
-            externalNativeBuild {
-                cmake {
-                    arguments = ['-DANDROID_STL=c++_shared']
-                }
-            }
-        }
-
-        static_link {
-            dimension 'link'
-            ext.artifactIdSuffix = '-static'
-            externalNativeBuild {
-                cmake {
-                    arguments = ['-DANDROID_STL=c++_static']
-                }
-            }
         }
     }
 

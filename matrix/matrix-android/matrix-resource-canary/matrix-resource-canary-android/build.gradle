@@ -17,12 +17,6 @@ android {
             consumerProguardFiles 'proguard-rules.pro'
         }
     }
-    flavorDimensions 'link'
-    productFlavors {
-        shared_link {
-            dimension 'link'
-        }
-    }
 }
 
 dependencies {

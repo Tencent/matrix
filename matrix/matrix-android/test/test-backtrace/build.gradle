@@ -55,14 +55,6 @@ android {
         }
 
     }
-
-    flavorDimensions 'link'
-    productFlavors {
-        shared_link {
-            dimension 'link'
-            ext.artifactIdSuffix = ''
-        }
-    }
 }
 
 dependencies {
