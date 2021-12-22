@@ -7,6 +7,7 @@ import android.util.ArrayMap;
 import com.tencent.matrix.batterycanary.monitor.AppStats;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -280,11 +281,17 @@ public abstract class BatteryRecord implements Parcelable {
     }
 
 
+    /**
+     * EventStatRecord {
+     *     extras [:]  // since version >= 1
+     * }
+     */
     public static class EventStatRecord extends BatteryRecord implements Parcelable {
-        public static final int VERSION = 0;
+        public static final int VERSION = 1;
 
         public long id;
         public String event;
+        public Map<String, Object> extras = Collections.emptyMap();
 
         public EventStatRecord() {
             id = 0;
@@ -295,6 +302,10 @@ public abstract class BatteryRecord implements Parcelable {
             super(in);
             id = in.readLong();
             event = in.readString();
+            if (version >= 1) {
+                extras = new HashMap<>();
+                in.readMap(extras, getClass().getClassLoader());
+            }
         }
 
         public static final Creator<EventStatRecord> CREATOR = new Creator<EventStatRecord>() {
@@ -319,12 +330,26 @@ public abstract class BatteryRecord implements Parcelable {
             super.writeToParcel(dest, flags);
             dest.writeLong(id);
             dest.writeString(event);
+            dest.writeMap(extras);
         }
     }
 
 
+    /**
+     * ReportRecord {
+     *     extras [:]  // since version >= 1
+     *
+     *     ThreadInfo [] {
+     *         extraInfo [:]
+     *     }
+     *
+     *     EntryInfo [] {
+     *         entries [:]
+     *     }
+     * }
+     */
     public static class ReportRecord extends EventStatRecord implements Parcelable {
-        public static final int VERSION = 0;
+        public static final int VERSION = EventStatRecord.VERSION;
         public static final String EXTRA_THREAD_STACK = "extra_stack_top";
 
         public String scope;

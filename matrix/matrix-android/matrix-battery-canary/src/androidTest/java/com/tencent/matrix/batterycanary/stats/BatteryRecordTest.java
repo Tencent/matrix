@@ -18,6 +18,7 @@ package com.tencent.matrix.batterycanary.stats;
 
 import android.content.Context;
 import android.os.Parcel;
+import android.os.Parcelable;
 import android.os.SystemClock;
 import android.util.ArrayMap;
 
@@ -30,6 +31,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
@@ -297,5 +301,174 @@ public class BatteryRecordTest {
         Assert.assertEquals(devStatRecord.version, devStatRecord.version);
         Assert.assertEquals(devStatRecord.millis, devStatRecord.millis);
         Assert.assertEquals(devStatRecord.devStat, devStatRecord.devStat);
+    }
+
+    @Test
+    public void testVersionControl() {
+        Version0 record = new Version0();
+        record.id = 22;
+        record.event = "Version0";
+
+        byte[] bytes = null;
+        Parcel parcel = null;
+        try {
+            parcel = Parcel.obtain();
+            record.writeToParcel(parcel, 0);
+            bytes = parcel.marshall();
+        } finally {
+            if (parcel != null) {
+                parcel.recycle();
+            }
+        }
+
+        Assert.assertNotNull(bytes);
+
+        try {
+            parcel = Parcel.obtain();
+            parcel.unmarshall(bytes, 0, bytes.length);
+            parcel.setDataPosition(0);
+            Version1 recordLoaded = Version1.CREATOR.createFromParcel(parcel);
+            Assert.assertNotNull(recordLoaded);
+            Assert.assertEquals(record.id, recordLoaded.id);
+            Assert.assertEquals(record.event, recordLoaded.event);
+            Assert.assertSame(recordLoaded.extras, Collections.<String, Object>emptyMap());
+        } finally {
+            parcel.recycle();
+        }
+
+        Version1 recordNew = new Version1();
+        recordNew.id = 22;
+        recordNew.event = "Version1";
+        recordNew.extras = new HashMap<>();
+        recordNew.extras.put("xxx", "yyy");
+        recordNew.extras.put("zzz", 1000);
+
+        bytes = null;
+        try {
+            parcel = Parcel.obtain();
+            recordNew.writeToParcel(parcel, 0);
+            bytes = parcel.marshall();
+        } finally {
+            parcel.recycle();
+        }
+
+        Assert.assertNotNull(bytes);
+
+        try {
+            parcel = Parcel.obtain();
+            parcel.unmarshall(bytes, 0, bytes.length);
+            parcel.setDataPosition(0);
+            Version1 recordLoaded = Version1.CREATOR.createFromParcel(parcel);
+            Assert.assertNotNull(recordLoaded);
+            Assert.assertEquals(recordNew.id, recordLoaded.id);
+            Assert.assertEquals(recordNew.event, recordLoaded.event);
+            Assert.assertEquals(recordNew.extras, recordLoaded.extras);
+            Assert.assertNotSame(recordLoaded.extras, Collections.<String, Object>emptyMap());
+        } finally {
+            parcel.recycle();
+        }
+
+        try {
+            parcel = Parcel.obtain();
+            parcel.unmarshall(bytes, 0, bytes.length);
+            parcel.setDataPosition(0);
+            Version0 recordLoaded = Version0.CREATOR.createFromParcel(parcel);
+            Assert.assertNotNull(recordLoaded);
+            Assert.assertEquals(recordNew.id, recordLoaded.id);
+            Assert.assertEquals(recordNew.event, recordLoaded.event);
+        } finally {
+            parcel.recycle();
+        }
+    }
+
+
+    public static class Version0 extends BatteryRecord implements Parcelable {
+        public static final int VERSION = 0;
+
+        public long id;
+        public String event;
+
+        public Version0() {
+            id = 0;
+            version = VERSION;
+        }
+
+        protected Version0(Parcel in) {
+            super(in);
+            id = in.readLong();
+            event = in.readString();
+        }
+
+        public static final Creator<Version0> CREATOR = new Creator<Version0>() {
+            @Override
+            public Version0 createFromParcel(Parcel in) {
+                return new Version0(in);
+            }
+
+            @Override
+            public Version0[] newArray(int size) {
+                return new Version0[size];
+            }
+        };
+
+        @Override
+        public int describeContents() {
+            return 0;
+        }
+
+        @Override
+        public void writeToParcel(Parcel dest, int flags) {
+            super.writeToParcel(dest, flags);
+            dest.writeLong(id);
+            dest.writeString(event);
+        }
+    }
+
+    public static class Version1 extends BatteryRecord implements Parcelable {
+        public static final int VERSION = 1;
+
+        public long id;
+        public String event;
+        public Map<String, Object> extras = Collections.emptyMap();  // Since version 1
+
+        public Version1() {
+            id = 0;
+            version = VERSION;
+        }
+
+        protected Version1(Parcel in) {
+            super(in);
+            id = in.readLong();
+            event = in.readString();
+            if (version >= 1) {
+                extras = new HashMap<>();
+                in.readMap(extras, getClass().getClassLoader());
+            }
+        }
+
+        public static final Creator<Version1> CREATOR = new Creator<Version1>() {
+            @Override
+            public Version1 createFromParcel(Parcel in) {
+                return new Version1(in);
+            }
+
+            @Override
+            public Version1[] newArray(int size) {
+                return new Version1[size];
+            }
+        };
+
+        @Override
+        public int describeContents() {
+            return 0;
+        }
+
+        @Override
+        public void writeToParcel(Parcel dest, int flags) {
+            super.writeToParcel(dest, flags);
+            dest.writeLong(id);
+            dest.writeString(event);
+            dest.writeMap(extras);
+        }
     }
 }
