@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:layout_marginTop="6dp"
@@ -22,68 +23,38 @@
         android:text="tid / 运行时间 / 线程状态"
         android:textSize="12sp" />
 
-    <RelativeLayout
-        android:id="@+id/layout_entry_1"
+    <LinearLayout
+        android:id="@+id/layout_entry_group"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_below="@+id/tv_header_left"
-        android:layout_marginTop="4dp">
+        android:orientation="vertical"
+        tools:background="#3000">
 
-        <include layout="@layout/stats_item_event_dump_entry_subentry"/>
-    </RelativeLayout>
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            tools:background="#5000">
 
-    <RelativeLayout
-        android:id="@+id/layout_entry_2"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_below="@+id/layout_entry_1"
-        android:layout_marginTop="0dp">
+            <include layout="@layout/stats_item_event_dump_entry_subentry" />
+        </RelativeLayout>
 
-        <include layout="@layout/stats_item_event_dump_entry_subentry"/>
-    </RelativeLayout>
-
-    <RelativeLayout
-        android:id="@+id/layout_entry_3"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_below="@+id/layout_entry_2"
-        android:layout_marginTop="0dp">
-
-        <include layout="@layout/stats_item_event_dump_entry_subentry"/>
-    </RelativeLayout>
-
-    <RelativeLayout
-        android:id="@+id/layout_entry_4"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_below="@+id/layout_entry_3"
-        android:layout_marginTop="0dp">
-
-        <include layout="@layout/stats_item_event_dump_entry_subentry"/>
-    </RelativeLayout>
-
-    <RelativeLayout
-        android:id="@+id/layout_entry_5"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_below="@+id/layout_entry_4"
-        android:layout_marginTop="0dp">
-
-        <include layout="@layout/stats_item_event_dump_entry_subentry"/>
-    </RelativeLayout>
+        <!-- More Entry Here -->
+    </LinearLayout>
 
     <RelativeLayout
         android:id="@+id/layout_entry_more"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_below="@+id/layout_entry_5"
+        android:layout_below="@+id/layout_entry_group"
         android:layout_marginTop="0dp">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:gravity="center"
             android:layout_alignParentLeft="true"
+            android:gravity="center"
             android:text="..."
             android:textSize="10sp" />
 

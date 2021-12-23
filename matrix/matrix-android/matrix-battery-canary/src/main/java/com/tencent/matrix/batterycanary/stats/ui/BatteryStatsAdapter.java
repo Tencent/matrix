@@ -2,9 +2,11 @@ package com.tencent.matrix.batterycanary.stats.ui;
 
 import android.annotation.SuppressLint;
 import android.text.TextUtils;
+import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.tencent.matrix.batterycanary.R;
@@ -330,35 +332,37 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
                 // Thread Entry
                 mEntryViewThread.setVisibility(!item.threadInfoList.isEmpty() ? View.VISIBLE : View.GONE);
                 if (!item.threadInfoList.isEmpty()) {
-                    Function<Integer, View> findEntryItemView = new Function<Integer, View>() {
-                        @Override
-                        public View apply(Integer idx) {
-                            switch (idx) {
-                                case 1:
-                                    return mEntryViewThread.findViewById(R.id.layout_entry_1);
-                                case 2:
-                                    return mEntryViewThread.findViewById(R.id.layout_entry_2);
-                                case 3:
-                                    return mEntryViewThread.findViewById(R.id.layout_entry_3);
-                                case 4:
-                                    return mEntryViewThread.findViewById(R.id.layout_entry_4);
-                                case 5:
-                                    return mEntryViewThread.findViewById(R.id.layout_entry_5);
-                                default:
-                                    throw new IndexOutOfBoundsException("threadInfo out of bound: " + idx);
+                    LinearLayout entryGroup = mEntryViewThread.findViewById(R.id.layout_entry_group);
+                    int reusableCount = entryGroup.getChildCount();
+                    for (int i = 0; i < reusableCount; i++) {
+                        View entryView = entryGroup.getChildAt(i);
+                        entryView.setVisibility(View.GONE);
+                    }
+                    for (int i = 0; i < 5; i++) {
+                        if (i < item.threadInfoList.size()) {
+                            Item.EventDumpItem.ThreadInfo threadInfo = item.threadInfoList.get(i);
+                            View entryItemView;
+                            if (i < reusableCount) {
+                                // 1. reuse existing entry view
+                                entryItemView = entryGroup.getChildAt(i);
+                            } else {
+                                // 2. add new entry view
+                                entryItemView = LayoutInflater.from(entryGroup.getContext()).inflate(R.layout.stats_item_event_dump_entry_subentry, entryGroup, false);
+                                LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                                layoutParams.topMargin = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 5, entryGroup.getContext().getResources().getDisplayMetrics());
+                                entryGroup.addView(entryItemView, layoutParams);
                             }
-                        }
-                    };
-                    for (int i = 1; i <= 5; i++) {
-                        View entryItemView = findEntryItemView.apply(i);
-                        TextView left = entryItemView.findViewById(R.id.tv_key);
-                        TextView right = entryItemView.findViewById(R.id.tv_value);
-                        Item.EventDumpItem.ThreadInfo threadInfo = i <= item.threadInfoList.size() ? item.threadInfoList.get(i - 1) : null;
-                        left.setVisibility(threadInfo != null ? View.VISIBLE : View.GONE);
-                        right.setVisibility(threadInfo != null ? View.VISIBLE : View.GONE);
-                        if (threadInfo != null) {
-                            left.setText(threadInfo.name);
-                            right.setText(threadInfo.tid + " / " + Math.max(1, (threadInfo.jiffies * 10) / (60 * 1000L)) + "min / " + threadInfo.stat);
+                            // 3. update content
+                            entryItemView.setVisibility(View.VISIBLE);
+                            TextView left = entryItemView.findViewById(R.id.tv_key);
+                            TextView right = entryItemView.findViewById(R.id.tv_value);
+                            left.setVisibility(threadInfo != null ? View.VISIBLE : View.GONE);
+                            right.setVisibility(threadInfo != null ? View.VISIBLE : View.GONE);
+
+                            if (threadInfo != null) {
+                                left.setText(threadInfo.name);
+                                right.setText(threadInfo.tid + " / " + Math.max(1, (threadInfo.jiffies * 10) / (60 * 1000L)) + "min / " + threadInfo.stat);
+                            }
                         }
                     }
                 }
