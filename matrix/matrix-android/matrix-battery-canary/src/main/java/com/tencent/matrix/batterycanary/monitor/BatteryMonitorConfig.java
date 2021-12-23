@@ -280,6 +280,11 @@ public class BatteryMonitorConfig {
             return this;
         }
 
+        public Builder setCollector(CallStackCollector collector) {
+            config.callStackCollector = collector;
+            return this;
+        }
+
         public BatteryMonitorConfig build() {
             Collections.sort(config.features, new Comparator<MonitorFeature>() {
                 @Override

@@ -2,9 +2,11 @@ package com.tencent.matrix.batterycanary.monitor.feature;
 
 import android.os.Bundle;
 import android.os.SystemClock;
+import android.text.TextUtils;
 
 import com.tencent.matrix.batterycanary.monitor.AppStats;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
+import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot.ThreadJiffiesEntry;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.DigitEntry;
@@ -52,6 +54,9 @@ public class CompositeMonitors {
     // Extra Info
     protected final Bundle mExtras = new Bundle();
 
+    // Call Stacks
+    protected final Map<String, String> mStacks = new HashMap<>();
+
     @Nullable
     protected BatteryMonitorCore mMonitor;
     @Nullable
@@ -73,6 +78,7 @@ public class CompositeMonitors {
         return mScope;
     }
 
+    @CallSuper
     public void clear() {
         mBgnSnapshots.clear();
         mDeltas.clear();
@@ -81,6 +87,7 @@ public class CompositeMonitors {
         mTaskDeltas.clear();
     }
 
+    @CallSuper
     public CompositeMonitors fork() {
         CompositeMonitors that = new CompositeMonitors(mMonitor, mScope);
         that.mBgnMillis = this.mBgnMillis;
@@ -248,6 +255,7 @@ public class CompositeMonitors {
 
     public void finish() {
         configureEndDeltas();
+        collectStacks();
         configureSampleResults();
         mAppStats = AppStats.current(SystemClock.uptimeMillis() - mBgnMillis);
     }
@@ -269,6 +277,35 @@ public class CompositeMonitors {
                     putDelta(snapshotClass, currSnapshot.diff(lastSnapshot));
                 }
             }
+        }
+    }
+
+    protected void collectStacks() {
+        if (mMonitor == null) {
+            return;
+        }
+        // Figure out thread' stack if need
+        if (SCOPE_CANARY.equals(getScope())) {
+            // 前台 Loop or 待机功耗监控
+            getDelta(JiffiesMonitorFeature.JiffiesSnapshot.class, new Consumer<Delta<JiffiesMonitorFeature.JiffiesSnapshot>>() {
+                @Override
+                public void accept(Delta<JiffiesMonitorFeature.JiffiesSnapshot> delta) {
+                    for (ThreadJiffiesEntry threadEntry : delta.dlt.threadEntries.getList()) {
+                        long minute = Math.max(1, delta.during / BatteryCanaryUtil.ONE_MIN);
+                        if (minute < 5) {
+                            break;
+                        }
+                        long topThreadAvgJiffies = threadEntry.get() / minute;
+                        if (topThreadAvgJiffies < 3000L) {
+                            break;
+                        }
+                        String stack = mMonitor.getConfig().callStackCollector.collect(threadEntry.tid);
+                        if (!TextUtils.isEmpty(stack)) {
+                            mStacks.put(String.valueOf(threadEntry.tid), stack);
+                        }
+                    }
+                }
+            });
         }
     }
 
@@ -455,6 +492,10 @@ public class CompositeMonitors {
         }
     }
 
+    public Map<String, String> getStacks() {
+        return mStacks;
+    }
+
     public Bundle getExtras() {
         return mExtras;
     }
@@ -471,6 +512,7 @@ public class CompositeMonitors {
                 ", SampleResults=" + mSampleResults + "\n" +
                 ", TaskDeltas=" + mTaskDeltas + "\n" +
                 ", AppStats=" + mAppStats + "\n" +
+                ", Stacks=" + mStacks + "\n" +
                 ", Extras =" + mExtras + "\n" +
                 '}';
     }
