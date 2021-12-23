@@ -22,7 +22,6 @@ import java.util.Map;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
-import androidx.arch.core.util.Function;
 import androidx.recyclerview.widget.RecyclerView;
 
 /**
@@ -335,8 +334,7 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
                     LinearLayout entryGroup = mEntryViewThread.findViewById(R.id.layout_entry_group);
                     int reusableCount = entryGroup.getChildCount();
                     for (int i = 0; i < reusableCount; i++) {
-                        View entryView = entryGroup.getChildAt(i);
-                        entryView.setVisibility(View.GONE);
+                        entryGroup.getChildAt(i).setVisibility(View.GONE);
                     }
                     for (int i = 0; i < 5; i++) {
                         if (i < item.threadInfoList.size()) {
@@ -395,27 +393,11 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
                         left.setText(entryInfo.name);
 
                         // 2. entry list
-                        Function<Integer, View> findEntryItemView = new Function<Integer, View>() {
-                            @Override
-                            public View apply(Integer idx) {
-                                switch (idx) {
-                                    case 1:
-                                        return entryView.findViewById(R.id.layout_entry_1);
-                                    case 2:
-                                        return entryView.findViewById(R.id.layout_entry_2);
-                                    case 3:
-                                        return entryView.findViewById(R.id.layout_entry_3);
-                                    case 4:
-                                        return entryView.findViewById(R.id.layout_entry_4);
-                                    case 5:
-                                        return entryView.findViewById(R.id.layout_entry_5);
-                                    case 6:
-                                        return entryView.findViewById(R.id.layout_entry_6);
-                                    default:
-                                        throw new IndexOutOfBoundsException("entryList key-value out of bound: " + idx);
-                                }
-                            }
-                        };
+                        LinearLayout entryGroup = entryView.findViewById(R.id.layout_entry_group);
+                        int reusableCount = entryGroup.getChildCount();
+                        for (int j = 0; j < reusableCount; j++) {
+                            entryGroup.getChildAt(j).setVisibility(View.GONE);
+                        }
 
                         int entryIdx = 0, entryLimit = 6;
                         for (Map.Entry<String, String> entry : entryInfo.entries.entrySet()) {
@@ -423,17 +405,23 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
                             if (entryIdx > entryLimit) {
                                 break;
                             }
-                            View entryItemView = findEntryItemView.apply(entryIdx);
+                            View entryItemView;
+                            if (entryIdx < reusableCount) {
+                                // 1. reuse existing entry view
+                                entryItemView = entryGroup.getChildAt(entryIdx);
+                            } else {
+                                // 2. add new entry view
+                                entryItemView = LayoutInflater.from(entryGroup.getContext()).inflate(R.layout.stats_item_event_dump_entry_subentry, entryGroup, false);
+                                LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                                layoutParams.topMargin = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 5, entryGroup.getContext().getResources().getDisplayMetrics());
+                                entryGroup.addView(entryItemView, layoutParams);
+                            }
+
                             entryItemView.setVisibility(View.VISIBLE);
                             TextView keyTv = entryItemView.findViewById(R.id.tv_key);
                             TextView valTv = entryItemView.findViewById(R.id.tv_value);
                             keyTv.setText(entry.getKey());
                             valTv.setText(entry.getValue());
-                        }
-
-                        for (int j = entryIdx + 1; j <= entryLimit; j++) {
-                            View entryItemView = findEntryItemView.apply(j);
-                            entryItemView.setVisibility(View.GONE);
                         }
                     }
                 }
