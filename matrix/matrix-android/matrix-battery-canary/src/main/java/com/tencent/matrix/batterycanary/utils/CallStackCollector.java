@@ -33,6 +33,9 @@ public class CallStackCollector {
         if (tid == Process.myTid()) {
             return collectCurr();
         }
-        return "";
+        if (tid == Process.myPid()) {
+            return collectUiThread();
+        }
+        return "";  // Unwind needed
     }
 }

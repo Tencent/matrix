@@ -164,8 +164,19 @@ public class BatteryStatsLoader {
     protected BatteryStatsAdapter.Item onCreateDataItem(BatteryRecord record) {
         if (record instanceof BatteryRecord.ProcStatRecord) {
             BatteryStatsAdapter.Item.EventLevel1Item eventItem = new BatteryStatsAdapter.Item.EventLevel1Item(record);
-            eventItem.text = (((BatteryRecord.ProcStatRecord) record).procStat == BatteryRecord.ProcStatRecord.STAT_PROC_LAUNCH ? "PROCESS INIT" : "PROCESS_ID_" + ((BatteryRecord.ProcStatRecord) record).procStat)
-                    + " (pid " + ((BatteryRecord.ProcStatRecord) record).pid + "）";
+            String title;
+            switch (((BatteryRecord.ProcStatRecord) record).procStat) {
+                case BatteryRecord.ProcStatRecord.STAT_PROC_LAUNCH:
+                    title = "PROCESS INIT";
+                    break;
+                case BatteryRecord.ProcStatRecord.STAT_PROC_OFF:
+                    title = "PROCESS QUIT";
+                    break;
+                default:
+                    title = "PROCESS_ID_" + ((BatteryRecord.ProcStatRecord) record).procStat;
+                    break;
+            }
+            eventItem.text = title + " (pid " + ((BatteryRecord.ProcStatRecord) record).pid + "）";
             return eventItem;
         }
 
