@@ -19,11 +19,11 @@ android {
 
         externalNativeBuild {
             cmake {
-                arguments = ['-DANDROID_STL=c++_shared', "-DEnableLOG=${gradle.enableLog() ? "ON" : "OFF"}" as String]
+                arguments = ['-DANDROID_STL=c++_static', "-DEnableLOG=${gradle.enableLog() ? "ON" : "OFF"}" as String]
             }
 
             exportHeaders {
-                from('src/main/cpp/common') {
+                from('../src/main/cpp/common') {
                     include '**/*.h'
                     include '*.h'
                 }
@@ -41,16 +41,25 @@ android {
 
     externalNativeBuild {
         cmake {
-            path "CMakeLists.txt"
+            path "../CMakeLists.txt"
+        }
+    }
+
+    sourceSets {
+        main {
+            java.srcDirs = ['../src/main/java']
+            res.srcDirs = ['../src/main/res']
+            aidl.srcDirs = ['../src/main/aidl']
+            manifest.srcFile '../src/main/AndroidManifest.xml'
         }
     }
 
 }
 
-apply from: project.file('dependencies.gradle')
+apply from: project.file('../dependencies.gradle')
 
 group = rootProject.GROUP
-version = rootProject.VERSION_NAME
+version = "${rootProject.VERSION_NAME}-STATIC"
 
 if("External" == rootProject.ext.PUBLISH_CHANNEL) {
     apply from: rootProject.file('gradle/android-publish.gradle')

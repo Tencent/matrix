@@ -20,25 +20,25 @@ android {
         externalNativeBuild {
             cmake {
                 targets = ['wechatbacktrace', 'unwindstack']
-                arguments = ['-DANDROID_STL=c++_shared',
+                arguments = ['-DANDROID_STL=c++_static',
                              "-DEnableLOG=${gradle.enableLog() ? "ON" : "OFF"}" as String,
                              "-DQUT_STATISTIC_ENABLE=${gradle.enableLog() ? "ON" : "OFF"}" as String]
             }
 
             exportHeaders {
-                from('src/main/cpp') {
+                from('../src/main/cpp') {
                     include 'common/*.h'
                     moveToDir 'backtrace'
                 }
-                from('src/main/cpp/libwechatbacktrace/include') {
+                from('../src/main/cpp/libwechatbacktrace/include') {
                     include '**/*.h'
                     moveToDir 'backtrace'
                 }
-                from('src/main/cpp/external/libunwindstack/include') {
+                from('../src/main/cpp/external/libunwindstack/include') {
                     include '**/*.h'
                     moveToDir 'backtrace'
                 }
-                from('src/main/cpp/dexfile/include') {
+                from('../src/main/cpp/dexfile/include') {
                     include '**/*.h'
                     moveToDir 'backtrace'
                 }
@@ -50,22 +50,29 @@ android {
 
         release {
             minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 
     externalNativeBuild {
         cmake {
-            path "CMakeLists.txt"
+            path "../CMakeLists.txt"
+        }
+    }
+
+    sourceSets {
+        main {
+            java.srcDirs = ['../src/main/java']
+            res.srcDirs = ['../src/main/res']
+            manifest.srcFile '../src/main/AndroidManifest.xml'
         }
     }
 
 }
 
-apply from: project.file('dependencies.gradle')
+apply from: project.file('../dependencies.gradle')
 
 group = rootProject.GROUP
-version = rootProject.VERSION_NAME
+version = "${rootProject.VERSION_NAME}-STATIC"
 
 if("External" == rootProject.ext.PUBLISH_CHANNEL) {
     apply from: rootProject.file('gradle/android-publish.gradle')
