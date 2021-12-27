@@ -32,6 +32,7 @@ import com.tencent.matrix.lifecycle.owners.MatrixProcessLifecycleOwner;
 import com.tencent.matrix.memory.canary.MemInfo;
 import com.tencent.matrix.trace.view.FrameDecorator;
 import com.tencent.matrix.util.MatrixLog;
+import com.tencent.matrix.util.ViewDumper;
 
 import sample.tencent.matrix.battery.TestBatteryActivity;
 import sample.tencent.matrix.hooks.TestHooksActivity;
@@ -52,14 +53,21 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         IssuesMap.clear();
 
-        MatrixLog.d(TAG, "has floating view %s", MatrixProcessLifecycleOwner.hasVisibleView());
+        MatrixLog.d(TAG, "has visible view %s", MatrixProcessLifecycleOwner.hasVisibleView());
 
-        new Handler(Looper.getMainLooper()).post(new Runnable() {
+        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
             @Override
             public void run() {
-                MatrixLog.d(TAG, "has floating view %s", MatrixProcessLifecycleOwner.hasVisibleView());
+                MatrixLog.d(TAG, "has visible view %s", MatrixProcessLifecycleOwner.hasVisibleView());
+
+                String[] arr = ViewDumper.dump();
+                MatrixLog.d(TAG, "view tree size = %s", arr.length);
+                for (String s : arr) {
+                    MatrixLog.d(TAG, "%s\n", s);
+                }
+
             }
-        });
+        }, 3000);
     }
 
     @Override

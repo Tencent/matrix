@@ -12,6 +12,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Process
 import android.view.View
+import android.view.ViewGroup
 import androidx.annotation.NonNull
 import androidx.lifecycle.*
 import com.tencent.matrix.lifecycle.IStateObserver
@@ -20,6 +21,7 @@ import com.tencent.matrix.lifecycle.owners.MatrixProcessLifecycleInitializer.Com
 import com.tencent.matrix.listeners.IAppForeground
 import com.tencent.matrix.util.*
 import java.util.*
+import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 
 /**
@@ -290,6 +292,10 @@ object MatrixProcessLifecycleOwner {
         return@safeLet WindowManagerGlobal_mRoots!!.any {
             View.VISIBLE == field_ViewRootImpl_mView!!.get(it)?.visibility
         }
+    }
+
+    internal fun getViews() = safeLet(TAG, log = true, defVal = emptyList<View>()) {
+        return@safeLet WindowManagerGlobal_mRoots!!.map { field_ViewRootImpl_mView!!.get(it) }.toList()
     }
 
     private val componentToProcess by lazy { HashMap<String, String>() }
