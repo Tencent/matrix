@@ -7,11 +7,15 @@ import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.util.MatrixLog;
 import com.tencent.mmkv.MMKV;
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -32,6 +36,8 @@ public interface BatteryRecorder {
 
     void clean(String date, String proc);
 
+    void clean(int dayToKeepOnly);
+
 
     class MMKVRecorder implements BatteryRecorder {
         protected static final String MAGIC = "bs";
@@ -40,13 +46,18 @@ public interface BatteryRecorder {
         protected final int pid = Process.myPid();
         protected final MMKV mmkv;
         protected AtomicInteger inc = new AtomicInteger(0);
+        private static DateFormat sDateFormat;
 
         public MMKVRecorder(MMKV mmkv) {
             this.mmkv = mmkv;
         }
 
-        protected String getKeyPrefix(String date, String proc) {
+        protected String getRecordKeyPrefix(String date, String proc) {
             return MAGIC + "-" + date + (TextUtils.isEmpty(proc) ? "" : "-" + proc);
+        }
+
+        protected String getProcSetKey() {
+            return MAGIC + "-proc-set";
         }
 
         @Override
@@ -58,7 +69,7 @@ public interface BatteryRecorder {
                         procSet = new HashSet<>();
                     }
                     procSet.add(proc);
-                    String key = MAGIC + "-proc-set";
+                    String key = getProcSetKey();
                     mmkv.encode(key, procSet);
                 }
             }
@@ -66,7 +77,7 @@ public interface BatteryRecorder {
 
         @Override
         public Set<String> getProcSet() {
-            String key = MAGIC + "-proc-set";
+            String key = getProcSetKey();
             Set<String> procSet = mmkv.decodeStringSet(key);
             return procSet == null ? Collections.<String>emptySet() : procSet;
         }
@@ -79,10 +90,10 @@ public interface BatteryRecorder {
 
         public void write(String date, BatteryRecord record, String proc) {
             try {
-                String key = getKeyPrefix(date, proc) + "-" + pid + "-" + inc.getAndIncrement();
+                String key = getRecordKeyPrefix(date, proc) + "-" + pid + "-" + inc.getAndIncrement();
                 byte[] bytes = BatteryRecord.encode(record);
                 mmkv.encode(key, bytes);
-                mmkv.sync();
+                // mmkv.sync();
             } catch (Exception e) {
                 MatrixLog.w(TAG, "record encode failed: " + e.getMessage());
             }
@@ -95,7 +106,7 @@ public interface BatteryRecorder {
                 return Collections.emptyList();
             }
             List<BatteryRecord> records = new ArrayList<>(Math.min(16, keys.length));
-            String keyPrefix = getKeyPrefix(date, proc);
+            String keyPrefix = getRecordKeyPrefix(date, proc);
             for (String item : keys) {
                 if (item.startsWith(keyPrefix)) {
                     try {
@@ -124,13 +135,48 @@ public interface BatteryRecorder {
             if (keys == null || keys.length == 0) {
                 return;
             }
-            String keyPrefix = getKeyPrefix(date, proc);
+            String keyPrefix = getRecordKeyPrefix(date, proc);
             for (String item : keys) {
                 if (item.startsWith(keyPrefix)) {
                     try {
                         mmkv.remove(item);
                     } catch (Exception e) {
                         MatrixLog.w(TAG, "record clean failed: " + e.getMessage());
+                    }
+                }
+            }
+        }
+
+        @Override
+        public void clean(int dayToKeepOnly) {
+            if (dayToKeepOnly > 0) {
+                List<String> datesToKeep = new ArrayList<>();
+                for (int i = 0; i < dayToKeepOnly; i++) {
+                    datesToKeep.add(getDateString(-i));
+                }
+                String[] keys = mmkv.allKeys();
+                if (keys == null || keys.length == 0) {
+                    return;
+                }
+                String procSetKey = getProcSetKey();
+                for (String item : keys) {
+                    if (procSetKey.equals(item)) {
+                        continue;
+                    }
+                    boolean keep = false;
+                    for (String date : datesToKeep) {
+                        String keyPrefix = getRecordKeyPrefix(date, "");
+                        if (item.startsWith(keyPrefix)) {
+                            keep = true;
+                            break;
+                        }
+                    }
+                    if (!keep) {
+                        try {
+                            mmkv.remove(item);
+                        } catch (Exception e) {
+                            MatrixLog.w(TAG, "record clean failed: " + e.getMessage());
+                        }
                     }
                 }
             }
@@ -150,6 +196,19 @@ public interface BatteryRecorder {
                 }
             }
             return sProcNameSuffix;
+        }
+
+        public static String getDateString(int dayOffset) {
+            if (sDateFormat == null) {
+                synchronized (MMKVRecorder.class) {
+                    if (sDateFormat == null) {
+                        sDateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+                    }
+                }
+            }
+            Calendar cal = Calendar.getInstance();
+            cal.add(Calendar.DATE, dayOffset);
+            return sDateFormat.format(cal.getTime());
         }
     }
 }

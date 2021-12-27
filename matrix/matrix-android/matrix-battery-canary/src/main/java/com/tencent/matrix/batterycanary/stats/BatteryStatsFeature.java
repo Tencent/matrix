@@ -7,16 +7,10 @@ import android.os.Process;
 import com.tencent.matrix.batterycanary.monitor.AppStats;
 import com.tencent.matrix.batterycanary.monitor.feature.AbsMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.CompositeMonitors;
-import com.tencent.matrix.batterycanary.stats.BatteryRecord.ReportRecord;
-import com.tencent.matrix.batterycanary.utils.Consumer;
 import com.tencent.matrix.util.MatrixHandlerThread;
 
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -29,6 +23,7 @@ import androidx.annotation.WorkerThread;
  */
 public final class BatteryStatsFeature extends AbsMonitorFeature {
     private static final String TAG = "Matrix.battery.BatteryStats";
+    private static final int DAY_LIMIT = 7;
 
     private HandlerThread mStatsThread;
     private Handler mStatsHandler;
@@ -58,6 +53,9 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
                 @Override
                 public void run() {
                     mBatteryRecorder.updateProc(BatteryRecorder.MMKVRecorder.getProcNameSuffix());
+
+                    // Clean expired records if need
+                    mBatteryRecorder.clean(DAY_LIMIT);
                 }
             });
         }
@@ -163,6 +161,13 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
         }
     }
 
+    @WorkerThread
+    void cleanRecords() {
+        if (mBatteryRecorder != null) {
+            mBatteryRecorder.clean(DAY_LIMIT);
+        }
+    }
+
     public void statsAppStat(int appStat) {
         if (mBatteryStats != null) {
             writeRecord(mBatteryStats.statsAppStat(appStat));
@@ -208,17 +213,8 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
         }
     }
 
-    private void createEntryInfo(Consumer<ReportRecord.EntryInfo> consumer) {
-        ReportRecord.EntryInfo entryInfo = new ReportRecord.EntryInfo();
-        consumer.accept(entryInfo);
-    }
-
-
     public static String getDateString(int dayOffset) {
-        DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
-        Calendar cal = Calendar.getInstance();
-        cal.add(Calendar.DATE, dayOffset);
-        return dateFormat.format(cal.getTime());
+        return BatteryRecorder.MMKVRecorder.getDateString(dayOffset);
     }
 
 

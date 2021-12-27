@@ -21,6 +21,7 @@ import java.util.List;
  */
 public class BatteryStatsLoader {
     private static final String TAG = "Matrix.battery.loader";
+    private static final int DAY_LIMIT = 7;
 
     protected final BatteryStatsAdapter mStatsAdapter;
     protected final int mDayLimit;
@@ -29,7 +30,7 @@ public class BatteryStatsLoader {
     protected String mProc = "";
 
     public BatteryStatsLoader(BatteryStatsAdapter statsAdapter) {
-        this(statsAdapter, 7);
+        this(statsAdapter, DAY_LIMIT);
     }
 
     public BatteryStatsLoader(BatteryStatsAdapter statsAdapter, int dayLimit) {
