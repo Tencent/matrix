@@ -51,6 +51,13 @@
                     android:layout_height="match_parent"
                     android:layout_centerInParent="true"
                     android:background="@color/BW_70" />
+
+                <ImageView
+                    android:id="@+id/iv_indicator"
+                    android:layout_width="10dp"
+                    android:layout_height="10dp"
+                    android:layout_centerInParent="true"
+                    android:src="@drawable/stats_icon_circle_list" />
             </RelativeLayout>
 
         </RelativeLayout>
@@ -121,7 +128,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_centerInParent="true"
-                android:text="△"
+                android:drawableRight="@drawable/stats_icon_triangle"
                 android:textSize="12sp" />
         </RelativeLayout>
 

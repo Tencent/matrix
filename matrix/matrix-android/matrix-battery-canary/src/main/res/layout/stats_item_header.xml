@@ -9,7 +9,7 @@
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="35dp"
-        android:background="@android:color/white"
+        android:background="@color/BW_100"
         android:orientation="vertical">
 
         <TextView
