@@ -25,6 +25,9 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.recyclerview.widget.RecyclerView;
 
+import static com.tencent.matrix.batterycanary.stats.BatteryRecord.ReportRecord.EXTRA_APP_FOREGROUND;
+import static com.tencent.matrix.batterycanary.stats.BatteryRecord.ReportRecord.EXTRA_JIFFY_OVERHEAT;
+
 /**
  * @author Kaede
  * @since 2021/12/10
@@ -115,10 +118,11 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
             public String desc;
 
             public EventDumpItem(ReportRecord record) {
-                this.millis = record.millis;
                 this.record = record;
+                this.millis = record.millis;
                 this.id = record.id;
                 this.event = record.event;
+                this.extras = record.extras;
                 this.scope = record.scope;
                 this.windowMillis = record.windowMillis;
                 this.threadInfoList = record.threadInfoList;
@@ -282,46 +286,51 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
                 mEntryViewThread.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        BatteryRecord.ReportRecord.ThreadInfo threadInfo = mItem.record.threadInfoList.get(0);
-                        if (threadInfo != null) {
-                            String status = threadInfo.stat;
-                            switch (threadInfo.stat) {
-                                case "R":
-                                    status = "Running";
-                                    break;
-                                case "S":
-                                    status = "Sleep";
-                                    break;
-                                case "D":
-                                    status = "Dead";
-                                    break;
-                                default:
-                                    break;
+                        long endMillis = mItem.record.millis;
+                        StringBuilder sb = new StringBuilder();
+                        long bgnMillis = mItem.record.millis - mItem.record.windowMillis;
+                        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
+
+                        sb.append("线程异常: ").append(mItem.record.getBoolean(EXTRA_JIFFY_OVERHEAT, false))
+                                .append("\n统计时长: ").append(Math.max((mItem.record.windowMillis) / (60 * 1000L), 1)).append("min")
+                                .append("\n时间窗口: ").append(dateFormat.format(new Date(bgnMillis))).append(" ~ ").append(dateFormat.format(new Date(endMillis)));
+
+                        for (int i = 0; i < mItem.record.threadInfoList.size(); i++) {
+                            BatteryRecord.ReportRecord.ThreadInfo threadInfo = mItem.record.threadInfoList.get(i);
+                            if (threadInfo != null) {
+                                String status = threadInfo.stat;
+                                switch (threadInfo.stat) {
+                                    case "R":
+                                        status = "Running";
+                                        break;
+                                    case "S":
+                                        status = "Sleep";
+                                        break;
+                                    case "D":
+                                        status = "Dead";
+                                        break;
+                                    default:
+                                        break;
+                                }
+                                sb.append("\n\n线程 TOP ").append(i + 1).append(":").append(threadInfo.name)
+                                        .append("\ntid: ").append(threadInfo.tid)
+                                        .append("\n状态: ").append(status)
+                                        .append("\nJiffy 开销: ").append(threadInfo.jiffies).append(", ").append(threadInfo.jiffies / Math.max(mItem.windowMillis / (60 * 1000L), 1)).append("/min")
+                                        .append("\n运行时间: ").append(Math.max((threadInfo.jiffies * 10L) / (60 * 1000L), 1)).append("min").append(", 占整体统计时间 ").append(String.format(Locale.US, "%s", (threadInfo.jiffies * 10L * 100) / mItem.windowMillis)).append("%")
+                                        .append("\nStackTrace: \n").append(threadInfo.extraInfo.get(BatteryRecord.ReportRecord.EXTRA_THREAD_STACK));
                             }
-
-                            long endMillis = mItem.record.millis;
-                            long bgnMillis = mItem.record.millis - mItem.record.windowMillis;
-                            SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
-
-                            StringBuilder sb = new StringBuilder("线程名: ").append(threadInfo.name)
-                                    .append("\ntid: ").append(threadInfo.tid)
-                                    .append("\n状态: ").append(status)
-                                    .append("\nJiffy 开销: ").append(threadInfo.jiffies).append(", ").append(threadInfo.jiffies / Math.max(mItem.windowMillis / (60 * 1000L), 1)).append("/min")
-                                    .append("\n运行时间: ").append(Math.max((threadInfo.jiffies * 10L) / (60 * 1000L), 1)).append("min").append(", 占整体统计时间 ").append(String.format(Locale.US, "%s", (threadInfo.jiffies * 10L * 100) / mItem.windowMillis)).append("%")
-                                    .append("\n统计时间: ").append(Math.max((mItem.record.windowMillis) / (60 * 1000L), 1)).append("min").append(", ").append(dateFormat.format(new Date(bgnMillis))).append(" ~ ").append(dateFormat.format(new Date(endMillis)))
-                                    .append("\n\nStackTrace: \n").append(threadInfo.extraInfo.get(BatteryRecord.ReportRecord.EXTRA_THREAD_STACK));
-
-                            View layout = LayoutInflater.from(v.getContext()).inflate(R.layout.stats_battery_report, null);
-                            TextView tv = layout.findViewById(R.id.tv_report);
-                            tv.setText(sb.toString());
-                            AlertDialog dialog = new AlertDialog.Builder(v.getContext())
-                                    .setTitle("线程异常信息")
-                                    .setPositiveButton("确定", null)
-                                    .setCancelable(true)
-                                    .setView(layout)
-                                    .create();
-                            dialog.show();
                         }
+
+                        View layout = LayoutInflater.from(v.getContext()).inflate(R.layout.stats_battery_report, null);
+                        TextView tv = layout.findViewById(R.id.tv_report);
+                        tv.setText(sb.toString());
+                        AlertDialog dialog = new AlertDialog.Builder(v.getContext())
+                                .setTitle("线程详细信息")
+                                .setPositiveButton("确定", null)
+                                .setCancelable(true)
+                                .setView(layout)
+                                .create();
+                        dialog.show();
                     }
                 });
             }
@@ -349,7 +358,7 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
                 String title = "电量报告", desc = "";
                 switch (item.record.scope) {
                     case CompositeMonitors.SCOPE_CANARY:
-                        if (item.record.getBoolean("app_fg", false)) {
+                        if (item.record.getBoolean(EXTRA_APP_FOREGROUND, false)) {
                             title += ": 前台 Polling 监控";
                             desc = "App 在前台时, 周期性地执行电量统计 (具体周期见时长)";
                         } else {
@@ -376,8 +385,10 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
                 mExpandView.setVisibility(item.expand ? View.VISIBLE : View.GONE);
                 mTitleTv.setText(title);
                 mTitleSub1.setText(sTimeFormat.format(new Date(item.millis - item.windowMillis)) + " ~ " + sTimeFormat.format(new Date(item.millis)));
-                if (item.isOverHeat()) {
+                if (item.record.isOverHeat()) {
                     mTitleSub2.setText("#OVERHEAT");
+                } else {
+                    mTitleSub2.setText("正常");
                 }
                 if (!item.expand) {
                     return;
@@ -391,7 +402,7 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
                 // Thread Entry
                 mEntryViewThread.setVisibility(!item.threadInfoList.isEmpty() ? View.VISIBLE : View.GONE);
                 if (!item.threadInfoList.isEmpty()) {
-                    boolean overHeat = item.record.getBoolean("jiffy_overheat", false);
+                    boolean overHeat = item.record.getBoolean(EXTRA_JIFFY_OVERHEAT, false);
                     TextView tvTitle = mEntryViewThread.findViewById(R.id.tv_header_left);
                     tvTitle.setTextColor(tvTitle.getResources().getColor(overHeat ? COLOR_FG_ALERT : COLOR_FG_MAIN));
 

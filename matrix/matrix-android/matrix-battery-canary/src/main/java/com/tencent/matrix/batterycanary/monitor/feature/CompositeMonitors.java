@@ -6,6 +6,7 @@ import android.text.TextUtils;
 
 import com.tencent.matrix.batterycanary.monitor.AppStats;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
+import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot.ThreadJiffiesEntry;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
@@ -155,10 +156,10 @@ public class CompositeMonitors {
             return -1;
         }
 
-        Delta<JiffiesMonitorFeature.JiffiesSnapshot> appJiffies = getDelta(JiffiesMonitorFeature.JiffiesSnapshot.class);
+        Delta<JiffiesSnapshot> appJiffies = getDelta(JiffiesSnapshot.class);
         Delta<CpuStatFeature.CpuStateSnapshot> cpuJiffies = getDelta(CpuStatFeature.CpuStateSnapshot.class);
         if (appJiffies == null) {
-            MatrixLog.w(TAG, JiffiesMonitorFeature.JiffiesSnapshot.class + " should be metrics to get CpuLoad");
+            MatrixLog.w(TAG, JiffiesSnapshot.class + " should be metrics to get CpuLoad");
             return -1;
         }
         if (cpuJiffies == null) {
@@ -170,6 +171,23 @@ public class CompositeMonitors {
         final long cpuJiffiesDelta = cpuJiffies.dlt.totalCpuJiffies();
         final float cpuLoad = cpuJiffiesDelta > 0 ? (float) appJiffiesDelta / cpuJiffiesDelta : 0;
         return (int) (cpuLoad * BatteryCanaryUtil.getCpuCoreNum() * 100);
+    }
+
+    public <T extends Snapshot<T>> boolean isOverHeat(Class<T> snapshotClass) {
+        AppStats appStats = getAppStats();
+        Delta<?> delta = getDelta(snapshotClass);
+        if (appStats == null || delta == null) {
+            return false;
+        }
+        if (snapshotClass == JiffiesSnapshot.class) {
+            //noinspection unchecked
+            Delta<JiffiesSnapshot> jiffiesDelta = (Delta<JiffiesSnapshot>) delta;
+            long minute = appStats.getMinute();
+            long avgJiffies = jiffiesDelta.dlt.totalJiffies.get() / minute;
+            return minute >= 5 && avgJiffies >= 1000;
+        }
+        // Override by child
+        return false;
     }
 
     @Nullable
@@ -214,7 +232,7 @@ public class CompositeMonitors {
 
     @CallSuper
     public CompositeMonitors metricAll() {
-        metric(JiffiesMonitorFeature.JiffiesSnapshot.class);
+        metric(JiffiesSnapshot.class);
         metric(AlarmMonitorFeature.AlarmSnapshot.class);
         metric(WakeLockMonitorFeature.WakeLockSnapshot.class);
         metric(CpuStatFeature.CpuStateSnapshot.class);
@@ -286,26 +304,29 @@ public class CompositeMonitors {
         }
         // Figure out thread' stack if need
         if (SCOPE_CANARY.equals(getScope())) {
-            // 前台 Loop or 待机功耗监控
-            getDelta(JiffiesMonitorFeature.JiffiesSnapshot.class, new Consumer<Delta<JiffiesMonitorFeature.JiffiesSnapshot>>() {
-                @Override
-                public void accept(Delta<JiffiesMonitorFeature.JiffiesSnapshot> delta) {
-                    for (ThreadJiffiesEntry threadEntry : delta.dlt.threadEntries.getList()) {
+            // 待机功耗监控
+            AppStats appStats = getAppStats();
+            if (appStats != null && !appStats.isForeground()) {
+                getDelta(JiffiesSnapshot.class, new Consumer<Delta<JiffiesSnapshot>>() {
+                    @Override
+                    public void accept(Delta<JiffiesSnapshot> delta) {
                         long minute = Math.max(1, delta.during / BatteryCanaryUtil.ONE_MIN);
                         if (minute < 5) {
-                            break;
+                            return;
                         }
-                        long topThreadAvgJiffies = threadEntry.get() / minute;
-                        if (topThreadAvgJiffies < 3000L) {
-                            break;
-                        }
-                        String stack = mMonitor.getConfig().callStackCollector.collect(threadEntry.tid);
-                        if (!TextUtils.isEmpty(stack)) {
-                            mStacks.put(String.valueOf(threadEntry.tid), stack);
+                        for (ThreadJiffiesEntry threadEntry : delta.dlt.threadEntries.getList()) {
+                            long topThreadAvgJiffies = threadEntry.get() / minute;
+                            if (topThreadAvgJiffies < 3000L) {
+                                break;
+                            }
+                            String stack = mMonitor.getConfig().callStackCollector.collect(threadEntry.tid);
+                            if (!TextUtils.isEmpty(stack)) {
+                                mStacks.put(String.valueOf(threadEntry.tid), stack);
+                            }
                         }
                     }
-                }
-            });
+                });
+            }
         }
     }
 
@@ -344,7 +365,7 @@ public class CompositeMonitors {
             }
             return snapshot;
         }
-        if (snapshotClass == JiffiesMonitorFeature.JiffiesSnapshot.class) {
+        if (snapshotClass == JiffiesSnapshot.class) {
             JiffiesMonitorFeature feature = getFeature(JiffiesMonitorFeature.class);
             if (feature != null) {
                 snapshot = feature.currentJiffiesSnapshot();

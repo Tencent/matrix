@@ -367,6 +367,10 @@ public abstract class BatteryRecord implements Parcelable {
      */
     public static class ReportRecord extends EventStatRecord implements Parcelable {
         public static final int VERSION = EventStatRecord.VERSION;
+
+        public static final String EXTRA_APP_FOREGROUND = "app_fg";
+        public static final String EXTRA_JIFFY_TOTAL = "jiffy_total";
+        public static final String EXTRA_JIFFY_OVERHEAT = "jiffy_overheat";
         public static final String EXTRA_THREAD_STACK = "extra_stack_top";
 
         public String scope;

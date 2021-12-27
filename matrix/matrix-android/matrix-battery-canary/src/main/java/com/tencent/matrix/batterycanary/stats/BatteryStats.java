@@ -93,19 +93,17 @@ public interface BatteryStats {
             statRecord.extras = new HashMap<>();
 
             if (appStats.isForeground()) {
-                statRecord.extras.put("app_fg", true);
+                statRecord.extras.put(BatteryRecord.ReportRecord.EXTRA_APP_FOREGROUND, true);
             }
 
             // Thread Entry
             final Delta<JiffiesSnapshot> jiffiesDelta = monitors.getDelta(JiffiesSnapshot.class);
             if (jiffiesDelta != null) {
-
                 long appJiffiesDelta = jiffiesDelta.dlt.totalJiffies.get();
-                statRecord.extras.put("jiffy_total", appJiffiesDelta);
-                long avgJiffies = appJiffiesDelta / minute;
-                if (!fg && minute >= 10 & avgJiffies >= 1000) {
+                statRecord.extras.put(BatteryRecord.ReportRecord.EXTRA_JIFFY_TOTAL, appJiffiesDelta);
+                if (!fg && monitors.isOverHeat(JiffiesSnapshot.class)) {
                     // Jiffies overheat
-                    statRecord.extras.put("jiffy_overheat", true);
+                    statRecord.extras.put(BatteryRecord.ReportRecord.EXTRA_JIFFY_OVERHEAT, true);
                 }
 
                 statRecord.threadInfoList = new ArrayList<>();
