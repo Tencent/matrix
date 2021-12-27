@@ -12,6 +12,7 @@
         android:layout_height="wrap_content"
         android:layout_alignParentLeft="true"
         android:text="Entry Title"
+        android:textColor="@color/FG_2"
         android:textSize="12sp" />
 
     <TextView
@@ -21,6 +22,7 @@
         android:layout_alignParentRight="true"
         android:gravity="right"
         android:text="DESC"
+        android:textColor="@color/FG_2"
         android:textSize="12sp"
         android:visibility="gone" />
 
@@ -49,6 +51,6 @@
         android:layout_height="1px"
         android:layout_below="@+id/layout_entry_group"
         android:layout_marginTop="12dp"
-        android:background="#000" />
+        android:background="@color/BW_70" />
 
 </RelativeLayout>

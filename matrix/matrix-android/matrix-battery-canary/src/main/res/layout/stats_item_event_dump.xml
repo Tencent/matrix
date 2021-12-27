@@ -11,10 +11,10 @@
 
         <!-- BG TimeLine  -->
         <RelativeLayout
-            android:layout_marginLeft="60dp"
             android:layout_width="40dp"
             android:layout_height="match_parent"
-            android:layout_centerVertical="true">
+            android:layout_centerVertical="true"
+            android:layout_marginLeft="60dp">
 
             <View
                 android:layout_width="1px"
@@ -69,35 +69,39 @@
             tools:background="#4000">
 
             <TextView
-                android:layout_centerVertical="true"
                 android:id="@+id/tv_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_centerVertical="true"
                 android:text="电量报告"
                 android:textColor="@color/FG_0"
                 android:textStyle="normal|bold" />
 
             <LinearLayout
-                android:layout_centerVertical="true"
-                android:orientation="vertical"
-                android:layout_alignParentRight="true"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content">
+                android:layout_height="wrap_content"
+                android:layout_alignParentRight="true"
+                android:layout_centerVertical="true"
+                android:orientation="vertical">
+
                 <TextView
-                    android:layout_gravity="right"
-                    android:text="10:00 - 14:00"
-                    android:textSize="10sp"
                     android:id="@+id/tv_title_sub_1"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textStyle="normal" />
-                <TextView
                     android:layout_gravity="right"
-                    android:text="正常"
+                    android:text="10:00 - 14:00"
+                    android:textColor="@color/FG_2"
                     android:textSize="10sp"
+                    android:textStyle="normal" />
+
+                <TextView
                     android:id="@+id/tv_title_sub_2"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_gravity="right"
+                    android:text="正常"
+                    android:textColor="@color/FG_2"
+                    android:textSize="10sp"
                     android:textStyle="normal" />
             </LinearLayout>
         </RelativeLayout>
@@ -105,11 +109,11 @@
 
         <!--  Right  -->
         <RelativeLayout
-            android:background="?attr/selectableItemBackground"
             android:id="@+id/layout_right"
             android:layout_width="50dp"
             android:layout_height="45dp"
             android:layout_alignParentRight="true"
+            android:background="?attr/selectableItemBackground"
             tools:background="#6000">
 
             <TextView
@@ -117,21 +121,21 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_centerInParent="true"
-                android:textSize="12sp"
-                android:text="△" />
+                android:text="△"
+                android:textSize="12sp" />
         </RelativeLayout>
 
 
         <!--  Expand  -->
         <RelativeLayout
             android:id="@+id/layout_expand"
-            android:visibility="gone"
-            tools:visibility="visible"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_below="@+id/layout_title"
             android:layout_marginLeft="60dp"
-            android:layout_marginRight="50dp">
+            android:layout_marginRight="50dp"
+            android:visibility="gone"
+            tools:visibility="visible">
 
             <RelativeLayout
                 android:id="@+id/layout_timeline_expand"
@@ -143,15 +147,15 @@
                     android:layout_width="1px"
                     android:layout_height="match_parent"
                     android:layout_centerInParent="true"
-                    android:background="#000" />
+                    android:background="@color/BW_70" />
             </RelativeLayout>
 
             <LinearLayout
-                android:visibility="visible"
                 android:id="@+id/layout_expand_entry_header"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_toRightOf="@+id/layout_timeline_expand"
+                android:visibility="visible"
                 tools:background="#2000">
 
                 <include layout="@layout/stats_item_event_dump_entry_header" />
@@ -159,70 +163,71 @@
             </LinearLayout>
 
             <LinearLayout
-                android:visibility="gone"
-                tools:visibility="visible"
                 android:id="@+id/layout_expand_entry_thread"
-                android:layout_below="@+id/layout_expand_entry_header"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_below="@+id/layout_expand_entry_header"
                 android:layout_toRightOf="@+id/layout_timeline_expand"
-                tools:background="#2000">
+                android:background="?attr/selectableItemBackground"
+                android:visibility="gone"
+                tools:background="#2000"
+                tools:visibility="visible">
 
                 <include layout="@layout/stats_item_event_dump_entry_thread" />
 
             </LinearLayout>
 
             <LinearLayout
-                android:visibility="gone"
-                tools:visibility="visible"
                 android:id="@+id/layout_expand_entry_1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
                 android:layout_below="@+id/layout_expand_entry_thread"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
                 android:layout_toRightOf="@+id/layout_timeline_expand"
-                tools:background="#2000">
+                android:visibility="gone"
+                tools:background="#2000"
+                tools:visibility="visible">
 
                 <include layout="@layout/stats_item_event_dump_entry_general" />
 
             </LinearLayout>
 
             <LinearLayout
-                android:visibility="gone"
-                tools:visibility="visible"
                 android:id="@+id/layout_expand_entry_2"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
                 android:layout_below="@+id/layout_expand_entry_1"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
                 android:layout_toRightOf="@+id/layout_timeline_expand"
-                tools:background="#2000">
+                android:visibility="gone"
+                tools:background="#2000"
+                tools:visibility="visible">
 
                 <include layout="@layout/stats_item_event_dump_entry_general" />
 
             </LinearLayout>
 
             <LinearLayout
-                android:visibility="gone"
-                tools:visibility="visible"
                 android:id="@+id/layout_expand_entry_3"
-                android:layout_below="@+id/layout_expand_entry_2"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_below="@+id/layout_expand_entry_2"
                 android:layout_toRightOf="@+id/layout_timeline_expand"
-                tools:background="#2000">
+                android:visibility="gone"
+                tools:background="#2000"
+                tools:visibility="visible">
 
                 <include layout="@layout/stats_item_event_dump_entry_general" />
 
             </LinearLayout>
 
             <LinearLayout
-                android:visibility="gone"
-                tools:visibility="visible"
                 android:id="@+id/layout_expand_entry_4"
-                android:layout_below="@+id/layout_expand_entry_3"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_below="@+id/layout_expand_entry_3"
                 android:layout_toRightOf="@+id/layout_timeline_expand"
-                tools:background="#2000">
+                android:visibility="gone"
+                tools:background="#2000"
+                tools:visibility="visible">
 
                 <include layout="@layout/stats_item_event_dump_entry_general" />
 

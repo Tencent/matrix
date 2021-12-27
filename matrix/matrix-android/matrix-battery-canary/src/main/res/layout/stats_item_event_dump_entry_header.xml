@@ -11,6 +11,7 @@
         android:layout_height="wrap_content"
         android:layout_alignParentLeft="true"
         android:text="模式: 后台监控"
+        android:textColor="@color/FG_2"
         android:textSize="12sp" />
 
     <TextView
@@ -20,6 +21,7 @@
         android:layout_alignParentRight="true"
         android:gravity="right"
         android:text="时长: 60min"
+        android:textColor="@color/FG_2"
         android:textSize="12sp" />
 
     <TextView
@@ -32,6 +34,7 @@
         android:ellipsize="end"
         android:maxLines="2"
         android:text="App 进入后台一段时间后，dump 还在活跃的线程 Stacktraces"
+        android:textColor="@color/FG_2"
         android:textSize="10sp" />
 
     <View
@@ -39,7 +42,7 @@
         android:layout_height="1px"
         android:layout_below="@+id/tv_desc"
         android:layout_marginTop="12dp"
-        android:background="#000">
+        android:background="@color/BW_70">
 
     </View>
 

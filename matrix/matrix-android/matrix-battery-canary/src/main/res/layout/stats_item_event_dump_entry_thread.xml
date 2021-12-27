@@ -12,6 +12,7 @@
         android:layout_height="wrap_content"
         android:layout_alignParentLeft="true"
         android:text="线程开销"
+        android:textColor="@color/FG_2"
         android:textSize="12sp" />
 
     <TextView
@@ -21,6 +22,7 @@
         android:layout_alignParentRight="true"
         android:gravity="right"
         android:text="tid / 运行时间 / 线程状态"
+        android:textColor="@color/FG_2"
         android:textSize="12sp" />
 
     <LinearLayout
@@ -56,6 +58,7 @@
             android:layout_alignParentLeft="true"
             android:gravity="center"
             android:text="..."
+            android:textColor="@color/FG_2"
             android:textSize="10sp" />
 
 
@@ -66,6 +69,6 @@
         android:layout_height="1px"
         android:layout_below="@+id/layout_entry_more"
         android:layout_marginTop="12dp"
-        android:background="#000" />
+        android:background="@color/BW_70" />
 
 </RelativeLayout>

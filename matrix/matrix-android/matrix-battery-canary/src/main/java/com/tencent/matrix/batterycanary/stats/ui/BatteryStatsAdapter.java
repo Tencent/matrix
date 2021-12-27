@@ -184,9 +184,9 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
 
 
     public abstract static class ViewHolder<ITEM extends Item> extends RecyclerView.ViewHolder {
-        static final int COLOR_FG_MAIN = R.color.FG_0;
-        static final int COLOR_FG_SUB = R.color.FG_2;
-        static final int COLOR_FG_ALERT = R.color.Red_80_CARE;
+        public static final int COLOR_FG_MAIN = R.color.FG_0;
+        public static final int COLOR_FG_SUB = R.color.FG_2;
+        public static final int COLOR_FG_ALERT = R.color.Red_80_CARE;
         protected static DateFormat sTimeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
 
         @SuppressWarnings("NotNullFieldNotInitialized")
@@ -404,7 +404,7 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
                 if (!item.threadInfoList.isEmpty()) {
                     boolean overHeat = item.record.getBoolean(EXTRA_JIFFY_OVERHEAT, false);
                     TextView tvTitle = mEntryViewThread.findViewById(R.id.tv_header_left);
-                    tvTitle.setTextColor(tvTitle.getResources().getColor(overHeat ? COLOR_FG_ALERT : COLOR_FG_MAIN));
+                    tvTitle.setTextColor(tvTitle.getResources().getColor(overHeat ? COLOR_FG_ALERT : COLOR_FG_SUB));
 
                     LinearLayout entryGroup = mEntryViewThread.findViewById(R.id.layout_entry_group);
                     int reusableCount = entryGroup.getChildCount();
