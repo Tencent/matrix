@@ -235,8 +235,8 @@ public class BatteryStatsLoader {
         }
 
         if (record instanceof BatteryRecord.EventStatRecord) {
-            BatteryStatsAdapter.Item.EventLevel2Item eventItem = new BatteryStatsAdapter.Item.EventLevel2Item(record);
-            eventItem.text = "EVENT: " + ((BatteryRecord.EventStatRecord) record).event;
+            BatteryStatsAdapter.Item.EventSimpleItem eventItem = new BatteryStatsAdapter.Item.EventSimpleItem((BatteryRecord.EventStatRecord) record);
+            eventItem.event = ((BatteryRecord.EventStatRecord) record).event;
             return eventItem;
         }
 

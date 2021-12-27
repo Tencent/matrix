@@ -35,8 +35,9 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
     public static final int VIEW_TYPE_EVENT_LEVEL_1 = 2;
     public static final int VIEW_TYPE_EVENT_LEVEL_2 = 3;
     public static final int VIEW_TYPE_NO_DATA = 4;
+    public static final int VIEW_TYPE_EVENT_SIMPLE = 5;
 
-    final List<Item> dataList = new ArrayList<>();
+    protected final List<Item> dataList = new ArrayList<>();
 
     public List<Item> getDataList() {
         return dataList;
@@ -52,6 +53,8 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
                 return new ViewHolder.NoDataHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.stats_item_no_data, parent, false));
             case VIEW_TYPE_EVENT_DUMP:
                 return new ViewHolder.EventDumpHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.stats_item_event_dump, parent, false));
+            case VIEW_TYPE_EVENT_SIMPLE:
+                return new ViewHolder.EventSimpleHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.stats_item_event_simple, parent, false));
             case VIEW_TYPE_EVENT_LEVEL_1:
                 return new ViewHolder.EventLevel1Holder(LayoutInflater.from(parent.getContext()).inflate(R.layout.stats_item_event_1, parent, false));
             case VIEW_TYPE_EVENT_LEVEL_2:
@@ -106,7 +109,7 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
         }
 
         class EventDumpItem extends BatteryRecord.ReportRecord implements Item {
-            protected final ReportRecord record;
+            public final ReportRecord record;
             public boolean expand = false;
             public String desc;
 
@@ -124,6 +127,24 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
             @Override
             public int viewType() {
                 return VIEW_TYPE_EVENT_DUMP;
+            }
+        }
+
+        class EventSimpleItem extends BatteryRecord.EventStatRecord implements Item {
+            public final EventStatRecord record;
+            public boolean expand = false;
+            public String desc;
+
+            public EventSimpleItem(EventStatRecord record) {
+                this.millis = record.millis;
+                this.record = record;
+                this.id = record.id;
+                this.event = record.event;
+            }
+
+            @Override
+            public int viewType() {
+                return VIEW_TYPE_EVENT_SIMPLE;
             }
         }
 
@@ -158,11 +179,14 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
 
 
     public abstract static class ViewHolder<ITEM extends Item> extends RecyclerView.ViewHolder {
-        static DateFormat sTimeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
+        static final int COLOR_FG_MAIN = R.color.FG_0;
+        static final int COLOR_FG_SUB = R.color.FG_2;
+        static final int COLOR_FG_ALERT = R.color.Red_80_CARE;
+        protected static DateFormat sTimeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
 
         @SuppressWarnings("NotNullFieldNotInitialized")
         @NonNull
-        ITEM mItem;
+        protected ITEM mItem;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -331,6 +355,10 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
                 // Thread Entry
                 mEntryViewThread.setVisibility(!item.threadInfoList.isEmpty() ? View.VISIBLE : View.GONE);
                 if (!item.threadInfoList.isEmpty()) {
+                    boolean overHeat = item.record.getBoolean("jiffy_overheat", false);
+                    TextView tvTitle = mEntryViewThread.findViewById(R.id.tv_header_left);
+                    tvTitle.setTextColor(tvTitle.getResources().getColor(overHeat ? COLOR_FG_ALERT : COLOR_FG_MAIN));
+
                     LinearLayout entryGroup = mEntryViewThread.findViewById(R.id.layout_entry_group);
                     int reusableCount = entryGroup.getChildCount();
                     for (int i = 0; i < reusableCount; i++) {
@@ -463,6 +491,44 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
                 mItem = item;
                 mTimeTv.setText(sTimeFormat.format(new Date(item.millis)));
                 mTitleTv.setText(item.text);
+            }
+        }
+
+        public static class EventSimpleHolder extends ViewHolder<Item.EventSimpleItem> implements View.OnClickListener {
+
+            private final TextView mTimeTv;
+            private final TextView mTitleTv;
+
+            public EventSimpleHolder(@NonNull View itemView) {
+                super(itemView);
+                mTimeTv = itemView.findViewById(R.id.tv_time);
+                mTitleTv = itemView.findViewById(R.id.tv_title);
+                itemView.findViewById(R.id.layout_title).setOnClickListener(this);
+            }
+
+            @Override
+            public void bind(Item.EventSimpleItem item) {
+                mItem = item;
+                mTimeTv.setText(sTimeFormat.format(new Date(item.millis)));
+                mTitleTv.setText(item.event);
+            }
+
+            @Override
+            public void onClick(View v) {
+                View layout = LayoutInflater.from(v.getContext()).inflate(R.layout.stats_battery_report, null);
+                TextView tv = layout.findViewById(R.id.tv_report);
+                tv.setText(getDetailInfo());
+                AlertDialog dialog = new AlertDialog.Builder(v.getContext())
+                        .setTitle(mItem.event)
+                        .setPositiveButton("确定", null)
+                        .setCancelable(true)
+                        .setView(layout)
+                        .create();
+                dialog.show();
+            }
+
+            protected String getDetailInfo() {
+                return mItem.record.extras.toString();
             }
         }
     }

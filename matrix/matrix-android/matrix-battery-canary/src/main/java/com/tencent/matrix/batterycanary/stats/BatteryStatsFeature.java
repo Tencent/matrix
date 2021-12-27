@@ -17,6 +17,7 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 import androidx.annotation.VisibleForTesting;
@@ -185,8 +186,12 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
     }
 
     public void statsEvent(String event, int eventId) {
+        statsEvent(event, eventId, Collections.<String, Object>emptyMap());
+    }
+
+    public void statsEvent(String event, int eventId, Map<String, Object> extras) {
         if (mBatteryStats != null) {
-            writeRecord(mBatteryStats.statsEvent(event, eventId));
+            writeRecord(mBatteryStats.statsEvent(event, eventId, extras));
         }
     }
 
