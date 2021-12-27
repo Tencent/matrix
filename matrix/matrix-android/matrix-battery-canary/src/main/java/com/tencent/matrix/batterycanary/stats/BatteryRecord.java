@@ -308,6 +308,23 @@ public abstract class BatteryRecord implements Parcelable {
             }
         }
 
+        public String getString(String key) {
+            if (extras.containsKey(key)) {
+                return String.valueOf(extras.get(key));
+            }
+            return "";
+        }
+
+        public boolean getBoolean(String key, boolean def) {
+            if (extras.containsKey(key)) {
+                try {
+                    return Boolean.parseBoolean(String.valueOf(extras.get(key)));
+                } catch (Exception ignored) {
+                }
+            }
+            return def;
+        }
+
         public static final Creator<EventStatRecord> CREATOR = new Creator<EventStatRecord>() {
             @Override
             public EventStatRecord createFromParcel(Parcel in) {
@@ -367,6 +384,17 @@ public abstract class BatteryRecord implements Parcelable {
             windowMillis = in.readLong();
             threadInfoList = in.createTypedArrayList(ReportRecord.ThreadInfo.CREATOR);
             entryList = in.createTypedArrayList(ReportRecord.EntryInfo.CREATOR);
+        }
+
+        public boolean isOverHeat() {
+            for (String item : extras.keySet()) {
+                if (item.endsWith("_overheat")) {
+                    if (getBoolean(item, false)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
         }
 
         public static final Creator<ReportRecord> CREATOR = new Creator<ReportRecord>() {

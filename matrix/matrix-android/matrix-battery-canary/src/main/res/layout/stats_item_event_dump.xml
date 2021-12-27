@@ -57,7 +57,7 @@
 
 
         <!--  Title  -->
-        <LinearLayout
+        <RelativeLayout
             android:id="@+id/layout_title"
             android:layout_width="match_parent"
             android:layout_height="45dp"
@@ -69,13 +69,38 @@
             tools:background="#4000">
 
             <TextView
+                android:layout_centerVertical="true"
                 android:id="@+id/tv_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="电量报告"
                 android:textColor="@color/FG_0"
                 android:textStyle="normal|bold" />
-        </LinearLayout>
+
+            <LinearLayout
+                android:layout_centerVertical="true"
+                android:orientation="vertical"
+                android:layout_alignParentRight="true"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content">
+                <TextView
+                    android:layout_gravity="right"
+                    android:text="10:00 - 14:00"
+                    android:textSize="10sp"
+                    android:id="@+id/tv_title_sub_1"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textStyle="normal" />
+                <TextView
+                    android:layout_gravity="right"
+                    android:text="正常"
+                    android:textSize="10sp"
+                    android:id="@+id/tv_title_sub_2"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textStyle="normal" />
+            </LinearLayout>
+        </RelativeLayout>
 
 
         <!--  Right  -->

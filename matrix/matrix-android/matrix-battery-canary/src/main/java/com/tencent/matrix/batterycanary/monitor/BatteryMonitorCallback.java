@@ -78,7 +78,7 @@ public interface BatteryMonitorCallback extends
         @VisibleForTesting
         public BatteryPrinter attach(BatteryMonitorCore monitorCore) {
             mMonitor = monitorCore;
-            mCompositeMonitors = new CompositeMonitors(monitorCore);
+            mCompositeMonitors = new CompositeMonitors(monitorCore, CompositeMonitors.SCOPE_CANARY);
             mCompositeMonitors.metricAll();
             return this;
         }
@@ -114,7 +114,7 @@ public interface BatteryMonitorCallback extends
 
         @Override
         public void onReportInternalJiffies(Delta<TaskJiffiesSnapshot> delta) {
-            CompositeMonitors monitors = new CompositeMonitors(mMonitor);
+            CompositeMonitors monitors = new CompositeMonitors(mMonitor, CompositeMonitors.SCOPE_INTERNAL);
             monitors.setAppStats(AppStats.current(delta.during));
             monitors.putDelta(InternalMonitorFeature.InternalSnapshot.class, delta);
             onCanaryReport(monitors);

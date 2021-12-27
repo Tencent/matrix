@@ -10,6 +10,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.tencent.matrix.batterycanary.R;
+import com.tencent.matrix.batterycanary.monitor.feature.CompositeMonitors;
 import com.tencent.matrix.batterycanary.stats.BatteryRecord;
 
 import java.text.DateFormat;
@@ -232,6 +233,8 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
 
             private final TextView mTimeTv;
             private final TextView mTitleTv;
+            private final TextView mTitleSub1;
+            private final TextView mTitleSub2;
             private final TextView mMoreTv;
             private final View mExpandView;
 
@@ -250,6 +253,8 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
                 super(itemView);
                 mTimeTv = itemView.findViewById(R.id.tv_time);
                 mTitleTv = itemView.findViewById(R.id.tv_title);
+                mTitleSub1 = itemView.findViewById(R.id.tv_title_sub_1);
+                mTitleSub2 = itemView.findViewById(R.id.tv_title_sub_2);
                 mMoreTv = itemView.findViewById(R.id.tv_more);
                 mExpandView = itemView.findViewById(R.id.layout_expand);
 
@@ -340,9 +345,40 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
 
             @SuppressLint({"SetTextI18n", "CutPasteId"})
             private void updateView(Item.EventDumpItem item) {
+                // Basic
+                String title = "电量报告", desc = "";
+                switch (item.record.scope) {
+                    case CompositeMonitors.SCOPE_CANARY:
+                        if (item.record.getBoolean("app_fg", false)) {
+                            title += ": 前台 Polling 监控";
+                            desc = "App 在前台时, 周期性地执行电量统计 (具体周期见时长)";
+                        } else {
+                            title += ": 待机功耗监控";
+                            desc = "App 进入后台并持续一段时间后 (待机), 再次切换到前台时执行一次电量统计。";
+                        }
+                        break;
+                    case CompositeMonitors.SCOPE_INTERNAL:
+                        title += ": Matrix 内部监控";
+                        desc = "Matrix 自身电量开销的监控, 避免电量监控框架自身导致的耗电问题";
+                        break;
+                    case CompositeMonitors.SCOPE_OVERHEAT:
+                        title += ": Runnable 任务监控";
+                        desc = "ThreadPool 等需要执行大量零碎 Runnable 的专项电量统计。";
+                        break;
+                    default:
+                        title += ": " + item.record.scope;
+                        desc = "缺乏描述";
+                        break;
+                }
+
                 mTimeTv.setText(sTimeFormat.format(new Date(item.millis)));
                 mMoreTv.setText(item.expand ? "▼" : "▲");
                 mExpandView.setVisibility(item.expand ? View.VISIBLE : View.GONE);
+                mTitleTv.setText(title);
+                mTitleSub1.setText(sTimeFormat.format(new Date(item.millis - item.windowMillis)) + " ~ " + sTimeFormat.format(new Date(item.millis)));
+                if (item.isOverHeat()) {
+                    mTitleSub2.setText("#OVERHEAT");
+                }
                 if (!item.expand) {
                     return;
                 }
@@ -350,7 +386,7 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
                 // Header
                 mHeaderLeftTv.setText("模式: " + item.scope);
                 mHeaderRightTv.setText("时长: " + Math.max(1, (item.windowMillis) / (60 * 1000L)) + "min");
-                mHeaderDescTv.setText(item.desc);
+                mHeaderDescTv.setText(TextUtils.isEmpty(item.desc) ? desc : item.desc);
 
                 // Thread Entry
                 mEntryViewThread.setVisibility(!item.threadInfoList.isEmpty() ? View.VISIBLE : View.GONE);
