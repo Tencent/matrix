@@ -17,7 +17,7 @@
             android:layout_height="wrap_content"
             android:layout_gravity="right"
             android:layout_marginRight="15dp"
-            android:background="#3000"
+            android:background="@color/BW_BG_5A"
             android:gravity="center"
             android:paddingLeft="5dp"
             android:paddingRight="5dp"
@@ -26,7 +26,8 @@
 
     <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        android:background="@color/BG_0">
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rv_battery_stats"
@@ -34,13 +35,13 @@
             android:layout_height="match_parent" />
 
         <LinearLayout
-            android:elevation="3dp"
-            android:background="#fff"
             android:id="@+id/header_pinned"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:elevation="3dp"
             android:orientation="vertical"
             android:visibility="visible"
+            tools:background="#fff"
             tools:visibility="visible">
 
             <include layout="@layout/stats_item_header" />

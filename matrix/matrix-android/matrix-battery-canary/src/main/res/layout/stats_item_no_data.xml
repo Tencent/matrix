@@ -54,7 +54,7 @@
                 android:layout_height="1px"
                 android:layout_centerVertical="true"
                 android:layout_marginRight="10dp"
-                android:background="#0000" />
+                android:background="@color/transparent" />
 
 
             <TextView

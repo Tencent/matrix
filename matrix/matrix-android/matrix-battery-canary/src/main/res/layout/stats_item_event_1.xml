@@ -37,7 +37,7 @@
                 android:layout_centerVertical="true"
                 android:gravity="right"
                 android:text="20:00"
-                android:textColor="@color/BW_70" />
+                android:textColor="@color/FG_2" />
 
             <RelativeLayout
                 android:id="@+id/layout_timeline"
