@@ -106,7 +106,7 @@ public interface BatteryRecorder {
                 return Collections.emptyList();
             }
             List<BatteryRecord> records = new ArrayList<>(Math.min(16, keys.length));
-            String keyPrefix = getRecordKeyPrefix(date, proc);
+            String keyPrefix = getRecordKeyPrefix(date, proc) + "-";
             for (String item : keys) {
                 if (item.startsWith(keyPrefix)) {
                     try {
