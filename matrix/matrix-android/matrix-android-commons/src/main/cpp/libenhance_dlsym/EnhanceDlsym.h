@@ -52,10 +52,10 @@ namespace enhance {
         ElfW(Ehdr) *ehdr; // pointing to loaded mem
         ElfW(Phdr) *phdr; // pointing to loaded mem
 
-        char *strtab; // strtab
+        char *strtab = nullptr; // strtab
         ElfW(Word) strtab_size; // size in bytes
 
-        ElfW(Sym)  *symtab;
+        ElfW(Sym)  *symtab = nullptr;
         ElfW(Word) symtab_num;
 
     };
