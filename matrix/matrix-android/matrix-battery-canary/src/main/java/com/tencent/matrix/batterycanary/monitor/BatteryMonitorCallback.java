@@ -101,7 +101,7 @@ public interface BatteryMonitorCallback extends
         }
 
         @Override
-        public void onTraceEnd(boolean isForeground) {
+        public void onTraceEnd(final boolean isForeground) {
             mIsForeground = isForeground;
             long duringMillis = SystemClock.uptimeMillis() - mTraceBgnMillis;
             if (mTraceBgnMillis <= 0L || duringMillis <= 0L) {
@@ -109,6 +109,12 @@ public interface BatteryMonitorCallback extends
                 return;
             }
             mCompositeMonitors.finish();
+            mCompositeMonitors.getAppStats(new Consumer<AppStats>() {
+                @Override
+                public void accept(AppStats appStats) {
+                    appStats.setForeground(isForeground);
+                }
+            });
             onCanaryDump(mCompositeMonitors);
         }
 
