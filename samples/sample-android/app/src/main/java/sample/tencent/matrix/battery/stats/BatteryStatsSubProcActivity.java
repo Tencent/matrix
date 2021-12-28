@@ -17,7 +17,9 @@ import com.tencent.matrix.batterycanary.stats.ui.BatteryStatsAdapter.Item.Header
 import com.tencent.matrix.batterycanary.utils.Consumer;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -128,7 +130,7 @@ public class BatteryStatsSubProcActivity extends AppCompatActivity {
         mStatsLoader.load();
 
         // load mocking data
-        // loadMockingData();
+        loadMockingData();
     }
 
     private void updateHeader(final int topPosition) {
@@ -200,6 +202,16 @@ public class BatteryStatsSubProcActivity extends AppCompatActivity {
             reportRecord.entryList.add(entryInfo);
         }
         records.add(reportRecord);
+
+        Map<String, Object> extras = new HashMap<>();
+        extras.put("String", "String");
+        extras.put("Digit", 10086L);
+        extras.put("Boolean", true);
+        BatteryRecord.EventStatRecord eventStatRecord = new BatteryRecord.EventStatRecord();
+        eventStatRecord.event = "Custom Event";
+        eventStatRecord.id = 100;
+        eventStatRecord.extras = extras;
+        records.add(eventStatRecord);
 
         BatteryStatsFeature.BatteryRecords batteryRecords = new BatteryStatsFeature.BatteryRecords();
         batteryRecords.date = BatteryStatsFeature.getDateString(0);

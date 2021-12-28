@@ -78,7 +78,7 @@ public interface BatteryMonitorCallback extends
         @VisibleForTesting
         public BatteryPrinter attach(BatteryMonitorCore monitorCore) {
             mMonitor = monitorCore;
-            mCompositeMonitors = new CompositeMonitors(monitorCore);
+            mCompositeMonitors = new CompositeMonitors(monitorCore, CompositeMonitors.SCOPE_CANARY);
             mCompositeMonitors.metricAll();
             return this;
         }
@@ -101,7 +101,7 @@ public interface BatteryMonitorCallback extends
         }
 
         @Override
-        public void onTraceEnd(boolean isForeground) {
+        public void onTraceEnd(final boolean isForeground) {
             mIsForeground = isForeground;
             long duringMillis = SystemClock.uptimeMillis() - mTraceBgnMillis;
             if (mTraceBgnMillis <= 0L || duringMillis <= 0L) {
@@ -109,12 +109,18 @@ public interface BatteryMonitorCallback extends
                 return;
             }
             mCompositeMonitors.finish();
+            mCompositeMonitors.getAppStats(new Consumer<AppStats>() {
+                @Override
+                public void accept(AppStats appStats) {
+                    appStats.setForeground(isForeground);
+                }
+            });
             onCanaryDump(mCompositeMonitors);
         }
 
         @Override
         public void onReportInternalJiffies(Delta<TaskJiffiesSnapshot> delta) {
-            CompositeMonitors monitors = new CompositeMonitors(mMonitor);
+            CompositeMonitors monitors = new CompositeMonitors(mMonitor, CompositeMonitors.SCOPE_INTERNAL);
             monitors.setAppStats(AppStats.current(delta.during));
             monitors.putDelta(InternalMonitorFeature.InternalSnapshot.class, delta);
             onCanaryReport(monitors);

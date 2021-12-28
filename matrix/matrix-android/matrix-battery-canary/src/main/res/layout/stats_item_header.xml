@@ -7,13 +7,12 @@
     tools:background="#000">
 
     <RelativeLayout
-        android:orientation="vertical"
         android:layout_width="match_parent"
         android:layout_height="35dp"
-        android:background="@android:color/white">
+        android:background="@color/BW_100"
+        android:orientation="vertical">
 
         <TextView
-            android:textColor="@color/FG_0"
             android:id="@+id/tv_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -21,6 +20,7 @@
             android:layout_gravity="center"
             android:layout_marginLeft="60dp"
             android:text="2021-11-30"
+            android:textColor="@color/FG_0"
             android:textSize="14sp" />
 
     </RelativeLayout>

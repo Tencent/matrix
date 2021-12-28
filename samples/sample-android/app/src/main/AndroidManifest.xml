@@ -1,6 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
 
-          package="sample.tencent.matrix">
+    package="sample.tencent.matrix">
 
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
@@ -40,11 +41,18 @@
         <activity android:name=".sqlitelint.TestSQLiteLintActivity" />
         <activity android:name=".battery.TestBatteryActivity" />
         <activity android:name=".hooks.TestHooksActivity" />
+
         <activity
-            android:theme="@style/Theme.AppCompat.Light.NoActionBar"
             android:name=".battery.stats.BatteryStatsSubProcActivity"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:exported="true"
             android:process=":sub"
-            android:exported="true" />
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
+        <activity
+            android:name="com.tencent.matrix.batterycanary.stats.ui.BatteryStatsActivity"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar"
+            tools:node="replace" />
 
         <service android:name=".hooks.OtherProcessService" android:process=":other"/>
     </application>

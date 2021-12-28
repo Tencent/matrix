@@ -17,11 +17,7 @@
 package com.tencent.matrix.batterycanary.stats;
 
 import android.app.Application;
-import android.app.Service;
 import android.content.Context;
-import android.content.Intent;
-import android.os.Debug;
-import android.os.IBinder;
 import android.os.Process;
 import android.os.SystemClock;
 import android.util.ArrayMap;
@@ -40,13 +36,10 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import androidx.annotation.Nullable;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
@@ -175,6 +168,98 @@ public class BatteryRecorderTest {
         Assert.assertTrue(recorder.read(date, "main").isEmpty());
 
         mmkv.clearAll();
+    }
+
+    @Test
+    public void testCleanByDayLimit() {
+        BatteryMonitorConfig config = new BatteryMonitorConfig.Builder().enable(JiffiesMonitorFeature.class).build();
+        BatteryMonitorCore core = new BatteryMonitorCore(config);
+        core.start();
+        BatteryMonitorPlugin plugin = new BatteryMonitorPlugin(config);
+        Matrix.with().getPlugins().add(plugin);
+
+        MMKV mmkv = MMKV.defaultMMKV();
+        mmkv.clearAll();
+        BatteryRecorder.MMKVRecorder recorder = new BatteryRecorder.MMKVRecorder(mmkv);
+        Assert.assertTrue(recorder.getProcSet().isEmpty());
+
+        int dayLimit = 7;
+        BatteryRecord.EventStatRecord record = new BatteryRecord.EventStatRecord();
+        record.id = 22;
+        record.event = "KEEP";
+        recorder.write(BatteryRecorder.MMKVRecorder.getDateString(0), record);
+        recorder.write(BatteryRecorder.MMKVRecorder.getDateString(-dayLimit + 1), record);
+        record.event = "EXPIRED";
+        recorder.write(BatteryRecorder.MMKVRecorder.getDateString(-dayLimit), record);
+        recorder.flush();
+
+        List<BatteryRecord> records = recorder.read(BatteryRecorder.MMKVRecorder.getDateString(0), "main");
+        Assert.assertEquals(1, records.size());
+        Assert.assertTrue(records.get(0) instanceof BatteryRecord.EventStatRecord);
+        Assert.assertEquals(22, ((BatteryRecord.EventStatRecord) records.get(0)).id);
+        Assert.assertEquals("KEEP", ((BatteryRecord.EventStatRecord) records.get(0)).event);
+
+        records = recorder.read(BatteryRecorder.MMKVRecorder.getDateString(-dayLimit + 1), "main");
+        Assert.assertEquals(1, records.size());
+        Assert.assertTrue(records.get(0) instanceof BatteryRecord.EventStatRecord);
+        Assert.assertEquals(22, ((BatteryRecord.EventStatRecord) records.get(0)).id);
+        Assert.assertEquals("KEEP", ((BatteryRecord.EventStatRecord) records.get(0)).event);
+
+        records = recorder.read(BatteryRecorder.MMKVRecorder.getDateString(-dayLimit), "main");
+        Assert.assertEquals(1, records.size());
+        Assert.assertTrue(records.get(0) instanceof BatteryRecord.EventStatRecord);
+        Assert.assertEquals(22, ((BatteryRecord.EventStatRecord) records.get(0)).id);
+        Assert.assertEquals("EXPIRED", ((BatteryRecord.EventStatRecord) records.get(0)).event);
+
+        recorder.clean(dayLimit + 1);
+
+        records = recorder.read(BatteryRecorder.MMKVRecorder.getDateString(0), "main");
+        Assert.assertEquals(1, records.size());
+        Assert.assertTrue(records.get(0) instanceof BatteryRecord.EventStatRecord);
+        Assert.assertEquals(22, ((BatteryRecord.EventStatRecord) records.get(0)).id);
+        Assert.assertEquals("KEEP", ((BatteryRecord.EventStatRecord) records.get(0)).event);
+
+        records = recorder.read(BatteryRecorder.MMKVRecorder.getDateString(-dayLimit + 1), "main");
+        Assert.assertEquals(1, records.size());
+        Assert.assertTrue(records.get(0) instanceof BatteryRecord.EventStatRecord);
+        Assert.assertEquals(22, ((BatteryRecord.EventStatRecord) records.get(0)).id);
+        Assert.assertEquals("KEEP", ((BatteryRecord.EventStatRecord) records.get(0)).event);
+
+        records = recorder.read(BatteryRecorder.MMKVRecorder.getDateString(-dayLimit), "main");
+        Assert.assertEquals(1, records.size());
+        Assert.assertTrue(records.get(0) instanceof BatteryRecord.EventStatRecord);
+        Assert.assertEquals(22, ((BatteryRecord.EventStatRecord) records.get(0)).id);
+
+        recorder.clean(dayLimit);
+
+        records = recorder.read(BatteryRecorder.MMKVRecorder.getDateString(0), "main");
+        Assert.assertEquals(1, records.size());
+        Assert.assertTrue(records.get(0) instanceof BatteryRecord.EventStatRecord);
+        Assert.assertEquals(22, ((BatteryRecord.EventStatRecord) records.get(0)).id);
+        Assert.assertEquals("KEEP", ((BatteryRecord.EventStatRecord) records.get(0)).event);
+
+        records = recorder.read(BatteryRecorder.MMKVRecorder.getDateString(-dayLimit + 1), "main");
+        Assert.assertEquals(1, records.size());
+        Assert.assertTrue(records.get(0) instanceof BatteryRecord.EventStatRecord);
+        Assert.assertEquals(22, ((BatteryRecord.EventStatRecord) records.get(0)).id);
+        Assert.assertEquals("KEEP", ((BatteryRecord.EventStatRecord) records.get(0)).event);
+
+        records = recorder.read(BatteryRecorder.MMKVRecorder.getDateString(-dayLimit), "main");
+        Assert.assertEquals(0, records.size());
+
+        recorder.clean(1);
+
+        records = recorder.read(BatteryRecorder.MMKVRecorder.getDateString(0), "main");
+        Assert.assertEquals(1, records.size());
+        Assert.assertTrue(records.get(0) instanceof BatteryRecord.EventStatRecord);
+        Assert.assertEquals(22, ((BatteryRecord.EventStatRecord) records.get(0)).id);
+        Assert.assertEquals("KEEP", ((BatteryRecord.EventStatRecord) records.get(0)).event);
+
+        records = recorder.read(BatteryRecorder.MMKVRecorder.getDateString(-dayLimit + 1), "main");
+        Assert.assertEquals(0, records.size());
+
+        records = recorder.read(BatteryRecorder.MMKVRecorder.getDateString(-dayLimit), "main");
+        Assert.assertEquals(0, records.size());
     }
 
     @Test

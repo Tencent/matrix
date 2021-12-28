@@ -308,6 +308,23 @@ public abstract class BatteryRecord implements Parcelable {
             }
         }
 
+        public String getString(String key) {
+            if (extras.containsKey(key)) {
+                return String.valueOf(extras.get(key));
+            }
+            return "";
+        }
+
+        public boolean getBoolean(String key, boolean def) {
+            if (extras.containsKey(key)) {
+                try {
+                    return Boolean.parseBoolean(String.valueOf(extras.get(key)));
+                } catch (Exception ignored) {
+                }
+            }
+            return def;
+        }
+
         public static final Creator<EventStatRecord> CREATOR = new Creator<EventStatRecord>() {
             @Override
             public EventStatRecord createFromParcel(Parcel in) {
@@ -350,6 +367,10 @@ public abstract class BatteryRecord implements Parcelable {
      */
     public static class ReportRecord extends EventStatRecord implements Parcelable {
         public static final int VERSION = EventStatRecord.VERSION;
+
+        public static final String EXTRA_APP_FOREGROUND = "app_fg";
+        public static final String EXTRA_JIFFY_TOTAL = "jiffy_total";
+        public static final String EXTRA_JIFFY_OVERHEAT = "jiffy_overheat";
         public static final String EXTRA_THREAD_STACK = "extra_stack_top";
 
         public String scope;
@@ -367,6 +388,17 @@ public abstract class BatteryRecord implements Parcelable {
             windowMillis = in.readLong();
             threadInfoList = in.createTypedArrayList(ReportRecord.ThreadInfo.CREATOR);
             entryList = in.createTypedArrayList(ReportRecord.EntryInfo.CREATOR);
+        }
+
+        public boolean isOverHeat() {
+            for (String item : extras.keySet()) {
+                if (item.endsWith("_overheat")) {
+                    if (getBoolean(item, false)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
         }
 
         public static final Creator<ReportRecord> CREATOR = new Creator<ReportRecord>() {

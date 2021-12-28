@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * @author Kaede
@@ -36,7 +37,7 @@ public interface BatteryStats {
 
     BatteryRecord.SceneStatRecord statsScene(String scene);
 
-    BatteryRecord.EventStatRecord statsEvent(String event, int eventId);
+    BatteryRecord.EventStatRecord statsEvent(String event, int eventId, Map<String, Object> extras);
 
     BatteryRecord.ReportRecord statsMonitors(final CompositeMonitors monitors);
 
@@ -65,10 +66,13 @@ public interface BatteryStats {
         }
 
         @Override
-        public BatteryRecord.EventStatRecord statsEvent(String event, int eventId) {
+        public BatteryRecord.EventStatRecord statsEvent(String event, int eventId, Map<String, Object> extras) {
             BatteryRecord.EventStatRecord statRecord = new BatteryRecord.EventStatRecord();
             statRecord.id = eventId;
             statRecord.event = event;
+            if (!extras.isEmpty()) {
+                statRecord.extras = extras;
+            }
             return statRecord;
         }
 
@@ -80,12 +84,28 @@ public interface BatteryStats {
                 return statRecord;
             }
 
+            boolean fg = appStats.isForeground();
+            long widowMillis = appStats.duringMillis;
+            long minute = appStats.getMinute();
+
             statRecord.scope = monitors.getScope();
-            statRecord.windowMillis = appStats.duringMillis;
+            statRecord.windowMillis = widowMillis;
+            statRecord.extras = new HashMap<>();
+
+            if (appStats.isForeground()) {
+                statRecord.extras.put(BatteryRecord.ReportRecord.EXTRA_APP_FOREGROUND, true);
+            }
 
             // Thread Entry
             final Delta<JiffiesSnapshot> jiffiesDelta = monitors.getDelta(JiffiesSnapshot.class);
             if (jiffiesDelta != null) {
+                long appJiffiesDelta = jiffiesDelta.dlt.totalJiffies.get();
+                statRecord.extras.put(BatteryRecord.ReportRecord.EXTRA_JIFFY_TOTAL, appJiffiesDelta);
+                if (!fg && monitors.isOverHeat(JiffiesSnapshot.class)) {
+                    // Jiffies overheat
+                    statRecord.extras.put(BatteryRecord.ReportRecord.EXTRA_JIFFY_OVERHEAT, true);
+                }
+
                 statRecord.threadInfoList = new ArrayList<>();
                 for (ThreadJiffiesEntry threadJiffies : jiffiesDelta.dlt.threadEntries.getList().subList(0, Math.min(jiffiesDelta.dlt.threadEntries.getList().size(), 5))) {
                     BatteryRecord.ReportRecord.ThreadInfo threadInfo = new BatteryRecord.ReportRecord.ThreadInfo();
