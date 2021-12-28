@@ -35,7 +35,14 @@ namespace enhance {
     struct DlInfo {
 
         DlInfo() {}
-        ~DlInfo() {}
+        ~DlInfo() {
+            if (strtab) {
+                free(strtab);
+            }
+            if (symtab) {
+                free(symtab);
+            }
+        }
 
         std::string pathname;
 
