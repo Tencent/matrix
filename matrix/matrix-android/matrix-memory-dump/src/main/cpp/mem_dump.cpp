@@ -131,6 +131,7 @@ static bool initialize_functions(
         void *(*_dl_open)(const char *),
         void *(*_dl_sym)(void *, const char *),
         void (*_dl_close)(void *),
+        void (*_dl_clean)(void *),
         const char *impl_tag
 ) {
     auto *art_lib = _dl_open("libart.so");
@@ -206,6 +207,7 @@ static bool initialize_functions(
                      "Cannot find symbol art::Dbg::ResumeVM.")
     }
 
+    _dl_clean(art_lib);
     return true;
 
     on_error:
@@ -214,13 +216,14 @@ static bool initialize_functions(
 }
 
 static bool initialize_functions_with_self() {
-    return initialize_functions(self_dlopen, self_dlsym, self_dlclose, "self_dlfcn");
+    return initialize_functions(self_dlopen, self_dlsym, self_dlclose, self_clean, "self_dlfcn");
 }
 
 static bool initialize_functions_with_semi() {
     return initialize_functions(
             semi_dlopen,
             reinterpret_cast<void *(*)(void *, const char *)>(semi_dlsym),
+            semi_dlclose,
             semi_dlclose,
             "semi_dlfcn"
     );
