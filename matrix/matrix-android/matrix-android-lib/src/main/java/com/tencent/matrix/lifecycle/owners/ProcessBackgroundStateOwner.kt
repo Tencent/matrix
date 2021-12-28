@@ -47,7 +47,7 @@ object ExplicitBackgroundOwner : StatefulOwner(), IBackgroundStatefulOwner {
         override fun action(): Boolean {
             val uiForeground by lazy { MatrixProcessLifecycleOwner.startedStateOwner.active() }
             val fgService by lazy { MatrixProcessLifecycleOwner.hasForegroundService() }
-            val visibleView by lazy { MatrixProcessLifecycleOwner.hasVisibleView() }
+            val visibleWindow by lazy { MatrixProcessLifecycleOwner.hasVisibleWindow() }
 
             if (uiForeground) {
                 MatrixLog.i(TAG, "turn OFF for UI foreground")
@@ -55,12 +55,12 @@ object ExplicitBackgroundOwner : StatefulOwner(), IBackgroundStatefulOwner {
                 return false
             }
 
-            if (!fgService && !visibleView) {
+            if (!fgService && !visibleWindow) {
                 MatrixLog.i(TAG, "turn ON")
                 turnOn()
                 return false
             }
-            MatrixLog.i(TAG, "turn OFF: fgService=$fgService, visibleView=$visibleView")
+            MatrixLog.i(TAG, "turn OFF: fgService=$fgService, visibleView=$visibleWindow")
             turnOff()
             return true
         }

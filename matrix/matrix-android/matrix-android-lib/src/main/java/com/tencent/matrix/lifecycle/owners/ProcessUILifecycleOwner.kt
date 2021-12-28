@@ -280,7 +280,7 @@ object MatrixProcessLifecycleOwner {
 
     @JvmStatic
     @SuppressLint("PrivateApi", "DiscouragedPrivateApi")
-    fun hasVisibleView() = safeLet(TAG, log = true, defVal = false) {
+    fun hasVisibleWindow() = safeLet(TAG, log = true, defVal = false) {
         if (WindowManagerGlobal_mRoots == null) {
             MatrixLog.e(TAG, "WindowManagerGlobal_mRoots not found")
             return@safeLet false
@@ -290,7 +290,10 @@ object MatrixProcessLifecycleOwner {
             return@safeLet false
         }
         return@safeLet WindowManagerGlobal_mRoots!!.any {
-            View.VISIBLE == field_ViewRootImpl_mView!!.get(it)?.visibility
+            val v = field_ViewRootImpl_mView!!.get(it)
+            // windowVisibility is determined by app vibility
+            // until the PRIVATE_FLAG_FORCE_DECOR_VIEW_VISIBILITY is set, which is blocked in Q
+            return@any v != null && View.VISIBLE == v.visibility && View.VISIBLE == v.windowVisibility
         }
     }
 

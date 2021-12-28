@@ -18,12 +18,15 @@ package sample.tencent.matrix;
 
 import android.app.Service;
 import android.content.Intent;
+import android.graphics.PixelFormat;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.LinearLayout;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
@@ -53,12 +56,12 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         IssuesMap.clear();
 
-        MatrixLog.d(TAG, "has visible view %s", MatrixProcessLifecycleOwner.hasVisibleView());
+        MatrixLog.d(TAG, "has visible window %s", MatrixProcessLifecycleOwner.hasVisibleWindow());
 
         new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
             @Override
             public void run() {
-                MatrixLog.d(TAG, "has visible view %s", MatrixProcessLifecycleOwner.hasVisibleView());
+                MatrixLog.d(TAG, "has visible window %s", MatrixProcessLifecycleOwner.hasVisibleWindow());
 
                 String[] arr = ViewDumper.dump();
                 MatrixLog.d(TAG, "view tree size = %s", arr.length);
@@ -141,8 +144,20 @@ public class MainActivity extends AppCompatActivity {
             }
         }).start();
 
-        FrameDecorator.getInstance(this).setEnable(true);
-        FrameDecorator.getInstance(this).show();
+        new Handler().post(new Runnable() {
+            @Override
+            public void run() {
+                WindowManager.LayoutParams params = new WindowManager.LayoutParams(
+                        WindowManager.LayoutParams.TYPE_APPLICATION_ATTACHED_DIALOG,
+                        WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE |
+                                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE |
+                                WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM,
+                        PixelFormat.RGBA_8888);
+                getWindowManager().addView(new LinearLayout(MainActivity.this), params);
+            }
+        });
+        FrameDecorator.getInstance(getApplicationContext()).setEnable(true);
+        FrameDecorator.getInstance(getApplicationContext()).show();
     }
 
     public static class StubService extends Service {

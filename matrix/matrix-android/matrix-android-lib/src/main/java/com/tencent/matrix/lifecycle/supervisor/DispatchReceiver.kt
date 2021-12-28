@@ -246,7 +246,7 @@ internal object DispatchReceiver : BroadcastReceiver(), IProcessListener {
                     MatrixHandlerThread.getDefaultHandler().postDelayed({
                         if (!MatrixProcessLifecycleOwner.startedStateOwner.active()
                             && !MatrixProcessLifecycleOwner.hasForegroundService()
-                            && !MatrixProcessLifecycleOwner.hasVisibleView()
+                            && !MatrixProcessLifecycleOwner.hasVisibleWindow()
                         ) {
                             ProcessSupervisor.supervisorProxy?.onProcessKilled(token)
                             MatrixLog.e(
