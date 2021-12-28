@@ -30,7 +30,7 @@ object ViewDumper {
                 append("-")
             }
         }
-        return "$prefix${view.visibility}:$view:[${view.x},${view.y},${view.width},${view.height}]:${view.context}\n"
+        return "$prefix${view.visibility}:${view.windowVisibility}:$view:[${view.x},${view.y},${view.width},${view.height}]:${view.context}\n"
     }
 
     private fun dumpViewGroup(viewGroup: ViewGroup, level: Int): String {
@@ -39,7 +39,7 @@ object ViewDumper {
         for (j in 0 until level) { // prefix
             builder.append("-")
         }
-        builder.append("${viewGroup.visibility}:$viewGroup:[${viewGroup.x},${viewGroup.y},${viewGroup.width},${viewGroup.height}]:${viewGroup.context}\n")
+        builder.append("${viewGroup.visibility}:${viewGroup.windowVisibility}:$viewGroup:[${viewGroup.x},${viewGroup.y},${viewGroup.width},${viewGroup.height}]:${viewGroup.context}\n")
         for (i in 0 until childCount) {
             val child = viewGroup.getChildAt(i)
             builder.append(dumpInternal(child, level + 1))
