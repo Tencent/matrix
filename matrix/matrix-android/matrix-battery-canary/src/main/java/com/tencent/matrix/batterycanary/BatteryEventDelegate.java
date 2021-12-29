@@ -133,24 +133,18 @@ public final class BatteryEventDelegate {
             public void onReceive(Context context, Intent intent) {
                 String action = intent.getAction();
                 if (action != null) {
-                    if (mCore != null) {
-                        BatteryStatsFeature feat = mCore.getMonitorFeature(BatteryStatsFeature.class);
-                        if (feat != null) {
-                            feat.statsEvent(intent.getAction());
-                        }
-                    }
-
                     if (action.equals(Intent.ACTION_BATTERY_CHANGED)) {
                         // 1. Check battery power changed
                         int currPct = BatteryCanaryUtil.getBatteryPercentage(mContext);
                         if (Math.abs(currPct - mLastBatteryPowerPct) >= BATTERY_POWER_GRADUATION) {
                             mLastBatteryPowerPct = currPct;
-                            onBatteryPowerChanged(currPct);
-
-                            BatteryStatsFeature feat = mCore.getMonitorFeature(BatteryStatsFeature.class);
-                            if (feat != null) {
-                                feat.statsEvent("BATTERY_LEVEL: " + currPct + "%");
+                            if (mCore != null) {
+                                BatteryStatsFeature feat = mCore.getMonitorFeature(BatteryStatsFeature.class);
+                                if (feat != null) {
+                                    feat.statsBatteryEvent(currPct);
+                                }
                             }
+                            onBatteryPowerChanged(currPct);
                         }
 
                     } else {
@@ -197,6 +191,12 @@ public final class BatteryEventDelegate {
                             onSateChangedEvent(intent);
                         }
                         if (notifyBatteryStateChanged) {
+                            if (mCore != null) {
+                                BatteryStatsFeature feat = mCore.getMonitorFeature(BatteryStatsFeature.class);
+                                if (feat != null) {
+                                    feat.statsBatteryEvent(action.equals(Intent.ACTION_BATTERY_LOW));
+                                }
+                            }
                             onBatteryChangeEvent(intent);
                         }
                     }

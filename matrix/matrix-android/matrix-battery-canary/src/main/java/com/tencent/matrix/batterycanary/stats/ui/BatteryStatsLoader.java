@@ -9,6 +9,7 @@ import com.tencent.matrix.batterycanary.monitor.AppStats;
 import com.tencent.matrix.batterycanary.stats.BatteryRecord;
 import com.tencent.matrix.batterycanary.stats.BatteryStatsFeature;
 import com.tencent.matrix.batterycanary.stats.BatteryStatsFeature.BatteryRecords;
+import com.tencent.matrix.batterycanary.stats.ui.BatteryStatsAdapter.Item;
 import com.tencent.matrix.batterycanary.utils.Consumer;
 import com.tencent.matrix.util.MatrixLog;
 
@@ -42,7 +43,7 @@ public class BatteryStatsLoader {
         return mStatsAdapter;
     }
 
-    public List<BatteryStatsAdapter.Item> getDateSet() {
+    public List<Item> getDateSet() {
         return mStatsAdapter.getDataList();
     }
 
@@ -69,13 +70,13 @@ public class BatteryStatsLoader {
         return true;
     }
 
-    public BatteryStatsAdapter.Item.HeaderItem getFirstHeader(int topPosition) {
-        BatteryStatsAdapter.Item.HeaderItem currHeader = null;
-        List<BatteryStatsAdapter.Item> dataList = mStatsAdapter.getDataList();
+    public Item.HeaderItem getFirstHeader(int topPosition) {
+        Item.HeaderItem currHeader = null;
+        List<Item> dataList = mStatsAdapter.getDataList();
         for (int i = topPosition; i >= 0; i--) {
             if (topPosition < dataList.size()) {
-                if (dataList.get(i) instanceof BatteryStatsAdapter.Item.HeaderItem) {
-                    currHeader = (BatteryStatsAdapter.Item.HeaderItem) dataList.get(i);
+                if (dataList.get(i) instanceof Item.HeaderItem) {
+                    currHeader = (Item.HeaderItem) dataList.get(i);
                     break;
                 }
             }
@@ -97,14 +98,14 @@ public class BatteryStatsLoader {
     }
 
     public void add(BatteryRecords batteryRecords) {
-        List<BatteryStatsAdapter.Item> dataList = onCreateDataSet(batteryRecords);
+        List<Item> dataList = onCreateDataSet(batteryRecords);
 
         // Footer
         if (Math.abs(mDayOffset) >= mDayLimit) {
-            BatteryStatsAdapter.Item.HeaderItem headerItem = new BatteryStatsAdapter.Item.HeaderItem();
+            Item.HeaderItem headerItem = new Item.HeaderItem();
             headerItem.date = "END";
             dataList.add(headerItem);
-            BatteryStatsAdapter.Item.NoDataItem footerItem = new BatteryStatsAdapter.Item.NoDataItem();
+            Item.NoDataItem footerItem = new Item.NoDataItem();
             footerItem.text = "Only keep last " + mDayLimit + " days' data";
             dataList.add(footerItem);
         }
@@ -113,7 +114,7 @@ public class BatteryStatsLoader {
         postUpdateDataSet(dataList);
     }
 
-    private void postUpdateDataSet(final List<BatteryStatsAdapter.Item> dataList) {
+    private void postUpdateDataSet(final List<Item> dataList) {
         mUiHandler.post(new Runnable() {
             @Override
             public void run() {
@@ -136,113 +137,114 @@ public class BatteryStatsLoader {
         });
     }
 
-    protected List<BatteryStatsAdapter.Item> onCreateDataSet(BatteryRecords batteryRecords) {
-        List<BatteryStatsAdapter.Item> dataList = new ArrayList<>(batteryRecords.records.size() + 1);
+    protected List<Item> onCreateDataSet(BatteryRecords batteryRecords) {
+        List<Item> dataList = new ArrayList<>(batteryRecords.records.size() + 1);
 
         // Records
         if (batteryRecords.records.isEmpty()) {
             // N0 DATA
-            BatteryStatsAdapter.Item.NoDataItem item = new BatteryStatsAdapter.Item.NoDataItem();
+            Item.NoDataItem item = new Item.NoDataItem();
             item.text = "NO DATA";
             dataList.add(0, item);
 
         } else {
             // Convert records to list items
             for (BatteryRecord record : batteryRecords.records) {
-                BatteryStatsAdapter.Item item = onCreateDataItem(record);
+                Item item = onCreateDataItem(record);
                 dataList.add(0, item);
             }
         }
 
         // Date
-        BatteryStatsAdapter.Item.HeaderItem headerItem = new BatteryStatsAdapter.Item.HeaderItem();
+        Item.HeaderItem headerItem = new Item.HeaderItem();
         headerItem.date = batteryRecords.date;
         dataList.add(0, headerItem);
 
         return dataList;
     }
 
-    protected BatteryStatsAdapter.Item onCreateDataItem(BatteryRecord record) {
+    protected Item onCreateDataItem(BatteryRecord record) {
         if (record instanceof BatteryRecord.ProcStatRecord) {
-            BatteryStatsAdapter.Item.EventLevel1Item eventItem = new BatteryStatsAdapter.Item.EventLevel1Item(record);
+            Item.EventLevel1Item item = new Item.EventLevel1Item(record);
             String title;
             switch (((BatteryRecord.ProcStatRecord) record).procStat) {
                 case BatteryRecord.ProcStatRecord.STAT_PROC_LAUNCH:
-                    title = "PROCESS INIT";
+                    title = "PROCESS_INIT";
                     break;
                 case BatteryRecord.ProcStatRecord.STAT_PROC_OFF:
-                    title = "PROCESS QUIT";
+                    title = "PROCESS_QUIT";
                     break;
                 default:
                     title = "PROCESS_ID_" + ((BatteryRecord.ProcStatRecord) record).procStat;
                     break;
             }
-            eventItem.text = title + " (pid " + ((BatteryRecord.ProcStatRecord) record).pid + "）";
-            return eventItem;
+            item.text = title + " (pid " + ((BatteryRecord.ProcStatRecord) record).pid + "）";
+            return item;
         }
 
         if (record instanceof BatteryRecord.AppStatRecord) {
-            BatteryStatsAdapter.Item.EventLevel1Item eventItem = new BatteryStatsAdapter.Item.EventLevel1Item(record);
+            Item.EventLevel1Item item = new Item.EventLevel1Item(record);
             switch (((BatteryRecord.AppStatRecord) record).appStat) {
                 case AppStats.APP_STAT_FOREGROUND:
-                    eventItem.text = "App 切换到前台";
+                    item.text = "App 切换到前台";
                     break;
                 case AppStats.APP_STAT_BACKGROUND:
-                    eventItem.text = "App 切换到后台";
+                    item.text = "App 切换到后台";
                     break;
                 case AppStats.APP_STAT_FOREGROUND_SERVICE:
-                    eventItem.text = "App 切换到后台 (有前台服务)";
+                    item.text = "App 切换到后台 (有前台服务)";
                     break;
                 default:
-                    eventItem.text = "App 状态变化: " + ((BatteryRecord.AppStatRecord) record).appStat;
+                    item.text = "App 状态变化: " + ((BatteryRecord.AppStatRecord) record).appStat;
                     break;
             }
-            return eventItem;
+            return item;
         }
 
         if (record instanceof BatteryRecord.DevStatRecord) {
-            BatteryStatsAdapter.Item.EventLevel2Item eventItem = new BatteryStatsAdapter.Item.EventLevel2Item(record);
+            Item.EventLevel2Item item = new Item.EventLevel2Item(record);
             switch (((BatteryRecord.DevStatRecord) record).devStat) {
                 case AppStats.DEV_STAT_CHARGING:
-                    eventItem.text = "CHARGE_ON";
+                    item.text = "CHARGE_ON";
                     break;
                 case AppStats.DEV_STAT_UN_CHARGING:
-                    eventItem.text = "CHARGE_OFF";
+                    item.text = "CHARGE_OFF";
                     break;
                 case AppStats.DEV_STAT_SAVE_POWER_MODE:
-                    eventItem.text = "PowerSave ON";
+                    item.text = "PowerSave ON";
                     break;
                 case AppStats.DEV_STAT_SCREEN_ON:
-                    eventItem.text = "SCREEN_ON";
+                    item.text = "SCREEN_ON";
                     break;
                 case AppStats.DEV_STAT_SCREEN_OFF:
-                    eventItem.text = "SCREEN_OFF";
+                    item.text = "SCREEN_OFF";
                     break;
                 default:
-                    eventItem.text = "设备状态变化: " + ((BatteryRecord.DevStatRecord) record).devStat;
+                    item.text = "设备状态变化: " + ((BatteryRecord.DevStatRecord) record).devStat;
                     break;
             }
-            return eventItem;
+            return item;
         }
 
         if (record instanceof BatteryRecord.SceneStatRecord) {
-            BatteryStatsAdapter.Item.EventLevel2Item eventItem = new BatteryStatsAdapter.Item.EventLevel2Item(record);
-            eventItem.text = "UI: " + ((BatteryRecord.SceneStatRecord) record).scene;
-            return eventItem;
+            Item.EventLevel2Item item = new Item.EventLevel2Item(record);
+            item.text = "UI: " + ((BatteryRecord.SceneStatRecord) record).scene;
+            return item;
         }
 
         if (record instanceof BatteryRecord.ReportRecord) {
-            return new BatteryStatsAdapter.Item.EventDumpItem((BatteryRecord.ReportRecord) record);
+            return new Item.EventDumpItem((BatteryRecord.ReportRecord) record);
         }
 
         if (record instanceof BatteryRecord.EventStatRecord) {
-            BatteryStatsAdapter.Item.EventSimpleItem eventItem = new BatteryStatsAdapter.Item.EventSimpleItem((BatteryRecord.EventStatRecord) record);
-            eventItem.event = ((BatteryRecord.EventStatRecord) record).event;
-            return eventItem;
+            if (BatteryRecord.EventStatRecord.EVENT_BATTERY_STAT.equals(((BatteryRecord.EventStatRecord) record).event)) {
+                return new Item.EventBatteryItem((BatteryRecord.EventStatRecord) record);
+            }
+            return new Item.EventSimpleItem((BatteryRecord.EventStatRecord) record);
         }
 
-        BatteryStatsAdapter.Item.EventLevel2Item eventItem = new BatteryStatsAdapter.Item.EventLevel2Item(record);
-        eventItem.text = "Unknown: " + record.getClass().getName();
-        return eventItem;
+        Item.EventLevel2Item item = new Item.EventLevel2Item(record);
+        item.text = "Unknown: " + record.getClass().getName();
+        return item;
     }
 }

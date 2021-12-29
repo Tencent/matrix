@@ -288,6 +288,8 @@ public abstract class BatteryRecord implements Parcelable {
      */
     public static class EventStatRecord extends BatteryRecord implements Parcelable {
         public static final int VERSION = 1;
+        public static final String EVENT_REPORT = "REPORT";
+        public static final String EVENT_BATTERY_STAT = "BATTERY_STAT";
 
         public long id;
         public String event;
@@ -313,6 +315,16 @@ public abstract class BatteryRecord implements Parcelable {
                 return String.valueOf(extras.get(key));
             }
             return "";
+        }
+
+        public long getDigit(String key, long def) {
+            try {
+                if (extras.containsKey(key)) {
+                    return Long.parseLong(String.valueOf(extras.get(key)));
+                }
+            } catch (Exception ignored) {
+            }
+            return def;
         }
 
         public boolean getBoolean(String key, boolean def) {
@@ -380,6 +392,7 @@ public abstract class BatteryRecord implements Parcelable {
 
         public ReportRecord() {
             version = VERSION;
+            event = EVENT_REPORT;
         }
 
         protected ReportRecord(Parcel in) {

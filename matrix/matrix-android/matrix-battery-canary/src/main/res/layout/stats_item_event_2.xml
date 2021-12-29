@@ -7,14 +7,15 @@
 
     <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:background="@color/BG_1">
 
         <!-- BG TimeLine  -->
         <RelativeLayout
-            android:layout_marginLeft="60dp"
             android:layout_width="40dp"
             android:layout_height="match_parent"
-            android:layout_centerVertical="true">
+            android:layout_centerVertical="true"
+            android:layout_marginLeft="60dp">
 
             <View
                 android:layout_width="1px"
@@ -97,14 +98,13 @@
         </RelativeLayout>
 
 
-
         <!--  Right  -->
         <RelativeLayout
-            android:visibility="invisible"
             android:id="@+id/layout_right"
             android:layout_width="50dp"
             android:layout_height="45dp"
             android:layout_alignParentRight="true"
+            android:visibility="invisible"
             tools:background="#6000">
 
             <TextView
