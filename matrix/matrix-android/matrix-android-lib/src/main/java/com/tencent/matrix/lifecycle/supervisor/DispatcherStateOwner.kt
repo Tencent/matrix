@@ -70,7 +70,7 @@ internal open class DispatcherStateOwner(
                 it.value.attachedSource.observeForever(object : IStateObserver {
 
                     override fun on() {
-                        MatrixLog.d(ProcessSupervisor.tag, "${it.key} turned ON")
+                        MatrixLog.d(ProcessSupervisor.tag, "attached ${it.key} turned ON")
                         safeApply("${ProcessSupervisor.tag}.${it.key}") {
                             supervisorProxy?.onStateChanged(
                                 ProcessToken.current(application, it.key, true)
@@ -79,7 +79,7 @@ internal open class DispatcherStateOwner(
                     }
 
                     override fun off() {
-                        MatrixLog.d(ProcessSupervisor.tag, "${it.key} turned OFF")
+                        MatrixLog.d(ProcessSupervisor.tag, "attached ${it.key} turned OFF")
                         safeApply("${ProcessSupervisor.tag}.${it.key}") {
                             supervisorProxy?.onStateChanged(
                                 ProcessToken.current(application, it.key, false)
