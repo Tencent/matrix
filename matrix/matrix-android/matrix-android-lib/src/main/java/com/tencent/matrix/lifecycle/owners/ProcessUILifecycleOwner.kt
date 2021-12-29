@@ -11,8 +11,8 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.os.Process
+import android.text.TextUtils
 import android.view.View
-import android.view.ViewGroup
 import androidx.annotation.NonNull
 import androidx.lifecycle.*
 import com.tencent.matrix.lifecycle.IStateObserver
@@ -104,8 +104,29 @@ object MatrixProcessLifecycleOwner {
     val resumedStateOwner: StatefulOwner = AsyncOwner()
     val startedStateOwner: StatefulOwner = AsyncOwner()
 
-    var recentActivity = "default"
-        private set
+    internal interface OnSceneChangedListener {
+        fun onSceneChanged(newScene: String, origin: String)
+    }
+
+    internal var onSceneChangedListener: OnSceneChangedListener? = null
+        internal set(value) {
+            if (field == null) {
+                field = value
+                if (!TextUtils.isEmpty(recentScene)) {
+                    value?.onSceneChanged(recentScene, "")
+                }
+            }
+        }
+
+    var recentScene = ""
+        private set(value) {
+            if (field != value) {
+                onSceneChangedListener?.let {
+                    runningHandler.post { it.onSceneChanged(value, field) }
+                }
+            }
+            field = value
+        }
 
     private val delayedPauseRunnable = Runnable {
         dispatchPauseIfNeeded()
@@ -222,13 +243,13 @@ object MatrixProcessLifecycleOwner {
             }
 
             override fun onActivityStarted(activity: Activity) {
+                recentScene = activity.javaClass.name
                 updateScene(activity)
                 activityStarted(activity)
             }
 
             override fun onActivityResumed(activity: Activity) {
                 activityResumed(activity)
-                recentActivity = activity.javaClass.simpleName
             }
 
             override fun onActivityPaused(activity: Activity) {
@@ -298,7 +319,8 @@ object MatrixProcessLifecycleOwner {
     }
 
     internal fun getViews() = safeLet(TAG, log = true, defVal = emptyList<View>()) {
-        return@safeLet WindowManagerGlobal_mRoots!!.map { field_ViewRootImpl_mView!!.get(it) }.toList()
+        return@safeLet WindowManagerGlobal_mRoots!!.map { field_ViewRootImpl_mView!!.get(it) }
+            .toList()
     }
 
     private val componentToProcess by lazy { HashMap<String, String>() }

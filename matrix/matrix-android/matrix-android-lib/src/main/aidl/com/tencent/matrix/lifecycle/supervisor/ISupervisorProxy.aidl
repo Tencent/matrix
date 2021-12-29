@@ -10,6 +10,8 @@ interface ISupervisorProxy {
 
     void onStateChanged(in ProcessToken token);
 
+    void onSceneChanged(in String scene);
+
     void onProcessBackground(in ProcessToken token);
     void onProcessForeground(in ProcessToken token);
 

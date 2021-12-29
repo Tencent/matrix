@@ -24,6 +24,9 @@ class SupervisorService : Service() {
         private const val TAG = "Matrix.ProcessSupervisor.SupervisorService"
         private var isSupervisor = false
 
+        @Volatile
+        internal var recentScene: String = ""
+
         internal fun start(context: Context) = safeApply(TAG) {
             isSupervisor = true
             if (instance != null) {
@@ -119,6 +122,10 @@ class SupervisorService : Service() {
             Assert.assertEquals(pid, token.pid)
             RemoteProcessLifecycleProxy.getProxy(token).onStateChanged(token.state)
 //            RemoteProcessLifecycleProxy.profile()
+        }
+
+        override fun onSceneChanged(scene: String) {
+            recentScene = scene
         }
 
         override fun onProcessBackground(token: ProcessToken) {

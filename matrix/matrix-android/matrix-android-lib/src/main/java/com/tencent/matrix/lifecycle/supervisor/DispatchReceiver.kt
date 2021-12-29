@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Build
 import android.os.Process
+import android.text.TextUtils
 import com.tencent.matrix.lifecycle.IStateObserver
 import com.tencent.matrix.lifecycle.owners.MatrixProcessLifecycleOwner
 import com.tencent.matrix.util.*
@@ -16,11 +17,14 @@ internal interface IProcessListener {
     fun removeDyingListener(listener: (processName: String?, pid: Int?) -> Boolean)
     fun addDeathListener(listener: (processName: String?, pid: Int?, isLruKill: Boolean?) -> Unit)
     fun removeDeathListener(listener: (processName: String?, pid: Int?, isLruKill: Boolean?) -> Unit)
+    fun recentScene(): String
 }
 
 /**
  * [DispatchReceiver] should be installed in all processes
  * by calling [ProcessSupervisor.initSupervisor]
+ *
+ * todo: refactor - impl by aidl ipc instead
  *
  * Created by Yves on 2021/10/12
  */
@@ -30,6 +34,7 @@ internal object DispatchReceiver : BroadcastReceiver(), IProcessListener {
     private const val KEY_PROCESS_PID = "KEY_PROCESS_PID"
     private const val KEY_STATEFUL_NAME = "KEY_STATEFUL_NAME"
     private const val KEY_DEAD_FROM_LRU_KILL = "KEY_DEAD_FROM_LRU_KILL"
+    private const val KEY_GLOBAL_SCENE = "KEY_GLOBAL_SCENE"
 
     private var packageName: String? = null
     private val permission by lazy { "${packageName!!}.matrix.permission.PROCESS_SUPERVISOR" }
@@ -44,6 +49,9 @@ internal object DispatchReceiver : BroadcastReceiver(), IProcessListener {
 
     @Volatile
     private var pacemaker: IStateObserver? = null
+
+    @Volatile
+    private var recentScene = ""
 
     private fun ArrayList<(processName: String?, pid: Int?) -> Boolean>.invokeAll(
         processName: String?,
@@ -147,6 +155,14 @@ internal object DispatchReceiver : BroadcastReceiver(), IProcessListener {
         deathListeners.remove(listener)
     }
 
+    override fun recentScene() = SupervisorService.recentScene.let {
+        if (!TextUtils.isEmpty(it)) {
+            it
+        } else {
+            recentScene
+        }
+    }
+
     internal fun dispatchAppStateOn(context: Context?, statefulName: String) {
         dispatch(
             context,
@@ -205,10 +221,13 @@ internal object DispatchReceiver : BroadcastReceiver(), IProcessListener {
         params.forEach {
             intent.putExtra(it.first, it.second)
         }
+        intent.putExtra(KEY_GLOBAL_SCENE, SupervisorService.recentScene) // spread the recent scene
         context?.sendBroadcast(intent, permission)
     }
 
     override fun onReceive(context: Context, intent: Intent?) {
+        recentScene = intent?.getStringExtra(KEY_GLOBAL_SCENE) ?: recentScene
+
         when (intent?.action) {
             SupervisorEvent.SUPERVISOR_DISPATCH_APP_STATE_TURN_ON.name -> {
                 val statefulName = intent.getStringExtra(KEY_STATEFUL_NAME)

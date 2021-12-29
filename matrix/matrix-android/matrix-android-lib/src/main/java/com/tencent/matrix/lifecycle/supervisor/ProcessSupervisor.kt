@@ -11,6 +11,7 @@ import android.os.IBinder
 import android.util.Log
 import com.tencent.matrix.lifecycle.*
 import com.tencent.matrix.lifecycle.owners.*
+import com.tencent.matrix.util.MatrixHandlerThread
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.MatrixUtil
 import com.tencent.matrix.util.safeApply
@@ -150,17 +151,24 @@ object ProcessSupervisor : IProcessListener by DispatchReceiver {
 
         app.bindService(intent, object : ServiceConnection {
             override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-                DispatchReceiver.uninstallPacemaker()
-                supervisorProxy = ISupervisorProxy.Stub.asInterface(service)
-                MatrixLog.i(TAG, "on Supervisor Connected $supervisorProxy")
-                supervisorProxy?.safeApply(tag) {
-                    stateRegister(
-                        DispatcherStateOwner.ownersToProcessTokens(
-                            app
-                        )
-                    )
+                MatrixHandlerThread.getDefaultHandler().post { // do NOT run ipc in main thread
+                    DispatchReceiver.uninstallPacemaker()
+                    supervisorProxy = ISupervisorProxy.Stub.asInterface(service)
+                    MatrixLog.i(TAG, "on Supervisor Connected $supervisorProxy")
+
+                    MatrixProcessLifecycleOwner.onSceneChangedListener =
+                        object : MatrixProcessLifecycleOwner.OnSceneChangedListener {
+                            override fun onSceneChanged(newScene: String, origin: String) {
+                                MatrixLog.d(tag, "onSceneChanged: $origin -> $newScene")
+                                supervisorProxy?.onSceneChanged(newScene)
+                            }
+                        }
+
+                    supervisorProxy?.safeApply(tag) {
+                        stateRegister(DispatcherStateOwner.ownersToProcessTokens(app))
+                    }
+                    DispatcherStateOwner.attach(supervisorProxy, application!!)
                 }
-                DispatcherStateOwner.attach(supervisorProxy, application!!)
             }
 
             override fun onServiceDisconnected(name: ComponentName?) {
