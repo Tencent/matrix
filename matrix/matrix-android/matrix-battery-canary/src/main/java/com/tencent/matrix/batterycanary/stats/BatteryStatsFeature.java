@@ -220,6 +220,16 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
         statsEvent(event, id, extras);
     }
 
+    public void statsBatteryTempEvent(int temperature) {
+        String event = BatteryRecord.EventStatRecord.EVENT_BATTERY_STAT;
+        int id = 0;
+        int pct = BatteryCanaryUtil.getBatteryPercentage(mCore.getContext());
+        Map<String, Object> extras = new HashMap<>();
+        extras.put("battery-temp", temperature);
+        extras.put("battery-pct", pct);
+        statsEvent(event, id, extras);
+    }
+
     public void statsMonitors(CompositeMonitors monitors) {
         if (mBatteryRecorder == null) {
             return;

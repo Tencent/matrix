@@ -621,6 +621,15 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
                     mTitleTv.setText((lowBattery ? "BATTERY_LOW" : "BATTERY_OK") + ((pct > 0 ? " (" + pct + "%)" : "")));
                     return;
                 }
+                if (item.record.extras.containsKey("battery-temp")) {
+                    long temp = item.record.getDigit("battery-temp", -1);
+                    if (temp != -1) {
+                        mIndicatorIv.setImageLevel(3);
+                    }
+                    long pct = item.record.getDigit("battery-pct", -1);
+                    mTitleTv.setText("BATTERY_TEMP: " + (temp > 0 ? temp / 10f : "/") + "°C" + ((pct > 0 ? " (" + pct + "%)" : "")));
+                    return;
+                }
                 if (item.record.extras.containsKey("battery-pct")) {
                     long pct = item.record.getDigit("battery-pct", -1);
                     mTitleTv.setText("BATTERY_POWER: " + (pct > 0 ? pct : "/") + "%");
