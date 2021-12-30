@@ -41,6 +41,7 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
     public static final int VIEW_TYPE_EVENT_LEVEL_2 = 3;
     public static final int VIEW_TYPE_NO_DATA = 4;
     public static final int VIEW_TYPE_EVENT_SIMPLE = 5;
+    public static final int VIEW_TYPE_EVENT_BATTERY = 6;
 
     protected final List<Item> dataList = new ArrayList<>();
 
@@ -60,6 +61,8 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
                 return new ViewHolder.EventDumpHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.stats_item_event_dump, parent, false));
             case VIEW_TYPE_EVENT_SIMPLE:
                 return new ViewHolder.EventSimpleHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.stats_item_event_simple, parent, false));
+            case VIEW_TYPE_EVENT_BATTERY:
+                return new ViewHolder.EventBatteryHolder(LayoutInflater.from(parent.getContext()).inflate(R.layout.stats_item_event_battery, parent, false));
             case VIEW_TYPE_EVENT_LEVEL_1:
                 return new ViewHolder.EventLevel1Holder(LayoutInflater.from(parent.getContext()).inflate(R.layout.stats_item_event_1, parent, false));
             case VIEW_TYPE_EVENT_LEVEL_2:
@@ -82,14 +85,6 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
     @Override
     public int getItemViewType(int position) {
         return dataList.get(position).viewType();
-        // Item item = dataList.get(position);
-        // if (item instanceof HeaderItem) {
-        //     return VIEW_TYPE_HEADER;
-        // } else if (item instanceof ForegroundEventItem) {
-        //     return VIEW_TYPE_EVENT_FOREGROUND;
-        // } else {
-        //     throw new IllegalStateException("Unknown view type: " + item);
-        // }
     }
 
     public interface Item {
@@ -138,8 +133,6 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
 
         class EventSimpleItem extends BatteryRecord.EventStatRecord implements Item {
             public final EventStatRecord record;
-            public boolean expand = false;
-            public String desc;
 
             public EventSimpleItem(EventStatRecord record) {
                 this.millis = record.millis;
@@ -151,6 +144,22 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
             @Override
             public int viewType() {
                 return VIEW_TYPE_EVENT_SIMPLE;
+            }
+        }
+
+        class EventBatteryItem extends BatteryRecord.EventStatRecord implements Item {
+            public final EventStatRecord record;
+
+            public EventBatteryItem(EventStatRecord record) {
+                this.millis = record.millis;
+                this.record = record;
+                this.id = record.id;
+                this.event = record.event;
+            }
+
+            @Override
+            public int viewType() {
+                return VIEW_TYPE_EVENT_BATTERY;
             }
         }
 
@@ -581,6 +590,50 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
 
             protected String getDetailInfo() {
                 return mItem.record.extras.toString();
+            }
+        }
+
+        public static class EventBatteryHolder extends ViewHolder<Item.EventBatteryItem> {
+
+            private final TextView mTimeTv;
+            private final ImageView mIndicatorIv;
+            private final TextView mTitleTv;
+
+            public EventBatteryHolder(@NonNull View itemView) {
+                super(itemView);
+                mTimeTv = itemView.findViewById(R.id.tv_time);
+                mIndicatorIv = itemView.findViewById(R.id.iv_indicator);
+                mTitleTv = itemView.findViewById(R.id.tv_title);
+            }
+
+            @SuppressLint("SetTextI18n")
+            @Override
+            public void bind(Item.EventBatteryItem item) {
+                mItem = item;
+                mTimeTv.setText(sTimeFormat.format(new Date(item.millis)));
+                mTitleTv.setText(item.event);
+
+                mIndicatorIv.setImageLevel(1);
+                if (item.record.extras.containsKey("battery-low")) {
+                    boolean lowBattery = item.record.getBoolean("battery-low", false);
+                    mIndicatorIv.setImageLevel(lowBattery ? 4 : 2);
+                    long pct = item.record.getDigit("battery-pct", -1);
+                    mTitleTv.setText((lowBattery ? "BATTERY_LOW" : "BATTERY_OK") + ((pct > 0 ? " (" + pct + "%)" : "")));
+                    return;
+                }
+                if (item.record.extras.containsKey("battery-temp")) {
+                    long temp = item.record.getDigit("battery-temp", -1);
+                    if (temp != -1) {
+                        mIndicatorIv.setImageLevel(3);
+                    }
+                    long pct = item.record.getDigit("battery-pct", -1);
+                    mTitleTv.setText("BATTERY_TEMP: " + (temp > 0 ? temp / 10f : "/") + "°C" + ((pct > 0 ? " (" + pct + "%)" : "")));
+                    return;
+                }
+                if (item.record.extras.containsKey("battery-pct")) {
+                    long pct = item.record.getDigit("battery-pct", -1);
+                    mTitleTv.setText("BATTERY_POWER: " + (pct > 0 ? pct : "/") + "%");
+                }
             }
         }
     }

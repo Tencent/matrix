@@ -7,9 +7,11 @@ import android.os.Process;
 import com.tencent.matrix.batterycanary.monitor.AppStats;
 import com.tencent.matrix.batterycanary.monitor.feature.AbsMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.CompositeMonitors;
+import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.util.MatrixHandlerThread;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -198,6 +200,34 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
         if (mBatteryStats != null) {
             writeRecord(mBatteryStats.statsEvent(event, eventId, extras));
         }
+    }
+
+    public void statsBatteryEvent(boolean isLowBattery) {
+        String event = BatteryRecord.EventStatRecord.EVENT_BATTERY_STAT;
+        int id = 0;
+        int pct = BatteryCanaryUtil.getBatteryPercentage(mCore.getContext());
+        Map<String, Object> extras = new HashMap<>();
+        extras.put("battery-low", isLowBattery);
+        extras.put("battery-pct", pct);
+        statsEvent(event, id, extras);
+    }
+
+    public void statsBatteryEvent(int pct) {
+        String event = BatteryRecord.EventStatRecord.EVENT_BATTERY_STAT;
+        int id = 0;
+        Map<String, Object> extras = new HashMap<>();
+        extras.put("battery-pct", pct);
+        statsEvent(event, id, extras);
+    }
+
+    public void statsBatteryTempEvent(int temperature) {
+        String event = BatteryRecord.EventStatRecord.EVENT_BATTERY_STAT;
+        int id = 0;
+        int pct = BatteryCanaryUtil.getBatteryPercentage(mCore.getContext());
+        Map<String, Object> extras = new HashMap<>();
+        extras.put("battery-temp", temperature);
+        extras.put("battery-pct", pct);
+        statsEvent(event, id, extras);
     }
 
     public void statsMonitors(CompositeMonitors monitors) {

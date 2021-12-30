@@ -6,6 +6,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.os.BatteryManager;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
@@ -29,12 +30,16 @@ import androidx.annotation.StringDef;
 import androidx.annotation.UiThread;
 import androidx.annotation.VisibleForTesting;
 
+import static com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil.ONE_MIN;
+
 /**
  * @author Kaede
  * @since 2021/1/11
  */
 public final class BatteryEventDelegate {
     public static final String TAG = "Matrix.battery.LifeCycle";
+    private static final int BATTERY_POWER_GRADUATION = 5;
+    private static final int BATTERY_TEMPERATURE_GRADUATION = 15;
 
     @SuppressLint("StaticFieldLeak")
     static volatile BatteryEventDelegate sInstance;
@@ -81,6 +86,9 @@ public final class BatteryEventDelegate {
     final Handler mUiHandler = new Handler(Looper.getMainLooper());
     final BackgroundTask mAppLowEnergyTask = new BackgroundTask();
     boolean sIsForeground = true;
+    long mLastBatteryPowerPct;
+    long mLastBatteryTemp;
+
     @Nullable
     BatteryMonitorCore mCore;
 
@@ -90,6 +98,8 @@ public final class BatteryEventDelegate {
             throw new IllegalStateException("Context should not be null");
         }
         mContext = context;
+        mLastBatteryPowerPct = BatteryCanaryUtil.getBatteryPercentage(context);
+        mLastBatteryTemp = BatteryCanaryUtil.getBatteryTemperature(context);
     }
 
     public BatteryEventDelegate attach(BatteryMonitorCore core) {
@@ -118,38 +128,95 @@ public final class BatteryEventDelegate {
         filter.addAction(Intent.ACTION_SCREEN_OFF);
         filter.addAction(Intent.ACTION_POWER_CONNECTED);
         filter.addAction(Intent.ACTION_POWER_DISCONNECTED);
+        filter.addAction(Intent.ACTION_BATTERY_CHANGED);
+        filter.addAction(Intent.ACTION_BATTERY_OKAY);
+        filter.addAction(Intent.ACTION_BATTERY_LOW);
 
         mContext.registerReceiver(new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 String action = intent.getAction();
                 if (action != null) {
-                    int devStat = -1;
-                    switch (action) {
-                        case Intent.ACTION_SCREEN_ON:
-                            devStat = AppStats.DEV_STAT_SCREEN_ON;
-                            break;
-                        case Intent.ACTION_SCREEN_OFF:
-                            devStat = AppStats.DEV_STAT_SCREEN_OFF;
-                            break;
-                        case Intent.ACTION_POWER_CONNECTED:
-                            devStat = AppStats.DEV_STAT_CHARGING;
-                            break;
-                        case Intent.ACTION_POWER_DISCONNECTED:
-                            devStat = AppStats.DEV_STAT_UN_CHARGING;
-                            break;
-                    }
-                    if (devStat != -1) {
-                        if (mCore != null) {
-                            BatteryStatsFeature feat = mCore.getMonitorFeature(BatteryStatsFeature.class);
-                            if (feat != null) {
-                                feat.statsDevStat(devStat);
+                    if (action.equals(Intent.ACTION_BATTERY_CHANGED)) {
+                        // 1. Check battery power & temperature changed
+                        int currPct = BatteryCanaryUtil.getBatteryPercentage(mContext);
+                        if (Math.abs(currPct - mLastBatteryPowerPct) >= BATTERY_POWER_GRADUATION) {
+                            mLastBatteryPowerPct = currPct;
+                            if (mCore != null) {
+                                BatteryStatsFeature feat = mCore.getMonitorFeature(BatteryStatsFeature.class);
+                                if (feat != null) {
+                                    feat.statsBatteryEvent(currPct);
+                                }
+                            }
+                            onBatteryPowerChanged(currPct);
+                        }
+
+                        int currTemp = intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1);
+                        if (currTemp != -1 && Math.abs(currTemp - mLastBatteryTemp) >= BATTERY_TEMPERATURE_GRADUATION) {
+                            mLastBatteryTemp = currTemp;
+                            if (mCore != null) {
+                                BatteryStatsFeature feat = mCore.getMonitorFeature(BatteryStatsFeature.class);
+                                if (feat != null) {
+                                    feat.statsBatteryTempEvent(currTemp);
+                                }
+                            }
+                            onBatteryTemperatureChanged(currTemp);
+                        }
+
+                    } else {
+                        int devStat = -1;
+                        boolean notifyStateChanged = false, notifyBatteryStateChanged = false;
+                        switch (action) {
+                            case Intent.ACTION_SCREEN_ON:
+                                devStat = AppStats.DEV_STAT_SCREEN_ON;
+                                notifyStateChanged = true;
+                                break;
+                            case Intent.ACTION_SCREEN_OFF:
+                                devStat = AppStats.DEV_STAT_SCREEN_OFF;
+                                notifyStateChanged = true;
+                                break;
+                            case Intent.ACTION_POWER_CONNECTED:
+                                devStat = AppStats.DEV_STAT_CHARGING;
+                                notifyStateChanged = true;
+                                break;
+                            case Intent.ACTION_POWER_DISCONNECTED:
+                                devStat = AppStats.DEV_STAT_UN_CHARGING;
+                                notifyStateChanged = true;
+                                break;
+                            case Intent.ACTION_BATTERY_OKAY:
+                            case Intent.ACTION_BATTERY_LOW:
+                                notifyStateChanged = true;
+                                notifyBatteryStateChanged = true;
+                                break;
+                            default:
+                                break;
+                        }
+
+                        // 2. Stat device status changed
+                        if (devStat != -1) {
+                            if (mCore != null) {
+                                BatteryStatsFeature feat = mCore.getMonitorFeature(BatteryStatsFeature.class);
+                                if (feat != null) {
+                                    feat.statsDevStat(devStat);
+                                }
                             }
                         }
-                        onSateChangedEvent(intent);
+
+                        // 3. Notify state changed
+                        if (notifyStateChanged) {
+                            onSateChangedEvent(intent);
+                        }
+                        if (notifyBatteryStateChanged) {
+                            if (mCore != null) {
+                                BatteryStatsFeature feat = mCore.getMonitorFeature(BatteryStatsFeature.class);
+                                if (feat != null) {
+                                    feat.statsBatteryEvent(action.equals(Intent.ACTION_BATTERY_LOW));
+                                }
+                            }
+                            onBatteryChangeEvent(intent);
+                        }
                     }
                 }
-
             }
         }, filter);
     }
@@ -203,6 +270,45 @@ public final class BatteryEventDelegate {
         }
     }
 
+    private void onBatteryChangeEvent(final Intent intent) {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            dispatchBatteryStateChangedEvent(intent);
+        } else {
+            mUiHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    dispatchBatteryStateChangedEvent(intent);
+                }
+            });
+        }
+    }
+
+    private void onBatteryPowerChanged(final int pct) {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            dispatchBatteryPowerChanged(pct);
+        } else {
+            mUiHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    dispatchBatteryPowerChanged(pct);
+                }
+            });
+        }
+    }
+
+    private void onBatteryTemperatureChanged(final int temp) {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            dispatchBatteryTemperatureChanged(temp);
+        } else {
+            mUiHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    dispatchBatteryTemperatureChanged(temp);
+                }
+            });
+        }
+    }
+
     @VisibleForTesting
     void dispatchSateChangedEvent(Intent intent) {
         MatrixLog.i(TAG, "onSateChanged >> " + intent.getAction());
@@ -217,10 +323,62 @@ public final class BatteryEventDelegate {
 
     @VisibleForTesting
     void dispatchAppLowEnergyEvent(long duringMillis) {
+        MatrixLog.i(TAG, "onAppLowEnergy >> " + (duringMillis / ONE_MIN) + "min");
         synchronized (mListenerList) {
+            BatteryState batteryState = currentState();
             for (Listener item : mListenerList) {
-                if (item.onAppLowEnergy(currentState(), duringMillis)) {
-                    return;
+                if (item.onAppLowEnergy(batteryState, duringMillis)) {
+                    removeListener(item);
+                }
+            }
+        }
+    }
+
+    @VisibleForTesting
+    void dispatchBatteryStateChangedEvent(Intent intent) {
+        String action = intent.getAction();
+        if (Intent.ACTION_BATTERY_OKAY.equals(action) || Intent.ACTION_BATTERY_LOW.equals(action)) {
+            MatrixLog.i(TAG, "onBatteryStateChanged >> " + action);
+            synchronized (mListenerList) {
+                BatteryState batteryState = currentState();
+                for (Listener item : mListenerList) {
+                    if (item instanceof Listener.ExListener) {
+                        if (((Listener.ExListener) item).onBatteryStateChanged(batteryState, Intent.ACTION_BATTERY_LOW.equals(action))) {
+                            removeListener(item);
+                        }
+                    }
+                }
+            }
+        } else {
+            throw new IllegalStateException("Illegal battery state: " + action);
+        }
+    }
+
+    @VisibleForTesting
+    void dispatchBatteryPowerChanged(int pct) {
+        MatrixLog.i(TAG, "onBatteryPowerChanged >> " + pct + "%");
+        synchronized (mListenerList) {
+            BatteryState batteryState = currentState();
+            for (Listener item : mListenerList) {
+                if (item instanceof Listener.ExListener) {
+                    if (((Listener.ExListener) item).onBatteryPowerChanged(batteryState, pct)) {
+                        removeListener(item);
+                    }
+                }
+            }
+        }
+    }
+
+    @VisibleForTesting
+    void dispatchBatteryTemperatureChanged(int temperature) {
+        MatrixLog.i(TAG, "onBatteryTemperatureChanged >> " + (temperature / 10f) + "°C");
+        synchronized (mListenerList) {
+            BatteryState batteryState = currentState();
+            for (Listener item : mListenerList) {
+                if (item instanceof Listener.ExListener) {
+                    if (((Listener.ExListener) item).onBatteryTemperatureChanged(batteryState, temperature)) {
+                        removeListener(item);
+                    }
                 }
             }
         }
@@ -293,6 +451,18 @@ public final class BatteryEventDelegate {
             return BatteryCanaryUtil.isDeviceOnPowerSave(mContext);
         }
 
+        public boolean isLowBattery() {
+            return BatteryCanaryUtil.isLowBattery(mContext);
+        }
+
+        public int getBatteryPercentage() {
+            return BatteryCanaryUtil.getBatteryPercentage(mContext);
+        }
+
+        public int getBatteryCapacity() {
+            return BatteryCanaryUtil.getBatteryCapacity(mContext);
+        }
+
         public long getBackgroundTimeMillis() {
             if (isForeground()) return 0L;
             if (sBackgroundBgnMillis <= 0L) return 0L;
@@ -316,7 +486,9 @@ public final class BatteryEventDelegate {
                 Intent.ACTION_SCREEN_ON,
                 Intent.ACTION_SCREEN_OFF,
                 Intent.ACTION_POWER_CONNECTED,
-                Intent.ACTION_POWER_DISCONNECTED
+                Intent.ACTION_POWER_DISCONNECTED,
+                Intent.ACTION_BATTERY_OKAY,
+                Intent.ACTION_BATTERY_LOW,
         })
         @Retention(RetentionPolicy.SOURCE)
         @interface BatteryEventDef {
@@ -333,5 +505,36 @@ public final class BatteryEventDelegate {
          */
         @UiThread
         boolean onAppLowEnergy(BatteryState batteryState, long backgroundMillis);
+
+
+        interface ExListener extends Listener {
+
+            /**
+             * On battery power increase.
+             *
+             * @param batteryState {@link BatteryState}
+             * @param levelPct     Battery capacity level 0 - 100
+             * @return return true if your listening is done, thus we remove your listener
+             */
+            boolean onBatteryPowerChanged(BatteryState batteryState, int levelPct);
+
+            /**
+             * On battery power decrease.
+             *
+             * @param batteryState {@link BatteryState}
+             * @param isLowBattery {@link Intent#ACTION_BATTERY_LOW}
+             * @return return true if your listening is done, thus we remove your listener
+             */
+            boolean onBatteryStateChanged(BatteryState batteryState, boolean isLowBattery);
+
+            /**
+             * On battery temperature increase.
+             *
+             * @param batteryState {@link BatteryState}
+             * @param temperature  See {@link BatteryManager#EXTRA_TEMPERATURE}, °C * 10
+             * @return return true if your listening is done, thus we remove your listener
+             */
+            boolean onBatteryTemperatureChanged(BatteryState batteryState, int temperature);
+        }
     }
 }
