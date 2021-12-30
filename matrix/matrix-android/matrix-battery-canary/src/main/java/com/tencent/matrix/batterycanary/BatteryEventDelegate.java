@@ -39,7 +39,7 @@ import static com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil.ONE_MIN;
 public final class BatteryEventDelegate {
     public static final String TAG = "Matrix.battery.LifeCycle";
     private static final int BATTERY_POWER_GRADUATION = 5;
-    private static final int BATTERY_TEMPERATURE_GRADUATION = 20;
+    private static final int BATTERY_TEMPERATURE_GRADUATION = 15;
 
     @SuppressLint("StaticFieldLeak")
     static volatile BatteryEventDelegate sInstance;
@@ -157,7 +157,7 @@ public final class BatteryEventDelegate {
                             if (mCore != null) {
                                 BatteryStatsFeature feat = mCore.getMonitorFeature(BatteryStatsFeature.class);
                                 if (feat != null) {
-                                    feat.statsEvent("BATTERY_TEMP: " + currTemp);
+                                    feat.statsBatteryTempEvent(currTemp);
                                 }
                             }
                             onBatteryTemperatureChanged(currTemp);
