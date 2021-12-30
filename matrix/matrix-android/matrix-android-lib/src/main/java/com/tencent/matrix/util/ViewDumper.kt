@@ -2,7 +2,7 @@ package com.tencent.matrix.util
 
 import android.view.View
 import android.view.ViewGroup
-import com.tencent.matrix.lifecycle.owners.MatrixProcessLifecycleOwner
+import com.tencent.matrix.lifecycle.owners.OverlayWindowLifecycleOwner
 import java.lang.StringBuilder
 
 /**
@@ -11,7 +11,7 @@ import java.lang.StringBuilder
 object ViewDumper {
 
     @JvmStatic
-    fun dump(): Array<String> = MatrixProcessLifecycleOwner.getViews().map {
+    fun dump(): Array<String> = OverlayWindowLifecycleOwner.getAllViews().map {
         dumpInternal(it)
     }.toTypedArray()
 

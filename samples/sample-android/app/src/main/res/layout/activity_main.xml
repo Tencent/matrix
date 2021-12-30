@@ -105,6 +105,17 @@
                 android:text="test FgService"
                 tools:ignore="UsingOnClickInXml" />
 
+            <Button
+                android:id="@+id/test_overlay_window"
+                style="@style/EntryButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textAllCaps="false"
+                android:onClick="testOverlayWindow"
+                android:text="test Overlay Window"
+                tools:ignore="UsingOnClickInXml" />
+
         </LinearLayout>
     </ScrollView>
 </LinearLayout>

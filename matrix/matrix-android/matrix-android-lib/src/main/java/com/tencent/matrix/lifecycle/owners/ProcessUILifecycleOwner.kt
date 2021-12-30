@@ -284,45 +284,6 @@ object MatrixProcessLifecycleOwner {
         }
     }
 
-    private val WindowManagerGlobal_mRoots by lazy {
-        safeLetOrNull(TAG) {
-            Class.forName("android.view.WindowManagerGlobal").let {
-                val instance = ReflectUtils.invoke<Any>(it, "getInstance", null)
-                ReflectUtils.get<ArrayList<*>>(it, "mRoots", instance)
-            }
-        }
-    }
-
-    private val field_ViewRootImpl_mView by lazy {
-        safeLetOrNull(TAG) {
-            ReflectFiled<View>(Class.forName("android.view.ViewRootImpl"), "mView")
-        }
-    }
-
-    @JvmStatic
-    @SuppressLint("PrivateApi", "DiscouragedPrivateApi")
-    fun hasVisibleWindow() = safeLet(TAG, log = true, defVal = false) {
-        if (WindowManagerGlobal_mRoots == null) {
-            MatrixLog.e(TAG, "WindowManagerGlobal_mRoots not found")
-            return@safeLet false
-        }
-        if (field_ViewRootImpl_mView == null) {
-            MatrixLog.e(TAG, "field_ViewRootImpl_mView not found")
-            return@safeLet false
-        }
-        return@safeLet WindowManagerGlobal_mRoots!!.any {
-            val v = field_ViewRootImpl_mView!!.get(it)
-            // windowVisibility is determined by app vibility
-            // until the PRIVATE_FLAG_FORCE_DECOR_VIEW_VISIBILITY is set, which is blocked in Q
-            return@any v != null && View.VISIBLE == v.visibility && View.VISIBLE == v.windowVisibility
-        }
-    }
-
-    internal fun getViews() = safeLet(TAG, log = true, defVal = emptyList<View>()) {
-        return@safeLet WindowManagerGlobal_mRoots!!.map { field_ViewRootImpl_mView!!.get(it) }
-            .toList()
-    }
-
     private val componentToProcess by lazy { HashMap<String, String>() }
 
     private fun isComponentOfProcess(component: ComponentName?, process: String?): Boolean {
@@ -519,7 +480,7 @@ class MatrixProcessLifecycleInitializer {
         private var inited = false
 
         @JvmStatic
-        fun init(@NonNull app: Application, enableFgServiceMonitor: Boolean) {
+        fun init(@NonNull app: Application, enableFgServiceMonitor: Boolean, enableOverlayWindowMonitor: Boolean) {
             if (inited) {
                 return
             }
@@ -537,12 +498,14 @@ class MatrixProcessLifecycleInitializer {
             if (enableFgServiceMonitor) {
                 ForegroundServiceLifecycleOwner.init(app)
             }
-//            ActivityRecorder.init(context.applicationContext as Application, baseActivities)
+            if (enableOverlayWindowMonitor) {
+                OverlayWindowLifecycleOwner.init()
+            }
         }
 
         @SuppressLint("PrivateApi", "DiscouragedPrivateApi")
         @JvmStatic
-        fun hasCreatedActivities() = safeLet(tag = TAG, defVal = false) {
+        private fun hasCreatedActivities() = safeLet(tag = TAG, defVal = false) {
             val clazzActivityThread = Class.forName("android.app.ActivityThread")
             val objectActivityThread =
                 clazzActivityThread.getMethod("currentActivityThread").invoke(null)

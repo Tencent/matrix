@@ -39,12 +39,12 @@ public class Matrix {
     private static volatile Matrix sInstance;
 
     private final HashSet<Plugin> plugins;
-    private final Application application;
+    private final Application     application;
 
-    private Matrix(Application app, PluginListener listener, HashSet<Plugin> plugins, SupervisorConfig supervisorConfig, boolean enableFgServiceMonitor) {
+    private Matrix(Application app, PluginListener listener, HashSet<Plugin> plugins, SupervisorConfig supervisorConfig, boolean enableFgServiceMonitor, boolean enableOverlayWindowMonitor) {
         this.application = app;
         this.plugins = plugins;
-        MatrixProcessLifecycleInitializer.init(app, enableFgServiceMonitor);
+        MatrixProcessLifecycleInitializer.init(app, enableFgServiceMonitor, enableOverlayWindowMonitor);
         ProcessSupervisor.INSTANCE.init(app, supervisorConfig);
         for (Plugin plugin : plugins) {
             plugin.init(application, listener);
@@ -127,9 +127,11 @@ public class Matrix {
 
     public static class Builder {
         private final Application application;
+
         private PluginListener   pluginListener;
         private SupervisorConfig supervisorConfig;
         private boolean          enableFgServiceMonitor;
+        private boolean          enableOverlayWindowMonitor;
 
         private final HashSet<Plugin> plugins = new HashSet<>();
 
@@ -158,6 +160,7 @@ public class Matrix {
 
         /**
          * see {@link SupervisorConfig}
+         *
          * @param config
          * @return
          */
@@ -172,11 +175,16 @@ public class Matrix {
             return this;
         }
 
+        public Builder enableOverlayWindowMonitor(boolean enable) {
+            this.enableOverlayWindowMonitor = enable;
+            return this;
+        }
+
         public Matrix build() {
             if (pluginListener == null) {
                 pluginListener = new DefaultPluginListener(application);
             }
-            return new Matrix(application, pluginListener, plugins, supervisorConfig, enableFgServiceMonitor);
+            return new Matrix(application, pluginListener, plugins, supervisorConfig, enableFgServiceMonitor, enableOverlayWindowMonitor);
         }
 
     }

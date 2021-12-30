@@ -8,9 +8,11 @@ import com.tencent.matrix.lifecycle.IStateObserver;
 import com.tencent.matrix.lifecycle.owners.DeepBackgroundOwner;
 import com.tencent.matrix.lifecycle.owners.ExplicitBackgroundOwner;
 import com.tencent.matrix.lifecycle.owners.MatrixProcessLifecycleOwner;
+import com.tencent.matrix.lifecycle.owners.OverlayWindowLifecycleOwner;
 import com.tencent.matrix.lifecycle.owners.StagedBackgroundOwner;
 import com.tencent.matrix.lifecycle.supervisor.ProcessSupervisor;
 import com.tencent.matrix.listeners.IAppForeground;
+import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 import com.tencent.matrix.util.MatrixUtil;
 
@@ -134,6 +136,18 @@ public class LifecycleTest {
             @Override
             public void onForeground(boolean isForeground) {
                 MatrixLog.d(TAG, "AppActiveMatrixDelegate foreground %s", isForeground);
+            }
+        });
+
+        OverlayWindowLifecycleOwner.INSTANCE.observeForever(new IStateObserver() {
+            @Override
+            public void on() {
+                MatrixLog.d(TAG, "OverlayWindowLifecycleOwner: on , hasOverlayWindow %s, hasVisibleWindow %s", OverlayWindowLifecycleOwner.INSTANCE.hasOverlayWindow(), OverlayWindowLifecycleOwner.INSTANCE.hasVisibleWindow());
+            }
+
+            @Override
+            public void off() {
+                MatrixLog.d(TAG, "OverlayWindowLifecycleOwner: off , hasOverlayWindow %s, hasVisibleWindow %s", OverlayWindowLifecycleOwner.INSTANCE.hasOverlayWindow(), OverlayWindowLifecycleOwner.INSTANCE.hasVisibleWindow());
             }
         });
     }

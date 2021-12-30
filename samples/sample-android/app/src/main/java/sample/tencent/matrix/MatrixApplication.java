@@ -133,6 +133,7 @@ public class MatrixApplication extends Application {
 
         builder.supervisorConfig(new SupervisorConfig(true, true, new ArrayList<String>()));
         builder.enableFgServiceMonitor(true);
+        builder.enableOverlayWindowMonitor(true);
         Matrix.init(builder.build());
 
         // Trace Plugin need call start() at the beginning.
@@ -149,7 +150,7 @@ public class MatrixApplication extends Application {
             }
         });
 
-        MatrixLog.d("Yves-test", "hasCreatedActivities %s", MatrixProcessLifecycleInitializer.hasCreatedActivities());
+//        MatrixLog.d("Yves-test", "hasCreatedActivities %s", MatrixProcessLifecycleInitializer.hasCreatedActivities());
 
         MatrixLog.i(TAG, "Matrix configurations done.");
     }

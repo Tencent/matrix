@@ -23,10 +23,15 @@ interface IBackgroundStatefulOwner : IStatefulOwner
  *
  * Once this owner turned on, timer checker would be stop.
  * Therefore, the callback [IStateObserver.off] just means explicit background currently.
-
- * If the ForegroundServiceLifecycle were disabled and there are foreground Service launched
+ *
+ * If the [ForegroundServiceLifecycleOwner] were disabled and there are foreground Service launched
  * after calling [IStateObserver.off], the state wouldn't be turn on thus the [IStateObserver.on]
  * wouldn't be call either until we call the [active] or the state of upstream Owner changes.
+ * So do [OverlayWindowLifecycleOwner].
+ *
+ * If one of [ForegroundServiceLifecycleOwner] and [OverlayWindowLifecycleOwner] were disabled, the
+ * [ExplicitBackgroundOwner] would start the timer checker to check if there are foreground services
+ * or Overlay Windows
  *
  * The state change event is delayed for at least 34ms for removing foreground widgets
  * like floating view which depends on [MatrixProcessLifecycleOwner]. see [TimerChecker]
@@ -47,7 +52,7 @@ object ExplicitBackgroundOwner : StatefulOwner(), IBackgroundStatefulOwner {
         override fun action(): Boolean {
             val uiForeground by lazy { MatrixProcessLifecycleOwner.startedStateOwner.active() }
             val fgService by lazy { MatrixProcessLifecycleOwner.hasForegroundService() }
-            val visibleWindow by lazy { MatrixProcessLifecycleOwner.hasVisibleWindow() }
+            val visibleWindow by lazy { OverlayWindowLifecycleOwner.hasVisibleWindow() }
 
             if (uiForeground) {
                 MatrixLog.i(TAG, "turn OFF for UI foreground")
@@ -70,7 +75,8 @@ object ExplicitBackgroundOwner : StatefulOwner(), IBackgroundStatefulOwner {
         ImmutableMultiSourceStatefulOwner(
             ReduceOperators.OR,
             MatrixProcessLifecycleOwner.startedStateOwner,
-            ForegroundServiceLifecycleOwner
+            ForegroundServiceLifecycleOwner,
+            OverlayWindowLifecycleOwner
         ).observeForever(object : IStateObserver {
             override fun on() { // Activity foreground
                 checkTask.stop()

@@ -31,7 +31,7 @@ import android.widget.LinearLayout;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.tencent.matrix.lifecycle.owners.MatrixProcessLifecycleOwner;
+import com.tencent.matrix.lifecycle.owners.OverlayWindowLifecycleOwner;
 import com.tencent.matrix.memory.canary.MemInfo;
 import com.tencent.matrix.trace.view.FrameDecorator;
 import com.tencent.matrix.util.MatrixLog;
@@ -56,12 +56,12 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         IssuesMap.clear();
 
-        MatrixLog.d(TAG, "has visible window %s", MatrixProcessLifecycleOwner.hasVisibleWindow());
+        MatrixLog.d(TAG, "has visible window %s", OverlayWindowLifecycleOwner.INSTANCE.hasVisibleWindow());
 
         new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
             @Override
             public void run() {
-                MatrixLog.d(TAG, "has visible window %s", MatrixProcessLifecycleOwner.hasVisibleWindow());
+                MatrixLog.d(TAG, "has visible window %s", OverlayWindowLifecycleOwner.INSTANCE.hasVisibleWindow());
 
                 String[] arr = ViewDumper.dump();
                 MatrixLog.d(TAG, "view tree size = %s", arr.length);
@@ -156,8 +156,6 @@ public class MainActivity extends AppCompatActivity {
                 getWindowManager().addView(new LinearLayout(MainActivity.this), params);
             }
         });
-        FrameDecorator.getInstance(getApplicationContext()).setEnable(true);
-        FrameDecorator.getInstance(getApplicationContext()).show();
     }
 
     public static class StubService extends Service {
@@ -175,6 +173,15 @@ public class MainActivity extends AppCompatActivity {
 
     public void testFgService(View view) {
         TestFgService.test(this);
+    }
+
+    public void testOverlayWindow(View view) {
+        if (FrameDecorator.getInstance(getApplicationContext()).isShowing()) {
+            FrameDecorator.getInstance(getApplicationContext()).dismiss();
+        } else {
+            FrameDecorator.getInstance(getApplicationContext()).setEnable(true);
+            FrameDecorator.getInstance(getApplicationContext()).show();
+        }
     }
 
     @Override

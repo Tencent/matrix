@@ -11,6 +11,7 @@ import android.os.Message
 import android.os.Process
 import android.util.ArrayMap
 import com.tencent.matrix.lifecycle.StatefulOwner
+import com.tencent.matrix.util.MatrixHandlerThread
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.safeApply
 import com.tencent.matrix.util.safeLetOrNull
@@ -40,6 +41,8 @@ object ForegroundServiceLifecycleOwner : StatefulOwner() {
     private var ActivityThreadmH: Handler? = null
 
     private var fgServiceHandler: FgServiceHandler? = null
+
+    private val runningHandler = MatrixHandlerThread.getDefaultHandler()
 
     fun init(context: Context) {
         if (Build.VERSION.SDK_INT > 31) { // for safety
@@ -169,8 +172,10 @@ object ForegroundServiceLifecycleOwner : StatefulOwner() {
         fun onStartForeground(componentName: ComponentName) {
             MatrixLog.i(TAG, "hack onStartForeground: $componentName")
             if (fgServiceRecord.isEmpty()) {
-                MatrixLog.i(TAG, "turn ON")
-                turnOn()
+                runningHandler.post {
+                    MatrixLog.i(TAG, "turn ON")
+                    turnOn()
+                }
             }
             fgServiceRecord.add(componentName)
         }
@@ -179,8 +184,10 @@ object ForegroundServiceLifecycleOwner : StatefulOwner() {
             MatrixLog.i(TAG, "hack onStopForeground: $componentName")
             fgServiceRecord.remove(componentName)
             if (fgServiceRecord.isEmpty()) {
-                MatrixLog.i(TAG, "turn OFF")
-                turnOff()
+                runningHandler.post {
+                    MatrixLog.i(TAG, "turn OFF")
+                    turnOff()
+                }
             }
         }
     }

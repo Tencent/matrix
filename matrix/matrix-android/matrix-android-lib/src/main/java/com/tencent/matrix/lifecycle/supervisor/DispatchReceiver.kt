@@ -9,6 +9,7 @@ import android.os.Process
 import android.text.TextUtils
 import com.tencent.matrix.lifecycle.IStateObserver
 import com.tencent.matrix.lifecycle.owners.MatrixProcessLifecycleOwner
+import com.tencent.matrix.lifecycle.owners.OverlayWindowLifecycleOwner
 import com.tencent.matrix.util.*
 import java.util.concurrent.TimeUnit
 
@@ -265,7 +266,7 @@ internal object DispatchReceiver : BroadcastReceiver(), IProcessListener {
                     MatrixHandlerThread.getDefaultHandler().postDelayed({
                         if (!MatrixProcessLifecycleOwner.startedStateOwner.active()
                             && !MatrixProcessLifecycleOwner.hasForegroundService()
-                            && !MatrixProcessLifecycleOwner.hasVisibleWindow()
+                            && !OverlayWindowLifecycleOwner.hasVisibleWindow()
                         ) {
                             ProcessSupervisor.supervisorProxy?.onProcessKilled(token)
                             MatrixLog.e(
