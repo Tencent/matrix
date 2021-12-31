@@ -3,14 +3,9 @@ package com.tencent.matrix.lifecycle.supervisor
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.os.Binder
-import android.os.IBinder
-import android.os.Process
+import android.os.*
 import com.tencent.matrix.lifecycle.StatefulOwner
-import com.tencent.matrix.util.MatrixHandlerThread
-import com.tencent.matrix.util.MatrixLog
-import com.tencent.matrix.util.MatrixUtil
-import com.tencent.matrix.util.safeApply
+import com.tencent.matrix.util.*
 import junit.framework.Assert
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -21,7 +16,7 @@ import java.util.concurrent.ConcurrentLinkedQueue
 class SupervisorService : Service() {
 
     companion object {
-        private const val TAG = "Matrix.ProcessSupervisor.SupervisorService"
+        private const val TAG = "Matrix.ProcessSupervisor.Service"
         private var isSupervisor = false
 
         @Volatile
@@ -44,8 +39,7 @@ class SupervisorService : Service() {
 
     private val tokenRecord: TokenRecord = TokenRecord()
 
-    private val backgroundProcessLru: ConcurrentLinkedQueue<ProcessToken>
-            by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { ConcurrentLinkedQueue() }
+    private val backgroundProcessLru by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { ConcurrentLinkedQueue<ProcessToken>() }
 
     private fun ConcurrentLinkedQueue<ProcessToken>.contentToString(): String {
         val it: Iterator<ProcessToken> = iterator()
@@ -75,31 +69,43 @@ class SupervisorService : Service() {
     }
 
     private val binder = object : ISupervisorProxy.Stub() {
-        override fun stateRegister(tokens: Array<ProcessToken>) {
+        override fun registerSubordinate(
+            tokens: Array<ProcessToken>,
+            subordinateProxy: ISubordinateProxy
+        ) {
             val pid = Binder.getCallingPid()
 
-            MatrixLog.d(TAG, "supervisor called register, tokens(${tokens.size}): ${tokens.contentToString()}")
+            MatrixLog.d(
+                TAG,
+                "supervisor called register, tokens(${tokens.size}): ${tokens.contentToString()}"
+            )
 
             tokens.first().apply {
                 tokenRecord.addToken(this)
+//                subordinateProxies[this.name] = subordinateProxy
+                ProcessSubordinate.manager.addProxy(this.name, subordinateProxy)
                 backgroundProcessLru.moveOrAddFirst(this)
                 asyncLog("CREATED: [$pid-${name}] -> [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}")
 
-                linkToDeath {
-                    safeApply(TAG) {
-                        val dead = tokenRecord.removeToken(pid)
-                        val lruRemoveSuccess = backgroundProcessLru.remove(dead)
-                        val proxyRemoveSuccess = RemoteProcessLifecycleProxy.removeProxy(dead)
-                        MatrixLog.i(
-                            TAG,
-                            "$pid-$dead was dead. is LRU kill? ${!lruRemoveSuccess && !proxyRemoveSuccess}"
-                        )
-                        DispatchReceiver.dispatchDeath(
-                            applicationContext,
-                            dead.name,
-                            dead.pid,
-                            !lruRemoveSuccess && !proxyRemoveSuccess
-                        )
+                safeApply(TAG) {
+                    linkToDeath {
+                        safeApply(TAG) {
+                            val dead = tokenRecord.removeToken(pid)
+                            val lruRemoveSuccess = backgroundProcessLru.remove(dead)
+                            val proxyRemoveSuccess = RemoteProcessLifecycleProxy.removeProxy(dead)
+                            MatrixLog.i(
+                                TAG,
+                                "$pid-$dead was dead. is LRU kill? ${!lruRemoveSuccess && !proxyRemoveSuccess}"
+                            )
+//                            DispatchReceiver.dispatchDeath(
+//                                applicationContext,
+//                                dead.name,
+//                                dead.pid,
+//                                !lruRemoveSuccess && !proxyRemoveSuccess
+//                            )
+                            ProcessSubordinate.manager.removeProxy(dead.name)
+                            ProcessSubordinate.manager.dispatchDeath(recentScene, dead.name, dead.pid, !lruRemoveSuccess && !proxyRemoveSuccess)
+                        }
                     }
                 }
             }
@@ -113,7 +119,7 @@ class SupervisorService : Service() {
                 MatrixLog.i(TAG, "stateRegister: no other process registered, ignore state changes")
                 return
             }
-            DispatcherStateOwner.syncStates(applicationContext) // sync state for new process
+            DispatcherStateOwner.syncStates(recentScene) // sync state for new process
         }
 
         override fun onStateChanged(token: ProcessToken) {
@@ -125,7 +131,7 @@ class SupervisorService : Service() {
         }
 
         override fun onSceneChanged(scene: String) {
-            recentScene = scene
+            SupervisorService.recentScene = scene
         }
 
         override fun onProcessBackground(token: ProcessToken) {
@@ -168,12 +174,12 @@ class SupervisorService : Service() {
                 )
             }
         }
+
+        override fun getRecentScene() = SupervisorService.recentScene
     }
 
     override fun onCreate() {
         super.onCreate()
-
-//        DispatchReceiver.dispatchSupervisorInstallation(applicationContext)
 
         MatrixLog.d(TAG, "onCreate")
         isSupervisor = true
@@ -186,11 +192,12 @@ class SupervisorService : Service() {
                 return@observe
             }
             MatrixLog.d(TAG, "supervisor dispatch $stateName $state")
-            if (state) {
-                DispatchReceiver.dispatchAppStateOn(applicationContext, stateName)
-            } else {
-                DispatchReceiver.dispatchAppStateOff(applicationContext, stateName)
-            }
+//            if (state) {
+//                DispatchReceiver.dispatchAppStateOn(applicationContext, stateName)
+//            } else {
+//                DispatchReceiver.dispatchAppStateOff(applicationContext, stateName)
+//            }
+            ProcessSubordinate.manager.dispatchState(recentScene, stateName, state)
         }
     }
 
@@ -217,7 +224,8 @@ class SupervisorService : Service() {
         }
 
         if (candidate != null) {
-            DispatchReceiver.dispatchKill(this, candidate.name, candidate.pid)
+//            DispatchReceiver.dispatchKill(this, candidate.name, candidate.pid)
+            ProcessSubordinate.manager.dispatchKill(recentScene, candidate.name, candidate.pid)
         } else {
             killedCallback.invoke(LRU_KILL_NOT_FOUND, null, -1)
         }

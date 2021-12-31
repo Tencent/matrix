@@ -44,7 +44,7 @@ data class SupervisorConfig(
     val lruKillerWhiteList: List<String> = emptyList()
 )
 
-object ProcessSupervisor : IProcessListener by DispatchReceiver {
+object ProcessSupervisor : IProcessListener by ProcessSubordinate.processListener {
 
     private const val TAG = "Matrix.ProcessSupervisor"
 
@@ -143,12 +143,12 @@ object ProcessSupervisor : IProcessListener by DispatchReceiver {
 
         Log.i(tag, "bind to Supervisor")
 
-        DispatchReceiver.install(app)
+        SupervisorPacemaker.install(app)
 
         app.bindService(intent, object : ServiceConnection {
             override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
                 MatrixHandlerThread.getDefaultHandler().post { // do NOT run ipc in main thread
-                    DispatchReceiver.uninstallPacemaker()
+                    SupervisorPacemaker.uninstallPacemaker()
                     supervisorProxy = ISupervisorProxy.Stub.asInterface(service)
                     MatrixLog.i(TAG, "on Supervisor Connected $supervisorProxy")
 
@@ -161,7 +161,7 @@ object ProcessSupervisor : IProcessListener by DispatchReceiver {
                         }
 
                     supervisorProxy?.safeApply(tag) {
-                        stateRegister(DispatcherStateOwner.ownersToProcessTokens(app))
+                        registerSubordinate(DispatcherStateOwner.ownersToProcessTokens(app), ProcessSubordinate.getSubordinate(app))
                     }
                     DispatcherStateOwner.attach(supervisorProxy, application!!)
                 }

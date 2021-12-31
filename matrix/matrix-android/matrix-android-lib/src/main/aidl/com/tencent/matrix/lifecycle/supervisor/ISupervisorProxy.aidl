@@ -4,9 +4,10 @@ package com.tencent.matrix.lifecycle.supervisor;
 // Declare any non-default types here with import statements
 
 import com.tencent.matrix.lifecycle.supervisor.ProcessToken;
+import com.tencent.matrix.lifecycle.supervisor.ISubordinateProxy;
 
 interface ISupervisorProxy {
-    void stateRegister(in ProcessToken[] tokens);
+    void registerSubordinate(in ProcessToken[] tokens, in ISubordinateProxy subordinateProxy);
 
     void onStateChanged(in ProcessToken token);
 
@@ -18,4 +19,6 @@ interface ISupervisorProxy {
     void onProcessKilled(in ProcessToken token);
     void onProcessRescuedFromKill(in ProcessToken token);
     void onProcessKillCanceled(in ProcessToken token);
+
+    String getRecentScene();
 }

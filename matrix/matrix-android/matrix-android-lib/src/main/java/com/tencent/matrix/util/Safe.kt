@@ -22,6 +22,18 @@ inline fun <T> T.safeApply(
 }
 
 inline fun <T, R> T.safeLet(
+    unsafe: (T) -> R,
+    success: (R) -> Unit = {},
+    failed: (Throwable) -> Unit = {}
+) {
+    try {
+        success(unsafe(this))
+    } catch (e: Throwable) {
+        failed(e)
+    }
+}
+
+inline fun <T, R> T.safeLet(
     tag: String = DEFAULT_TAG,
     log: Boolean = true,
     defVal: R,

@@ -144,7 +144,7 @@ public class MainActivity extends AppCompatActivity {
             }
         }).start();
 
-        new Handler().post(new Runnable() {
+        new Handler().postDelayed(new Runnable() {
             @Override
             public void run() {
                 WindowManager.LayoutParams params = new WindowManager.LayoutParams(
@@ -155,7 +155,7 @@ public class MainActivity extends AppCompatActivity {
                         PixelFormat.RGBA_8888);
                 getWindowManager().addView(new LinearLayout(MainActivity.this), params);
             }
-        });
+        }, 500);
     }
 
     public static class StubService extends Service {

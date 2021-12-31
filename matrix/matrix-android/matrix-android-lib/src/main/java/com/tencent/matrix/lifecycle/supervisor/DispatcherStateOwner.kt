@@ -2,6 +2,7 @@ package com.tencent.matrix.lifecycle.supervisor
 
 import android.app.Application
 import android.content.Context
+import android.transition.Scene
 import com.tencent.matrix.lifecycle.IStateObserver
 import com.tencent.matrix.lifecycle.IStateful
 import com.tencent.matrix.lifecycle.MultiSourceStatefulOwner
@@ -45,23 +46,24 @@ internal open class DispatcherStateOwner(
         /**
          * call from supervisor
          */
-        fun syncStates(context: Context?) {
+        fun syncStates(scene: String) {
             if (!ProcessSupervisor.isSupervisor) {
                 throw IllegalStateException("call forbidden")
             }
-            MatrixLog.i(ProcessSupervisor.tag, "syncStates")
             dispatchOwners.forEach {
-                // TODO: 2021/12/14 remove log
-                if (it.value.active().also { b ->
-                        MatrixLog.i(
-                            ProcessSupervisor.tag,
-                            "supervisor sync ${it.key} $b"
-                        )
-                    }) {
-                    DispatchReceiver.dispatchAppStateOn(context, it.key)
-                } else {
-                    DispatchReceiver.dispatchAppStateOff(context, it.key)
-                }
+                val active = it.value.active()
+                MatrixLog.i(ProcessSupervisor.tag, "syncStates: ${it.key} $active")
+                ProcessSubordinate.manager.dispatchState(scene, it.key, active)
+//                if (it.value.active().also { b ->
+//                        MatrixLog.i(
+//                            ProcessSupervisor.tag,
+//                            "supervisor sync ${it.key} $b"
+//                        )
+//                    }) {
+//                    DispatchReceiver.dispatchAppStateOn(context, it.key)
+//                } else {
+//                    DispatchReceiver.dispatchAppStateOff(context, it.key)
+//                }
             }
         }
 
