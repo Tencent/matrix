@@ -7,12 +7,11 @@ import com.tencent.matrix.Matrix;
 import com.tencent.matrix.lifecycle.IStateObserver;
 import com.tencent.matrix.lifecycle.owners.DeepBackgroundOwner;
 import com.tencent.matrix.lifecycle.owners.ExplicitBackgroundOwner;
-import com.tencent.matrix.lifecycle.owners.MatrixProcessLifecycleOwner;
 import com.tencent.matrix.lifecycle.owners.OverlayWindowLifecycleOwner;
+import com.tencent.matrix.lifecycle.owners.ProcessUILifecycleOwner;
 import com.tencent.matrix.lifecycle.owners.StagedBackgroundOwner;
 import com.tencent.matrix.lifecycle.supervisor.ProcessSupervisor;
 import com.tencent.matrix.listeners.IAppForeground;
-import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 import com.tencent.matrix.util.MatrixUtil;
 
@@ -23,34 +22,34 @@ public class LifecycleTest {
     private static final String TAG = "Matrix.sample.LifecycleTest >>> " + MatrixUtil.getProcessName(Matrix.with().getApplication());
 
     public static void test1() {
-        MatrixProcessLifecycleOwner.INSTANCE.addListener(new IAppForeground() {
+        ProcessUILifecycleOwner.INSTANCE.addListener(new IAppForeground() {
             @Override
             public void onForeground(boolean isForeground) {
                 MatrixLog.d(TAG, "isForeground %s", isForeground);
             }
         });
 
-        MatrixProcessLifecycleOwner.INSTANCE.getResumedStateOwner().observeForever(new IStateObserver() {
+        ProcessUILifecycleOwner.INSTANCE.getResumedStateOwner().observeForever(new IStateObserver() {
             @Override
             public void on() {
-                MatrixLog.d(TAG, "MatrixProcessLifecycleOwner: ON_RESUME");
+                MatrixLog.d(TAG, "ProcessUILifecycleOwner: ON_RESUME");
             }
 
             @Override
             public void off() {
-                MatrixLog.d(TAG, "MatrixProcessLifecycleOwner: ON_PAUSE");
+                MatrixLog.d(TAG, "ProcessUILifecycleOwner: ON_PAUSE");
             }
         });
 
-        MatrixProcessLifecycleOwner.INSTANCE.getStartedStateOwner().observeForever(new IStateObserver() {
+        ProcessUILifecycleOwner.INSTANCE.getStartedStateOwner().observeForever(new IStateObserver() {
             @Override
             public void on() {
-                MatrixLog.d(TAG, "MatrixProcessLifecycleOwner: ON_START");
+                MatrixLog.d(TAG, "ProcessUILifecycleOwner: ON_START");
             }
 
             @Override
             public void off() {
-                MatrixLog.d(TAG, "MatrixProcessLifecycleOwner: ON_STOP");
+                MatrixLog.d(TAG, "ProcessUILifecycleOwner: ON_STOP");
             }
         });
 

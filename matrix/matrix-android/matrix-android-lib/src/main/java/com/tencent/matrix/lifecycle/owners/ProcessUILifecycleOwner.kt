@@ -12,16 +12,12 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Process
 import android.text.TextUtils
-import android.view.View
-import androidx.annotation.NonNull
 import androidx.lifecycle.*
 import com.tencent.matrix.lifecycle.IStateObserver
 import com.tencent.matrix.lifecycle.StatefulOwner
-import com.tencent.matrix.lifecycle.owners.MatrixProcessLifecycleInitializer.Companion.init
 import com.tencent.matrix.listeners.IAppForeground
 import com.tencent.matrix.util.*
 import java.util.*
-import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 
 /**
@@ -37,7 +33,7 @@ import kotlin.collections.HashMap
  * Created by Yves on 2021/9/14
  */
 @SuppressLint("PrivateApi")
-object MatrixProcessLifecycleOwner {
+object ProcessUILifecycleOwner {
 
     private const val TAG = "Matrix.ProcessLifecycle"
 
@@ -464,55 +460,5 @@ object MatrixProcessLifecycleOwner {
         override fun on() = onDispatchForeground()
 
         override fun off() = onDispatchBackground()
-    }
-}
-
-/**
- * You should init [com.tencent.matrix.Matrix] or call [init] manually before creating any Activity
- * Created by Yves on 2021/9/14
- */
-class MatrixProcessLifecycleInitializer {
-
-    companion object {
-        private const val TAG = "Matrix.ProcessLifecycleOwnerInit"
-
-        @Volatile
-        private var inited = false
-
-        @JvmStatic
-        fun init(@NonNull app: Application, enableFgServiceMonitor: Boolean, enableOverlayWindowMonitor: Boolean) {
-            if (inited) {
-                return
-            }
-            inited = true
-            if (hasCreatedActivities()) {
-                ("Matrix Warning: Matrix might be inited after launching first Activity, " +
-                        "which would disable some features like ProcessLifecycleOwner, " +
-                        "pls consider calling MultiProcessLifecycleInitializer#init manually " +
-                        "or initializing matrix at Application#onCreate").let {
-                    MatrixLog.e(TAG, it)
-                }
-                return
-            }
-            MatrixProcessLifecycleOwner.init(app)
-            if (enableFgServiceMonitor) {
-                ForegroundServiceLifecycleOwner.init(app)
-            }
-            if (enableOverlayWindowMonitor) {
-                OverlayWindowLifecycleOwner.init()
-            }
-        }
-
-        @SuppressLint("PrivateApi", "DiscouragedPrivateApi")
-        @JvmStatic
-        private fun hasCreatedActivities() = safeLet(tag = TAG, defVal = false) {
-            val clazzActivityThread = Class.forName("android.app.ActivityThread")
-            val objectActivityThread =
-                clazzActivityThread.getMethod("currentActivityThread").invoke(null)
-            val fieldMActivities = clazzActivityThread.getDeclaredField("mActivities")
-            fieldMActivities.isAccessible = true
-            val mActivities = fieldMActivities.get(objectActivityThread) as Map<*, *>?
-            return mActivities != null && mActivities.isNotEmpty()
-        }
     }
 }

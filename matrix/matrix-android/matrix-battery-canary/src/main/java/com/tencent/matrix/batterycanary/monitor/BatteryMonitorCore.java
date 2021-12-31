@@ -31,7 +31,7 @@ import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature.WakeLockTrace.WakeLockRecord;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.ProcStatUtil;
-import com.tencent.matrix.lifecycle.owners.MatrixProcessLifecycleOwner;
+import com.tencent.matrix.lifecycle.owners.ProcessUILifecycleOwner;
 import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 
@@ -112,7 +112,7 @@ public class BatteryMonitorCore implements
     };
 
     private volatile boolean mTurnOn = false;
-    private boolean mAppForeground = MatrixProcessLifecycleOwner.INSTANCE.isProcessForeground();
+    private boolean mAppForeground = ProcessUILifecycleOwner.INSTANCE.isProcessForeground();
     private boolean mForegroundModeEnabled;
     private boolean mBackgroundModeEnabled;
     private final long mMonitorDelayMillis;

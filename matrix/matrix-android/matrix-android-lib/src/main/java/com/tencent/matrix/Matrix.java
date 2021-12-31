@@ -18,7 +18,7 @@ package com.tencent.matrix;
 
 import android.app.Application;
 
-import com.tencent.matrix.lifecycle.owners.MatrixProcessLifecycleInitializer;
+import com.tencent.matrix.lifecycle.MatrixLifecycleOwnerInitializer;
 import com.tencent.matrix.lifecycle.supervisor.ProcessSupervisor;
 import com.tencent.matrix.lifecycle.supervisor.SupervisorConfig;
 import com.tencent.matrix.plugin.DefaultPluginListener;
@@ -44,7 +44,7 @@ public class Matrix {
     private Matrix(Application app, PluginListener listener, HashSet<Plugin> plugins, SupervisorConfig supervisorConfig, boolean enableFgServiceMonitor, boolean enableOverlayWindowMonitor) {
         this.application = app;
         this.plugins = plugins;
-        MatrixProcessLifecycleInitializer.init(app, enableFgServiceMonitor, enableOverlayWindowMonitor);
+        MatrixLifecycleOwnerInitializer.init(app, enableFgServiceMonitor, enableOverlayWindowMonitor);
         ProcessSupervisor.INSTANCE.init(app, supervisorConfig);
         for (Plugin plugin : plugins) {
             plugin.init(application, listener);

@@ -8,7 +8,7 @@ import android.os.Debug
 import android.os.Process
 import android.text.TextUtils
 import com.tencent.matrix.Matrix
-import com.tencent.matrix.lifecycle.owners.MatrixProcessLifecycleOwner
+import com.tencent.matrix.lifecycle.owners.ProcessUILifecycleOwner
 import com.tencent.matrix.lifecycle.supervisor.ProcessSupervisor
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.MatrixUtil
@@ -59,8 +59,8 @@ object MemInfoFactory {
 data class ProcessInfo(
     val pid: Int = Process.myPid(),
     val name: String = MatrixUtil.getProcessName(Matrix.with().application),
-    val activity: String = MatrixProcessLifecycleOwner.recentScene.substringAfterLast('.'),
-    val isProcessFg: Boolean = MatrixProcessLifecycleOwner.startedStateOwner.active(),
+    val activity: String = ProcessUILifecycleOwner.recentScene.substringAfterLast('.'),
+    val isProcessFg: Boolean = ProcessUILifecycleOwner.startedStateOwner.active(),
     val isAppFg: Boolean = ProcessSupervisor.isAppUIForeground
 ) {
     override fun toString(): String {

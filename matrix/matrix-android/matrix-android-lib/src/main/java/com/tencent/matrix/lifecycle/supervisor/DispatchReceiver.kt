@@ -8,7 +8,7 @@ import android.os.Build
 import android.os.Process
 import android.text.TextUtils
 import com.tencent.matrix.lifecycle.IStateObserver
-import com.tencent.matrix.lifecycle.owners.MatrixProcessLifecycleOwner
+import com.tencent.matrix.lifecycle.owners.ProcessUILifecycleOwner
 import com.tencent.matrix.lifecycle.owners.OverlayWindowLifecycleOwner
 import com.tencent.matrix.util.*
 import java.util.concurrent.TimeUnit
@@ -108,7 +108,7 @@ internal object DispatchReceiver : BroadcastReceiver(), IProcessListener {
                 override fun off() {
                 }
             }
-            MatrixProcessLifecycleOwner.startedStateOwner.observeForever(pacemaker!!)
+            ProcessUILifecycleOwner.startedStateOwner.observeForever(pacemaker!!)
             MatrixLog.i(ProcessSupervisor.tag, "pacemaker: install pacemaker")
         }
     }
@@ -116,7 +116,7 @@ internal object DispatchReceiver : BroadcastReceiver(), IProcessListener {
     internal fun uninstallPacemaker() {
         supervisorInstalled = true
         if (pacemaker != null) {
-            MatrixProcessLifecycleOwner.startedStateOwner.removeObserver(pacemaker!!)
+            ProcessUILifecycleOwner.startedStateOwner.removeObserver(pacemaker!!)
             pacemaker = null
             MatrixLog.i(ProcessSupervisor.tag, "pacemaker: uninstall pacemaker")
         }
@@ -264,8 +264,8 @@ internal object DispatchReceiver : BroadcastReceiver(), IProcessListener {
                     }
 
                     MatrixHandlerThread.getDefaultHandler().postDelayed({
-                        if (!MatrixProcessLifecycleOwner.startedStateOwner.active()
-                            && !MatrixProcessLifecycleOwner.hasForegroundService()
+                        if (!ProcessUILifecycleOwner.startedStateOwner.active()
+                            && !ProcessUILifecycleOwner.hasForegroundService()
                             && !OverlayWindowLifecycleOwner.hasVisibleWindow()
                         ) {
                             ProcessSupervisor.supervisorProxy?.onProcessKilled(token)
@@ -274,7 +274,7 @@ internal object DispatchReceiver : BroadcastReceiver(), IProcessListener {
                                 "actual kill !!! supervisor = ${ProcessSupervisor.supervisorProxy}"
                             )
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                                MatrixProcessLifecycleOwner.getRunningAppTasksOf(
+                                ProcessUILifecycleOwner.getRunningAppTasksOf(
                                     MatrixUtil.getProcessName(
                                         context
                                     )

@@ -101,7 +101,7 @@ object ProcessSupervisor : IProcessListener by DispatchReceiver {
     internal var supervisorProxy: ISupervisorProxy? = null
 
     // @formatter:off
-    val appUIForegroundOwner: StatefulOwner = DispatcherStateOwner(ReduceOperators.OR, MatrixProcessLifecycleOwner.startedStateOwner, "StartedStateOwner")
+    val appUIForegroundOwner: StatefulOwner = DispatcherStateOwner(ReduceOperators.OR, ProcessUILifecycleOwner.startedStateOwner, "StartedStateOwner")
     val appExplicitBackgroundOwner: IBackgroundStatefulOwner = object : DispatcherStateOwner(ReduceOperators.AND, ExplicitBackgroundOwner, "ExplicitBackgroundOwner"), IBackgroundStatefulOwner {}
     val appDeepBackgroundOwner: IBackgroundStatefulOwner = object : DispatcherStateOwner(ReduceOperators.AND, DeepBackgroundOwner, "DeepBackgroundOwner"), IBackgroundStatefulOwner {}
     // @formatter:on
@@ -156,8 +156,8 @@ object ProcessSupervisor : IProcessListener by DispatchReceiver {
                     supervisorProxy = ISupervisorProxy.Stub.asInterface(service)
                     MatrixLog.i(TAG, "on Supervisor Connected $supervisorProxy")
 
-                    MatrixProcessLifecycleOwner.onSceneChangedListener =
-                        object : MatrixProcessLifecycleOwner.OnSceneChangedListener {
+                    ProcessUILifecycleOwner.onSceneChangedListener =
+                        object : ProcessUILifecycleOwner.OnSceneChangedListener {
                             override fun onSceneChanged(newScene: String, origin: String) {
                                 MatrixLog.d(tag, "onSceneChanged: $origin -> $newScene")
                                 supervisorProxy?.onSceneChanged(newScene)

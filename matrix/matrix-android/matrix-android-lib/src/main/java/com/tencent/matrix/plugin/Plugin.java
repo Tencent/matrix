@@ -18,7 +18,7 @@ package com.tencent.matrix.plugin;
 
 import android.app.Application;
 
-import com.tencent.matrix.lifecycle.owners.MatrixProcessLifecycleOwner;
+import com.tencent.matrix.lifecycle.owners.ProcessUILifecycleOwner;
 import com.tencent.matrix.listeners.IAppForeground;
 import com.tencent.matrix.report.Issue;
 import com.tencent.matrix.report.IssuePublisher;
@@ -57,7 +57,7 @@ public abstract class Plugin implements IPlugin, IssuePublisher.OnIssueDetectLis
         this.application = app;
         this.pluginListener = listener;
         listener.onInit(this);
-        MatrixProcessLifecycleOwner.INSTANCE.addListener(this);
+        ProcessUILifecycleOwner.INSTANCE.addListener(this);
     }
 
     @Override
@@ -156,7 +156,7 @@ public abstract class Plugin implements IPlugin, IssuePublisher.OnIssueDetectLis
     }
 
     public boolean isForeground() {
-        return MatrixProcessLifecycleOwner.INSTANCE.isProcessForeground();
+        return ProcessUILifecycleOwner.INSTANCE.isProcessForeground();
     }
 
 

@@ -35,7 +35,7 @@ import android.widget.TextView;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.lifecycle.IStateObserver;
-import com.tencent.matrix.lifecycle.owners.MatrixProcessLifecycleOwner;
+import com.tencent.matrix.lifecycle.owners.ProcessUILifecycleOwner;
 import com.tencent.matrix.trace.R;
 import com.tencent.matrix.trace.TracePlugin;
 import com.tencent.matrix.trace.constants.Constants;
@@ -95,7 +95,7 @@ public class FrameDecorator extends IDoFrameListener {
         this.highColor = context.getResources().getColor(R.color.level_high_color);
         this.frozenColor = context.getResources().getColor(R.color.level_frozen_color);
 
-        MatrixProcessLifecycleOwner.INSTANCE.getResumedStateOwner().observeForever(mProcessForegroundListener);
+        ProcessUILifecycleOwner.INSTANCE.getResumedStateOwner().observeForever(mProcessForegroundListener);
 
         view.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
             @Override
