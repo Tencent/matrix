@@ -13,6 +13,7 @@ import android.widget.TextView;
 import com.tencent.matrix.batterycanary.R;
 import com.tencent.matrix.batterycanary.monitor.feature.CompositeMonitors;
 import com.tencent.matrix.batterycanary.stats.BatteryRecord;
+import com.tencent.matrix.batterycanary.utils.ThreadSafeReference;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -197,7 +198,14 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
         public static final int COLOR_FG_MAIN = R.color.FG_0;
         public static final int COLOR_FG_SUB = R.color.FG_2;
         public static final int COLOR_FG_ALERT = R.color.Red_80_CARE;
-        protected static DateFormat sTimeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
+
+        protected static final ThreadSafeReference<DateFormat> sTimeFormatRef = new ThreadSafeReference<DateFormat>() {
+            @NonNull
+            @Override
+            public DateFormat onCreate() {
+                return new SimpleDateFormat("HH:mm", Locale.getDefault());
+            }
+        };
 
         @SuppressWarnings("NotNullFieldNotInitialized")
         @NonNull
@@ -392,11 +400,11 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
                         break;
                 }
 
-                mTimeTv.setText(sTimeFormat.format(new Date(item.millis)));
+                mTimeTv.setText(sTimeFormatRef.safeGet().format(new Date(item.millis)));
                 mMoreTv.setRotation(item.expand ? 180 : 0);
                 mExpandView.setVisibility(item.expand ? View.VISIBLE : View.GONE);
                 mTitleTv.setText(title);
-                mTitleSub1.setText(sTimeFormat.format(new Date(item.millis - item.windowMillis)) + " ~ " + sTimeFormat.format(new Date(item.millis)));
+                mTitleSub1.setText(sTimeFormatRef.safeGet().format(new Date(item.millis - item.windowMillis)) + " ~ " + sTimeFormatRef.safeGet().format(new Date(item.millis)));
                 if (item.record.isOverHeat()) {
                     mIndicatorIv.setImageLevel(4);
                     mTitleSub2.setText("#OVERHEAT");
@@ -531,7 +539,7 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
             @Override
             public void bind(Item.EventLevel1Item item) {
                 mItem = item;
-                mTimeTv.setText(sTimeFormat.format(new Date(item.millis)));
+                mTimeTv.setText(sTimeFormatRef.safeGet().format(new Date(item.millis)));
                 mTitleTv.setText(item.text);
             }
         }
@@ -550,7 +558,7 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
             @Override
             public void bind(Item.EventLevel2Item item) {
                 mItem = item;
-                mTimeTv.setText(sTimeFormat.format(new Date(item.millis)));
+                mTimeTv.setText(sTimeFormatRef.safeGet().format(new Date(item.millis)));
                 mTitleTv.setText(item.text);
             }
         }
@@ -570,7 +578,7 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
             @Override
             public void bind(Item.EventSimpleItem item) {
                 mItem = item;
-                mTimeTv.setText(sTimeFormat.format(new Date(item.millis)));
+                mTimeTv.setText(sTimeFormatRef.safeGet().format(new Date(item.millis)));
                 mTitleTv.setText(item.event);
             }
 
@@ -610,7 +618,7 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
             @Override
             public void bind(Item.EventBatteryItem item) {
                 mItem = item;
-                mTimeTv.setText(sTimeFormat.format(new Date(item.millis)));
+                mTimeTv.setText(sTimeFormatRef.safeGet().format(new Date(item.millis)));
                 mTitleTv.setText(item.event);
 
                 mIndicatorIv.setImageLevel(1);

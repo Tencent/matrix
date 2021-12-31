@@ -4,6 +4,7 @@ import android.os.Process;
 import android.text.TextUtils;
 
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
+import com.tencent.matrix.batterycanary.utils.ThreadSafeReference;
 import com.tencent.matrix.util.MatrixLog;
 import com.tencent.mmkv.MMKV;
 
@@ -41,12 +42,27 @@ public interface BatteryRecorder {
 
     class MMKVRecorder implements BatteryRecorder {
         protected static final String MAGIC = "bs";
-        protected static String sProcNameSuffix = null;
+        protected static final ThreadSafeReference<String> sProcSuffixRef = new ThreadSafeReference<String>() {
+            @Override
+            public String onCreate() {
+                String processName = BatteryCanaryUtil.getProcessName();
+                if (processName.contains(":")) {
+                    return processName.substring(processName.lastIndexOf(":") + 1);
+                } else {
+                    return  "main";
+                }
+            }
+        };
+        protected static final ThreadSafeReference<DateFormat> sFormatRef = new ThreadSafeReference<DateFormat>() {
+            @Override
+            public DateFormat onCreate() {
+                return new SimpleDateFormat("yyyy-MM-dd", Locale.US);
+            }
+        };
 
         protected final int pid = Process.myPid();
         protected final MMKV mmkv;
         protected AtomicInteger inc = new AtomicInteger(0);
-        private static DateFormat sDateFormat;
 
         public MMKVRecorder(MMKV mmkv) {
             this.mmkv = mmkv;
@@ -187,28 +203,15 @@ public interface BatteryRecorder {
         }
 
         public static String getProcNameSuffix() {
-            if (sProcNameSuffix == null) {
-                String processName = BatteryCanaryUtil.getProcessName();
-                if (processName.contains(":")) {
-                    sProcNameSuffix = processName.substring(processName.lastIndexOf(":") + 1);
-                } else {
-                    sProcNameSuffix = "main";
-                }
-            }
-            return sProcNameSuffix;
+            return sProcSuffixRef.safeGet();
         }
 
         public static String getDateString(int dayOffset) {
-            if (sDateFormat == null) {
-                synchronized (MMKVRecorder.class) {
-                    if (sDateFormat == null) {
-                        sDateFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
-                    }
-                }
-            }
             Calendar cal = Calendar.getInstance();
             cal.add(Calendar.DATE, dayOffset);
-            return sDateFormat.format(cal.getTime());
+            return sFormatRef.safeGet().format(cal.getTime());
         }
+
     }
+
 }

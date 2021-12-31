@@ -125,9 +125,24 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
     }
 
     @WorkerThread
+    public void writeRecord(String date, BatteryRecord record) {
+        if (mBatteryRecorder != null) {
+            mBatteryRecorder.write(date, record);
+        }
+    }
+
+    @WorkerThread
     public List<BatteryRecord> readRecords(int dayOffset, String proc) {
         if (mBatteryRecorder != null) {
             final String date = getDateString(dayOffset);
+            return mBatteryRecorder.read(date, proc);
+        }
+        return Collections.emptyList();
+    }
+
+    @WorkerThread
+    public List<BatteryRecord> readRecords(String date, String proc) {
+        if (mBatteryRecorder != null) {
             return mBatteryRecorder.read(date, proc);
         }
         return Collections.emptyList();
@@ -139,21 +154,6 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
         batteryRecords.date = getDateString(dayOffset);
         batteryRecords.records = readRecords(dayOffset, proc);
         return batteryRecords;
-    }
-
-    @WorkerThread
-    void writeRecord(String date, BatteryRecord record) {
-        if (mBatteryRecorder != null) {
-            mBatteryRecorder.write(date, record);
-        }
-    }
-
-    @WorkerThread
-    List<BatteryRecord> readRecords(String date, String proc) {
-        if (mBatteryRecorder != null) {
-            return mBatteryRecorder.read(date, proc);
-        }
-        return Collections.emptyList();
     }
 
     @WorkerThread
@@ -216,6 +216,7 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
         String event = BatteryRecord.EventStatRecord.EVENT_BATTERY_STAT;
         int id = 0;
         Map<String, Object> extras = new HashMap<>();
+        extras.put("battery-change", true);
         extras.put("battery-pct", pct);
         statsEvent(event, id, extras);
     }
