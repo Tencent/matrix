@@ -33,18 +33,14 @@ const val LRU_KILL_NOT_FOUND = 4
  *
  * Created by Yves on 2021/10/22
  */
-@Deprecated("TODO: 2021/11/16 we're going to move the config to Manifest next version by configuring matrix extension")
 data class SupervisorConfig(
-    @Deprecated("")
     val enable: Boolean = false,
     /**
      * If you specify an existing process as Supervisor but don't want to modify the boot order
      * pls set [autoCreate] to false and than it would be init manually by startService when
      * Matrix init in the Supervisor process
      */
-    @Deprecated("")
     val autoCreate: Boolean = false,
-    @Deprecated("")
     val lruKillerWhiteList: List<String> = emptyList()
 )
 
@@ -84,7 +80,7 @@ object ProcessSupervisor : IProcessListener by DispatchReceiver {
 
     val isSupervisor: Boolean by lazy {
         if (application == null) {
-            throw IllegalStateException("Matrix NOT initialized yet !!!")
+            throw IllegalStateException("Supervisor NOT initialized yet or Supervisor is disabled!!!")
         }
 
         val serviceInfo =

@@ -30,6 +30,7 @@ import com.tencent.matrix.hook.HookManager;
 import com.tencent.matrix.hook.pthread.PthreadHook;
 import com.tencent.matrix.iocanary.IOCanaryPlugin;
 import com.tencent.matrix.iocanary.config.IOConfig;
+import com.tencent.matrix.lifecycle.MatrixLifecycleConfig;
 import com.tencent.matrix.lifecycle.supervisor.SupervisorConfig;
 import com.tencent.matrix.memory.canary.MemoryCanaryPlugin;
 import com.tencent.matrix.memory.canary.trim.TrimCallback;
@@ -130,9 +131,7 @@ public class MatrixApplication extends Application {
         BatteryMonitorPlugin batteryMonitorPlugin = configureBatteryCanary();
         builder.plugin(batteryMonitorPlugin);
 
-        builder.supervisorConfig(new SupervisorConfig(true, true, new ArrayList<String>()));
-        builder.enableFgServiceMonitor(true);
-        builder.enableOverlayWindowMonitor(true);
+        builder.matrixLifecycleConfig(configureMatrixLifecycle());
         Matrix.init(builder.build());
 
         // Trace Plugin need call start() at the beginning.
@@ -244,6 +243,10 @@ public class MatrixApplication extends Application {
             BatteryEventDelegate.init(this);
         }
         return BatteryCanaryInitHelper.createMonitor();
+    }
+
+    private MatrixLifecycleConfig configureMatrixLifecycle() {
+        return new MatrixLifecycleConfig(new SupervisorConfig(true, true, new ArrayList<String>()), true, true);
     }
 
     public static Context getContext() {

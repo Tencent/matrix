@@ -18,9 +18,9 @@ package com.tencent.matrix;
 
 import android.app.Application;
 
+import com.tencent.matrix.lifecycle.MatrixLifecycleConfig;
 import com.tencent.matrix.lifecycle.MatrixLifecycleOwnerInitializer;
 import com.tencent.matrix.lifecycle.supervisor.ProcessSupervisor;
-import com.tencent.matrix.lifecycle.supervisor.SupervisorConfig;
 import com.tencent.matrix.plugin.DefaultPluginListener;
 import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.plugin.PluginListener;
@@ -35,17 +35,16 @@ import java.util.HashSet;
 public class Matrix {
     private static final String TAG = "Matrix.Matrix";
 
-
     private static volatile Matrix sInstance;
 
     private final HashSet<Plugin> plugins;
     private final Application     application;
 
-    private Matrix(Application app, PluginListener listener, HashSet<Plugin> plugins, SupervisorConfig supervisorConfig, boolean enableFgServiceMonitor, boolean enableOverlayWindowMonitor) {
+    private Matrix(Application app, PluginListener listener, HashSet<Plugin> plugins, MatrixLifecycleConfig config) {
         this.application = app;
         this.plugins = plugins;
-        MatrixLifecycleOwnerInitializer.init(app, enableFgServiceMonitor, enableOverlayWindowMonitor);
-        ProcessSupervisor.INSTANCE.init(app, supervisorConfig);
+        MatrixLifecycleOwnerInitializer.init(app, config.getFgServiceMonitorEnable(), config.getOverlayWindowMonitorEnable());
+        ProcessSupervisor.INSTANCE.init(app, config.getSupervisorConfig());
         for (Plugin plugin : plugins) {
             plugin.init(application, listener);
         }
@@ -129,9 +128,12 @@ public class Matrix {
         private final Application application;
 
         private PluginListener   pluginListener;
-        private SupervisorConfig supervisorConfig;
-        private boolean          enableFgServiceMonitor;
-        private boolean          enableOverlayWindowMonitor;
+
+        private MatrixLifecycleConfig mLifecycleConfig = new MatrixLifecycleConfig(); // default config
+
+//        private SupervisorConfig supervisorConfig;
+//        private boolean          enableFgServiceMonitor;
+//        private boolean          enableOverlayWindowMonitor;
 
         private final HashSet<Plugin> plugins = new HashSet<>();
 
@@ -158,25 +160,8 @@ public class Matrix {
             return this;
         }
 
-        /**
-         * see {@link SupervisorConfig}
-         *
-         * @param config
-         * @return
-         */
-        @Deprecated
-        public Builder supervisorConfig(SupervisorConfig config) {
-            this.supervisorConfig = config;
-            return this;
-        }
-
-        public Builder enableFgServiceMonitor(boolean enable) {
-            this.enableFgServiceMonitor = enable;
-            return this;
-        }
-
-        public Builder enableOverlayWindowMonitor(boolean enable) {
-            this.enableOverlayWindowMonitor = enable;
+        public Builder matrixLifecycleConfig(MatrixLifecycleConfig config) {
+            this.mLifecycleConfig = config;
             return this;
         }
 
@@ -184,7 +169,7 @@ public class Matrix {
             if (pluginListener == null) {
                 pluginListener = new DefaultPluginListener(application);
             }
-            return new Matrix(application, pluginListener, plugins, supervisorConfig, enableFgServiceMonitor, enableOverlayWindowMonitor);
+            return new Matrix(application, pluginListener, plugins, mLifecycleConfig);
         }
 
     }

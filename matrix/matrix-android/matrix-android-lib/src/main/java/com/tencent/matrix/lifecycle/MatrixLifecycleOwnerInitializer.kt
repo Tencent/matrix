@@ -3,11 +3,28 @@ package com.tencent.matrix.lifecycle
 import android.annotation.SuppressLint
 import android.app.Application
 import androidx.annotation.NonNull
+import com.tencent.matrix.lifecycle.MatrixLifecycleOwnerInitializer.Companion.init
 import com.tencent.matrix.lifecycle.owners.ForegroundServiceLifecycleOwner
 import com.tencent.matrix.lifecycle.owners.OverlayWindowLifecycleOwner
 import com.tencent.matrix.lifecycle.owners.ProcessUILifecycleOwner
+import com.tencent.matrix.lifecycle.supervisor.SupervisorConfig
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.safeLet
+
+/**
+ * All feature that would change the origin Matrix behavior is disabled by default.
+ */
+data class MatrixLifecycleConfig(
+    val supervisorConfig: SupervisorConfig = SupervisorConfig(),
+    /**
+     * Injects Service#mActivityManager if true
+     */
+    val fgServiceMonitorEnable: Boolean = false,
+    /**
+     * Injects WindowManagerGlobal#mRoots if true
+     */
+    val overlayWindowMonitorEnable: Boolean = false
+)
 
 /**
  * You should init [com.tencent.matrix.Matrix] or call [init] manually before creating any Activity

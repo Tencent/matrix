@@ -10,6 +10,7 @@ import com.tencent.matrix.memory.canary.monitor.ProcessBgMemoryMonitorConfig
 import com.tencent.matrix.plugin.Plugin
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.MatrixUtil
+import com.tencent.matrix.util.safeLet
 
 @Suppress("ArrayInDataClass")
 data class MemoryCanaryConfig(
@@ -35,7 +36,10 @@ class MemoryCanaryPlugin(
         super.start()
 
         memoryCanaryConfig.apply {
-            if (ProcessSupervisor.isSupervisor) {
+            val isSupervisor = safeLet(tag, defVal = false) {
+                ProcessSupervisor.isSupervisor // throws Exception when Supervisor disabled
+            }
+            if (isSupervisor) {
                 MatrixLog.d(tag, "supervisor is ${MatrixUtil.getProcessName(application)}")
 
                 appBgSumPssMonitorConfigs.forEach {
@@ -49,6 +53,6 @@ class MemoryCanaryPlugin(
     }
 
     override fun getTag(): String {
-        return "MemoryCanaryPlugin"
+        return "Matrix.MemoryCanaryPlugin"
     }
 }
