@@ -191,7 +191,9 @@ internal object ProcessSubordinate {
                             && !ProcessUILifecycleOwner.hasForegroundService()
                             && !OverlayWindowLifecycleOwner.hasVisibleWindow()
                         ) {
-                            ProcessSupervisor.supervisorProxy?.onProcessKilled(token)
+                            safeApply(TAG) {
+                                ProcessSupervisor.supervisorProxy?.onProcessKilled(token)
+                            }
                             MatrixLog.e(
                                 ProcessSupervisor.tag,
                                 "actual kill !!! supervisor = ${ProcessSupervisor.supervisorProxy}"
@@ -209,7 +211,9 @@ internal object ProcessSubordinate {
                             }
                             Process.killProcess(Process.myPid())
                         } else {
-                            ProcessSupervisor.supervisorProxy?.onProcessKillCanceled(token)
+                            safeApply(TAG) {
+                                ProcessSupervisor.supervisorProxy?.onProcessKillCanceled(token)
+                            }
                             MatrixLog.i(ProcessSupervisor.tag, "recheck: process is on foreground")
                         }
                     }, TimeUnit.SECONDS.toMillis(10))

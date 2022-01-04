@@ -156,12 +156,17 @@ object ProcessSupervisor : IProcessListener by ProcessSubordinate.processListene
                         object : ProcessUILifecycleOwner.OnSceneChangedListener {
                             override fun onSceneChanged(newScene: String, origin: String) {
                                 MatrixLog.d(tag, "onSceneChanged: $origin -> $newScene")
-                                supervisorProxy?.onSceneChanged(newScene)
+                                safeApply(tag) {
+                                    supervisorProxy?.onSceneChanged(newScene)
+                                }
                             }
                         }
 
                     supervisorProxy?.safeApply(tag) {
-                        registerSubordinate(DispatcherStateOwner.ownersToProcessTokens(app), ProcessSubordinate.getSubordinate(app))
+                        registerSubordinate(
+                            DispatcherStateOwner.ownersToProcessTokens(app),
+                            ProcessSubordinate.getSubordinate(app)
+                        )
                     }
                     DispatcherStateOwner.attach(supervisorProxy, application!!)
                 }
@@ -169,6 +174,7 @@ object ProcessSupervisor : IProcessListener by ProcessSubordinate.processListene
 
             override fun onServiceDisconnected(name: ComponentName?) {
                 MatrixLog.e(tag, "onServiceDisconnected $name")
+                supervisorProxy = null
             }
         }, if (autoCreate) (BIND_AUTO_CREATE.or(BIND_ABOVE_CLIENT)) else BIND_ABOVE_CLIENT)
 
