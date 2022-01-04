@@ -175,6 +175,8 @@ object ProcessSupervisor : IProcessListener by ProcessSubordinate.processListene
             override fun onServiceDisconnected(name: ComponentName?) {
                 MatrixLog.e(tag, "onServiceDisconnected $name")
                 supervisorProxy = null
+                // try to re-bind supervisor, but don't auto create here
+                app.bindService(intent, this, BIND_ABOVE_CLIENT)
             }
         }, if (autoCreate) (BIND_AUTO_CREATE.or(BIND_ABOVE_CLIENT)) else BIND_ABOVE_CLIENT)
 
