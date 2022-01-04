@@ -35,12 +35,12 @@ internal object ProcessSubordinate {
     }
 
     internal class Manager {
-        private val subordinateProxies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { ConcurrentHashMap<String, ISubordinateProxy>() }
+        private val subordinateProxies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { ConcurrentHashMap<ProcessToken, ISubordinateProxy>() }
 
-        private fun ConcurrentHashMap<String, ISubordinateProxy>.forEachSafe(action: (Map.Entry<String, ISubordinateProxy>) -> Unit) {
+        private fun ConcurrentHashMap<ProcessToken, ISubordinateProxy>.forEachSafe(action: (Map.Entry<ProcessToken, ISubordinateProxy>) -> Unit) {
             forEach { e ->
                 safeLet(unsafe = { action(e) }, failed = {
-                    MatrixLog.printErrStackTrace(TAG, it, e.key)
+                    MatrixLog.printErrStackTrace(TAG, it, "${e.key.pid}${e.key.name}")
                     if (it is DeadObjectException) {
                         MatrixLog.e(TAG, "remote process of proxy is dead, remove proxy: ${e.key}")
                         subordinateProxies.remove(e.key)
@@ -50,10 +50,10 @@ internal object ProcessSubordinate {
         }
 
 
-        fun addProxy(process: String, subordinate: ISubordinateProxy) =
+        fun addProxy(process: ProcessToken, subordinate: ISubordinateProxy) =
             subordinateProxies.put(process, subordinate)
 
-        fun removeProxy(process: String) =
+        fun removeProxy(process: ProcessToken) =
             subordinateProxies.remove(process)
 
 

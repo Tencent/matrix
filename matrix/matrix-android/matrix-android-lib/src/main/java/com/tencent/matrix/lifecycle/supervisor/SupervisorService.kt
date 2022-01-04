@@ -83,7 +83,7 @@ class SupervisorService : Service() {
             tokens.first().apply {
                 tokenRecord.addToken(this)
 //                subordinateProxies[this.name] = subordinateProxy
-                ProcessSubordinate.manager.addProxy(this.name, subordinateProxy)
+                ProcessSubordinate.manager.addProxy(this, subordinateProxy)
                 backgroundProcessLru.moveOrAddFirst(this)
                 asyncLog("CREATED: [$pid-${name}] -> [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}")
 
@@ -92,7 +92,9 @@ class SupervisorService : Service() {
                         safeApply(TAG) {
                             val dead = tokenRecord.removeToken(pid)
                             val lruRemoveSuccess = backgroundProcessLru.remove(dead)
+                            ProcessSubordinate.manager.removeProxy(dead)
                             val proxyRemoveSuccess = RemoteProcessLifecycleProxy.removeProxy(dead)
+                            ProcessSubordinate.manager.dispatchDeath(recentScene, dead.name, dead.pid, !lruRemoveSuccess && !proxyRemoveSuccess)
                             MatrixLog.i(
                                 TAG,
                                 "$pid-$dead was dead. is LRU kill? ${!lruRemoveSuccess && !proxyRemoveSuccess}"
@@ -103,8 +105,6 @@ class SupervisorService : Service() {
 //                                dead.pid,
 //                                !lruRemoveSuccess && !proxyRemoveSuccess
 //                            )
-                            ProcessSubordinate.manager.removeProxy(dead.name)
-                            ProcessSubordinate.manager.dispatchDeath(recentScene, dead.name, dead.pid, !lruRemoveSuccess && !proxyRemoveSuccess)
                         }
                     }
                 }
