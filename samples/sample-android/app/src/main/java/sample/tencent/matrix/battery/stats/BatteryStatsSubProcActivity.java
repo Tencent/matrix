@@ -22,34 +22,43 @@ import java.util.List;
 import java.util.Map;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.util.Pair;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import sample.tencent.matrix.R;
 import sample.tencent.matrix.battery.BatteryCanaryInitHelper;
+import sample.tencent.matrix.battery.stats.chart.SimpleLineChart;
 
 public class BatteryStatsSubProcActivity extends AppCompatActivity {
     private static final String TAG = "Matrix.BatteryStatsSubProcActivity";
 
     @NonNull
     private MyBatteryStatsLoader mStatsLoader;
+    @NonNull
+    SimpleLineChart mChart;
+    @Nullable
     private HeaderItem mCurrHeader;
     private boolean mEnd;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_battery_stats);
+        String proc = com.tencent.matrix.batterycanary.stats.BatteryRecorder.MMKVRecorder.getProcNameSuffix();
+        initStatsView(proc);
+    }
 
-        BatteryCanaryInitHelper.startBatteryMonitor(this);
-
+    private void initStatsView(String proc) {
+        setContentView(R.layout.activity_battery_stats_sub);
         Toolbar toolbar = findViewById(R.id.toolbar);
         toolbar.setTitle("电量统计报告");
         setSupportActionBar(toolbar);
 
+        BatteryCanaryInitHelper.startBatteryMonitor(this);
+
         final TextView procTv = findViewById(R.id.tv_proc);
-        String proc = com.tencent.matrix.batterycanary.stats.BatteryRecorder.MMKVRecorder.getProcNameSuffix();
         procTv.setText(":" + proc);
 
         BatteryCanary.getMonitorFeature(BatteryStatsFeature.class, new Consumer<BatteryStatsFeature>() {
@@ -86,6 +95,10 @@ public class BatteryStatsSubProcActivity extends AppCompatActivity {
             }
         });
 
+        // Chart
+        mChart = findViewById(R.id.chart);
+
+        // List
         RecyclerView recyclerView = findViewById(R.id.rv_battery_stats);
         final LinearLayoutManager layoutManager = new LinearLayoutManager(this);
         recyclerView.setLayoutManager(layoutManager);
@@ -130,7 +143,7 @@ public class BatteryStatsSubProcActivity extends AppCompatActivity {
         mStatsLoader.load();
 
         // load mocking data
-        loadMockingData();
+        // loadMockingData();
     }
 
     private void updateHeader(final int topPosition) {
@@ -142,6 +155,9 @@ public class BatteryStatsSubProcActivity extends AppCompatActivity {
                 headerView.setVisibility(View.VISIBLE);
                 TextView tv = headerView.findViewById(R.id.tv_title);
                 tv.setText(currHeader.date);
+
+                List<Pair<Float, Long>> dataSet = mStatsLoader.getCurrPowerDataSet(getApplicationContext(), currHeader.date);
+                mChart.setData(dataSet);
             }
         }
     }
