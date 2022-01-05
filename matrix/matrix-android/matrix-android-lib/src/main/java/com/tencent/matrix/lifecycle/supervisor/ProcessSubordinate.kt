@@ -12,8 +12,8 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
 internal interface IProcessListener {
-    fun addDyingListener(listener: (recentScene: String?,processName: String?, pid: Int?) -> Boolean)
-    fun removeDyingListener(listener: (recentScene: String?,processName: String?, pid: Int?) -> Boolean)
+    fun addDyingListener(listener: (recentScene: String?, processName: String?, pid: Int?) -> Boolean)
+    fun removeDyingListener(listener: (recentScene: String?, processName: String?, pid: Int?) -> Boolean)
     fun addDeathListener(listener: (recentScene: String?, processName: String?, pid: Int?, isLruKill: Boolean?) -> Unit)
     fun removeDeathListener(listener: (recentScene: String?, processName: String?, pid: Int?, isLruKill: Boolean?) -> Unit)
     fun getRecentScene(): String
@@ -37,7 +37,7 @@ internal object ProcessSubordinate {
     internal class Manager {
         private val subordinateProxies by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { ConcurrentHashMap<ProcessToken, ISubordinateProxy>() }
 
-        private fun ConcurrentHashMap<ProcessToken, ISubordinateProxy>.forEachSafe(action: (Map.Entry<ProcessToken, ISubordinateProxy>) -> Unit) {
+        private fun Map<ProcessToken, ISubordinateProxy>.forEachSafe(action: (Map.Entry<ProcessToken, ISubordinateProxy>) -> Unit) {
             forEach { e ->
                 safeLet(unsafe = { action(e) }, failed = {
                     MatrixLog.printErrStackTrace(TAG, it, "${e.key.pid}${e.key.name}")
@@ -56,9 +56,17 @@ internal object ProcessSubordinate {
         fun removeProxy(process: ProcessToken) =
             subordinateProxies.remove(process)
 
-
-        fun dispatchState(scene: String?, stateName: String?, state: Boolean) {
-            subordinateProxies.forEachSafe { it.value.dispatchState(scene, stateName, state) }
+        /**
+         * NOTICE: avoid loopback
+         */
+        fun dispatchState(
+            supervisorToken: ProcessToken,
+            scene: String?,
+            stateName: String?,
+            state: Boolean
+        ) {
+            subordinateProxies.filter { it.key != supervisorToken }
+                .forEachSafe { it.value.dispatchState(scene, stateName, state) }
         }
 
         fun dispatchKill(scene: String?, targetProcess: String?, targetPid: Int) {
@@ -92,7 +100,8 @@ internal object ProcessSubordinate {
         }
     }
 
-    private val dyingListeners = ArrayList<(recentScene: String?, processName: String?, pid: Int?) -> Boolean>()
+    private val dyingListeners =
+        ArrayList<(recentScene: String?, processName: String?, pid: Int?) -> Boolean>()
 
     private fun ArrayList<(recentScene: String?, processName: String?, pid: Int?) -> Boolean>.invokeAll(
         recentScene: String?,

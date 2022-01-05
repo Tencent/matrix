@@ -23,22 +23,17 @@ internal object SupervisorPacemaker : BroadcastReceiver() {
     private val permission by lazy { "${packageName!!}.matrix.permission.PROCESS_SUPERVISOR" }
 
     @Volatile
-    private var supervisorInstalled = false
-
-    @Volatile
     private var pacemaker: IStateObserver? = null
 
     private fun installPacemaker(context: Context?) {
-        if (pacemaker == null && !supervisorInstalled) {
+        if (pacemaker == null) {
             pacemaker = object : IStateObserver {
                 override fun on() {
-                    if (!supervisorInstalled) {
-                        MatrixLog.i(ProcessSupervisor.tag, "pacemaker: call supervisor")
-                        if (ProcessSupervisor.config!!.autoCreate) {
-                            SupervisorService.start(context!!)
-                        } else {
-                            tellSupervisorForeground(context)
-                        }
+                    MatrixLog.i(ProcessSupervisor.tag, "pacemaker: call supervisor")
+                    if (ProcessSupervisor.config!!.autoCreate) {
+                        SupervisorService.start(context!!)
+                    } else {
+                        tellSupervisorForeground(context)
                     }
                 }
 
@@ -51,7 +46,6 @@ internal object SupervisorPacemaker : BroadcastReceiver() {
     }
 
     internal fun uninstallPacemaker() {
-        supervisorInstalled = true
         if (pacemaker != null) {
             ProcessUILifecycleOwner.startedStateOwner.removeObserver(pacemaker!!)
             pacemaker = null
@@ -65,10 +59,10 @@ internal object SupervisorPacemaker : BroadcastReceiver() {
         if (ProcessSupervisor.isSupervisor) {
             filter.addAction(TELL_SUPERVISOR_FOREGROUND)
             context?.registerReceiver(this, filter, permission, null)
+            MatrixLog.i(ProcessSupervisor.tag, "pacemaker: receiver installed")
         } else {
             installPacemaker(context)
         }
-        MatrixLog.i(ProcessSupervisor.tag, "DispatchReceiver installed")
     }
 
     private fun tellSupervisorForeground(context: Context?) {

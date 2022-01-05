@@ -111,6 +111,7 @@ class SupervisorService : Service() {
             }
 
             tokens.forEach {
+                // FIXME: 2022/1/5 sync background state after supervisor reboot
                 MatrixLog.d(TAG, "register: ${it.name}, ${it.statefulName}, ${it.state}")
                 RemoteProcessLifecycleProxy.getProxy(it).onStateChanged(it.state)
             }
@@ -119,7 +120,7 @@ class SupervisorService : Service() {
                 MatrixLog.i(TAG, "stateRegister: no other process registered, ignore state changes")
                 return
             }
-            DispatcherStateOwner.syncStates(recentScene) // sync state for new process
+            DispatcherStateOwner.syncStates(ProcessToken.current(applicationContext), recentScene) // sync state for new process
         }
 
         override fun onStateChanged(token: ProcessToken) {
@@ -192,12 +193,7 @@ class SupervisorService : Service() {
                 return@observe
             }
             MatrixLog.d(TAG, "supervisor dispatch $stateName $state")
-//            if (state) {
-//                DispatchReceiver.dispatchAppStateOn(applicationContext, stateName)
-//            } else {
-//                DispatchReceiver.dispatchAppStateOff(applicationContext, stateName)
-//            }
-            ProcessSubordinate.manager.dispatchState(recentScene, stateName, state)
+            ProcessSubordinate.manager.dispatchState(ProcessToken.current(applicationContext), recentScene, stateName, state)
         }
     }
 
@@ -312,7 +308,7 @@ class SupervisorService : Service() {
         }
 
         override fun toString(): String {
-            return "OwnerProxy_${token.name}_${token.pid}_${token.statefulName}_${active()}"
+            return "OwnerProxy_${token.statefulName}_${active()}@${hashCode()}_${token.name}_${token.pid}"
         }
     }
 }

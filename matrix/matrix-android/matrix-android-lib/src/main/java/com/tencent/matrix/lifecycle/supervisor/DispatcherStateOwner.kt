@@ -11,6 +11,7 @@ import com.tencent.matrix.lifecycle.owners.ExplicitBackgroundOwner
 import com.tencent.matrix.util.MatrixHandlerThread
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.safeApply
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * cross process StatefulOwner
@@ -28,7 +29,10 @@ internal open class DispatcherStateOwner(
 ) : MultiSourceStatefulOwner(reduceOperator) {
 
     companion object {
-        private val dispatchOwners = HashMap<String, DispatcherStateOwner>()
+        private val dispatchOwners = ConcurrentHashMap<String, DispatcherStateOwner>()
+
+        @Volatile
+        private var attached = false
 
         fun ownersToProcessTokens(context: Context) =
             dispatchOwners.values
@@ -46,35 +50,28 @@ internal open class DispatcherStateOwner(
         /**
          * call from supervisor
          */
-        fun syncStates(scene: String) {
+        fun syncStates(supervisorToken: ProcessToken, scene: String) {
             if (!ProcessSupervisor.isSupervisor) {
                 throw IllegalStateException("call forbidden")
             }
             dispatchOwners.forEach {
                 val active = it.value.active()
                 MatrixLog.i(ProcessSupervisor.tag, "syncStates: ${it.key} $active")
-                ProcessSubordinate.manager.dispatchState(scene, it.key, active)
-//                if (it.value.active().also { b ->
-//                        MatrixLog.i(
-//                            ProcessSupervisor.tag,
-//                            "supervisor sync ${it.key} $b"
-//                        )
-//                    }) {
-//                    DispatchReceiver.dispatchAppStateOn(context, it.key)
-//                } else {
-//                    DispatchReceiver.dispatchAppStateOff(context, it.key)
-//                }
+                ProcessSubordinate.manager.dispatchState(supervisorToken, scene, it.key, active)
             }
         }
 
-        fun attach(supervisorProxy: ISupervisorProxy?, application: Application) {
+        fun attach(application: Application) {
+            if (attached) {
+                return
+            }
+            attached = true
             dispatchOwners.forEach {
                 it.value.attachedSource.observeForever(object : IStateObserver {
-
                     override fun on() {
                         MatrixLog.d(ProcessSupervisor.tag, "attached ${it.key} turned ON")
                         safeApply("${ProcessSupervisor.tag}.${it.key}") {
-                            supervisorProxy?.onStateChanged(
+                            ProcessSupervisor.supervisorProxy?.onStateChanged(
                                 ProcessToken.current(application, it.key, true)
                             )
                         }
@@ -83,7 +80,7 @@ internal open class DispatcherStateOwner(
                     override fun off() {
                         MatrixLog.d(ProcessSupervisor.tag, "attached ${it.key} turned OFF")
                         safeApply("${ProcessSupervisor.tag}.${it.key}") {
-                            supervisorProxy?.onStateChanged(
+                            ProcessSupervisor.supervisorProxy?.onStateChanged(
                                 ProcessToken.current(application, it.key, false)
                             )
                         }
@@ -110,6 +107,7 @@ internal open class DispatcherStateOwner(
                     })
                 }
             }
+            MatrixLog.i(ProcessSupervisor.tag, "DispatcherStateOwners attached")
         }
 
         fun observe(observer: (stateName: String, state: Boolean) -> Unit) {

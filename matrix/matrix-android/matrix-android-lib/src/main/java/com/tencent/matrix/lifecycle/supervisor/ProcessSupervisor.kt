@@ -2,8 +2,7 @@ package com.tencent.matrix.lifecycle.supervisor
 
 import android.app.Application
 import android.content.ComponentName
-import android.content.Context.BIND_ABOVE_CLIENT
-import android.content.Context.BIND_AUTO_CREATE
+import android.content.Context.*
 import android.content.Intent
 import android.content.ServiceConnection
 import android.content.pm.PackageManager
@@ -11,10 +10,7 @@ import android.os.IBinder
 import android.util.Log
 import com.tencent.matrix.lifecycle.*
 import com.tencent.matrix.lifecycle.owners.*
-import com.tencent.matrix.util.MatrixHandlerThread
-import com.tencent.matrix.util.MatrixLog
-import com.tencent.matrix.util.MatrixUtil
-import com.tencent.matrix.util.safeApply
+import com.tencent.matrix.util.*
 
 /**
  * Created by Yves on 2021/9/26
@@ -145,40 +141,47 @@ object ProcessSupervisor : IProcessListener by ProcessSubordinate.processListene
 
         SupervisorPacemaker.install(app)
 
-        app.bindService(intent, object : ServiceConnection {
+        val conn = object : ServiceConnection {
             override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
                 MatrixHandlerThread.getDefaultHandler().post { // do NOT run ipc in main thread
                     SupervisorPacemaker.uninstallPacemaker()
                     supervisorProxy = ISupervisorProxy.Stub.asInterface(service)
-                    MatrixLog.i(TAG, "on Supervisor Connected $supervisorProxy")
+                    MatrixLog.i(tag, "on Supervisor Connected $supervisorProxy")
 
                     ProcessUILifecycleOwner.onSceneChangedListener =
                         object : ProcessUILifecycleOwner.OnSceneChangedListener {
                             override fun onSceneChanged(newScene: String, origin: String) {
                                 MatrixLog.d(tag, "onSceneChanged: $origin -> $newScene")
-                                safeApply(tag) {
-                                    supervisorProxy?.onSceneChanged(newScene)
+                                supervisorProxy?.safeApply(tag) {
+                                    onSceneChanged(newScene)
                                 }
                             }
                         }
 
-                    supervisorProxy?.safeApply(tag) {
+                    supervisorProxy?.safeApply(tag, msg = "supervisor is $supervisorProxy") {
                         registerSubordinate(
                             DispatcherStateOwner.ownersToProcessTokens(app),
                             ProcessSubordinate.getSubordinate(app)
                         )
                     }
-                    DispatcherStateOwner.attach(supervisorProxy, application!!)
+                    DispatcherStateOwner.attach(application!!)
+
                 }
             }
 
             override fun onServiceDisconnected(name: ComponentName?) {
                 MatrixLog.e(tag, "onServiceDisconnected $name")
                 supervisorProxy = null
+                ProcessUILifecycleOwner.onSceneChangedListener = null
+                SupervisorPacemaker.install(app)
                 // try to re-bind supervisor, but don't auto create here
+                safeApply(log = false) { app.unbindService(this) }
                 app.bindService(intent, this, BIND_ABOVE_CLIENT)
+                MatrixLog.e(tag, "rebound supervisor")
             }
-        }, if (autoCreate) (BIND_AUTO_CREATE.or(BIND_ABOVE_CLIENT)) else BIND_ABOVE_CLIENT)
+        }
+
+        app.bindService(intent, conn, if (autoCreate) (BIND_AUTO_CREATE.or(BIND_ABOVE_CLIENT)) else BIND_ABOVE_CLIENT)
 
         MatrixLog.i(tag, "inCharge")
     }
