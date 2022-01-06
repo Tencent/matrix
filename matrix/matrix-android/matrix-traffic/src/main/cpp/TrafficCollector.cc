@@ -25,6 +25,8 @@
 #include <sys/socket.h>
 #include <sys/prctl.h>
 #include <unistd.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include "MatrixTraffic.h"
 
 #include <queue>
@@ -38,6 +40,7 @@ static mutex queueMutex;
 static lock_guard<mutex> lock(queueMutex);
 static bool loopRunning = false;
 static bool sDumpStackTrace = false;
+static bool sLookupIpAddress = false;
 static map<int, int> fdFamilyMap;
 static blocking_queue<shared_ptr<TrafficMsg>> msgQueue;
 static map<string, long> rxTrafficInfoMap;
@@ -46,23 +49,81 @@ static mutex rxTrafficInfoMapLock;
 static mutex txTrafficInfoMapLock;
 
 static map<int, string> fdThreadNameMap;
+static map<int, string> fdIpAddressMap;
 static mutex fdThreadNameMapLock;
+static mutex fdIpAddressMapLock;
 
-string getThreadNameAndSaveStack(int fd) {
+string getIpAddressFromAddr(sockaddr* _addr) {
+    string ipAddress;
+    if (_addr != nullptr) {
+        if ((int)_addr->sa_family == AF_LOCAL) {
+            ipAddress = _addr->sa_data;
+            ipAddress.append(":LOCAL");
+        } else if ((int)_addr->sa_family == AF_INET) {
+            auto *sin4 = reinterpret_cast<sockaddr_in*>(_addr);
+            char ipv4str[INET_ADDRSTRLEN];
+            if (inet_ntop(AF_INET, &(sin4->sin_addr), ipv4str, INET6_ADDRSTRLEN) != nullptr) {
+                ipAddress = ipv4str;
+                int port = ntohs(sin4->sin_port);
+                if (port != -1) {
+                    ipAddress.append(":");
+                    ipAddress.append(to_string(port));
+                }
+            }
+        } else if ((int)_addr->sa_family == AF_INET6) {
+            auto *sin6 = reinterpret_cast<sockaddr_in6 *>(_addr);
+            char ipv6str[INET6_ADDRSTRLEN];
+            if (inet_ntop(AF_INET6, &(sin6->sin6_addr), ipv6str, INET6_ADDRSTRLEN) != nullptr) {
+                ipAddress = ipv6str;
+                int port = ntohs(sin6->sin6_port);
+                if (port != -1) {
+                    ipAddress.append(":");
+                    ipAddress.append(to_string(port));
+                }
+            }
+        }
+    }
+    return ipAddress;
+}
+
+void saveIpAddress(int fd, sockaddr* addr) {
+    fdIpAddressMapLock.lock();
+    if (fdIpAddressMap.count(fd) == 0) {
+        fdIpAddressMap[fd] = getIpAddressFromAddr(addr);
+    }
+    fdIpAddressMapLock.unlock();
+}
+
+string getIpAddress(int fd) {
+    fdIpAddressMapLock.lock();
+    string ipAddress = fdIpAddressMap[fd];
+    fdIpAddressMapLock.unlock();
+    return ipAddress;
+}
+
+
+string getKeyAndSaveStack(int fd) {
     fdThreadNameMapLock.lock();
     if (fdThreadNameMap.count(fd) == 0) {
+        string key;
+        if (sLookupIpAddress) {
+            key = getIpAddress(fd);
+            key.append(";");
+        }
+
         auto threadName = new char[15];
         prctl(PR_GET_NAME, threadName);
-        fdThreadNameMap[fd] = threadName;
+        key.append(threadName);
+        fdThreadNameMap[fd] = key;
         fdThreadNameMapLock.unlock();
         if (sDumpStackTrace) {
-            setStackTrace(threadName);
+            setStackTrace(key.data());
         }
-        return threadName;
+        return key;
     } else {
-        auto threadName = fdThreadNameMap[fd];
+        auto key = fdThreadNameMap[fd];
         fdThreadNameMapLock.unlock();
-        return threadName;
+        return key;
     }
 }
 
@@ -70,8 +131,11 @@ void TrafficCollector::enQueueConnect(int fd, sockaddr *addr, socklen_t addr_len
     if (!loopRunning) {
         return;
     }
+    if (sLookupIpAddress) {
+        saveIpAddress(fd, addr);
+    }
+    shared_ptr<TrafficMsg> msg = make_shared<TrafficMsg>(MSG_TYPE_CONNECT, fd, addr->sa_family, getKeyAndSaveStack(fd), 0);
 
-    shared_ptr<TrafficMsg> msg = make_shared<TrafficMsg>(MSG_TYPE_CONNECT, fd, addr->sa_family, getThreadNameAndSaveStack(fd), 0);
     msgQueue.push(msg);
     queueMutex.unlock();
 }
@@ -90,7 +154,7 @@ void enQueueMsg(int type, int fd, size_t len) {
         return;
     }
 
-    shared_ptr<TrafficMsg> msg = make_shared<TrafficMsg>(type, fd, 0, getThreadNameAndSaveStack(fd), len);
+    shared_ptr<TrafficMsg> msg = make_shared<TrafficMsg>(type, fd, 0, getKeyAndSaveStack(fd), len);
     msgQueue.push(msg);
     queueMutex.unlock();
 }
@@ -157,8 +221,9 @@ void loop() {
 }
 
 
-void TrafficCollector::startLoop(bool dumpStackTrace) {
+void TrafficCollector::startLoop(bool dumpStackTrace, bool lookupIpAddress) {
     sDumpStackTrace = dumpStackTrace;
+    sLookupIpAddress = lookupIpAddress;
     loopRunning = true;
     thread loopThread(loop);
     loopThread.detach();

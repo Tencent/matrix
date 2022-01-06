@@ -66,7 +66,7 @@ public:
 class TrafficCollector {
 
 public :
-    static void startLoop(bool dumpStackTrace);
+    static void startLoop(bool dumpStackTrace, bool lookupIpAddress);
 
     static void stopLoop();
 

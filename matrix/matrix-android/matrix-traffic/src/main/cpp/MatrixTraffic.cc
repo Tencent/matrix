@@ -27,17 +27,94 @@
 #include <xhook_ext.h>
 #include <util/managed_jnienv.h>
 
+#include <thread>
+#include <string>
+#include <sstream>
+#include <fstream>
+
+#include "BacktraceDefine.h"
+#include "Backtrace.h"
+#include "cxxabi.h"
+
 using namespace std;
 
 #define HOOK_REQUEST_GROUPID_TRAFFIC 0x06
 
 using namespace MatrixTraffic;
 static bool HOOKED = false;
+static bool sDumpNativeBackTrace = false;
 
 static struct StacktraceJNI {
     jclass TrafficPlugin;
     jmethodID TrafficPlugin_setFdStackTrace;
 } gJ;
+
+
+void makeNativeStack(wechat_backtrace::Backtrace* backtrace, char *&stack) {
+    std::string caller_so_name;
+    std::stringstream full_stack_builder;
+    std::stringstream brief_stack_builder;
+    std::string last_so_name;
+    int index = 0;
+    auto _callback = [&](wechat_backtrace::FrameDetail it) {
+        std::string so_name = it.map_name;
+
+        char *demangled_name = nullptr;
+        int status = 0;
+
+        demangled_name = abi::__cxa_demangle(it.function_name, nullptr, 0, &status);
+
+        if (strstr(it.map_name, "libmatrix-traffic.so") || strstr(it.map_name, "libwechatbacktrace.so")) {
+            return;
+        }
+
+        full_stack_builder
+                << "#" << std::dec << (index++)
+                << " pc " << std::hex << it.rel_pc << " "
+                << it.map_name
+                << " ("
+                << (demangled_name ? demangled_name : "null")
+                << ")"
+                << std::endl;
+        if (last_so_name != it.map_name) {
+            last_so_name = it.map_name;
+            brief_stack_builder << it.map_name << ";";
+        }
+
+        brief_stack_builder << std::hex << it.rel_pc << ";";
+
+        if (demangled_name) {
+            free(demangled_name);
+        }
+    };
+
+    wechat_backtrace::restore_frame_detail(backtrace->frames.get(), backtrace->frame_size,
+                                           _callback);
+
+    stack = new char[full_stack_builder.str().size() + 1];
+    strcpy(stack, full_stack_builder.str().c_str());
+}
+
+
+static char* getNativeBacktrace() {
+    wechat_backtrace::Backtrace *backtracePrt;
+
+    wechat_backtrace::Backtrace backtrace_zero = BACKTRACE_INITIALIZER(
+            16);
+
+
+    backtracePrt = new wechat_backtrace::Backtrace;
+    backtracePrt->max_frames = backtrace_zero.max_frames;
+    backtracePrt->frame_size = backtrace_zero.frame_size;
+    backtracePrt->frames = backtrace_zero.frames;
+
+    wechat_backtrace::unwind_adapter(backtracePrt->frames.get(), backtracePrt->max_frames,
+                                     backtracePrt->frame_size);
+
+    char* nativeStack;
+    makeNativeStack(backtracePrt, nativeStack);
+    return nativeStack;
+}
 
 
 int (*original_connect)(int fd, const struct sockaddr* addr, socklen_t addr_length);
@@ -112,7 +189,6 @@ static jobject nativeGetTrafficInfoMap(JNIEnv *env, jclass, jint type) {
     return TrafficCollector::getTrafficInfoMap(type);
 }
 
-
 static void nativeReleaseMatrixTraffic(JNIEnv *env, jclass) {
     TrafficCollector::stopLoop();
     TrafficCollector::clearTrafficInfo();
@@ -126,9 +202,18 @@ static void nativeClearTrafficInfo(JNIEnv *env, jclass) {
 void setStackTrace(char* threadName) {
     JNIEnv *env = JniInvocation::getEnv();
     if (!env) return;
+
     jstring jThreadName = env->NewStringUTF(threadName);
-    env->CallStaticVoidMethod(gJ.TrafficPlugin, gJ.TrafficPlugin_setFdStackTrace, jThreadName);
+    jstring nativeBacktrace;
+    if (sDumpNativeBackTrace) {
+        nativeBacktrace = env->NewStringUTF(getNativeBacktrace());
+    } else {
+        nativeBacktrace = env->NewStringUTF("");
+    }
+
+    env->CallStaticVoidMethod(gJ.TrafficPlugin, gJ.TrafficPlugin_setFdStackTrace, jThreadName, nativeBacktrace);
     env->DeleteLocalRef(jThreadName);
+    env->DeleteLocalRef(nativeBacktrace);
 }
 
 static void hookSocket(bool rxHook, bool txHook) {
@@ -198,8 +283,9 @@ static void ignoreSo(JNIEnv *env, jobjectArray ignoreSoFiles) {
     }
 }
 
-static void nativeInitMatrixTraffic(JNIEnv *env, jclass, jboolean rxEnable, jboolean txEnable, jboolean dumpStackTrace, jobjectArray ignoreSoFiles) {
-    TrafficCollector::startLoop(dumpStackTrace == JNI_TRUE);
+static void nativeInitMatrixTraffic(JNIEnv *env, jclass, jboolean rxEnable, jboolean txEnable, jboolean dumpStackTrace, jboolean dumpNativeBackTrace, jboolean lookupIpAddress, jobjectArray ignoreSoFiles) {
+    TrafficCollector::startLoop(dumpStackTrace == JNI_TRUE, lookupIpAddress == JNI_TRUE);
+    sDumpNativeBackTrace = (dumpNativeBackTrace == JNI_TRUE);
     ignoreSo(env, ignoreSoFiles);
     hookSocket(rxEnable == JNI_TRUE, txEnable == JNI_TRUE);
 }
@@ -208,7 +294,7 @@ template <typename T, std::size_t sz>
 static inline constexpr std::size_t NELEM(const T(&)[sz]) { return sz; }
 
 static const JNINativeMethod TRAFFIC_METHODS[] = {
-        {"nativeInitMatrixTraffic", "(ZZZ[Ljava/lang/String;)V", (void *) nativeInitMatrixTraffic},
+        {"nativeInitMatrixTraffic", "(ZZZZZ[Ljava/lang/String;)V", (void *) nativeInitMatrixTraffic},
         {"nativeGetTrafficInfoMap", "(I)Ljava/util/HashMap;", (void *) nativeGetTrafficInfoMap},
         {"nativeClearTrafficInfo", "()V", (void *) nativeClearTrafficInfo},
         {"nativeReleaseMatrixTraffic", "()V", (void *) nativeReleaseMatrixTraffic},
@@ -226,7 +312,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *) {
         return -1;
     gJ.TrafficPlugin = static_cast<jclass>(env->NewGlobalRef(trafficCollectorCls));
     gJ.TrafficPlugin_setFdStackTrace =
-            env->GetStaticMethodID(trafficCollectorCls, "setStackTrace", "(Ljava/lang/String;)V");
+            env->GetStaticMethodID(trafficCollectorCls, "setStackTrace", "(Ljava/lang/String;Ljava/lang/String;)V");
 
     if (env->RegisterNatives(
             trafficCollectorCls, TRAFFIC_METHODS, static_cast<jint>(NELEM(TRAFFIC_METHODS))) != 0)

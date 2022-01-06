@@ -12,6 +12,15 @@ add_library(matrix-traffic
             src/main/cpp/util/managed_jnienv.cc
              )
 
+
+target_include_directories(
+        matrix-traffic
+        PRIVATE ${EXT_DEP}/include
+        PRIVATE ${EXT_DEP}/include/backtrace
+        PRIVATE ${EXT_DEP}/include/backtrace/common
+)
+
+
 TARGET_INCLUDE_DIRECTORIES(matrix-traffic PRIVATE ${EXT_DEP}/include)
 
 
@@ -22,6 +31,7 @@ find_library( log-lib
 target_link_libraries(matrix-traffic
         PRIVATE ${log-lib}
         PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/libxhook.a
+        PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/libwechatbacktrace.so
                     )
 
 set_target_properties(matrix-traffic PROPERTIES

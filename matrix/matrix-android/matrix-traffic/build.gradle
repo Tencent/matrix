@@ -17,24 +17,10 @@ android {
                 cppFlags "-std=gnu++11 -frtti -fexceptions"
             }
             ndk {
-                abiFilters "armeabi-v7a", "arm64-v8a", "x86", "x86_64"
+                abiFilters "armeabi-v7a", "arm64-v8a"
             }
         }
-
     }
-//    buildTypes {
-//        release {
-//            minifyEnabled false
-//            consumerProguardFiles 'proguard-rules.pro'
-//        }
-//    }
-//
-//    externalNativeBuild {
-//        cmake {
-//            path "CMakeLists.txt"
-//        }
-//    }
-//
 
     sourceSets {
         main {
@@ -69,6 +55,7 @@ dependencies {
     testImplementation 'junit:junit:4.12'
     implementation project(':matrix-android-lib')
     implementation project(':matrix-android-commons')
+    implementation project(':matrix-backtrace')
 }
 
 version = rootProject.ext.VERSION_NAME
