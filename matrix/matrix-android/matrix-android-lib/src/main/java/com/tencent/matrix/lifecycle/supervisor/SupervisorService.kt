@@ -110,7 +110,7 @@ class SupervisorService : Service() {
         }
 
         override fun onStateChanged(token: ProcessToken) {
-            MatrixLog.i(TAG, "onStateChanged: ${token.statefulName} ${token.state}")
+            MatrixLog.i(TAG, "onStateChanged: ${token.statefulName} ${token.state} ${token.name}")
             val pid = Binder.getCallingPid()
             Assert.assertEquals(pid, token.pid)
             RemoteProcessLifecycleProxy.getProxy(token).onStateChanged(token.state)
