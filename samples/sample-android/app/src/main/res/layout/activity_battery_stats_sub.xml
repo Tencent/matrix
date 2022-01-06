@@ -25,11 +25,26 @@
             android:text=":main" />
     </androidx.appcompat.widget.Toolbar>
 
-    <sample.tencent.matrix.battery.stats.chart.SimpleLineChart
-        android:id="@+id/chart"
+    <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="150dp"
-        android:background="@color/BG_1" />
+        android:background="@color/BG_1">
+
+        <sample.tencent.matrix.battery.stats.chart.SimpleLineChart
+            android:id="@+id/chart"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <CheckBox
+            android:scaleX="0.6"
+            android:scaleY="0.6"
+            android:id="@+id/cb_power"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentRight="true"
+            android:layout_marginRight="5dp"
+            android:text="电量" />
+    </RelativeLayout>
 
     <RelativeLayout
         android:layout_width="match_parent"

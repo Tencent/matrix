@@ -6,6 +6,8 @@ import android.os.SystemClock;
 import android.util.ArrayMap;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.CheckBox;
+import android.widget.CompoundButton;
 import android.widget.PopupMenu;
 import android.widget.TextView;
 
@@ -14,6 +16,7 @@ import com.tencent.matrix.batterycanary.monitor.AppStats;
 import com.tencent.matrix.batterycanary.stats.BatteryRecord;
 import com.tencent.matrix.batterycanary.stats.BatteryStatsFeature;
 import com.tencent.matrix.batterycanary.stats.ui.BatteryStatsAdapter.Item.HeaderItem;
+import com.tencent.matrix.batterycanary.stats.ui.BatteryStatsLoader;
 import com.tencent.matrix.batterycanary.utils.Consumer;
 
 import java.util.ArrayList;
@@ -97,6 +100,34 @@ public class BatteryStatsSubProcActivity extends AppCompatActivity {
 
         // Chart
         mChart = findViewById(R.id.chart);
+        CheckBox powerCheckBox = findViewById(R.id.cb_power);
+        powerCheckBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if (isChecked) {
+                    mStatsLoader.setFilter(new BatteryStatsLoader.Filter() {
+                        @Override
+                        public List<BatteryRecord> filtering(List<BatteryRecord> input) {
+                            List<BatteryRecord> filtered = new ArrayList<>();
+                            for (BatteryRecord item : input) {
+                                if (item instanceof BatteryRecord.EventStatRecord) {
+                                    if (BatteryRecord.EventStatRecord.EVENT_BATTERY_STAT.equals(((BatteryRecord.EventStatRecord) item).event)) {
+                                        filtered.add(item);
+                                    }
+                                }
+                            }
+                            return filtered;
+                        }
+                    });
+                } else {
+                    mStatsLoader.removeFilter();
+                }
+
+                mStatsLoader.reset();
+                mStatsLoader.load();
+                updateHeader(0);
+            }
+        });
 
         // List
         RecyclerView recyclerView = findViewById(R.id.rv_battery_stats);
@@ -157,7 +188,7 @@ public class BatteryStatsSubProcActivity extends AppCompatActivity {
                 tv.setText(currHeader.date);
 
                 List<Pair<Float, Long>> dataSet = mStatsLoader.getCurrPowerDataSet(getApplicationContext(), currHeader.date);
-                mChart.setData(dataSet);
+                // mChart.setData(dataSet);
             }
         }
     }
