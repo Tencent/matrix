@@ -184,7 +184,6 @@ void AnrDumper::handleSignal(int sig, const siginfo_t *info, void *uc) {
         pthread_detach(thd);
     } else if (sig == BIONIC_SIGNAL_DEBUGGER) {
         if (!fromMySelf) {
-            //if nativeBacktraceCallback execute in main thread, the signal will be received by random thread, BUT WHY !!!????
             pthread_t thd;
             pthread_create(&thd, nullptr, nativeBacktraceCallback, nullptr);
             pthread_detach(thd);
