@@ -106,20 +106,16 @@ object ProcessUILifecycleOwner {
 
     internal var onSceneChangedListener: OnSceneChangedListener? = null
         internal set(value) {
-            if (field == null) {
-                field = value
-                if (!TextUtils.isEmpty(recentScene)) {
-                    value?.onSceneChanged(recentScene, "")
-                }
+            field = value
+            if (value != null && startedStateOwner.active() && !TextUtils.isEmpty(recentScene)) {
+                value.onSceneChanged(recentScene, "")
             }
         }
 
     var recentScene = ""
         private set(value) {
-            if (field != value) {
-                onSceneChangedListener?.let {
-                    runningHandler.post { it.onSceneChanged(value, field) }
-                }
+            onSceneChangedListener?.safeApply(TAG) {
+                runningHandler.post { onSceneChanged(value, field) }
             }
             field = value
         }

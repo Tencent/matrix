@@ -13,9 +13,6 @@ interface ISupervisorProxy {
 
     void onSceneChanged(in String scene);
 
-    void onProcessBackground(in ProcessToken token);
-    void onProcessForeground(in ProcessToken token);
-
     void onProcessKilled(in ProcessToken token);
     void onProcessRescuedFromKill(in ProcessToken token);
     void onProcessKillCanceled(in ProcessToken token);

@@ -62,12 +62,6 @@ class SupervisorService : Service() {
 
     private var targetKilledCallback: ((result: Int, target: String?, pid: Int) -> Unit)? = null
 
-    private fun asyncLog(format: String?, vararg obj: Any?) {
-        MatrixHandlerThread.getDefaultHandler().post {
-            MatrixLog.i(TAG, format, *obj)
-        }
-    }
-
     private val binder = object : ISupervisorProxy.Stub() {
         override fun registerSubordinate(
             tokens: Array<ProcessToken>,
@@ -82,10 +76,9 @@ class SupervisorService : Service() {
 
             tokens.first().apply {
                 tokenRecord.addToken(this)
-//                subordinateProxies[this.name] = subordinateProxy
                 ProcessSubordinate.manager.addProxy(this, subordinateProxy)
                 backgroundProcessLru.moveOrAddFirst(this)
-                asyncLog("CREATED: [$pid-${name}] -> [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}")
+                MatrixLog.i(TAG, "CREATED: [$pid-${name}] -> [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}")
 
                 safeApply(TAG) {
                     linkToDeath {
@@ -99,19 +92,12 @@ class SupervisorService : Service() {
                                 TAG,
                                 "$pid-$dead was dead. is LRU kill? ${!lruRemoveSuccess && !proxyRemoveSuccess}"
                             )
-//                            DispatchReceiver.dispatchDeath(
-//                                applicationContext,
-//                                dead.name,
-//                                dead.pid,
-//                                !lruRemoveSuccess && !proxyRemoveSuccess
-//                            )
                         }
                     }
                 }
             }
 
             tokens.forEach {
-                // FIXME: 2022/1/5 sync background state after supervisor reboot
                 MatrixLog.d(TAG, "register: ${it.name}, ${it.statefulName}, ${it.state}")
                 RemoteProcessLifecycleProxy.getProxy(it).onStateChanged(it.state)
             }
@@ -128,25 +114,24 @@ class SupervisorService : Service() {
             val pid = Binder.getCallingPid()
             Assert.assertEquals(pid, token.pid)
             RemoteProcessLifecycleProxy.getProxy(token).onStateChanged(token.state)
+            onProcessStateChanged(token)
 //            RemoteProcessLifecycleProxy.profile()
+        }
+
+        private fun onProcessStateChanged(token: ProcessToken) {
+            if (ProcessSupervisor.EXPLICIT_BACKGROUND_OWNER == token.statefulName) {
+                if (token.state) {
+                    backgroundProcessLru.moveOrAddFirst(token)
+                    MatrixLog.i(TAG, "BACKGROUND: [${token.pid}-${token.name}] -> [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}")
+                } else {
+                    backgroundProcessLru.remove(token)
+                    MatrixLog.i(TAG, "FOREGROUND: [${token.pid}-${token.name}] <- [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}")
+                }
+            }
         }
 
         override fun onSceneChanged(scene: String) {
             SupervisorService.recentScene = scene
-        }
-
-        override fun onProcessBackground(token: ProcessToken) {
-            val pid = Binder.getCallingPid()
-            Assert.assertEquals(pid, token.pid)
-            backgroundProcessLru.moveOrAddFirst(token)
-            asyncLog("BACKGROUND: [$pid-${token.name}] -> [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}")
-        }
-
-        override fun onProcessForeground(token: ProcessToken) {
-            val pid = Binder.getCallingPid()
-            Assert.assertEquals(pid, token.pid)
-            backgroundProcessLru.remove(token)
-            asyncLog("FOREGROUND: [$pid-${token.name}] <- [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}")
         }
 
         override fun onProcessKilled(token: ProcessToken) {
@@ -155,7 +140,7 @@ class SupervisorService : Service() {
             safeApply(TAG) { targetKilledCallback?.invoke(LRU_KILL_SUCCESS, token.name, token.pid) }
             backgroundProcessLru.remove(token)
             RemoteProcessLifecycleProxy.removeProxy(token)
-            asyncLog("KILL: [$pid-${token.name}] X [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}")
+            MatrixLog.i(TAG, "KILL: [$pid-${token.name}] X [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}")
         }
 
         override fun onProcessRescuedFromKill(token: ProcessToken) {

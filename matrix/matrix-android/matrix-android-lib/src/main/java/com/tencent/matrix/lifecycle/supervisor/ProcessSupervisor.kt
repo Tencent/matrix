@@ -92,10 +92,14 @@ object ProcessSupervisor : IProcessListener by ProcessSubordinate.processListene
     @Volatile
     internal var supervisorProxy: ISupervisorProxy? = null
 
+    internal const val STARTED_STATE_OWNER = "StartedStateOwner"
+    internal const val EXPLICIT_BACKGROUND_OWNER = "ExplicitBackgroundOwner"
+    internal const val DEEP_BACKGROUND_OWNER = "DeepBackgroundOwner"
+
     // @formatter:off
-    val appUIForegroundOwner: StatefulOwner = DispatcherStateOwner(ReduceOperators.OR, ProcessUILifecycleOwner.startedStateOwner, "StartedStateOwner")
-    val appExplicitBackgroundOwner: IBackgroundStatefulOwner = object : DispatcherStateOwner(ReduceOperators.AND, ExplicitBackgroundOwner, "ExplicitBackgroundOwner"), IBackgroundStatefulOwner {}
-    val appDeepBackgroundOwner: IBackgroundStatefulOwner = object : DispatcherStateOwner(ReduceOperators.AND, DeepBackgroundOwner, "DeepBackgroundOwner"), IBackgroundStatefulOwner {}
+    val appUIForegroundOwner: StatefulOwner = DispatcherStateOwner(ReduceOperators.OR, ProcessUILifecycleOwner.startedStateOwner, STARTED_STATE_OWNER)
+    val appExplicitBackgroundOwner: IBackgroundStatefulOwner = object : DispatcherStateOwner(ReduceOperators.AND, ExplicitBackgroundOwner, EXPLICIT_BACKGROUND_OWNER), IBackgroundStatefulOwner {}
+    val appDeepBackgroundOwner: IBackgroundStatefulOwner = object : DispatcherStateOwner(ReduceOperators.AND, DeepBackgroundOwner, DEEP_BACKGROUND_OWNER), IBackgroundStatefulOwner {}
     // @formatter:on
 
     private class AppStagedBackgroundOwner(
@@ -152,9 +156,7 @@ object ProcessSupervisor : IProcessListener by ProcessSubordinate.processListene
                         object : ProcessUILifecycleOwner.OnSceneChangedListener {
                             override fun onSceneChanged(newScene: String, origin: String) {
                                 MatrixLog.d(tag, "onSceneChanged: $origin -> $newScene")
-                                supervisorProxy?.safeApply(tag) {
-                                    onSceneChanged(newScene)
-                                }
+                                supervisorProxy?.safeApply(tag) { onSceneChanged(newScene) }
                             }
                         }
 
@@ -165,7 +167,6 @@ object ProcessSupervisor : IProcessListener by ProcessSubordinate.processListene
                         )
                     }
                     DispatcherStateOwner.attach(application!!)
-
                 }
             }
 
@@ -173,6 +174,7 @@ object ProcessSupervisor : IProcessListener by ProcessSubordinate.processListene
                 MatrixLog.e(tag, "onServiceDisconnected $name")
                 supervisorProxy = null
                 ProcessUILifecycleOwner.onSceneChangedListener = null
+                DispatcherStateOwner.detach()
                 SupervisorPacemaker.install(app)
                 // try to re-bind supervisor, but don't auto create here
                 safeApply(log = false) { app.unbindService(this) }
@@ -181,7 +183,11 @@ object ProcessSupervisor : IProcessListener by ProcessSubordinate.processListene
             }
         }
 
-        app.bindService(intent, conn, if (autoCreate) (BIND_AUTO_CREATE.or(BIND_ABOVE_CLIENT)) else BIND_ABOVE_CLIENT)
+        app.bindService(
+            intent,
+            conn,
+            if (autoCreate) (BIND_AUTO_CREATE.or(BIND_ABOVE_CLIENT)) else BIND_ABOVE_CLIENT
+        )
 
         MatrixLog.i(tag, "inCharge")
     }

@@ -31,9 +31,6 @@ internal open class DispatcherStateOwner(
     companion object {
         private val dispatchOwners = ConcurrentHashMap<String, DispatcherStateOwner>()
 
-        @Volatile
-        private var attached = false
-
         fun ownersToProcessTokens(context: Context) =
             dispatchOwners.values
                 .map { ProcessToken.current(context, it.name, it.attachedSource.active()) }
@@ -62,52 +59,42 @@ internal open class DispatcherStateOwner(
         }
 
         fun attach(application: Application) {
-            if (attached) {
-                return
-            }
-            attached = true
             dispatchOwners.forEach {
-                it.value.attachedSource.observeForever(object : IStateObserver {
-                    override fun on() {
-                        MatrixLog.d(ProcessSupervisor.tag, "attached ${it.key} turned ON")
-                        safeApply("${ProcessSupervisor.tag}.${it.key}") {
-                            ProcessSupervisor.supervisorProxy?.onStateChanged(
-                                ProcessToken.current(application, it.key, true)
-                            )
-                        }
-                    }
-
-                    override fun off() {
-                        MatrixLog.d(ProcessSupervisor.tag, "attached ${it.key} turned OFF")
-                        safeApply("${ProcessSupervisor.tag}.${it.key}") {
-                            ProcessSupervisor.supervisorProxy?.onStateChanged(
-                                ProcessToken.current(application, it.key, false)
-                            )
-                        }
-                    }
-                })
-
-                if (it.value.attachedSource is ExplicitBackgroundOwner) {
-                    it.value.attachedSource.observeForever(object : IStateObserver {
+                it.value.apply {
+                    attachedObserver?.let { o -> attachedSource.removeObserver(o) } // prevent double-observe
+                    attachedObserver = object : IStateObserver {
                         override fun on() {
-                            safeApply(ProcessSupervisor.tag) {
-                                ProcessSupervisor.supervisorProxy?.onProcessBackground(
-                                    ProcessToken.current(application)
+                            MatrixLog.d(ProcessSupervisor.tag, "attached ${it.key} turned ON")
+                            safeApply("${ProcessSupervisor.tag}.${it.key}") {
+                                ProcessSupervisor.supervisorProxy?.onStateChanged(
+                                    ProcessToken.current(application, it.key, true)
                                 )
                             }
                         }
 
                         override fun off() {
-                            safeApply(ProcessSupervisor.tag) {
-                                ProcessSupervisor.supervisorProxy?.onProcessForeground(
-                                    ProcessToken.current(application)
+                            MatrixLog.d(ProcessSupervisor.tag, "attached ${it.key} turned OFF")
+                            safeApply("${ProcessSupervisor.tag}.${it.key}") {
+                                ProcessSupervisor.supervisorProxy?.onStateChanged(
+                                    ProcessToken.current(application, it.key, false)
                                 )
                             }
                         }
-                    })
+                    }
+                    attachedSource.observeForever(attachedObserver!!)
                 }
             }
             MatrixLog.i(ProcessSupervisor.tag, "DispatcherStateOwners attached")
+        }
+
+        fun detach() {
+            dispatchOwners.forEach {
+                it.value.apply {
+                    attachedObserver?.let { o -> attachedSource.removeObserver(o) }
+                    attachedObserver = null
+                }
+            }
+            MatrixLog.i(ProcessSupervisor.tag, "DispatcherStateOwners detached")
         }
 
         fun observe(observer: (stateName: String, state: Boolean) -> Unit) {
@@ -132,6 +119,8 @@ internal open class DispatcherStateOwner(
             dispatchOwners[name]?.removeSourceOwner(source)
         }
     }
+
+    private var attachedObserver: IStateObserver? = null
 
     init {
         dispatchOwners[name] = this
