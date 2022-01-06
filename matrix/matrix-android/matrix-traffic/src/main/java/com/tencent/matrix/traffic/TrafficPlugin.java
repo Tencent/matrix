@@ -36,7 +36,7 @@ public class TrafficPlugin extends Plugin {
         super.start();
         MatrixLog.i(TAG, "start");
         String[] ignoreSoFiles = trafficConfig.getIgnoreSoFiles();
-        nativeInitMatrixTraffic(trafficConfig.isRxCollectorEnable(), trafficConfig.isTxCollectorEnable(), trafficConfig.willDumpStackTrace(), ignoreSoFiles);
+        nativeInitMatrixTraffic(trafficConfig.isRxCollectorEnable(), trafficConfig.isTxCollectorEnable(), trafficConfig.willDumpStackTrace(), trafficConfig.willDumpNativeBackTrace(), trafficConfig.willLookupIpAddress(), ignoreSoFiles);
     }
 
 
@@ -63,21 +63,22 @@ public class TrafficPlugin extends Plugin {
         nativeClearTrafficInfo();
     }
 
-    private static native void nativeInitMatrixTraffic(boolean rxEnable, boolean txEnable, boolean dumpStackTrace, String[] ignoreSoFiles);
+    private static native void nativeInitMatrixTraffic(boolean rxEnable, boolean txEnable, boolean dumpStackTrace, boolean dumpNativeBackTrace, boolean lookupIpAddress, String[] ignoreSoFiles);
     private static native String nativeGetTrafficInfo();
     private static native String nativeGetAllStackTraceTrafficInfo();
     private static native void nativeReleaseMatrixTraffic();
-    private static native void nativeEnableDumpJavaStackTrace(boolean enable);
     private static native void nativeClearTrafficInfo();
     private static native HashMap<String, String> nativeGetTrafficInfoMap(int type);
 
     @Keep
-    private static void setStackTrace(String threadName) {
-        MatrixLog.i(TAG, "setStackTrace, threadName = " + threadName);
-        StringBuilder stackTrace = new StringBuilder();
-        for (StackTraceElement stackTraceElement : Thread.currentThread().getStackTrace()) {
-            stackTrace.append(stackTraceElement.toString()).append("\n");
+    private static void setStackTrace(String threadName, String nativeBackTrace) {
+        MatrixLog.i(TAG, "setStackTrace, threadName = " + threadName, "nativeBackTrace = " + nativeBackTrace);
+        StringBuilder stackTrace = new StringBuilder(nativeBackTrace);
+        StackTraceElement[] stackTraceElements = Thread.currentThread().getStackTrace();
+        for (int line = 3; line < stackTraceElements.length; line++) {
+            stackTrace.append(stackTraceElements[line]).append("\n");
         }
+
         stackTraceMap.put(threadName, stackTrace.toString());
     }
 

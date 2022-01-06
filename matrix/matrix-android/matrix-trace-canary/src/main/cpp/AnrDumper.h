@@ -31,14 +31,13 @@ namespace MatrixTracer {
 
 class AnrDumper : public SignalHandler {
  public:
-    using DumpCallbackFunction = std::function<bool()>;
-
-    AnrDumper(const char* anrTraceFile, const char* printTraceFile, DumpCallbackFunction&& callback);
+    AnrDumper(const char* anrTraceFile, const char* printTraceFile);
     virtual ~AnrDumper();
 
  private:
-    Result handleSignal(int sig, const siginfo_t *info, void *uc) final;
-    const DumpCallbackFunction mCallback;
+    void handleSignal(int sig, const siginfo_t *info, void *uc) final;
+    void handleDebuggerSignal(int sig, const siginfo_t *info, void *uc) final;
+    static void* nativeBacktraceCallback(void* arg);
 };
 }   // namespace MatrixTracer
 
