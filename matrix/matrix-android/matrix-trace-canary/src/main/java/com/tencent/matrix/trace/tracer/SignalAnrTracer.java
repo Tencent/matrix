@@ -71,6 +71,9 @@ public class SignalAnrTracer extends Tracer {
     private static String anrMessageString = "";
     private static String cgroup = "";
     private static String stackTrace = "";
+    private static String nativeBacktraceStackTrace = "";
+    private static long lastReportedTimeStamp = 0;
+    private static long onAnrDumpedTimeStamp = 0;
 
     static {
         System.loadLibrary("trace-canary");
@@ -129,24 +132,33 @@ public class SignalAnrTracer extends Tracer {
     }
 
     @RequiresApi(api = Build.VERSION_CODES.M)
-    @Keep
-    private synchronized static void onANRDumped() {
-        stackTrace = Utils.getMainThreadJavaStackTrace();
-        MatrixLog.i(TAG, "onANRDumped, stackTrace = %s", stackTrace);
-        cgroup = readCgroup();
-        currentForeground = AppForegroundUtil.isInterestingToUser();
+    private static void confirmRealAnr(final boolean isSigQuit) {
+        MatrixLog.i(TAG, "confirmRealAnr, isSigQuit = " + isSigQuit);
         boolean needReport = isMainThreadBlocked();
-
         if (needReport) {
-            report(false);
+            report(false, isSigQuit);
         } else {
             new Thread(new Runnable() {
                 @Override
                 public void run() {
-                    checkErrorStateCycle();
+                    checkErrorStateCycle(isSigQuit);
                 }
             }, CHECK_ANR_STATE_THREAD_NAME).start();
         }
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.M)
+    @Keep
+    private synchronized static void onANRDumped() {
+        onAnrDumpedTimeStamp = System.currentTimeMillis();
+        MatrixLog.i(TAG, "onANRDumped");
+        stackTrace = Utils.getMainThreadJavaStackTrace();
+        MatrixLog.i(TAG, "onANRDumped, stackTrace = %s, duration = %d", stackTrace, (System.currentTimeMillis() - onAnrDumpedTimeStamp));
+        cgroup = readCgroup();
+        MatrixLog.i(TAG, "onANRDumped, read cgroup duration = %d", (System.currentTimeMillis() - onAnrDumpedTimeStamp));
+        currentForeground = AppForegroundUtil.isInterestingToUser();
+        MatrixLog.i(TAG, "onANRDumped, isInterestingToUser duration = %d", (System.currentTimeMillis() - onAnrDumpedTimeStamp));
+        confirmRealAnr(true);
     }
 
     @Keep
@@ -167,10 +179,28 @@ public class SignalAnrTracer extends Tracer {
         }
     }
 
-    private synchronized static void report(boolean fromProcessErrorState) {
+    @RequiresApi(api = Build.VERSION_CODES.M)
+    @Keep
+    private static void onNativeBacktraceDumped() {
+        MatrixLog.i(TAG, "happens onNativeBacktraceDumped");
+        if (System.currentTimeMillis() - lastReportedTimeStamp < ANR_DUMP_MAX_TIME) {
+            MatrixLog.i(TAG, "report SIGQUIT recently, just return");
+            return;
+        }
+        nativeBacktraceStackTrace = Utils.getMainThreadJavaStackTrace();
+        MatrixLog.i(TAG, "happens onNativeBacktraceDumped, mainThreadStackTrace = " + stackTrace);
+
+        confirmRealAnr(false);
+    }
+
+    private static void report(boolean fromProcessErrorState, boolean isSigQuit) {
         try {
             if (sSignalAnrDetectedListener != null) {
-                sSignalAnrDetectedListener.onAnrDetected(stackTrace, anrMessageString, anrMessageWhen, fromProcessErrorState, cgroup);
+                if (isSigQuit) {
+                    sSignalAnrDetectedListener.onAnrDetected(stackTrace, anrMessageString, anrMessageWhen, fromProcessErrorState, cgroup);
+                } else {
+                    sSignalAnrDetectedListener.onNativeBacktraceDetected(nativeBacktraceStackTrace, anrMessageString, anrMessageWhen, fromProcessErrorState);
+                }
                 return;
             }
 
@@ -183,9 +213,14 @@ public class SignalAnrTracer extends Tracer {
 
             JSONObject jsonObject = new JSONObject();
             jsonObject = DeviceUtil.getDeviceInfo(jsonObject, Matrix.with().getApplication());
-            jsonObject.put(SharePluginInfo.ISSUE_STACK_TYPE, Constants.Type.SIGNAL_ANR);
+            if (isSigQuit) {
+                jsonObject.put(SharePluginInfo.ISSUE_STACK_TYPE, Constants.Type.SIGNAL_ANR);
+                jsonObject.put(SharePluginInfo.ISSUE_THREAD_STACK, stackTrace);
+            } else {
+                jsonObject.put(SharePluginInfo.ISSUE_STACK_TYPE, Constants.Type.SIGNAL_ANR_NATIVE_BACKTRACE);
+                jsonObject.put(SharePluginInfo.ISSUE_THREAD_STACK, nativeBacktraceStackTrace);
+            }
             jsonObject.put(SharePluginInfo.ISSUE_SCENE, scene);
-            jsonObject.put(SharePluginInfo.ISSUE_THREAD_STACK, stackTrace);
             jsonObject.put(SharePluginInfo.ISSUE_PROCESS_FOREGROUND, currentForeground);
 
             Issue issue = new Issue();
@@ -196,6 +231,8 @@ public class SignalAnrTracer extends Tracer {
 
         } catch (JSONException e) {
             MatrixLog.e(TAG, "[JSONException error: %s", e);
+        } finally {
+            lastReportedTimeStamp = System.currentTimeMillis();
         }
     }
 
@@ -209,6 +246,7 @@ public class SignalAnrTracer extends Tracer {
             final Message mMessage = (Message) field.get(mainQueue);
             if (mMessage != null) {
                 anrMessageString = mMessage.toString();
+                MatrixLog.i(TAG, "anrMessageString = " + anrMessageString);
                 long when = mMessage.getWhen();
                 if (when == 0) {
                     return false;
@@ -220,6 +258,8 @@ public class SignalAnrTracer extends Tracer {
                     timeThreshold = FOREGROUND_MSG_THRESHOLD;
                 }
                 return time < timeThreshold;
+            } else {
+                MatrixLog.i(TAG, "mMessage is null");
             }
         } catch (Exception e) {
             return false;
@@ -228,14 +268,14 @@ public class SignalAnrTracer extends Tracer {
     }
 
 
-    private static void checkErrorStateCycle() {
+    private static void checkErrorStateCycle(boolean isSigQuit) {
         int checkErrorStateCount = 0;
         while (checkErrorStateCount < CHECK_ERROR_STATE_COUNT) {
             try {
                 checkErrorStateCount++;
                 boolean myAnr = checkErrorState();
                 if (myAnr) {
-                    report(true);
+                    report(true, isSigQuit);
                     break;
                 }
 
@@ -249,13 +289,17 @@ public class SignalAnrTracer extends Tracer {
 
     private static boolean checkErrorState() {
         try {
+            MatrixLog.i(TAG, "[checkErrorState] start");
             Application application =
                     sApplication == null ? Matrix.with().getApplication() : sApplication;
             ActivityManager am = (ActivityManager) application
                     .getSystemService(Context.ACTIVITY_SERVICE);
 
             List<ActivityManager.ProcessErrorStateInfo> procs = am.getProcessesInErrorState();
-            if (procs == null) return false;
+            if (procs == null) {
+                MatrixLog.i(TAG, "[checkErrorState] procs == null");
+                return false;
+            }
 
             for (ActivityManager.ProcessErrorStateInfo proc : procs) {
                 MatrixLog.i(TAG, "[checkErrorState] found Error State proccessName = %s, proc.condition = %d", proc.processName, proc.condition);
@@ -263,6 +307,7 @@ public class SignalAnrTracer extends Tracer {
                 if (proc.uid != android.os.Process.myUid()
                         && proc.condition == ActivityManager.ProcessErrorStateInfo.NOT_RESPONDING) {
                     MatrixLog.i(TAG, "maybe received other apps ANR signal");
+                    return false;
                 }
 
                 if (proc.pid != android.os.Process.myPid()) continue;
@@ -302,5 +347,6 @@ public class SignalAnrTracer extends Tracer {
 
     public interface SignalAnrDetectedListener {
         void onAnrDetected(String stackTrace, String mMessageString, long mMessageWhen, boolean fromProcessErrorState, String cpuset);
+        void onNativeBacktraceDetected(String backtrace, String mMessageString, long mMessageWhen, boolean fromProcessErrorState);
     }
 }

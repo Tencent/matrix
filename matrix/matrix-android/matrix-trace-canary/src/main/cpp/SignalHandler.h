@@ -32,11 +32,20 @@ class SignalHandler {
 
  protected:
     enum Result { NOT_HANDLED = 0, HANDLED, HANDLED_NO_RETRIGGER };
-    virtual Result handleSignal(int sig, const siginfo_t *info, void *uc) = 0;
+    virtual void handleSignal(int sig, const siginfo_t *info, void *uc) = 0;
+    virtual void handleDebuggerSignal(int sig, const siginfo_t *info, void *uc) = 0;
+    static const int TARGET_SIG = SIGQUIT;
+    static const int BIONIC_SIGNAL_DEBUGGER = (__SIGRTMIN + 3);
+    static bool installHandlersLocked();
+    static bool installNativeBacktraceHandlersLocked();
+    static void restoreHandlersLocked();
+    static void restoreNativeBacktraceHandlersLocked();
+    static void installDefaultHandler(int sig);
 
  private:
     static void signalHandler(int sig, siginfo_t* info, void* uc);
-    static bool installHandlersLocked();
+    static void debuggerSignalHandler(int sig, siginfo_t* info, void* uc);
+
 
     SignalHandler(const SignalHandler &) = delete;
     SignalHandler &operator= (const SignalHandler &) = delete;
