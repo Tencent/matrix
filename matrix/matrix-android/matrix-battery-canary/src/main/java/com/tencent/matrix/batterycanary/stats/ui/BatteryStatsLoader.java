@@ -16,6 +16,8 @@ import com.tencent.matrix.util.MatrixLog;
 import java.util.ArrayList;
 import java.util.List;
 
+import androidx.annotation.Nullable;
+
 /**
  * @author Kaede
  * @since 2021/12/10
@@ -29,6 +31,9 @@ public class BatteryStatsLoader {
     protected final Handler mUiHandler = new Handler(Looper.getMainLooper());
     protected int mDayOffset = 0;
     protected String mProc = "";
+
+    @Nullable
+    protected Filter mFilter;
 
     public BatteryStatsLoader(BatteryStatsAdapter statsAdapter) {
         this(statsAdapter, DAY_LIMIT);
@@ -47,8 +52,20 @@ public class BatteryStatsLoader {
         return mStatsAdapter.getDataList();
     }
 
+    public void setFilter(Filter filter) {
+        mFilter = filter;
+    }
+
+    public void removeFilter() {
+        mFilter = null;
+    }
+
     public void reset(String proc) {
         mProc = proc;
+        reset();
+    }
+
+    public void reset() {
         mDayOffset = 0;
         postClearDataSet();
     }
@@ -89,6 +106,9 @@ public class BatteryStatsLoader {
             @Override
             public void accept(BatteryStatsFeature batteryStatsFeature) {
                 List<BatteryRecord> records = batteryStatsFeature.readRecords(dayOffset, mProc);
+                if (mFilter != null) {
+                    records = mFilter.filtering(records);
+                }
                 BatteryRecords batteryRecords = new BatteryRecords();
                 batteryRecords.date = BatteryStatsFeature.getDateString(dayOffset);
                 batteryRecords.records = records;
@@ -246,5 +266,9 @@ public class BatteryStatsLoader {
         Item.EventLevel2Item item = new Item.EventLevel2Item(record);
         item.text = "Unknown: " + record.getClass().getName();
         return item;
+    }
+
+    public interface Filter {
+        List<BatteryRecord> filtering(List<BatteryRecord> input);
     }
 }

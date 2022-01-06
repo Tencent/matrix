@@ -33,9 +33,9 @@ public class SimpleLineChart extends View {
     // 背景画笔
     private Paint mBgPaint;
     // Y 轴
-    private Float[] mData = {70f, 100f, 95f, 88f};
+    private Float[] mData = {70f, 100f, 95f, 88f, 80f, 60f, 20f};
     // X 轴
-    private Long[] mTimeMillis = {0L, 0L, 0L, 0L};
+    private Long[] mTimeMillis = {0L, 0L, 0L, 0L, 0L, 0L, 0L};
 
     // 自身宽高
     private float mSelfWidth;
@@ -95,7 +95,7 @@ public class SimpleLineChart extends View {
         mPaint.getTextBounds(time, 0, time.length(), rect);
         bottomTextW = rect.width();
         bottomTextH = rect.height();
-        //每个年份的宽度
+        // Y 轴底部文字的宽度
         proportionWidth = (mSelfWidth - 2 * horizontalSpace) / mTimeMillis.length;
     }
 

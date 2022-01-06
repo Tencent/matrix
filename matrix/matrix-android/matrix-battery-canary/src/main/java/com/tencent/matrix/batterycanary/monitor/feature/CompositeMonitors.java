@@ -157,19 +157,23 @@ public class CompositeMonitors {
         }
 
         Delta<JiffiesSnapshot> appJiffies = getDelta(JiffiesSnapshot.class);
-        Delta<CpuStatFeature.CpuStateSnapshot> cpuJiffies = getDelta(CpuStatFeature.CpuStateSnapshot.class);
         if (appJiffies == null) {
             MatrixLog.w(TAG, JiffiesSnapshot.class + " should be metrics to get CpuLoad");
             return -1;
         }
+
+        Delta<CpuStatFeature.CpuStateSnapshot> cpuJiffies = getDelta(CpuStatFeature.CpuStateSnapshot.class);
         if (cpuJiffies == null) {
-            MatrixLog.w(TAG, CpuStatFeature.CpuStateSnapshot.class + "should be metrics to get CpuLoad");
-            return -1;
+            MatrixLog.w(TAG, "Configure CpuLoad by uptime");
+            long appJiffiesDelta = appJiffies.dlt.totalJiffies.get();
+            long cpuUptimeDelta = mAppStats.duringMillis;
+            float cpuLoad = cpuUptimeDelta > 0 ? (float) (appJiffiesDelta * 10) / cpuUptimeDelta : 0;
+            return (int) (cpuLoad * 100);
         }
 
-        final long appJiffiesDelta = appJiffies.dlt.totalJiffies.get();
-        final long cpuJiffiesDelta = cpuJiffies.dlt.totalCpuJiffies();
-        final float cpuLoad = cpuJiffiesDelta > 0 ? (float) appJiffiesDelta / cpuJiffiesDelta : 0;
+        long appJiffiesDelta = appJiffies.dlt.totalJiffies.get();
+        long cpuJiffiesDelta = cpuJiffies.dlt.totalCpuJiffies();
+        float cpuLoad = cpuJiffiesDelta > 0 ? (float) appJiffiesDelta / cpuJiffiesDelta : 0;
         return (int) (cpuLoad * BatteryCanaryUtil.getCpuCoreNum() * 100);
     }
 
@@ -245,6 +249,16 @@ public class CompositeMonitors {
         metric(BlueToothMonitorFeature.BlueToothSnapshot.class);
         metric(WifiMonitorFeature.WifiSnapshot.class);
         metric(LocationMonitorFeature.LocationSnapshot.class);
+        return this;
+    }
+
+    public CompositeMonitors metricCpuLoad() {
+        if (!mMetrics.contains(JiffiesSnapshot.class)) {
+            metric(JiffiesSnapshot.class);
+        }
+        if (!mMetrics.contains(CpuStatFeature.CpuStateSnapshot.class)) {
+            metric(CpuStatFeature.CpuStateSnapshot.class);
+        }
         return this;
     }
 
