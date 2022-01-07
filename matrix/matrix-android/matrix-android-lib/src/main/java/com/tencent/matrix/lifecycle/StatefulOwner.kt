@@ -12,8 +12,42 @@ interface IStateful {
     fun active(): Boolean
 }
 
-fun IStatefulOwner.reverse(): IStatefulOwner = object : IStatefulOwner by this {
+fun IStatefulOwner.reverse(): IStatefulOwner = object : IStatefulOwner{
     override fun active() = !this@reverse.active()
+
+    inner class ReverseObserverWrapper(val origin: IStateObserver) : IStateObserver {
+        override fun on() = origin.off()
+        override fun off() = origin.on()
+        override fun toString() = origin.toString()
+        override fun hashCode() = origin.hashCode()
+        override fun equals(other: Any?): Boolean {
+            return if (other is ReverseObserverWrapper) {
+                origin == other.origin
+            } else {
+                false
+            }
+        }
+    }
+
+    private fun IStateObserver.wrap(): ReverseObserverWrapper = ReverseObserverWrapper(this)
+
+    override fun observeForever(observer: IStateObserver) =
+        this@reverse.observeForever(observer.wrap())
+
+    override fun observeWithLifecycle(lifecycleOwner: LifecycleOwner, observer: IStateObserver) =
+        this@reverse.observeWithLifecycle(lifecycleOwner, observer.wrap())
+
+    override fun removeObserver(observer: IStateObserver) =
+        this@reverse.removeObserver(observer.wrap())
+}
+
+fun IStatefulOwner.shadow(): IStatefulOwner = object : StatefulOwner() {
+    init {
+        this@shadow.observeForever(object : IStateObserver {
+            override fun on() = turnOn()
+            override fun off() = turnOff()
+        })
+    }
 }
 
 interface IStateObserver {
@@ -200,6 +234,9 @@ open class MultiSourceStatefulOwner(
 
     private fun register(owner: IStatefulOwner) {
         owner.let {
+            if (it is MultiSourceStatefulOwner) {
+                throw IllegalArgumentException("NOT allow to add MultiSourceStatefulOwner as source, consider to add its shadow owner")
+            }
             sourceOwners.add(it)
             it.observeForever(this)
         }

@@ -105,8 +105,8 @@ object ProcessSupervisor : IProcessListener by ProcessSubordinate.processListene
     private class AppStagedBackgroundOwner(
         private val delegate: MultiSourceStatefulOwner = MultiSourceStatefulOwner(
             ReduceOperators.AND,
-            appExplicitBackgroundOwner,
-            appDeepBackgroundOwner.reverse()
+            appExplicitBackgroundOwner.shadow(),
+            appDeepBackgroundOwner.reverse().shadow()
         )
     ) : IBackgroundStatefulOwner, IStatefulOwner by delegate
 
