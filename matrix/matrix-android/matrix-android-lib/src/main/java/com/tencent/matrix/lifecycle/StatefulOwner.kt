@@ -12,7 +12,7 @@ interface IStateful {
     fun active(): Boolean
 }
 
-fun IStatefulOwner.reverse(): IStatefulOwner = object : IStatefulOwner{
+fun IStatefulOwner.reverse(): IStatefulOwner = object : IStatefulOwner {
     override fun active() = !this@reverse.active()
 
     inner class ReverseObserverWrapper(val origin: IStateObserver) : IStateObserver {
