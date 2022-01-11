@@ -38,12 +38,14 @@
 
 namespace MatrixTracer {
 
-const int TARGET_SIG = SIGQUIT;
 struct sigaction sOldHandlers;
-bool sHandlerInstalled = false;
+struct sigaction sNativeBacktraceOldHandlers;
+static bool sHandlerInstalled = false;
+static bool sNativeBacktraceHandlerInstalled = false;
 
 static std::vector<SignalHandler*>* sHandlerStack = nullptr;
 static std::mutex sHandlerStackMutex;
+static std::mutex sNativeBacktraceHandlerStackMutex;
 static bool sStackInstalled = false;
 static stack_t sOldStack;
 static stack_t sNewStack;
@@ -66,7 +68,6 @@ static void installAlternateStackLocked() {
     }
 
     sStackInstalled = true;
-    ALOGV("Alternative stack installed.");
 }
 
 bool SignalHandler::installHandlersLocked() {
@@ -83,16 +84,35 @@ bool SignalHandler::installHandlersLocked() {
     sa.sa_flags = SA_ONSTACK | SA_SIGINFO | SA_RESTART;
 
     if (sigaction(TARGET_SIG, &sa, nullptr) == -1) {
-        ALOGV("Signal handler cannot be installed");
+        return false;
     }
 
     sHandlerInstalled = true;
-    ALOGV("Signal handler installed.");
     return true;
 }
 
+bool SignalHandler::installNativeBacktraceHandlersLocked() {
+    if (sNativeBacktraceHandlerInstalled) {
+        return false;
+    }
 
-static void installDefaultHandler(int sig) {
+    if (sigaction(BIONIC_SIGNAL_DEBUGGER, nullptr, &sNativeBacktraceOldHandlers) == -1) {
+        return false;
+    }
+
+    struct sigaction sa{};
+    sa.sa_sigaction = debuggerSignalHandler;
+    sa.sa_flags = SA_ONSTACK | SA_SIGINFO | SA_RESTART;
+
+    if (sigaction(BIONIC_SIGNAL_DEBUGGER, &sa, nullptr) == -1) {
+        return false;
+    }
+
+    sNativeBacktraceHandlerInstalled = true;
+    return true;
+}
+
+void SignalHandler::installDefaultHandler(int sig) {
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
     sigemptyset(&sa.sa_mask);
@@ -101,7 +121,7 @@ static void installDefaultHandler(int sig) {
     sigaction(sig, &sa, nullptr);
 }
 
-static void restoreHandlersLocked() {
+void SignalHandler::restoreHandlersLocked() {
     if (!sHandlerInstalled)
         return;
 
@@ -110,7 +130,17 @@ static void restoreHandlersLocked() {
     }
 
     sHandlerInstalled = false;
-    ALOGV("Signal handler restored.");
+}
+
+void SignalHandler::restoreNativeBacktraceHandlersLocked() {
+    if (!sNativeBacktraceHandlerInstalled)
+        return;
+
+    if (sigaction(BIONIC_SIGNAL_DEBUGGER, &sNativeBacktraceOldHandlers, nullptr) == -1) {
+        installDefaultHandler(BIONIC_SIGNAL_DEBUGGER);
+    }
+
+    sNativeBacktraceHandlerInstalled = false;
 }
 
 static void restoreAlternateStackLocked() {
@@ -138,8 +168,6 @@ static void restoreAlternateStackLocked() {
 }
 
 void SignalHandler::signalHandler(int sig, siginfo_t* info, void* uc) {
-    ALOGV("Entered signal handler.");
-
     std::unique_lock<std::mutex> lock(sHandlerStackMutex);
 
     for (auto it = sHandlerStack->rbegin(); it != sHandlerStack->rend(); ++it) {
@@ -149,6 +177,15 @@ void SignalHandler::signalHandler(int sig, siginfo_t* info, void* uc) {
     lock.unlock();
 }
 
+void SignalHandler::debuggerSignalHandler(int sig, siginfo_t* info, void* uc) {
+    std::unique_lock<std::mutex> lock(sNativeBacktraceHandlerStackMutex);
+
+    for (auto it = sHandlerStack->rbegin(); it != sHandlerStack->rend(); ++it) {
+        (*it)->handleDebuggerSignal(sig, info, uc);
+    }
+
+    lock.unlock();
+}
 
 SignalHandler::SignalHandler() {
     std::lock_guard<std::mutex> lock(sHandlerStackMutex);
@@ -158,6 +195,7 @@ SignalHandler::SignalHandler() {
 
     installAlternateStackLocked();
     installHandlersLocked();
+    installNativeBacktraceHandlersLocked();
     sHandlerStack->push_back(this);
 }
 
@@ -170,6 +208,7 @@ SignalHandler::~SignalHandler() {
         delete sHandlerStack;
         sHandlerStack = nullptr;
         restoreAlternateStackLocked();
+        restoreNativeBacktraceHandlersLocked();
         restoreHandlersLocked();
     }
 }
