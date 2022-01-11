@@ -100,6 +100,7 @@ public abstract class BaseLeakProcessor {
         } catch (IOException e) {
             result = ActivityLeakResult.failure(e, 0);
         }
+        getWatcher().triggerGc();
         setAnalyzing(false);
         return result;
     }
