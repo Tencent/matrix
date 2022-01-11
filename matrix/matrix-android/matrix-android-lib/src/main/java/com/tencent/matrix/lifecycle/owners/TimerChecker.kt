@@ -1,6 +1,6 @@
 package com.tencent.matrix.lifecycle.owners
 
-import com.tencent.matrix.util.MatrixHandlerThread
+import com.tencent.matrix.lifecycle.MatrixLifecycleThread
 import com.tencent.matrix.util.MatrixLog
 import kotlin.math.min
 
@@ -13,7 +13,7 @@ internal abstract class TimerChecker(
     private val maxCheckTimes: Int = -1 // infinity by default
 ) {
 
-    private val runningHandler by lazy { MatrixHandlerThread.getDefaultHandler() }
+    private val runningHandler by lazy { MatrixLifecycleThread.handler }
 
     /**
      * The initial delay interval is 12 + 31 = 34(ms)
