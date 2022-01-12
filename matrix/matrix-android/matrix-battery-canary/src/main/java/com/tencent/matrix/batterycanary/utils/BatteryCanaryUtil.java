@@ -31,6 +31,7 @@ import android.text.TextUtils;
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
 import com.tencent.matrix.batterycanary.monitor.AppStats;
+import com.tencent.matrix.lifecycle.owners.OverlayWindowLifecycleOwner;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.io.File;
@@ -48,6 +49,7 @@ import androidx.annotation.RestrictTo;
 
 import static android.content.Context.ACTIVITY_SERVICE;
 import static com.tencent.matrix.batterycanary.monitor.AppStats.APP_STAT_BACKGROUND;
+import static com.tencent.matrix.batterycanary.monitor.AppStats.APP_STAT_FLOAT_WINDOW;
 import static com.tencent.matrix.batterycanary.monitor.AppStats.APP_STAT_FOREGROUND;
 import static com.tencent.matrix.batterycanary.monitor.AppStats.APP_STAT_FOREGROUND_SERVICE;
 import static com.tencent.matrix.batterycanary.monitor.AppStats.DEV_STAT_CHARGING;
@@ -336,6 +338,9 @@ public final class BatteryCanaryUtil {
         if (hasForegroundService(context)) {
             return APP_STAT_FOREGROUND_SERVICE; // 后台（有前台服务）
         }
+        if (OverlayWindowLifecycleOwner.INSTANCE.hasOverlayWindow()) {
+            return APP_STAT_FLOAT_WINDOW; // 浮窗
+        }
         return APP_STAT_BACKGROUND; // 后台
     }
 
@@ -368,6 +373,8 @@ public final class BatteryCanaryUtil {
                 return "bg";
             case APP_STAT_FOREGROUND_SERVICE:
                 return "fgSrv";
+            case APP_STAT_FLOAT_WINDOW:
+                return "float";
             default:
                 return "unknown";
         }

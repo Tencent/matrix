@@ -24,6 +24,7 @@ public class AppStats {
     @IntDef(value = {
             APP_STAT_FOREGROUND,
             APP_STAT_FOREGROUND_SERVICE,
+            APP_STAT_FLOAT_WINDOW,
             APP_STAT_BACKGROUND
     })
     @Retention(RetentionPolicy.SOURCE)
@@ -43,6 +44,7 @@ public class AppStats {
 
     public static final int APP_STAT_FOREGROUND = 1;
     public static final int APP_STAT_FOREGROUND_SERVICE = 3;
+    public static final int APP_STAT_FLOAT_WINDOW = 4;
     public static final int APP_STAT_BACKGROUND = 2;
 
     public static final int DEV_STAT_CHARGING = 1;
@@ -54,6 +56,7 @@ public class AppStats {
     public int appFgRatio;
     public int appBgRatio;
     public int appFgSrvRatio;
+    public int appFloatRatio;
 
     public int devChargingRatio;
     public int devUnChargingRatio;
@@ -100,6 +103,7 @@ public class AppStats {
     public int getAppStat() {
         if (appFgRatio >= 50) return APP_STAT_FOREGROUND;
         if (appFgSrvRatio >= 50) return APP_STAT_FOREGROUND_SERVICE;
+        if (appFloatRatio >= 50) return APP_STAT_FLOAT_WINDOW;
         return APP_STAT_BACKGROUND;
     }
 
@@ -122,6 +126,7 @@ public class AppStats {
                 "appFgRatio=" + appFgRatio +
                 ", appBgRatio=" + appBgRatio +
                 ", appFgSrvRatio=" + appFgSrvRatio +
+                ", appFloatRatio=" + appFloatRatio +
                 ", devChargingRatio=" + devChargingRatio +
                 ", devUnChargingRatio=" + devUnChargingRatio +
                 ", devSceneOffRatio=" + devSceneOffRatio +
@@ -162,6 +167,7 @@ public class AppStats {
                 stats.appFgRatio = appStats.fgRatio.get().intValue();
                 stats.appBgRatio = appStats.bgRatio.get().intValue();
                 stats.appFgSrvRatio = appStats.fgSrvRatio.get().intValue();
+                stats.appFloatRatio = appStats.floatRatio.get().intValue();
 
                 TimeBreaker.TimePortions portions = appStatFeat.currentSceneSnapshot(duringMillis);
                 TimeBreaker.TimePortions.Portion top1 = portions.top1();
