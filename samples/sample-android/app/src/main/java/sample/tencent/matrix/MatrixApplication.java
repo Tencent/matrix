@@ -239,6 +239,9 @@ public class MatrixApplication extends Application {
     }
 
     private BatteryMonitorPlugin configureBatteryCanary(Context context) {
+        if (!BatteryEventDelegate.isInit()) {
+            BatteryEventDelegate.init((Application) context.getApplicationContext());
+        }
         // Configuration of battery plugin is really complicated.
         // See it in BatteryCanaryInitHelper.
         // return BatteryCanarySimpleInitHelper.createMonitor(context);  // for simplified showcase

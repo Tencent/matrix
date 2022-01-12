@@ -96,12 +96,12 @@ public class LifecycleTest {
         ProcessSupervisor.INSTANCE.getAppUIForegroundOwner().observeForever(new IStateObserver() {
             @Override
             public void on() {
-                MatrixLog.d(TAG, "AppUI: on ...... %s", ProcessSupervisor.INSTANCE.recentScene());
+                MatrixLog.d(TAG, "AppUI: on ...... %s", ProcessSupervisor.INSTANCE.getRecentScene());
             }
 
             @Override
             public void off() {
-                MatrixLog.d(TAG, "AppUI: off ...... %s", ProcessSupervisor.INSTANCE.recentScene());
+                MatrixLog.d(TAG, "AppUI: off ...... %s", ProcessSupervisor.INSTANCE.getRecentScene());
             }
         });
 
