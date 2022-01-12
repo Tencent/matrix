@@ -2,13 +2,7 @@ package com.tencent.matrix.lifecycle.supervisor
 
 import android.app.Application
 import android.content.Context
-import android.transition.Scene
-import com.tencent.matrix.lifecycle.IStateObserver
-import com.tencent.matrix.lifecycle.IStateful
-import com.tencent.matrix.lifecycle.MultiSourceStatefulOwner
-import com.tencent.matrix.lifecycle.StatefulOwner
-import com.tencent.matrix.lifecycle.owners.ExplicitBackgroundOwner
-import com.tencent.matrix.util.MatrixHandlerThread
+import com.tencent.matrix.lifecycle.*
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.safeApply
 import java.util.concurrent.ConcurrentHashMap
@@ -126,7 +120,7 @@ internal open class DispatcherStateOwner(
         dispatchOwners[name] = this
     }
 
-    private val h = MatrixHandlerThread.getDefaultHandler()
+    private val h = MatrixLifecycleThread.handler
     private fun dispatchOn() = h.post { turnOn() }
     private fun dispatchOff() = h.post { turnOff() }
 }

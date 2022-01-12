@@ -147,7 +147,7 @@ object ProcessSupervisor : IProcessListener by ProcessSubordinate.processListene
 
         val conn = object : ServiceConnection {
             override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-                MatrixHandlerThread.getDefaultHandler().post { // do NOT run ipc in main thread
+                MatrixLifecycleThread.handler.post { // do NOT run ipc in main thread
                     SupervisorPacemaker.uninstallPacemaker()
                     supervisorProxy = ISupervisorProxy.Stub.asInterface(service)
                     MatrixLog.i(tag, "on Supervisor Connected $supervisorProxy")
