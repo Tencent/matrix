@@ -628,6 +628,7 @@ public interface BatteryMonitorCallback extends
                 printer.writeLine("fg", String.valueOf(appStats.appFgRatio));
                 printer.writeLine("bg", String.valueOf(appStats.appBgRatio));
                 printer.writeLine("fgSrv", String.valueOf(appStats.appFgSrvRatio));
+                printer.writeLine("float", String.valueOf(appStats.appFloatRatio));
                 printer.writeLine("devCharging", String.valueOf(appStats.devChargingRatio));
                 printer.writeLine("devScreenOff", String.valueOf(appStats.devSceneOffRatio));
                 if (!TextUtils.isEmpty(appStats.sceneTop1)) {
@@ -645,6 +646,7 @@ public interface BatteryMonitorCallback extends
                         printer.writeLine("fg", String.valueOf(currSnapshot.fgRatio.get()));
                         printer.writeLine("bg", String.valueOf(currSnapshot.bgRatio.get()));
                         printer.writeLine("fgSrv", String.valueOf(currSnapshot.fgSrvRatio.get()));
+                        printer.writeLine("float", String.valueOf(currSnapshot.floatRatio.get()));
                     }
                 });
             }

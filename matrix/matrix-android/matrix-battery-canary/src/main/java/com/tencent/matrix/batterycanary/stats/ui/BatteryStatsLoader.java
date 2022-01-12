@@ -214,6 +214,9 @@ public class BatteryStatsLoader {
                 case AppStats.APP_STAT_FOREGROUND_SERVICE:
                     item.text = "App 切换到后台 (有前台服务)";
                     break;
+                case AppStats.APP_STAT_FLOAT_WINDOW:
+                    item.text = "App 切换到后台 (有浮窗)";
+                    break;
                 default:
                     item.text = "App 状态变化: " + ((BatteryRecord.AppStatRecord) record).appStat;
                     break;
