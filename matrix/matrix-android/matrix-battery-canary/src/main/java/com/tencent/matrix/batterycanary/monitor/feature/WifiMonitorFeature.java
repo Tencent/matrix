@@ -1,11 +1,11 @@
 package com.tencent.matrix.batterycanary.monitor.feature;
 
-import androidx.annotation.NonNull;
 import android.text.TextUtils;
 
-import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.WifiManagerServiceHooker;
 import com.tencent.matrix.util.MatrixLog;
+
+import androidx.annotation.NonNull;
 
 public final class WifiMonitorFeature extends AbsMonitorFeature {
     private static final String TAG = "Matrix.battery.WifiMonitorFeature";
@@ -24,7 +24,7 @@ public final class WifiMonitorFeature extends AbsMonitorFeature {
             mListener = new WifiManagerServiceHooker.IListener() {
                 @Override
                 public void onStartScan() {
-                    String stack = shouldTracing() ? BatteryCanaryUtil.stackTraceToString(new Throwable().getStackTrace()) : "";
+                    String stack = shouldTracing() ? mCore.getConfig().callStackCollector.collectCurr() : "";
                     MatrixLog.i(TAG, "#onStartScan, stack = " + stack);
                     mTracing.setStack(stack);
                     mTracing.onStartScan();
@@ -32,7 +32,7 @@ public final class WifiMonitorFeature extends AbsMonitorFeature {
 
                 @Override
                 public void onGetScanResults() {
-                    String stack = shouldTracing() ? BatteryCanaryUtil.stackTraceToString(new Throwable().getStackTrace()) : "";
+                    String stack = shouldTracing() ? mCore.getConfig().callStackCollector.collectCurr() : "";
                     MatrixLog.i(TAG, "#onGetScanResults, stack = " + stack);
                     mTracing.setStack(stack);
                     mTracing.onGetScanResults();

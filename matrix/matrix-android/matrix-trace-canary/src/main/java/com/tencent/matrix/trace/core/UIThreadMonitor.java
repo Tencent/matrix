@@ -21,6 +21,7 @@ import android.os.Looper;
 import android.os.SystemClock;
 import android.view.Choreographer;
 
+import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.trace.config.TraceConfig;
 import com.tencent.matrix.trace.constants.Constants;
 import com.tencent.matrix.trace.listeners.LooperObserver;
@@ -78,6 +79,7 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
 
     private final static UIThreadMonitor sInstance = new UIThreadMonitor();
     private TraceConfig config;
+    private static boolean useFrameMetrics;
     private Object callbackQueueLock;
     private Object[] callbackQueues;
     private Method addTraversalQueue;
@@ -102,21 +104,14 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
         return isInit;
     }
 
-    public void init(TraceConfig config) {
+    public void init(TraceConfig config, boolean supportFrameMetrics) {
+        this.config = config;
+        useFrameMetrics = supportFrameMetrics;
+
         if (Thread.currentThread() != Looper.getMainLooper().getThread()) {
             throw new AssertionError("must be init in main thread!");
         }
-        this.config = config;
-        choreographer = Choreographer.getInstance();
-        callbackQueueLock = ReflectUtils.reflectObject(choreographer, "mLock", new Object());
-        callbackQueues = ReflectUtils.reflectObject(choreographer, "mCallbackQueues", null);
-        if (null != callbackQueues) {
-            addInputQueue = ReflectUtils.reflectMethod(callbackQueues[CALLBACK_INPUT], ADD_CALLBACK, long.class, Object.class, Object.class);
-            addAnimationQueue = ReflectUtils.reflectMethod(callbackQueues[CALLBACK_ANIMATION], ADD_CALLBACK, long.class, Object.class, Object.class);
-            addTraversalQueue = ReflectUtils.reflectMethod(callbackQueues[CALLBACK_TRAVERSAL], ADD_CALLBACK, long.class, Object.class, Object.class);
-        }
-        vsyncReceiver = ReflectUtils.reflectObject(choreographer, "mDisplayEventReceiver", null);
-        frameIntervalNanos = ReflectUtils.reflectObject(choreographer, "mFrameIntervalNanos", Constants.DEFAULT_FRAME_DURATION);
+
         boolean historyMsgRecorder = config.historyMsgRecorder;
         boolean denseMsgTracer = config.denseMsgTracer;
 
@@ -139,19 +134,33 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
             }
 
         });
-        this.isInit = true;
-        MatrixLog.i(TAG, "[UIThreadMonitor] %s %s %s %s %s %s frameIntervalNanos:%s", callbackQueueLock == null, callbackQueues == null,
-                addInputQueue == null, addTraversalQueue == null, addAnimationQueue == null, vsyncReceiver == null, frameIntervalNanos);
+
+        frameIntervalNanos = ReflectUtils.reflectObject(choreographer, "mFrameIntervalNanos", Constants.DEFAULT_FRAME_DURATION);
+        if (!useFrameMetrics) {
+            choreographer = Choreographer.getInstance();
+            callbackQueueLock = ReflectUtils.reflectObject(choreographer, "mLock", new Object());
+            callbackQueues = ReflectUtils.reflectObject(choreographer, "mCallbackQueues", null);
+            if (null != callbackQueues) {
+                addInputQueue = ReflectUtils.reflectMethod(callbackQueues[CALLBACK_INPUT], ADD_CALLBACK, long.class, Object.class, Object.class);
+                addAnimationQueue = ReflectUtils.reflectMethod(callbackQueues[CALLBACK_ANIMATION], ADD_CALLBACK, long.class, Object.class, Object.class);
+                addTraversalQueue = ReflectUtils.reflectMethod(callbackQueues[CALLBACK_TRAVERSAL], ADD_CALLBACK, long.class, Object.class, Object.class);
+            }
+            vsyncReceiver = ReflectUtils.reflectObject(choreographer, "mDisplayEventReceiver", null);
 
 
-        if (config.isDevEnv()) {
-            addObserver(new LooperObserver() {
-                @Override
-                public void doFrame(String focusedActivity, long startNs, long endNs, boolean isVsyncFrame, long intendedFrameTimeNs, long inputCostNs, long animationCostNs, long traversalCostNs) {
-                    MatrixLog.i(TAG, "focusedActivity[%s] frame cost:%sms isVsyncFrame=%s intendedFrameTimeNs=%s [%s|%s|%s]ns",
-                            focusedActivity, (endNs - startNs) / Constants.TIME_MILLIS_TO_NANO, isVsyncFrame, intendedFrameTimeNs, inputCostNs, animationCostNs, traversalCostNs);
-                }
-            });
+            this.isInit = true;
+            MatrixLog.i(TAG, "[UIThreadMonitor] %s %s %s %s %s %s frameIntervalNanos:%s", callbackQueueLock == null, callbackQueues == null,
+                    addInputQueue == null, addTraversalQueue == null, addAnimationQueue == null, vsyncReceiver == null, frameIntervalNanos);
+
+            if (config.isDevEnv()) {
+                addObserver(new LooperObserver() {
+                    @Override
+                    public void doFrame(String focusedActivity, long startNs, long endNs, boolean isVsyncFrame, long intendedFrameTimeNs, long inputCostNs, long animationCostNs, long traversalCostNs) {
+                        MatrixLog.i(TAG, "focusedActivity[%s] frame cost:%sms isVsyncFrame=%s intendedFrameTimeNs=%s [%s|%s|%s]ns",
+                                focusedActivity, (endNs - startNs) / Constants.TIME_MILLIS_TO_NANO, isVsyncFrame, intendedFrameTimeNs, inputCostNs, animationCostNs, traversalCostNs);
+                    }
+                });
+            }
         }
     }
 
@@ -214,8 +223,9 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
     private void dispatchBegin() {
         token = dispatchTimeMs[0] = System.nanoTime();
         dispatchTimeMs[2] = SystemClock.currentThreadTimeMillis();
-        AppMethodBeat.i(AppMethodBeat.METHOD_ID_DISPATCH);
-
+        if (config.isAppMethodBeatEnable()) {
+            AppMethodBeat.i(AppMethodBeat.METHOD_ID_DISPATCH);
+        }
         synchronized (observers) {
             for (LooperObserver observer : observers) {
                 if (!observer.isDispatchBegin()) {
@@ -256,7 +266,7 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
             traceBegin = System.nanoTime();
         }
 
-        if (config.isFPSEnable()) {
+        if (config.isFPSEnable() && !useFrameMetrics) {
             long startNs = token;
             long intendedFrameTimeNs = startNs;
             if (isVsyncFrame) {
@@ -269,7 +279,7 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
             synchronized (observers) {
                 for (LooperObserver observer : observers) {
                     if (observer.isDispatchBegin()) {
-                        observer.doFrame(AppMethodBeat.getVisibleScene(), startNs, endNs, isVsyncFrame, intendedFrameTimeNs, queueCost[CALLBACK_INPUT], queueCost[CALLBACK_ANIMATION], queueCost[CALLBACK_TRAVERSAL]);
+                        observer.doFrame(AppActiveMatrixDelegate.INSTANCE.getVisibleScene(), startNs, endNs, isVsyncFrame, intendedFrameTimeNs, queueCost[CALLBACK_INPUT], queueCost[CALLBACK_ANIMATION], queueCost[CALLBACK_TRAVERSAL]);
                     }
                 }
             }
@@ -322,9 +332,11 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
                 MatrixLog.i(TAG, "[onStart] callbackExist:%s %s", Arrays.toString(callbackExist), Utils.getStack());
                 callbackExist = new boolean[CALLBACK_LAST + 1];
             }
-            queueStatus = new int[CALLBACK_LAST + 1];
-            queueCost = new long[CALLBACK_LAST + 1];
-            addFrameCallback(CALLBACK_INPUT, this, true);
+            if (!useFrameMetrics) {
+                queueStatus = new int[CALLBACK_LAST + 1];
+                queueCost = new long[CALLBACK_LAST + 1];
+                addFrameCallback(CALLBACK_INPUT, this, true);
+            }
         }
     }
 

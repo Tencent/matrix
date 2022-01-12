@@ -68,6 +68,7 @@ class MatrixTrace(
                     changedFiles: Map<File, Status>,
                     inputToOutput: Map<File, File>,
                     isIncremental: Boolean,
+                    skipCheckClass: Boolean,
                     traceClassDirectoryOutput: File,
                     legacyReplaceChangedFile: ((File, Map<File, Status>) -> Object)?,
                     legacyReplaceFile: ((File, File) -> (Object))?
@@ -81,6 +82,7 @@ class MatrixTrace(
                 .setBaseMethodMap(baseMethodMapPath)
                 .setBlockListFile(blockListFilePath)
                 .setMappingPath(mappingDir)
+                .setSkipCheckClass(skipCheckClass)
                 .build()
 
         /**
@@ -157,7 +159,8 @@ class MatrixTrace(
             it.addAll(jarInputOutMap.keys)
         }
         val traceClassLoader = TraceClassLoader.getClassLoader(project, allInputs)
-        methodTracer.trace(dirInputOutMap, jarInputOutMap, traceClassLoader)
+        methodTracer.trace(dirInputOutMap, jarInputOutMap, traceClassLoader, skipCheckClass)
+
         Log.i(TAG, "[doTransform] Step(3)[Trace]... cost:%sms", System.currentTimeMillis() - start)
 
     }
@@ -289,9 +292,17 @@ class MatrixTrace(
 
             if (isIncremental) {
                 val outChangedFiles = HashMap<File, Status>()
+
                 for ((changedFileInput, status) in mapOfChangedFiles) {
                     val changedFileInputFullPath = changedFileInput.absolutePath
+
+                    // mapOfChangedFiles is contains all. each collectDirectoryInputTask should handle itself, should not handle other file
+                    if (!changedFileInputFullPath.contains(inputFullPath)) {
+                        continue
+                    }
+
                     val changedFileOutput = File(changedFileInputFullPath.replace(inputFullPath, outputFullPath))
+
                     if (status == Status.ADDED || status == Status.CHANGED) {
                         resultOfDirInputToOut[changedFileInput] = changedFileOutput
                     } else if (status == Status.REMOVED) {

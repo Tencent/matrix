@@ -18,10 +18,14 @@ package com.tencent.matrix.trace.tracer;
 
 import android.app.Activity;
 import android.app.Application;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.SystemClock;
+import android.view.FrameMetrics;
+import android.view.Window;
 
+import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.report.Issue;
 import com.tencent.matrix.trace.TracePlugin;
@@ -46,15 +50,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executor;
 
+import androidx.annotation.RequiresApi;
+
 public class FrameTracer extends Tracer implements Application.ActivityLifecycleCallbacks {
 
     private static final String TAG = "Matrix.FrameTracer";
+    private static boolean useFrameMetrics;
     private final HashSet<IDoFrameListener> listeners = new HashSet<>();
     private DropFrameListener dropFrameListener;
     private int dropFrameListenerThreshold = 0;
-    private final long frameIntervalNs;
+    private long frameIntervalNs;
+    private int refreshRate;
     private final TraceConfig config;
-    private long timeSliceMs;
+    private final long timeSliceMs;
     private boolean isFPSEnable;
     private long frozenThreshold;
     private long highThreshold;
@@ -63,8 +71,10 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
     private int droppedSum = 0;
     private long durationSum = 0;
     private Map<String, Long> lastResumeTimeMap = new HashMap<>();
+    private Map<Integer, Window.OnFrameMetricsAvailableListener> frameListenerMap = new HashMap<>();
 
-    public FrameTracer(TraceConfig config) {
+    public FrameTracer(TraceConfig config, boolean supportFrameMetrics) {
+        useFrameMetrics = supportFrameMetrics;
         this.config = config;
         this.frameIntervalNs = UIThreadMonitor.getMonitor().getFrameIntervalNanos();
         this.timeSliceMs = config.getTimeSliceMs();
@@ -96,7 +106,9 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
     public void onAlive() {
         super.onAlive();
         if (isFPSEnable) {
-            UIThreadMonitor.getMonitor().addObserver(this);
+            if (!useFrameMetrics) {
+                UIThreadMonitor.getMonitor().addObserver(this);
+            }
             Matrix.with().getApplication().registerActivityLifecycleCallbacks(this);
         }
     }
@@ -130,14 +142,14 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
                                 final long intendedFrameTimeNs, final long inputCostNs, final long animationCostNs, final long traversalCostNs) {
         long traceBegin = System.currentTimeMillis();
         try {
-            final long jiter = endNs - intendedFrameTimeNs;
-            final int dropFrame = (int) (jiter / frameIntervalNs);
+            final long jitter = endNs - intendedFrameTimeNs;
+            final int dropFrame = (int) (jitter / frameIntervalNs);
             if (dropFrameListener != null) {
                 if (dropFrame > dropFrameListenerThreshold) {
                     try {
                         if (MatrixUtil.getTopActivityName() != null) {
                             long lastResumeTime = lastResumeTimeMap.get(MatrixUtil.getTopActivityName());
-                            dropFrameListener.dropFrame(dropFrame, MatrixUtil.getTopActivityName(), lastResumeTime);
+                            dropFrameListener.dropFrame(dropFrame, jitter, MatrixUtil.getTopActivityName(), lastResumeTime);
                         }
                     } catch (Exception e) {
                         MatrixLog.e(TAG, "dropFrameListener error e:" + e.getMessage());
@@ -146,7 +158,7 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
             }
 
             droppedSum += dropFrame;
-            durationSum += Math.max(jiter, frameIntervalNs);
+            durationSum += Math.max(jitter, frameIntervalNs);
 
             synchronized (listeners) {
                 for (final IDoFrameListener listener : listeners) {
@@ -232,7 +244,6 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
             }
 
             item.collect(droppedFrames);
-
             if (item.sumFrameCost >= timeSliceMs) { // report
                 map.remove(visibleScene);
                 item.report();
@@ -254,7 +265,7 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
         }
 
         void collect(int droppedFrames) {
-            float frameIntervalCost = 1f * UIThreadMonitor.getMonitor().getFrameIntervalNanos()
+            float frameIntervalCost = 1f * FrameTracer.this.frameIntervalNs
                     / Constants.TIME_MILLIS_TO_NANO;
             sumFrameCost += (droppedFrames + 1) * frameIntervalCost;
             sumDroppedFrames += droppedFrames;
@@ -278,9 +289,8 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
         }
 
         void report() {
-            float fps = Math.min(60.f, 1000.f * sumFrame / sumFrameCost);
+            float fps = Math.min(refreshRate, 1000.f * sumFrame / sumFrameCost);
             MatrixLog.i(TAG, "[report] FPS:%s %s", fps, toString());
-
             try {
                 TracePlugin plugin = Matrix.with().getPluginByClass(TracePlugin.class);
                 if (null == plugin) {
@@ -353,12 +363,30 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
     }
 
     public interface DropFrameListener {
-        void dropFrame(int dropedFrame, String scene, long lastResume);
+        void dropFrame(int droppedFrame, long jitter, String scene, long lastResumeTime);
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.N)
     @Override
-    public void onActivityCreated(Activity activity, Bundle savedInstanceState) {
-
+    public void onActivityCreated(final Activity activity, Bundle savedInstanceState) {
+        if (useFrameMetrics) {
+            this.refreshRate = (int) activity.getWindowManager().getDefaultDisplay().getRefreshRate();
+            this.frameIntervalNs = Constants.TIME_SECOND_TO_NANO / (long) refreshRate;
+            Window.OnFrameMetricsAvailableListener onFrameMetricsAvailableListener = new Window.OnFrameMetricsAvailableListener() {
+                @RequiresApi(api = Build.VERSION_CODES.O)
+                @Override
+                public void onFrameMetricsAvailable(Window window, FrameMetrics frameMetrics, int dropCountSinceLastInvocation) {
+                    FrameMetrics frameMetricsCopy = new FrameMetrics(frameMetrics);
+                    long vsynTime = frameMetricsCopy.getMetric(FrameMetrics.VSYNC_TIMESTAMP);
+                    long intendedVsyncTime = frameMetricsCopy.getMetric(FrameMetrics.INTENDED_VSYNC_TIMESTAMP);
+                    frameMetricsCopy.getMetric(FrameMetrics.DRAW_DURATION);
+                    notifyListener(AppActiveMatrixDelegate.INSTANCE.getVisibleScene(), intendedVsyncTime, vsynTime, true, intendedVsyncTime, 0, 0, 0);
+                }
+            };
+            this.frameListenerMap.put(activity.hashCode(), onFrameMetricsAvailableListener);
+            activity.getWindow().addOnFrameMetricsAvailableListener(onFrameMetricsAvailableListener, new Handler());
+            MatrixLog.i(TAG, "onActivityCreated addOnFrameMetricsAvailableListener");
+        }
     }
 
     @Override
@@ -386,8 +414,15 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
 
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.N)
     @Override
     public void onActivityDestroyed(Activity activity) {
-
+        if (useFrameMetrics) {
+            try {
+                activity.getWindow().removeOnFrameMetricsAvailableListener(frameListenerMap.remove(activity.hashCode()));
+            } catch (Throwable t) {
+                MatrixLog.e(TAG, "removeOnFrameMetricsAvailableListener error : " + t.getMessage());
+            }
+        }
     }
 }

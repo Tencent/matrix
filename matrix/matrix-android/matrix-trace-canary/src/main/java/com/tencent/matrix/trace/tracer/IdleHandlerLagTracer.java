@@ -23,13 +23,13 @@ import android.os.MessageQueue;
 
 import androidx.annotation.Nullable;
 
+import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.report.Issue;
 import com.tencent.matrix.trace.TracePlugin;
 import com.tencent.matrix.trace.config.SharePluginInfo;
 import com.tencent.matrix.trace.config.TraceConfig;
 import com.tencent.matrix.trace.constants.Constants;
-import com.tencent.matrix.trace.core.AppMethodBeat;
 import com.tencent.matrix.trace.util.AppForegroundUtil;
 import com.tencent.matrix.trace.util.Utils;
 import com.tencent.matrix.util.DeviceUtil;
@@ -44,22 +44,22 @@ import java.util.Map;
 
 public class IdleHandlerLagTracer extends Tracer {
 
-    private static final String TAG = "Matrix.AnrTracer";
-    private final TraceConfig traceConfig;
+    private static final String TAG = "Matrix.IdleHandlerLagTracer";
+    private static TraceConfig traceConfig;
     private static HandlerThread idleHandlerLagHandlerThread;
     private static Handler idleHandlerLagHandler;
-    private static Runnable idleHanlderLagRunnable;
+    private static Runnable idleHandlerLagRunnable;
 
-    public IdleHandlerLagTracer(TraceConfig traceConfig) {
-        this.traceConfig = traceConfig;
+    public IdleHandlerLagTracer(TraceConfig config) {
+        traceConfig = config;
     }
 
     @Override
     public void onAlive() {
         super.onAlive();
-        if (traceConfig.isIdleHandlerEnable()) {
+        if (traceConfig.isIdleHandlerTraceEnable()) {
             idleHandlerLagHandlerThread = new HandlerThread("IdleHandlerLagThread");
-            idleHanlderLagRunnable = new IdleHandlerLagRunable();
+            idleHandlerLagRunnable = new IdleHandlerLagRunable();
             detectIdleHandler();
         }
     }
@@ -67,7 +67,7 @@ public class IdleHandlerLagTracer extends Tracer {
     @Override
     public void onDead() {
         super.onDead();
-        if (traceConfig.isIdleHandlerEnable()) {
+        if (traceConfig.isIdleHandlerTraceEnable()) {
             idleHandlerLagHandler.removeCallbacksAndMessages(null);
         }
     }
@@ -83,7 +83,7 @@ public class IdleHandlerLagTracer extends Tracer {
 
                 String stackTrace = Utils.getMainThreadJavaStackTrace();
                 boolean currentForeground = AppForegroundUtil.isInterestingToUser();
-                String scene = AppMethodBeat.getVisibleScene();
+                String scene = AppActiveMatrixDelegate.INSTANCE.getVisibleScene();
 
                 JSONObject jsonObject = new JSONObject();
                 jsonObject = DeviceUtil.getDeviceInfo(jsonObject, Matrix.with().getApplication());
@@ -119,13 +119,13 @@ public class IdleHandlerLagTracer extends Tracer {
             idleHandlerLagHandlerThread.start();
             idleHandlerLagHandler = new Handler(idleHandlerLagHandlerThread.getLooper());
         } catch (Throwable t) {
-            t.printStackTrace();
+            MatrixLog.e(TAG, "reflect idle handler error = " + t.getMessage());
         }
     }
 
 
     static class MyIdleHandler implements MessageQueue.IdleHandler {
-        private MessageQueue.IdleHandler idleHandler;
+        private final MessageQueue.IdleHandler idleHandler;
 
         MyIdleHandler(MessageQueue.IdleHandler idleHandler) {
             this.idleHandler = idleHandler;
@@ -133,9 +133,9 @@ public class IdleHandlerLagTracer extends Tracer {
 
         @Override
         public boolean queueIdle() {
-            idleHandlerLagHandler.postDelayed(idleHanlderLagRunnable, Constants.DEFAULT_IDLE_HANDLER_LAG);
+            idleHandlerLagHandler.postDelayed(idleHandlerLagRunnable, traceConfig.idleHandlerLagThreshold);
             boolean ret = this.idleHandler.queueIdle();
-            idleHandlerLagHandler.removeCallbacks(idleHanlderLagRunnable);
+            idleHandlerLagHandler.removeCallbacks(idleHandlerLagRunnable);
             return ret;
         }
     }

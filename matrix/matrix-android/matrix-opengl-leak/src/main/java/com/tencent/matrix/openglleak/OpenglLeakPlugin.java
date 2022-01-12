@@ -12,8 +12,10 @@ import com.tencent.matrix.openglleak.comm.FuncNameString;
 import com.tencent.matrix.openglleak.detector.IOpenglIndexDetector;
 import com.tencent.matrix.openglleak.detector.OpenglIndexDetectorService;
 import com.tencent.matrix.openglleak.hook.OpenGLHook;
-import com.tencent.matrix.openglleak.statistics.LeakMonitor;
+import com.tencent.matrix.openglleak.statistics.resource.ResRecordManager;
+import com.tencent.matrix.openglleak.utils.ActivityRecorder;
 import com.tencent.matrix.openglleak.utils.EGLHelper;
+import com.tencent.matrix.openglleak.utils.GlLeakHandlerThread;
 import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.plugin.PluginListener;
 import com.tencent.matrix.util.MatrixLog;
@@ -43,6 +45,9 @@ public class OpenglLeakPlugin extends Plugin {
     @Override
     public void init(Application app, PluginListener listener) {
         super.init(app, listener);
+
+        ActivityRecorder.getInstance().start(app);
+        GlLeakHandlerThread.getInstance().start();
     }
 
     @Override
@@ -78,7 +83,11 @@ public class OpenglLeakPlugin extends Plugin {
             int hookResult = map.get(FuncNameString.GL_GEN_TEXTURES) * map.get(FuncNameString.GL_DELETE_TEXTURES)
                     * map.get(FuncNameString.GL_GEN_BUFFERS) * map.get(FuncNameString.GL_DELETE_BUFFERS)
                     * map.get(FuncNameString.GL_GEN_FRAMEBUFFERS) * map.get(FuncNameString.GL_DELETE_FRAMEBUFFERS)
-                    * map.get(FuncNameString.GL_GEN_RENDERBUFFERS) * map.get(FuncNameString.GL_DELETE_RENDERBUFFERS);
+                    * map.get(FuncNameString.GL_GEN_RENDERBUFFERS) * map.get(FuncNameString.GL_DELETE_RENDERBUFFERS)
+                    * map.get(FuncNameString.GL_TEX_IMAGE_2D) * map.get(FuncNameString.GL_BIND_TEXTURE)
+                    * map.get(FuncNameString.GL_BIND_BUFFER) * map.get(FuncNameString.GL_BIND_FRAMEBUFFER)
+                    * map.get(FuncNameString.GL_BIND_RENDERBUFFER) * map.get(FuncNameString.GL_TEX_IMAGE_3D)
+                    * map.get(FuncNameString.GL_RENDER_BUFFER_STORAGE) * map.get(FuncNameString.GL_BUFFER_DATA);
             MatrixLog.e(TAG, "hookResult = " + hookResult);
             if (hookResult == 0) {
                 if (OpenglLeakPlugin.sCallback != null) {
@@ -99,10 +108,15 @@ public class OpenglLeakPlugin extends Plugin {
             OpenGLHook.getInstance().hook(FuncNameString.GL_DELETE_FRAMEBUFFERS, map.get(FuncNameString.GL_DELETE_FRAMEBUFFERS));
             OpenGLHook.getInstance().hook(FuncNameString.GL_GEN_RENDERBUFFERS, map.get(FuncNameString.GL_GEN_RENDERBUFFERS));
             OpenGLHook.getInstance().hook(FuncNameString.GL_DELETE_RENDERBUFFERS, map.get(FuncNameString.GL_DELETE_RENDERBUFFERS));
+//            OpenGLHook.getInstance().hook(FuncNameString.GL_TEX_IMAGE_2D, map.get(FuncNameString.GL_TEX_IMAGE_2D));
+//            OpenGLHook.getInstance().hook(FuncNameString.GL_TEX_IMAGE_3D, map.get(FuncNameString.GL_TEX_IMAGE_3D));
+//            OpenGLHook.getInstance().hook(FuncNameString.GL_BIND_TEXTURE, map.get(FuncNameString.GL_BIND_TEXTURE));
+//            OpenGLHook.getInstance().hook(FuncNameString.GL_BIND_BUFFER, map.get(FuncNameString.GL_BIND_BUFFER));
+//            OpenGLHook.getInstance().hook(FuncNameString.GL_BIND_FRAMEBUFFER, map.get(FuncNameString.GL_BIND_FRAMEBUFFER));
+//            OpenGLHook.getInstance().hook(FuncNameString.GL_BIND_RENDERBUFFER, map.get(FuncNameString.GL_BIND_RENDERBUFFER));
+//            OpenGLHook.getInstance().hook(FuncNameString.GL_BUFFER_DATA, map.get(FuncNameString.GL_BUFFER_DATA));
+//            OpenGLHook.getInstance().hook(FuncNameString.GL_RENDER_BUFFER_STORAGE, map.get(FuncNameString.GL_RENDER_BUFFER_STORAGE));
             MatrixLog.e(TAG, "hook finish");
-
-            // 泄漏监控
-            LeakMonitor.getInstance().start((Application) context.getApplicationContext());
         } catch (Throwable e) {
             e.printStackTrace();
         } finally {
@@ -168,11 +182,11 @@ public class OpenglLeakPlugin extends Plugin {
     }
 
     public void setJavaStackDump(boolean open) {
-        OpenGLHook.getInstance().setJavaStackDump(true);
+        OpenGLHook.getInstance().setJavaStackDump(open);
     }
 
-    public void setDoubleCheckTime(long time) {
-        LeakMonitor.getInstance().setDoubleCheckTime(time);
+    public void clear() {
+        ResRecordManager.getInstance().clear();
     }
 
 }
