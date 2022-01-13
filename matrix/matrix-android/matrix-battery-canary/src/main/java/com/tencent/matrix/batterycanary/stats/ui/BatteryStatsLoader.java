@@ -230,8 +230,17 @@ public class BatteryStatsLoader {
                 case AppStats.DEV_STAT_UN_CHARGING:
                     item.text = "CHARGE_OFF";
                     break;
-                case AppStats.DEV_STAT_SAVE_POWER_MODE:
-                    item.text = "PowerSave ON";
+                case AppStats.DEV_STAT_DOZE_MODE_ON:
+                    item.text = "低电耗模式(Doze) ON";
+                    break;
+                case AppStats.DEV_STAT_DOZE_MODE_OFF:
+                    item.text = "低电耗模式(Doze) OFF";
+                    break;
+                case AppStats.DEV_STAT_SAVE_POWER_MODE_ON:
+                    item.text = "待机模式(Standby) ON";
+                    break;
+                case AppStats.DEV_STAT_SAVE_POWER_MODE_OFF:
+                    item.text = "待机模式(Standby) OFF";
                     break;
                 case AppStats.DEV_STAT_SCREEN_ON:
                     item.text = "SCREEN_ON";

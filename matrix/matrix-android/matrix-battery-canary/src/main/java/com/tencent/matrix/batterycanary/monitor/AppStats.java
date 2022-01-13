@@ -35,7 +35,10 @@ public class AppStats {
             DEV_STAT_UN_CHARGING,
             DEV_STAT_SCREEN_ON,
             DEV_STAT_SCREEN_OFF,
-            DEV_STAT_SAVE_POWER_MODE
+            DEV_STAT_SAVE_POWER_MODE_ON,
+            DEV_STAT_SAVE_POWER_MODE_OFF,
+            DEV_STAT_DOZE_MODE_ON,
+            DEV_STAT_DOZE_MODE_OFF,
     })
     @Retention(RetentionPolicy.SOURCE)
     public @interface DevStatusDef {
@@ -48,8 +51,11 @@ public class AppStats {
     public static final int DEV_STAT_CHARGING = 1;
     public static final int DEV_STAT_UN_CHARGING = 2;
     public static final int DEV_STAT_SCREEN_OFF = 3;
-    public static final int DEV_STAT_SAVE_POWER_MODE = 4;
+    public static final int DEV_STAT_SAVE_POWER_MODE_ON = 4;
     public static final int DEV_STAT_SCREEN_ON = 5;
+    public static final int DEV_STAT_SAVE_POWER_MODE_OFF = 6;
+    public static final int DEV_STAT_DOZE_MODE_ON = 7;
+    public static final int DEV_STAT_DOZE_MODE_OFF = 8;
 
     public int appFgRatio;
     public int appBgRatio;
@@ -107,7 +113,7 @@ public class AppStats {
     public int getDevStat() {
         if (devChargingRatio >= 50) return DEV_STAT_CHARGING;
         if (devSceneOffRatio >= 50) return DEV_STAT_SCREEN_OFF;
-        if (devLowEnergyRatio >= 50) return DEV_STAT_SAVE_POWER_MODE;
+        if (devLowEnergyRatio >= 50) return DEV_STAT_SAVE_POWER_MODE_ON;
         return DEV_STAT_UN_CHARGING;
     }
 

@@ -626,7 +626,7 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
                     boolean lowBattery = item.record.getBoolean("battery-low", false);
                     mIndicatorIv.setImageLevel(lowBattery ? 4 : 2);
                     long pct = item.record.getDigit("battery-pct", -1);
-                    mTitleTv.setText((lowBattery ? "BATTERY_LOW" : "BATTERY_OK") + ((pct > 0 ? " (" + pct + "%)" : "")));
+                    mTitleTv.setText((lowBattery ? "电量低" : "电量恢复") + ((pct > 0 ? " (" + pct + "%)" : "")));
                     return;
                 }
                 if (item.record.extras.containsKey("battery-temp")) {
@@ -635,12 +635,12 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
                         mIndicatorIv.setImageLevel(3);
                     }
                     long pct = item.record.getDigit("battery-pct", -1);
-                    mTitleTv.setText("BATTERY_TEMP: " + (temp > 0 ? temp / 10f : "/") + "°C" + ((pct > 0 ? " (" + pct + "%)" : "")));
+                    mTitleTv.setText("电池温度: " + (temp > 0 ? temp / 10f : "/") + "°C" + ((pct > 0 ? " (" + pct + "%)" : "")));
                     return;
                 }
                 if (item.record.extras.containsKey("battery-pct")) {
                     long pct = item.record.getDigit("battery-pct", -1);
-                    mTitleTv.setText("BATTERY_POWER: " + (pct > 0 ? pct : "/") + "%");
+                    mTitleTv.setText("电量变化: " + (pct > 0 ? pct : "/") + "%");
                 }
             }
         }
