@@ -134,7 +134,7 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
             }
 
         });
-
+        this.isInit = true;
         frameIntervalNanos = ReflectUtils.reflectObject(choreographer, "mFrameIntervalNanos", Constants.DEFAULT_FRAME_DURATION);
         if (!useFrameMetrics) {
             choreographer = Choreographer.getInstance();
@@ -147,8 +147,6 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
             }
             vsyncReceiver = ReflectUtils.reflectObject(choreographer, "mDisplayEventReceiver", null);
 
-
-            this.isInit = true;
             MatrixLog.i(TAG, "[UIThreadMonitor] %s %s %s %s %s %s frameIntervalNanos:%s", callbackQueueLock == null, callbackQueues == null,
                     addInputQueue == null, addTraversalQueue == null, addAnimationQueue == null, vsyncReceiver == null, frameIntervalNanos);
 

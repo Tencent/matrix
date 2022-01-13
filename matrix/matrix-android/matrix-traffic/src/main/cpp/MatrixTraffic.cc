@@ -125,58 +125,66 @@ int my_connect(int fd, sockaddr *addr, socklen_t addr_length) {
 
 ssize_t (*original_read)(int fd, void *buf, size_t count);
 ssize_t my_read(int fd, void *buf, size_t count) {
-    TrafficCollector::enQueueRx(MSG_TYPE_READ, fd, count);
-    return original_read(fd, buf, count);
+    ssize_t ret = original_read(fd, buf, count);
+    TrafficCollector::enQueueRx(MSG_TYPE_READ, fd, ret);
+    return ret;
 }
 
 
 ssize_t (*original_recv)(int sockfd, void *buf, size_t len, int flags);
 ssize_t my_recv(int sockfd, void *buf, size_t len, int flags) {
-    TrafficCollector::enQueueRx(MSG_TYPE_RECV, sockfd, len);
-    return original_recv(sockfd, buf, len, flags);
+    ssize_t ret = original_recv(sockfd, buf, len, flags);
+    TrafficCollector::enQueueRx(MSG_TYPE_RECV, sockfd, ret);
+    return ret;
 }
+
 
 ssize_t (*original_recvfrom)(int sockfd, void *buf, size_t len, int flags,
                              struct sockaddr *src_addr, socklen_t *addrlen);
 ssize_t my_recvfrom(int sockfd, void *buf, size_t len, int flags,
                     struct sockaddr *src_addr, socklen_t *addrlen) {
-    TrafficCollector::enQueueRx(MSG_TYPE_RECVFROM, sockfd, len);
-    return original_recvfrom(sockfd, buf, len, flags, src_addr, addrlen);
+    ssize_t ret = original_recvfrom(sockfd, buf, len, flags, src_addr, addrlen);
+    TrafficCollector::enQueueRx(MSG_TYPE_RECVFROM, sockfd, ret);
+    return ret;
 }
 
 
 ssize_t (*original_recvmsg)(int sockfd, struct msghdr *msg, int flags);
 ssize_t my_recvmsg(int sockfd, struct msghdr *msg, int flags) {
-
-    TrafficCollector::enQueueRx(MSG_TYPE_RECVMSG, sockfd, msg->msg_iovlen);
-    return original_recvmsg(sockfd, msg, flags);
+    ssize_t ret = original_recvmsg(sockfd, msg, flags);
+    TrafficCollector::enQueueRx(MSG_TYPE_RECVMSG, sockfd, ret);
+    return ret;
 }
 
 
 ssize_t (*original_write)(int fd, const void *buf, size_t count);
 ssize_t my_write(int fd, const void *buf, size_t count) {
-    TrafficCollector::enQueueTx(MSG_TYPE_WRITE, fd, count);
-    return original_write(fd, buf, count);
+    ssize_t ret = original_write(fd, buf, count);
+    TrafficCollector::enQueueTx(MSG_TYPE_WRITE, fd, ret);
+    return ret;
 }
 
 ssize_t (*original_send)(int sockfd, const void *buf, size_t len, int flags);
 ssize_t my_send(int sockfd, const void *buf, size_t len, int flags) {
-    TrafficCollector::enQueueTx(MSG_TYPE_SEND, sockfd, len);
-    return original_send(sockfd, buf, len, flags);
+    ssize_t ret = original_send(sockfd, buf, len, flags);
+    TrafficCollector::enQueueTx(MSG_TYPE_SEND, sockfd, ret);
+    return ret;
 }
 
 ssize_t (*original_sendto)(int sockfd, const void *buf, size_t len, int flags,
-               const struct sockaddr *dest_addr, socklen_t addrlen);
+                           const struct sockaddr *dest_addr, socklen_t addrlen);
 ssize_t my_sendto(int sockfd, const void *buf, size_t len, int flags,
-                           const struct sockaddr *dest_addr, socklen_t addrlen) {
-    TrafficCollector::enQueueTx(MSG_TYPE_SENDTO, sockfd, len);
-    return original_sendto(sockfd, buf, len, flags, dest_addr, addrlen);
+                  const struct sockaddr *dest_addr, socklen_t addrlen) {
+    ssize_t ret = original_sendto(sockfd, buf, len, flags, dest_addr, addrlen);
+    TrafficCollector::enQueueTx(MSG_TYPE_SENDTO, sockfd, ret);
+    return ret;
 }
 
 ssize_t (*original_sendmsg)(int sockfd, const struct msghdr *msg, int flags);
 ssize_t my_sendmsg(int sockfd, const struct msghdr *msg, int flags) {
-    TrafficCollector::enQueueTx(MSG_TYPE_SENDMSG, sockfd, msg->msg_iovlen);
-    return original_sendmsg(sockfd, msg, flags);
+    ssize_t ret = original_sendmsg(sockfd, msg, flags);
+    TrafficCollector::enQueueTx(MSG_TYPE_SENDMSG, sockfd, ret);
+    return ret;
 }
 
 int (*original_close)(int fd);
