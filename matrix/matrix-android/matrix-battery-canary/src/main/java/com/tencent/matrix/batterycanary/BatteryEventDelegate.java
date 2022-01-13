@@ -482,14 +482,17 @@ public final class BatteryEventDelegate {
             return BatteryCanaryUtil.isDeviceOnPowerSave(mContext);
         }
 
+        @SuppressWarnings("unused")
         public boolean isLowBattery() {
             return BatteryCanaryUtil.isLowBattery(mContext);
         }
 
+        @SuppressWarnings("unused")
         public int getBatteryPercentage() {
             return BatteryCanaryUtil.getBatteryPercentage(mContext);
         }
 
+        @SuppressWarnings("unused")
         public int getBatteryCapacity() {
             return BatteryCanaryUtil.getBatteryCapacity(mContext);
         }
@@ -512,6 +515,7 @@ public final class BatteryEventDelegate {
                     '}';
         }
     }
+
 
     public interface Listener {
         @RequiresApi(api = Build.VERSION_CODES.M)
@@ -542,7 +546,6 @@ public final class BatteryEventDelegate {
          */
         @UiThread
         boolean onAppLowEnergy(BatteryState batteryState, long backgroundMillis);
-
 
         interface ExListener extends Listener {
 
@@ -578,6 +581,46 @@ public final class BatteryEventDelegate {
              */
             @UiThread
             boolean onBatteryStateChanged(BatteryState batteryState, boolean isLowBattery);
+        }
+
+        @SuppressWarnings("unused")
+        class DefaultListenerImpl implements ExListener {
+
+            final boolean mKeepAlive;
+
+            public DefaultListenerImpl(boolean keepAlive) {
+                mKeepAlive = keepAlive;
+            }
+
+            @Override
+            public boolean onStateChanged(String event) {
+                return !mKeepAlive;
+            }
+
+            @Override
+            public boolean onAppLowEnergy(BatteryState batteryState, long backgroundMillis) {
+                return !mKeepAlive;
+            }
+
+            @Override
+            public boolean onStateChanged(BatteryState batteryState, String event) {
+                return !mKeepAlive;
+            }
+
+            @Override
+            public boolean onBatteryTemperatureChanged(BatteryState batteryState, int temperature) {
+                return !mKeepAlive;
+            }
+
+            @Override
+            public boolean onBatteryPowerChanged(BatteryState batteryState, int levelPct) {
+                return !mKeepAlive;
+            }
+
+            @Override
+            public boolean onBatteryStateChanged(BatteryState batteryState, boolean isLowBattery) {
+                return !mKeepAlive;
+            }
         }
     }
 }
