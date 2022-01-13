@@ -14,6 +14,15 @@ public class TrafficConfig {
     public  TrafficConfig() {
 
     }
+
+    public TrafficConfig(boolean rxCollectorEnable, boolean txCollectorEnable, boolean dumpStackTraceEnable) {
+        this.rxCollectorEnable = rxCollectorEnable;
+        this.txCollectorEnable = txCollectorEnable;
+        this.dumpStackTraceEnable = dumpStackTraceEnable;
+        this.dumpNativeBackTraceEnable = false;
+        this.lookupIpAddressEnable = false;
+    }
+
     public TrafficConfig(boolean rxCollectorEnable, boolean txCollectorEnable, boolean dumpStackTraceEnable, boolean dumpNativeBackTraceEnable, boolean lookupIpAddressEnable) {
         this.rxCollectorEnable = rxCollectorEnable;
         this.txCollectorEnable = txCollectorEnable;
