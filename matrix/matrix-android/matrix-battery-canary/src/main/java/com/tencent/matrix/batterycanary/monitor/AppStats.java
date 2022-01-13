@@ -101,6 +101,12 @@ public class AppStats {
 
     @AppStatusDef
     public int getAppStat() {
+        if (mForegroundOverride != null) {
+            if (mForegroundOverride.get()) {
+                return APP_STAT_FOREGROUND;
+            }
+        }
+        // FIXME: return the max one might be better
         if (appFgRatio >= 50) return APP_STAT_FOREGROUND;
         if (appFgSrvRatio >= 50) return APP_STAT_FOREGROUND_SERVICE;
         if (appFloatRatio >= 50) return APP_STAT_FLOAT_WINDOW;
@@ -109,6 +115,7 @@ public class AppStats {
 
     @DevStatusDef
     public int getDevStat() {
+        // FIXME: return the max one might be better
         if (devChargingRatio >= 50) return DEV_STAT_CHARGING;
         if (devSceneOffRatio >= 50) return DEV_STAT_SCREEN_OFF;
         if (devLowEnergyRatio >= 50) return DEV_STAT_SAVE_POWER_MODE;
