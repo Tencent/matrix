@@ -25,6 +25,8 @@ import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.plugin.PluginListener;
 import com.tencent.matrix.resource.config.ResourceConfig;
 import com.tencent.matrix.resource.config.SharePluginInfo;
+import com.tencent.matrix.resource.processor.BaseLeakProcessor;
+import com.tencent.matrix.resource.watcher.ActivityLifeCycleCallbacksAdapter;
 import com.tencent.matrix.resource.watcher.ActivityRefWatcher;
 import com.tencent.matrix.util.MatrixLog;
 
@@ -116,4 +118,7 @@ public class ResourcePlugin extends Plugin {
         return mConfig;
     }
 
+    public boolean isAnalyzing() {
+        return BaseLeakProcessor.isAnalyzing();
+    }
 }

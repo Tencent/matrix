@@ -1,7 +1,7 @@
 ![Matrix-icon](assets/img/readme/header.png)
 [![license](http://img.shields.io/badge/license-BSD3-brightgreen.svg?style=flat)](https://github.com/Tencent/matrix/blob/master/LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Tencent/matrix/pulls)
-[![WeChat Approved](https://img.shields.io/badge/Wechat%20Approved-2.0.1-red.svg)](https://github.com/Tencent/matrix/wiki)
+[![WeChat Approved](https://img.shields.io/badge/Wechat%20Approved-2.0.2-red.svg)](https://github.com/Tencent/matrix/wiki)
 [![CircleCI](https://circleci.com/gh/Tencent/matrix.svg?style=shield)](https://app.circleci.com/pipelines/github/Tencent/matrix)
 
 (中文版本请参看[这里](#matrix_cn))  
@@ -140,6 +140,10 @@ At this point, Matrix has been integrated into the app and is beginning to colle
 - **Battery Canary:**
 
   App thread activities monitor (Background watch & foreground loop watch), Sonsor usage monitor (WakeLock/Alarm/Gps/Wifi/Bluetooth), Background network activities (Wifi/Mobile) monitor.
+  
+- **MemGuard**
+
+  Detect heap memory overlap, use-after-free and double free issues.
 
 
 ## Features
@@ -197,6 +201,14 @@ At this point, Matrix has been integrated into the app and is beginning to colle
 + **Non-invasive.** It is based on PLT-hook([iqiyi/xHook](https://github.com/iqiyi/xHook)), so we do NOT need to recompile the native libraries.
 + WebView still works after using this tool.
 
+#### MemGuard
+
++ A tool base on GWP-Asan to detect heap memory issues.
++ **Non-invasive.** It is based on PLT-hook([iqiyi/xHook](https://github.com/iqiyi/xHook)), so we do NOT need to recompile the native libraries.
++ It's able to apply on specific libraries that needs to be detected by RegEx.
+
++ It detects heap memory accessing overlap, use-after-free and double free issues.
+
 
 #### Backtrace Component
 
@@ -208,7 +220,7 @@ At this point, Matrix has been integrated into the app and is beginning to colle
 
 1. Configure `MATRIX_VERSION` in gradle.properties.
 ``` gradle
-  MATRIX_VERSION=2.0.1
+  MATRIX_VERSION=2.0.2
 ```
 
 2. Add `matrix-gradle-plugin` in your build.gradle:
@@ -357,11 +369,11 @@ Then other components in Matrix could use Quikcen Backtrace to unwind stacktrace
 
 #### APK Checker Usage
 
-APK Checker can run independently in Jar ([matrix-apk-canary-2.0.1.jar](https://repo.maven.apache.org/maven2/com/tencent/matrix/matrix-apk-canary/2.0.1/matrix-apk-canary-2.0.1.jar)）  mode, usage:
+APK Checker can run independently in Jar ([matrix-apk-canary-2.0.2.jar](https://repo.maven.apache.org/maven2/com/tencent/matrix/matrix-apk-canary/2.0.2/matrix-apk-canary-2.0.2.jar)）  mode, usage:
 
 
 ```shell
-java -jar matrix-apk-canary-2.0.1.jar
+java -jar matrix-apk-canary-2.0.2.jar
 Usages: 
     --config CONFIG-FILE-PATH
 or
@@ -420,7 +432,7 @@ Matrix is under the BSD license. See the [LICENSE](https://github.com/Tencent/Ma
 
 # <a name="matrix_cn">Matrix</a>
 ![Matrix-icon](assets/img/readme/header.png)
-[![license](http://img.shields.io/badge/license-BSD3-brightgreen.svg?style=flat)](https://github.com/Tencent/matrix/blob/master/LICENSE)[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Tencent/matrix/pulls)  [![WeChat Approved](https://img.shields.io/badge/Wechat%20Approved-2.0.1-red.svg)](https://github.com/Tencent/matrix/wiki)
+[![license](http://img.shields.io/badge/license-BSD3-brightgreen.svg?style=flat)](https://github.com/Tencent/matrix/blob/master/LICENSE)[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Tencent/matrix/pulls)  [![WeChat Approved](https://img.shields.io/badge/Wechat%20Approved-2.0.2-red.svg)](https://github.com/Tencent/matrix/wiki)
 
 **Matrix** 是一款微信研发并日常使用的应用性能接入框架，支持iOS, macOS和Android。
 Matrix 通过接入各种性能监控方案，对性能监控项的异常数据进行采集和分析，输出相应的问题分析、定位与优化建议，从而帮助开发者开发出更高质量的应用。
@@ -529,16 +541,25 @@ curBuilder.pluginListener = <一个遵循 MatrixPluginListenerDelegate 的对象
 Matrix-android 当前监控范围包括：应用安装包大小，帧率变化，启动耗时，卡顿，慢方法，SQLite 操作优化，文件读写，内存泄漏等等。
 - APK Checker:
   针对 APK 安装包的分析检测工具，根据一系列设定好的规则，检测 APK 是否存在特定的问题，并输出较为详细的检测结果报告，用于分析排查问题以及版本追踪
+  
 - Resource Canary:
   基于 WeakReference 的特性和 [Square Haha](https://github.com/square/haha) 库开发的 Activity 泄漏和 Bitmap 重复创建检测工具
+  
 - Trace Canary:
   监控ANR、界面流畅性、启动耗时、页面切换耗时、慢函数及卡顿等问题
+  
 - SQLite Lint:
   按官方最佳实践自动化检测 SQLite 语句的使用质量
+  
 - IO Canary:
   检测文件 IO 问题，包括：文件 IO 监控和 Closeable Leak 监控
+  
 - Battery Canary:
   监控 App 活跃线程（待机状态 & 前台 Loop 监控）、ASM 调用 (WakeLock/Alarm/Gps/Wifi/Bluetooth 等传感器)、 后台流量 (Wifi/移动网络)等 Battery Historian 统计 App 耗电的数据
+  
+- MemGuard
+
+  检测堆内存访问越界、使用释放后的内存、重复释放等问题
 
 ## 特性
 
@@ -599,6 +620,13 @@ Matrix-android 当前监控范围包括：应用安装包大小，帧率变化�
 + 无侵入，基于 PLT-hook([iqiyi/xHook](https://github.com/iqiyi/xHook))，无需重编 native 库
 + 使用该工具后 WebView 仍可正常工作
 
+#### MemGuard
+
++ 一个基于 GWP-Asan 修改的堆内存问题检测工具
++ 无侵入，基于 PLT-hook([iqiyi/xHook](https://github.com/iqiyi/xHook))，无需重编 native 库
++ 可根据正则表达式指定被检测的目标库
++ 可检测堆内存访问越界、使用释放后的内存和双重释放等问题
+
 #### Backtrace Component
 - 基于 DWARF 以及 ARM 异常处理数据进行简化并生成全新的 quicken unwind tables 数据，用于实现可快速回溯 native 调用栈的 backtrace 组件。回溯速度约是 libunwindstack 的 15x ~ 30x 左右。
 
@@ -608,7 +636,7 @@ Matrix-android 当前监控范围包括：应用安装包大小，帧率变化�
 
 1. 在你项目根目录下的 gradle.properties 中配置要依赖的 Matrix 版本号，如：
 ``` gradle
-  MATRIX_VERSION=2.0.1
+  MATRIX_VERSION=2.0.2
 ```
 
 2. 在你项目根目录下的 build.gradle 文件添加 Matrix 依赖，如：
@@ -754,10 +782,10 @@ WeChatBacktrace.instance().configure(getApplicationContext()).commit();
 
 #### APK Checker
 
-APK Check 以独立的 jar 包提供 ([matrix-apk-canary-2.0.1.jar](https://repo.maven.apache.org/maven2/com/tencent/matrix/matrix-apk-canary/2.0.1/matrix-apk-canary-2.0.1.jar)），你可以运行：
+APK Check 以独立的 jar 包提供 ([matrix-apk-canary-2.0.2.jar](https://repo.maven.apache.org/maven2/com/tencent/matrix/matrix-apk-canary/2.0.2/matrix-apk-canary-2.0.2.jar)），你可以运行：
 
 ```cmd
-java -jar matrix-apk-canary-2.0.1.jar
+java -jar matrix-apk-canary-2.0.2.jar
 ```
 
 查看 Usages 来使用它。

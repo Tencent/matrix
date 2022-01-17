@@ -23,7 +23,7 @@ set(
         SOURCE_FILES
         ${SOURCE_DIR}/com_tencent_matrix_openglleak_detector_FuncSeeker.cpp
         ${SOURCE_DIR}/com_tencent_matrix_openglleak_hook_OpenGLHook.cpp
-        ${SOURCE_DIR}/com_tencent_matrix_openglleak_statistics_OpenGLInfo.cpp
+        ${SOURCE_DIR}/com_tencent_matrix_openglleak_statistics_resource_ResRecordManager.cpp
         ${SOURCE_DIR}/type.cpp
         ${SOURCE_DIR}/get_tls.cpp
 )
@@ -73,6 +73,7 @@ target_link_libraries( # Specifies the target library.
         # included in the NDK.
         PRIVATE ${log-lib}
         GLESv2
+        GLESv3
         PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/libwechatbacktrace.so
 )
 

@@ -171,6 +171,7 @@ class MatrixTraceTransform(
                 .setMethodMapFilePath("$mappingOut/methodMapping.txt")
                 .setIgnoreMethodMapFilePath("$mappingOut/ignoreMethodMapping.txt")
                 .setMappingPath(mappingOut)
+                .setSkipCheckClass(extension.isSkipCheckClass)
                 .build()
     }
 
@@ -242,6 +243,7 @@ class MatrixTraceTransform(
                 classInputs = inputFiles,
                 changedFiles = changedFiles,
                 isIncremental = isIncremental,
+                skipCheckClass = config.skipCheckClass,
                 traceClassDirectoryOutput = outputDirectory,
                 inputToOutput = inputToOutput,
                 legacyReplaceChangedFile = null,

@@ -220,8 +220,10 @@ public class TestHooksActivity extends Activity {
             new HandlerThread("Test").start();
         }
 
+        JNIObj.threadTest();
+
         try {
-            Thread.sleep(500);
+            Thread.sleep(5000);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }

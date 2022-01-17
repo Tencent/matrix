@@ -21,19 +21,21 @@
 #include "MatrixTracer.h"
 
 #include <jni.h>
-#include <stdio.h>
 #include <sys/utsname.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <android/log.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <time.h>
-#include <signal.h>
 #include <xhook_ext.h>
 #include <linux/prctl.h>
 #include <sys/prctl.h>
+#include <sys/resource.h>
 
+#include <cstdio>
+#include <ctime>
+#include <csignal>
+#include <thread>
 #include <memory>
 #include <string>
 #include <optional>
@@ -46,47 +48,54 @@
 #include "nativehelper/scoped_utf_chars.h"
 #include "nativehelper/scoped_local_ref.h"
 #include "AnrDumper.h"
+#include "TouchEventTracer.h"
 
 #define PROP_VALUE_MAX  92
 #define PROP_SDK_NAME "ro.build.version.sdk"
 #define HOOK_CONNECT_PATH "/dev/socket/tombstoned_java_trace"
 #define HOOK_OPEN_PATH "/data/anr/traces.txt"
+#define VALIDATE_RET 50
 
 #define HOOK_REQUEST_GROUPID_THREAD_PRIO_TRACE 0x01
+#define HOOK_REQUEST_GROUPID_TOUCH_EVENT_TRACE 0x07
 
 using namespace MatrixTracer;
+using namespace std;
 
 static std::optional<AnrDumper> sAnrDumper;
 static bool isTraceWrite = false;
 static bool fromMyPrintTrace = false;
 static bool isHooking = false;
-static std::string anrTracePathstring;
-static std::string printTracePathstring;
+static std::string anrTracePathString;
+static std::string printTracePathString;
 static int signalCatcherTid;
+static int currentTouchFd;
+static bool inputHasSent;
 
 static struct StacktraceJNI {
     jclass AnrDetective;
     jclass ThreadPriorityDetective;
+    jclass TouchEventLagTracer;
     jmethodID AnrDetector_onANRDumped;
     jmethodID AnrDetector_onANRDumpTrace;
     jmethodID AnrDetector_onPrintTrace;
 
+    jmethodID AnrDetector_onNativeBacktraceDumped;
+
     jmethodID ThreadPriorityDetective_onMainThreadPriorityModified;
     jmethodID ThreadPriorityDetective_onMainThreadTimerSlackModified;
+
+    jmethodID TouchEventLagTracer_onTouchEvenLag;
+    jmethodID TouchEventLagTracer_onTouchEvenLagDumpTrace;
 } gJ;
 
 int (*original_setpriority)(int __which, id_t __who, int __priority);
 int my_setpriority(int __which, id_t __who, int __priority) {
 
-    if (__priority <= 0) {
-        return original_setpriority(__which, __who, __priority);
-    }
-    if (__who == 0 && getpid() == gettid()) {
+    if ((__who == 0 && getpid() == gettid()) || __who == getpid()) {
+        int priorityBefore = getpriority(__which, __who);
         JNIEnv *env = JniInvocation::getEnv();
-        env->CallStaticVoidMethod(gJ.ThreadPriorityDetective, gJ.ThreadPriorityDetective_onMainThreadPriorityModified, __priority);
-    } else if (__who == getpid()) {
-        JNIEnv *env = JniInvocation::getEnv();
-        env->CallStaticVoidMethod(gJ.ThreadPriorityDetective, gJ.ThreadPriorityDetective_onMainThreadPriorityModified, __priority);
+        env->CallStaticVoidMethod(gJ.ThreadPriorityDetective, gJ.ThreadPriorityDetective_onMainThreadPriorityModified, priorityBefore, __priority);
     }
 
     return original_setpriority(__which, __who, __priority);
@@ -102,7 +111,6 @@ int my_prctl(int option, unsigned long arg2, unsigned long arg3,
         if (gettid()==getpid() && arg2 > 50000) {
             JNIEnv *env = JniInvocation::getEnv();
             env->CallStaticVoidMethod(gJ.ThreadPriorityDetective, gJ.ThreadPriorityDetective_onMainThreadTimerSlackModified, arg2);
-
         }
     }
 
@@ -112,7 +120,6 @@ int my_prctl(int option, unsigned long arg2, unsigned long arg3,
 
 void writeAnr(const std::string& content, const std::string &filePath) {
     unHookAnrTraceWrite();
-    std::stringstream stringStream(content);
     std::string to;
     std::ofstream outfile;
     outfile.open(filePath);
@@ -150,9 +157,9 @@ ssize_t my_write(int fd, const void* const buf, size_t count) {
         if (buf != nullptr) {
             std::string targetFilePath;
             if (fromMyPrintTrace) {
-                targetFilePath = printTracePathstring;
+                targetFilePath = printTracePathString;
             } else {
-                targetFilePath = anrTracePathstring;
+                targetFilePath = anrTracePathString;
             }
             if (!targetFilePath.empty()) {
                 char *content = (char *) buf;
@@ -169,6 +176,53 @@ ssize_t my_write(int fd, const void* const buf, size_t count) {
     return original_write(fd, buf, count);
 }
 
+void onTouchEventLag(int fd) {
+    JNIEnv *env = JniInvocation::getEnv();
+    if (!env) return;
+    env->CallStaticVoidMethod(gJ.TouchEventLagTracer, gJ.TouchEventLagTracer_onTouchEvenLag, fd);
+}
+
+void onTouchEventLagDumpTrace(int fd) {
+    JNIEnv *env = JniInvocation::getEnv();
+    if (!env) return;
+    env->CallStaticVoidMethod(gJ.TouchEventLagTracer, gJ.TouchEventLagTracer_onTouchEvenLagDumpTrace, fd);
+}
+
+ssize_t (*original_recvfrom)(int sockfd, void *buf, size_t len, int flags,
+                             struct sockaddr *src_addr, socklen_t *addrlen);
+ssize_t my_recvfrom(int sockfd, void *buf, size_t len, int flags,
+                    struct sockaddr *src_addr, socklen_t *addrlen) {
+    long ret = original_recvfrom(sockfd, buf, len, flags, src_addr, addrlen);
+
+    if (currentTouchFd == sockfd && inputHasSent && ret > VALIDATE_RET) {
+        TouchEventTracer::touchRecv(sockfd);
+    }
+
+    if (currentTouchFd != sockfd) {
+        TouchEventTracer::touchSendFinish(sockfd);
+    }
+
+    if (ret > 0) {
+        currentTouchFd = sockfd;
+    } else if (ret == 0) {
+        TouchEventTracer::touchSendFinish(sockfd);
+    }
+    return ret;
+}
+
+ssize_t (*original_sendto)(int sockfd, const void *buf, size_t len, int flags,
+                           const struct sockaddr *dest_addr, socklen_t addrlen);
+ssize_t my_sendto(int sockfd, const void *buf, size_t len, int flags,
+                  const struct sockaddr *dest_addr, socklen_t addrlen) {
+
+    long ret = original_sendto(sockfd, buf, len, flags, dest_addr, addrlen);
+    if (ret >= 0) {
+        inputHasSent = true;
+        TouchEventTracer::touchSendFinish(sockfd);
+    }
+    return ret;
+}
+
 bool anrDumpCallback() {
     JNIEnv *env = JniInvocation::getEnv();
     if (!env) return false;
@@ -182,6 +236,16 @@ bool anrDumpTraceCallback() {
     env->CallStaticVoidMethod(gJ.AnrDetective, gJ.AnrDetector_onANRDumpTrace);
     return true;
 }
+
+bool nativeBacktraceDumpCallback() {
+    JNIEnv *env = JniInvocation::getEnv();
+    if (!env) return false;
+    env->CallStaticVoidMethod(gJ.AnrDetective, gJ.AnrDetector_onNativeBacktraceDumped);
+    std::string to;
+    std::ofstream outfile;
+    return true;
+}
+
 
 bool printTraceCallback() {
     JNIEnv *env = JniInvocation::getEnv();
@@ -269,9 +333,9 @@ void unHookAnrTraceWrite() {
 static void nativeInitSignalAnrDetective(JNIEnv *env, jclass, jstring anrTracePath, jstring printTracePath) {
     const char* anrTracePathChar = env->GetStringUTFChars(anrTracePath, nullptr);
     const char* printTracePathChar = env->GetStringUTFChars(printTracePath, nullptr);
-    anrTracePathstring = std::string(anrTracePathChar);
-    printTracePathstring = std::string(printTracePathChar);
-    sAnrDumper.emplace(anrTracePathChar, printTracePathChar, anrDumpCallback);
+    anrTracePathString = std::string(anrTracePathChar);
+    printTracePathString = std::string(printTracePathChar);
+    sAnrDumper.emplace(anrTracePathChar, printTracePathChar);
 }
 
 static void nativeFreeSignalAnrDetective(JNIEnv *env, jclass) {
@@ -284,6 +348,19 @@ static void nativeInitMainThreadPriorityDetective(JNIEnv *env, jclass) {
     xhook_grouped_register(HOOK_REQUEST_GROUPID_THREAD_PRIO_TRACE, ".*\\.so$", "prctl",
             (void *) my_prctl, (void **) (&original_prctl));
     xhook_refresh(true);
+}
+
+static void nativeInitTouchEventLagDetective(JNIEnv *env, jclass, jint threshold) {
+    xhook_grouped_register(HOOK_REQUEST_GROUPID_TOUCH_EVENT_TRACE, ".*libinput\\.so$", "__sendto_chk",
+                           (void *) my_sendto, (void **) (&original_sendto));
+    xhook_grouped_register(HOOK_REQUEST_GROUPID_TOUCH_EVENT_TRACE, ".*libinput\\.so$", "sendto",
+                           (void *) my_sendto, (void **) (&original_sendto));
+    xhook_grouped_register(HOOK_REQUEST_GROUPID_TOUCH_EVENT_TRACE, ".*libinput\\.so$", "recvfrom",
+                           (void *) my_recvfrom, (void **) (&original_recvfrom));
+    xhook_refresh(true);
+
+    TouchEventTracer::start(threshold);
+
 }
 
 static void nativePrintTrace() {
@@ -302,6 +379,12 @@ static const JNINativeMethod ANR_METHODS[] = {
 
 static const JNINativeMethod THREAD_PRIORITY_METHODS[] = {
         {"nativeInitMainThreadPriorityDetective", "()V", (void *) nativeInitMainThreadPriorityDetective},
+
+};
+
+static const JNINativeMethod TOUCH_EVENT_TRACE_METHODS[] = {
+        {"nativeInitTouchEventLagDetective", "(I)V", (void *) nativeInitTouchEventLagDetective},
+
 };
 
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *) {
@@ -322,6 +405,9 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *) {
     gJ.AnrDetector_onPrintTrace =
             env->GetStaticMethodID(anrDetectiveCls, "onPrintTrace", "()V");
 
+    gJ.AnrDetector_onNativeBacktraceDumped =
+            env->GetStaticMethodID(anrDetectiveCls, "onNativeBacktraceDumped", "()V");
+
 
     if (env->RegisterNatives(
             anrDetectiveCls, ANR_METHODS, static_cast<jint>(NELEM(ANR_METHODS))) != 0)
@@ -331,22 +417,36 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *) {
 
 
     jclass threadPriorityDetectiveCls = env->FindClass("com/tencent/matrix/trace/tracer/ThreadPriorityTracer");
-    if (!threadPriorityDetectiveCls)
+
+    jclass touchEventLagTracerCls = env->FindClass("com/tencent/matrix/trace/tracer/TouchEventLagTracer");
+
+    if (!threadPriorityDetectiveCls || !touchEventLagTracerCls)
         return -1;
     gJ.ThreadPriorityDetective = static_cast<jclass>(env->NewGlobalRef(threadPriorityDetectiveCls));
+    gJ.TouchEventLagTracer = static_cast<jclass>(env->NewGlobalRef(touchEventLagTracerCls));
+
+
     gJ.ThreadPriorityDetective_onMainThreadPriorityModified =
-            env->GetStaticMethodID(threadPriorityDetectiveCls, "onMainThreadPriorityModified", "(I)V");
+            env->GetStaticMethodID(threadPriorityDetectiveCls, "onMainThreadPriorityModified", "(II)V");
     gJ.ThreadPriorityDetective_onMainThreadTimerSlackModified =
             env->GetStaticMethodID(threadPriorityDetectiveCls, "onMainThreadTimerSlackModified", "(J)V");
 
+    gJ.TouchEventLagTracer_onTouchEvenLag =
+            env->GetStaticMethodID(touchEventLagTracerCls, "onTouchEventLag", "(I)V");
+
+    gJ.TouchEventLagTracer_onTouchEvenLagDumpTrace =
+            env->GetStaticMethodID(touchEventLagTracerCls, "onTouchEventLagDumpTrace", "(I)V");
 
     if (env->RegisterNatives(
             threadPriorityDetectiveCls, THREAD_PRIORITY_METHODS, static_cast<jint>(NELEM(THREAD_PRIORITY_METHODS))) != 0)
         return -1;
 
+    if (env->RegisterNatives(
+            touchEventLagTracerCls, TOUCH_EVENT_TRACE_METHODS, static_cast<jint>(NELEM(TOUCH_EVENT_TRACE_METHODS))) != 0)
+        return -1;
+
     env->DeleteLocalRef(threadPriorityDetectiveCls);
-
-
+    env->DeleteLocalRef(touchEventLagTracerCls);
 
     return JNI_VERSION_1_6;
 }   // namespace MatrixTracer

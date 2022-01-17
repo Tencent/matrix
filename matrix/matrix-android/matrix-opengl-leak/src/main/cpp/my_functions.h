@@ -30,6 +30,14 @@ static System_GlNormal_TYPE system_glDeleteFramebuffers = NULL;
 static System_GlNormal_TYPE system_glGenRenderbuffers = NULL;
 static System_GlNormal_TYPE system_glDeleteRenderbuffers = NULL;
 static System_GlGetError_TYPE system_glGetError = NULL;
+static System_GlTexImage2D system_glTexImage2D = NULL;
+static System_GlTexImage3D system_glTexImage3D = NULL;
+static System_GlBind_TYPE system_glBindTexture = NULL;
+static System_GlBind_TYPE system_glBindBuffer = NULL;
+static System_GlBind_TYPE system_glBindFramebuffer = NULL;
+static System_GlBind_TYPE system_glBindRenderbuffer = NULL;
+static System_GlBufferData system_glBufferData = NULL;
+static System_GlRenderbufferStorage system_glRenderbufferStorage = NULL;
 
 static JavaVM *m_java_vm;
 
@@ -44,18 +52,28 @@ static jmethodID method_onGlGenRenderbuffers;
 static jmethodID method_onGlDeleteRenderbuffers;
 static jmethodID method_getStack;
 static jmethodID method_onGetError;
+static jmethodID method_onGlBindTexture;
+static jmethodID method_onGlBindBuffer;
+static jmethodID method_onGlBindFramebuffer;
+static jmethodID method_onGlBindRenderbuffer;
+static jmethodID method_onGlTexImage2D;
+static jmethodID method_onGlTexImage3D;
+static jmethodID method_onGlBufferData;
+static jmethodID method_onGlRenderbufferStorage;
 
 const size_t BUF_SIZE = 1024;
+const int sample_num = 5;
 
 static pthread_once_t g_onceInitTls = PTHREAD_ONCE_INIT;
 static pthread_key_t g_tlsJavaEnv;
-
 static bool is_stacktrace_enabled = true;
+
 void enable_stacktrace(bool enable) {
     is_stacktrace_enabled = enable;
 }
 
 static bool is_javastack_enabled = true;
+
 void enable_javastack(bool enable) {
     is_javastack_enabled = enable;
 }
@@ -67,18 +85,18 @@ void thread_id_to_string(thread::id thread_id, char *&result) {
     strcpy(result, stream.str().c_str());
 }
 
-inline void get_thread_name(char * thread_name) {
+inline void get_thread_name(char *thread_name) {
     prctl(PR_GET_NAME, (char *) (thread_name));
 }
 
 inline bool is_render_thread() {
     bool result = false;
-    char* thread_name = static_cast<char *>(malloc(BUF_SIZE));
+    char *thread_name = static_cast<char *>(malloc(BUF_SIZE));
     get_thread_name(thread_name);
-    if(strcmp(RENDER_THREAD_NAME, thread_name) == 0) {
+    if (strcmp(RENDER_THREAD_NAME, thread_name) == 0) {
         result = true;
     }
-    if(thread_name != nullptr) {
+    if (thread_name != nullptr) {
         free(thread_name);
     }
     return result;
@@ -102,6 +120,15 @@ JNIEnv *GET_ENV() {
         }
     }
     return env;
+}
+
+bool do_sample() {
+    int rand_num = rand() % 100;
+    if(rand_num <= sample_num) {
+        return true;
+    } else {
+        return false;
+    }
 }
 
 bool get_java_stacktrace(char *__stack, size_t __size) {
@@ -141,7 +168,6 @@ void get_thread_id_string(char *&result) {
     thread::id thread_id = this_thread::get_id();
     thread_id_to_string(thread_id, result);
 }
-
 GL_APICALL void GL_APIENTRY my_glGenTextures(GLsizei n, GLuint *textures) {
     if (NULL != system_glGenTextures) {
         system_glGenTextures(n, textures);
@@ -163,21 +189,23 @@ GL_APICALL void GL_APIENTRY my_glGenTextures(GLsizei n, GLuint *textures) {
         get_thread_id_string(thread_id);
         jstring j_thread_id = env->NewStringUTF(thread_id);
 
-        wechat_backtrace::Backtrace* backtracePrt = 0;
+        wechat_backtrace::Backtrace *backtracePrt = 0;
         if (is_stacktrace_enabled) {
-            wechat_backtrace::Backtrace backtrace_zero = BACKTRACE_INITIALIZER(MEMHOOK_BACKTRACE_MAX_FRAMES);
+            wechat_backtrace::Backtrace backtrace_zero = BACKTRACE_INITIALIZER(
+                    MEMHOOK_BACKTRACE_MAX_FRAMES);
 
             backtracePrt = new wechat_backtrace::Backtrace;
             backtracePrt->max_frames = backtrace_zero.max_frames;
             backtracePrt->frame_size = backtrace_zero.frame_size;
             backtracePrt->frames = backtrace_zero.frames;
 
-            wechat_backtrace::unwind_adapter(backtracePrt->frames.get(), backtracePrt->max_frames, backtracePrt->frame_size);
+            wechat_backtrace::unwind_adapter(backtracePrt->frames.get(), backtracePrt->max_frames,
+                                             backtracePrt->frame_size);
         }
 
         jstring java_stack;
-        char *javaStack;
-        if(is_javastack_enabled) {
+        char *javaStack = nullptr;
+        if (is_javastack_enabled) {
             javaStack = get_java_stack();
             java_stack = env->NewStringUTF(javaStack);
         } else {
@@ -188,7 +216,7 @@ GL_APICALL void GL_APIENTRY my_glGenTextures(GLsizei n, GLuint *textures) {
                                   java_stack, (int64_t) backtracePrt);
 
         delete[] result;
-        if(is_javastack_enabled) {
+        if (is_javastack_enabled && javaStack != nullptr) {
             free(javaStack);
         }
 
@@ -256,21 +284,23 @@ GL_APICALL void GL_APIENTRY my_glGenBuffers(GLsizei n, GLuint *buffers) {
         get_thread_id_string(thread_id);
         jstring j_thread_id = env->NewStringUTF(thread_id);
 
-        wechat_backtrace::Backtrace* backtracePrt = 0;
+        wechat_backtrace::Backtrace *backtracePrt = 0;
         if (is_stacktrace_enabled) {
-            wechat_backtrace::Backtrace backtrace_zero = BACKTRACE_INITIALIZER(MEMHOOK_BACKTRACE_MAX_FRAMES);
+            wechat_backtrace::Backtrace backtrace_zero = BACKTRACE_INITIALIZER(
+                    MEMHOOK_BACKTRACE_MAX_FRAMES);
 
             backtracePrt = new wechat_backtrace::Backtrace;
             backtracePrt->max_frames = backtrace_zero.max_frames;
             backtracePrt->frame_size = backtrace_zero.frame_size;
             backtracePrt->frames = backtrace_zero.frames;
 
-            wechat_backtrace::unwind_adapter(backtracePrt->frames.get(), backtracePrt->max_frames, backtracePrt->frame_size);
+            wechat_backtrace::unwind_adapter(backtracePrt->frames.get(), backtracePrt->max_frames,
+                                             backtracePrt->frame_size);
         }
 
         jstring java_stack;
-        char *javaStack;
-        if(is_javastack_enabled) {
+        char *javaStack = nullptr;
+        if (is_javastack_enabled) {
             javaStack = get_java_stack();
             java_stack = env->NewStringUTF(javaStack);
         } else {
@@ -281,7 +311,7 @@ GL_APICALL void GL_APIENTRY my_glGenBuffers(GLsizei n, GLuint *buffers) {
                                   java_stack, (int64_t) backtracePrt);
 
         delete[] result;
-        if(is_javastack_enabled) {
+        if (is_javastack_enabled && javaStack != nullptr) {
             free(javaStack);
         }
 
@@ -348,21 +378,23 @@ GL_APICALL void GL_APIENTRY my_glGenFramebuffers(GLsizei n, GLuint *buffers) {
         get_thread_id_string(thread_id);
         jstring j_thread_id = env->NewStringUTF(thread_id);
 
-        wechat_backtrace::Backtrace* backtracePrt = 0;
+        wechat_backtrace::Backtrace *backtracePrt = 0;
         if (is_stacktrace_enabled) {
-            wechat_backtrace::Backtrace backtrace_zero = BACKTRACE_INITIALIZER(MEMHOOK_BACKTRACE_MAX_FRAMES);
+            wechat_backtrace::Backtrace backtrace_zero = BACKTRACE_INITIALIZER(
+                    MEMHOOK_BACKTRACE_MAX_FRAMES);
 
             backtracePrt = new wechat_backtrace::Backtrace;
             backtracePrt->max_frames = backtrace_zero.max_frames;
             backtracePrt->frame_size = backtrace_zero.frame_size;
             backtracePrt->frames = backtrace_zero.frames;
 
-            wechat_backtrace::unwind_adapter(backtracePrt->frames.get(), backtracePrt->max_frames, backtracePrt->frame_size);
+            wechat_backtrace::unwind_adapter(backtracePrt->frames.get(), backtracePrt->max_frames,
+                                             backtracePrt->frame_size);
         }
 
         jstring java_stack;
-        char *javaStack;
-        if(is_javastack_enabled) {
+        char *javaStack = nullptr;
+        if (is_javastack_enabled) {
             javaStack = get_java_stack();
             java_stack = env->NewStringUTF(javaStack);
         } else {
@@ -373,7 +405,7 @@ GL_APICALL void GL_APIENTRY my_glGenFramebuffers(GLsizei n, GLuint *buffers) {
                                   j_thread_id, java_stack, (int64_t) backtracePrt);
 
         delete[] result;
-        if(is_javastack_enabled) {
+        if (is_javastack_enabled && javaStack != nullptr) {
             free(javaStack);
         }
 
@@ -441,21 +473,23 @@ GL_APICALL void GL_APIENTRY my_glGenRenderbuffers(GLsizei n, GLuint *buffers) {
         get_thread_id_string(thread_id);
         jstring j_thread_id = env->NewStringUTF(thread_id);
 
-        wechat_backtrace::Backtrace* backtracePrt = 0;
+        wechat_backtrace::Backtrace *backtracePrt = 0;
         if (is_stacktrace_enabled) {
-            wechat_backtrace::Backtrace backtrace_zero = BACKTRACE_INITIALIZER(MEMHOOK_BACKTRACE_MAX_FRAMES);
+            wechat_backtrace::Backtrace backtrace_zero = BACKTRACE_INITIALIZER(
+                    MEMHOOK_BACKTRACE_MAX_FRAMES);
 
             backtracePrt = new wechat_backtrace::Backtrace;
             backtracePrt->max_frames = backtrace_zero.max_frames;
             backtracePrt->frame_size = backtrace_zero.frame_size;
             backtracePrt->frames = backtrace_zero.frames;
 
-            wechat_backtrace::unwind_adapter(backtracePrt->frames.get(), backtracePrt->max_frames, backtracePrt->frame_size);
+            wechat_backtrace::unwind_adapter(backtracePrt->frames.get(), backtracePrt->max_frames,
+                                             backtracePrt->frame_size);
         }
 
         jstring java_stack;
-        char *javaStack;
-        if(is_javastack_enabled) {
+        char *javaStack = nullptr;
+        if (is_javastack_enabled) {
             javaStack = get_java_stack();
             java_stack = env->NewStringUTF(javaStack);
         } else {
@@ -466,7 +500,7 @@ GL_APICALL void GL_APIENTRY my_glGenRenderbuffers(GLsizei n, GLuint *buffers) {
                                   j_thread_id, java_stack, (int64_t) backtracePrt);
 
         delete[] result;
-        if(is_javastack_enabled) {
+        if (is_javastack_enabled && javaStack != nullptr) {
             free(javaStack);
         }
 
@@ -526,6 +560,244 @@ GL_APICALL int GL_APIENTRY my_glGetError() {
     }
 
     return 0;
+}
+
+GL_APICALL void GL_APIENTRY
+my_glTexImage2D(GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height,
+                GLint border, GLenum format, GLenum type, const void *pixels) {
+    if (NULL != system_glTexImage2D) {
+        system_glTexImage2D(target, level, internalformat, width, height, border, format, type,
+                            pixels);
+
+        if (is_render_thread()) {
+            return;
+        }
+        int pixel = Utils::getSizeOfPerPixel(internalformat, format, type);
+        long size = width * height * pixel;
+        JNIEnv *env = GET_ENV();
+
+        wechat_backtrace::Backtrace *backtracePrt = 0;
+        if (is_stacktrace_enabled) {
+            wechat_backtrace::Backtrace backtrace_zero = BACKTRACE_INITIALIZER(
+                    MEMHOOK_BACKTRACE_MAX_FRAMES);
+
+            backtracePrt = new wechat_backtrace::Backtrace;
+            backtracePrt->max_frames = backtrace_zero.max_frames;
+            backtracePrt->frame_size = backtrace_zero.frame_size;
+            backtracePrt->frames = backtrace_zero.frames;
+
+            wechat_backtrace::unwind_adapter(backtracePrt->frames.get(), backtracePrt->max_frames,
+                                             backtracePrt->frame_size);
+        }
+
+        jstring java_stack;
+        char *javaStack = nullptr;
+        if (is_javastack_enabled && do_sample()) {
+            javaStack = get_java_stack();
+            java_stack = env->NewStringUTF(javaStack);
+        } else {
+            java_stack = env->NewStringUTF("");
+        }
+
+        env->CallStaticVoidMethod(class_OpenGLHook, method_onGlTexImage2D, target, level,
+                                  internalformat, width, height, border, format, type, (jlong) size,
+                                  java_stack, (jlong) backtracePrt);
+
+        if (is_javastack_enabled && javaStack != nullptr) {
+            free(javaStack);
+        }
+        env->DeleteLocalRef(java_stack);
+    }
+}
+
+GL_APICALL void GL_APIENTRY
+my_glTexImage3D(GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height,
+                GLsizei depth, GLint border, GLenum format, GLenum type, const void *pixels) {
+    if (NULL != system_glTexImage3D) {
+        system_glTexImage3D(target, level, internalformat, width, height, depth, border, format,
+                            type, pixels);
+
+        if (is_render_thread()) {
+            return;
+        }
+        int pixel = Utils::getSizeOfPerPixel(internalformat, format, type);
+        long size = width * height * depth * pixel;
+        JNIEnv *env = GET_ENV();
+
+        wechat_backtrace::Backtrace *backtracePrt = 0;
+        if (is_stacktrace_enabled) {
+            wechat_backtrace::Backtrace backtrace_zero = BACKTRACE_INITIALIZER(
+                    MEMHOOK_BACKTRACE_MAX_FRAMES);
+
+            backtracePrt = new wechat_backtrace::Backtrace;
+            backtracePrt->max_frames = backtrace_zero.max_frames;
+            backtracePrt->frame_size = backtrace_zero.frame_size;
+            backtracePrt->frames = backtrace_zero.frames;
+
+            wechat_backtrace::unwind_adapter(backtracePrt->frames.get(), backtracePrt->max_frames,
+                                             backtracePrt->frame_size);
+        }
+
+        jstring java_stack;
+        char *javaStack = nullptr;
+        if (is_javastack_enabled && do_sample()) {
+            javaStack = get_java_stack();
+            java_stack = env->NewStringUTF(javaStack);
+        } else {
+            java_stack = env->NewStringUTF("");
+        }
+
+        env->CallStaticVoidMethod(class_OpenGLHook, method_onGlTexImage3D, target, level,
+                                  internalformat, width, height, depth, border, format, type,
+                                  (jlong) size,
+                                  java_stack, (jlong) backtracePrt);
+
+        if (is_javastack_enabled && javaStack != nullptr) {
+            free(javaStack);
+        }
+        env->DeleteGlobalRef(java_stack);
+    }
+}
+
+
+GL_APICALL void GL_APIENTRY my_glBindTexture(GLenum target, GLuint resourceId) {
+    if (NULL != system_glBindTexture) {
+        system_glBindTexture(target, resourceId);
+
+        if (is_render_thread()) {
+            return;
+        }
+        JNIEnv *env = GET_ENV();
+        env->CallStaticVoidMethod(class_OpenGLHook, method_onGlBindTexture, target, resourceId);
+    }
+}
+
+GL_APICALL void GL_APIENTRY my_glBindBuffer(GLenum target, GLuint resourceId) {
+    if (NULL != system_glBindTexture) {
+        system_glBindBuffer(target, resourceId);
+
+        if (is_render_thread()) {
+            return;
+        }
+        JNIEnv *env = GET_ENV();
+        env->CallStaticVoidMethod(class_OpenGLHook, method_onGlBindBuffer, target, resourceId);
+
+    }
+}
+
+GL_APICALL void GL_APIENTRY my_glBindFramebuffer(GLenum target, GLuint resourceId) {
+    if (NULL != system_glBindTexture) {
+        system_glBindFramebuffer(target, resourceId);
+
+        if (is_render_thread()) {
+            return;
+        }
+        JNIEnv *env = GET_ENV();
+        env->CallStaticVoidMethod(class_OpenGLHook, method_onGlBindFramebuffer, target, resourceId);
+
+    }
+}
+
+GL_APICALL void GL_APIENTRY my_glBindRenderbuffer(GLenum target, GLuint resourceId) {
+    if (NULL != system_glBindTexture) {
+        system_glBindRenderbuffer(target, resourceId);
+
+        if (is_render_thread()) {
+            return;
+        }
+        JNIEnv *env = GET_ENV();
+        env->CallStaticVoidMethod(class_OpenGLHook, method_onGlBindRenderbuffer, target,
+                                  resourceId);
+    }
+}
+
+GL_APICALL void GL_APIENTRY
+my_glBufferData(GLenum target, GLsizeiptr size, const GLvoid *data, GLenum usage) {
+    if (NULL != system_glBindTexture) {
+        system_glBufferData(target, size, data, usage);
+
+        if (is_render_thread()) {
+            return;
+        }
+        JNIEnv *env = GET_ENV();
+
+        wechat_backtrace::Backtrace *backtracePrt = 0;
+        if (is_stacktrace_enabled) {
+            wechat_backtrace::Backtrace backtrace_zero = BACKTRACE_INITIALIZER(
+                    MEMHOOK_BACKTRACE_MAX_FRAMES);
+
+            backtracePrt = new wechat_backtrace::Backtrace;
+            backtracePrt->max_frames = backtrace_zero.max_frames;
+            backtracePrt->frame_size = backtrace_zero.frame_size;
+            backtracePrt->frames = backtrace_zero.frames;
+
+            wechat_backtrace::unwind_adapter(backtracePrt->frames.get(), backtracePrt->max_frames,
+                                             backtracePrt->frame_size);
+        }
+
+        jstring java_stack;
+        char *javaStack = nullptr;
+        if (is_javastack_enabled && do_sample()) {
+            javaStack = get_java_stack();
+            java_stack = env->NewStringUTF(javaStack);
+        } else {
+            java_stack = env->NewStringUTF("");
+        }
+
+        env->CallStaticVoidMethod(class_OpenGLHook, method_onGlBufferData, target,
+                                  usage, (jlong) size,
+                                  java_stack, (jlong) backtracePrt);
+
+        if (is_javastack_enabled && javaStack != nullptr) {
+            free(javaStack);
+        }
+        env->DeleteLocalRef(java_stack);
+    }
+}
+
+GL_APICALL void GL_APIENTRY
+my_glRenderbufferStorage(GLenum target, GLenum internalformat, GLsizei width, GLsizei height) {
+    if (NULL != system_glBindTexture) {
+        system_glRenderbufferStorage(target, internalformat, width, height);
+
+        if (is_render_thread()) {
+            return;
+        }
+        JNIEnv *env = GET_ENV();
+
+        wechat_backtrace::Backtrace *backtracePrt = 0;
+        if (is_stacktrace_enabled) {
+            wechat_backtrace::Backtrace backtrace_zero = BACKTRACE_INITIALIZER(
+                    MEMHOOK_BACKTRACE_MAX_FRAMES);
+
+            backtracePrt = new wechat_backtrace::Backtrace;
+            backtracePrt->max_frames = backtrace_zero.max_frames;
+            backtracePrt->frame_size = backtrace_zero.frame_size;
+            backtracePrt->frames = backtrace_zero.frames;
+
+            wechat_backtrace::unwind_adapter(backtracePrt->frames.get(), backtracePrt->max_frames,
+                                             backtracePrt->frame_size);
+        }
+
+        jstring java_stack;
+        char *javaStack = nullptr;
+        if (is_javastack_enabled && do_sample()) {
+            javaStack = get_java_stack();
+            java_stack = env->NewStringUTF(javaStack);
+        } else {
+            java_stack = env->NewStringUTF("");
+        }
+
+        long size = Utils::getRenderbufferSizeByFormula(internalformat, width, height);
+        env->CallStaticVoidMethod(class_OpenGLHook, method_onGlRenderbufferStorage, target,
+                                  width, height, internalformat, (jlong) size, java_stack,
+                                  (jlong) backtracePrt);
+
+        if (is_javastack_enabled && javaStack != nullptr) {
+            free(javaStack);
+        }
+        env->DeleteLocalRef(java_stack);
+    }
 }
 
 

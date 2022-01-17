@@ -461,7 +461,7 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
         return snapshot;
     }
 
-    public static final class TaskJiffiesSnapshot extends Snapshot<TaskJiffiesSnapshot> {
+    public static class TaskJiffiesSnapshot extends Snapshot<TaskJiffiesSnapshot> {
         public int tid;
         public String name;
         public long timeMillis = System.currentTimeMillis();

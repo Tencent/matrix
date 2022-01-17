@@ -89,7 +89,7 @@ void fake_unwind(wechat_backtrace::Frame *frames, const size_t max_frames, size_
     fake_backtrace_idx[tid] += 1;
 }
 
-void record_dump(const char *log_path) {
+void record_dump(const char *path) {
     std::unique_lock<std::shared_mutex> lock(thread_vectors_mutex_);
 
     if (dumped) {
@@ -99,6 +99,9 @@ void record_dump(const char *log_path) {
     dumped = true;
 
     RECORD_LOGE(TAG, ">>>>> record_dump <<<<<");
+
+    char log_path[128];
+    snprintf(log_path, 128, "%s.record", path);
 
     FILE *log_file  = fopen(log_path, "w+");
 

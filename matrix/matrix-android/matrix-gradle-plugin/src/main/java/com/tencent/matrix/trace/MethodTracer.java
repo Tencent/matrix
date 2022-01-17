@@ -18,6 +18,7 @@ package com.tencent.matrix.trace;
 
 import com.tencent.matrix.javalib.util.FileUtil;
 import com.tencent.matrix.javalib.util.Log;
+import com.tencent.matrix.javalib.util.Util;
 import com.tencent.matrix.plugin.compat.AgpCompat;
 import com.tencent.matrix.trace.item.TraceMethod;
 import com.tencent.matrix.trace.retrace.MappingCollector;
@@ -79,10 +80,10 @@ public class MethodTracer {
         this.collectedMethodMap = collectedMap;
     }
 
-    public void trace(Map<File, File> srcFolderList, Map<File, File> dependencyJarList, ClassLoader classLoader) throws ExecutionException, InterruptedException {
+    public void trace(Map<File, File> srcFolderList, Map<File, File> dependencyJarList, ClassLoader classLoader, boolean ignoreCheckClass) throws ExecutionException, InterruptedException {
         List<Future> futures = new LinkedList<>();
-        traceMethodFromSrc(srcFolderList, futures, classLoader);
-        traceMethodFromJar(dependencyJarList, futures, classLoader);
+        traceMethodFromSrc(srcFolderList, futures, classLoader, ignoreCheckClass);
+        traceMethodFromJar(dependencyJarList, futures, classLoader, ignoreCheckClass);
         for (Future future : futures) {
             future.get();
         }
@@ -92,33 +93,33 @@ public class MethodTracer {
         futures.clear();
     }
 
-    private void traceMethodFromSrc(Map<File, File> srcMap, List<Future> futures, final ClassLoader classLoader) {
+    private void traceMethodFromSrc(Map<File, File> srcMap, List<Future> futures, final ClassLoader classLoader, final boolean skipCheckClass) {
         if (null != srcMap) {
             for (Map.Entry<File, File> entry : srcMap.entrySet()) {
                 futures.add(executor.submit(new Runnable() {
                     @Override
                     public void run() {
-                        innerTraceMethodFromSrc(entry.getKey(), entry.getValue(), classLoader);
+                        innerTraceMethodFromSrc(entry.getKey(), entry.getValue(), classLoader, skipCheckClass);
                     }
                 }));
             }
         }
     }
 
-    private void traceMethodFromJar(Map<File, File> dependencyMap, List<Future> futures, final ClassLoader classLoader) {
+    private void traceMethodFromJar(Map<File, File> dependencyMap, List<Future> futures, final ClassLoader classLoader, final boolean skipCheckClass) {
         if (null != dependencyMap) {
             for (Map.Entry<File, File> entry : dependencyMap.entrySet()) {
                 futures.add(executor.submit(new Runnable() {
                     @Override
                     public void run() {
-                        innerTraceMethodFromJar(entry.getKey(), entry.getValue(), classLoader);
+                        innerTraceMethodFromJar(entry.getKey(), entry.getValue(), classLoader, skipCheckClass);
                     }
                 }));
             }
         }
     }
 
-    private void innerTraceMethodFromSrc(File input, File output, ClassLoader classLoader) {
+    private void innerTraceMethodFromSrc(File input, File output, ClassLoader classLoader, boolean ignoreCheckClass) {
 
         ArrayList<File> classFileList = new ArrayList<>();
         if (input.isDirectory()) {
@@ -133,6 +134,11 @@ public class MethodTracer {
             try {
                 final String changedFileInputFullPath = classFile.getAbsolutePath();
                 final File changedFileOutput = new File(changedFileInputFullPath.replace(input.getAbsolutePath(), output.getAbsolutePath()));
+
+                if (changedFileOutput.getCanonicalPath().equals(classFile.getCanonicalPath())) {
+                    throw new RuntimeException("Input file(" + classFile.getCanonicalPath() + ") should not be same with output!");
+                }
+
                 if (!changedFileOutput.exists()) {
                     changedFileOutput.getParentFile().mkdirs();
                 }
@@ -149,14 +155,16 @@ public class MethodTracer {
 
                     byte[] data = classWriter.toByteArray();
 
-                    try {
-                        ClassReader cr = new ClassReader(data);
-                        ClassWriter cw = new ClassWriter(0);
-                        ClassVisitor check = new CheckClassAdapter(cw);
-                        cr.accept(check, ClassReader.EXPAND_FRAMES);
-                    } catch (Throwable e) {
-                        System.err.println("trace output ERROR : " + e.getMessage() + ", " + classFile);
-                        traceError = true;
+                    if (!ignoreCheckClass) {
+                        try {
+                            ClassReader cr = new ClassReader(data);
+                            ClassWriter cw = new ClassWriter(0);
+                            ClassVisitor check = new CheckClassAdapter(cw);
+                            cr.accept(check, ClassReader.EXPAND_FRAMES);
+                        } catch (Throwable e) {
+                            System.err.println("trace output ERROR : " + e.getMessage() + ", " + classFile);
+                            traceError = true;
+                        }
                     }
 
                     if (output.isDirectory()) {
@@ -187,7 +195,7 @@ public class MethodTracer {
         }
     }
 
-    private void innerTraceMethodFromJar(File input, File output, final ClassLoader classLoader) {
+    private void innerTraceMethodFromJar(File input, File output, final ClassLoader classLoader, boolean skipCheckClass) {
         ZipOutputStream zipOutputStream = null;
         ZipFile zipFile = null;
         try {
@@ -197,6 +205,12 @@ public class MethodTracer {
             while (enumeration.hasMoreElements()) {
                 ZipEntry zipEntry = enumeration.nextElement();
                 String zipEntryName = zipEntry.getName();
+
+                if (Util.preventZipSlip(output, zipEntryName)) {
+                    Log.e(TAG, "Unzip entry %s failed!", zipEntryName);
+                    continue;
+                }
+
                 if (MethodCollector.isNeedTraceFile(zipEntryName)) {
 
                     InputStream inputStream = zipFile.getInputStream(zipEntry);
@@ -206,15 +220,17 @@ public class MethodTracer {
                     classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES);
                     byte[] data = classWriter.toByteArray();
 //
-                    try {
-                        ClassReader r = new ClassReader(data);
-                        ClassWriter w = new ClassWriter(0);
-                        ClassVisitor v = new CheckClassAdapter(w);
-                        r.accept(v, ClassReader.EXPAND_FRAMES);
-                    } catch (Throwable e) {
-                        System.err.println("trace jar output ERROR: " + e.getMessage() + ", "+ zipEntryName);
+                    if (!skipCheckClass) {
+                        try {
+                            ClassReader r = new ClassReader(data);
+                            ClassWriter w = new ClassWriter(0);
+                            ClassVisitor v = new CheckClassAdapter(w);
+                            r.accept(v, ClassReader.EXPAND_FRAMES);
+                        } catch (Throwable e) {
+                            System.err.println("trace jar output ERROR: " + e.getMessage() + ", " + zipEntryName);
 //                        e.printStackTrace();
-                        traceError = true;
+                            traceError = true;
+                        }
                     }
 
                     InputStream byteArrayInputStream = new ByteArrayInputStream(data);

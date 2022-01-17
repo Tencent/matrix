@@ -136,6 +136,27 @@ void *thread_test(void *) {
 
 #define PTHREAD_COUNT 10 //3000
 
+[[noreturn]]
+void* noreturn_routine(void *) {
+    while (true) {
+        sleep(1);
+        LOGD(TAG, "noreturn: run set name: %d", pthread_gettid_np(pthread_self()));
+        pthread_setname_np(pthread_self(), "long-routine");
+    }
+}
+
+void* costly_routine(void *) {
+
+    int i = 2;
+
+    while (i-- >= 0) {
+        pthread_setname_np(pthread_self(), "costly-routine");
+        sleep(1);
+    }
+
+    return nullptr;
+}
+
 JNIEXPORT void JNICALL
 Java_sample_tencent_matrix_hooks_JNIObj_threadTest(JNIEnv *env, jclass clazz) {
 //    pthread_key_create(&exit_key, test_destructor);
@@ -146,12 +167,12 @@ Java_sample_tencent_matrix_hooks_JNIObj_threadTest(JNIEnv *env, jclass clazz) {
         pthread_attr_init(&attr);
 //        pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
         int ret = pthread_create(&pthreads[i], nullptr, thread_test, nullptr);
-//        pthread_detach(pthreads[i]);
+        pthread_detach(pthreads[i]);
 
-//        pthread_getattr_np(pthreads[i], &attr);
-//        int state = PTHREAD_CREATE_JOINABLE;
-//        pthread_attr_getdetachstate(&attr, &state);
-//        LOGD(TAG, "detach state = %d", state);
+        pthread_getattr_np(pthreads[i], &attr);
+        int state = PTHREAD_CREATE_JOINABLE;
+        pthread_attr_getdetachstate(&attr, &state);
+        LOGD(TAG, "detach state = %d", state);
         if (i % 500 == 0) {
             LOGD(TAG, "sleep");
             sleep(1);
@@ -161,6 +182,22 @@ Java_sample_tencent_matrix_hooks_JNIObj_threadTest(JNIEnv *env, jclass clazz) {
             break;
         }
     }
+
+    // subroutine not exited:
+    LOGD(TAG, "case 1");
+    pthread_t noreturn_pthread;
+    pthread_create(&noreturn_pthread, nullptr, costly_routine, nullptr);
+    pthread_detach(noreturn_pthread);
+
+    LOGD(TAG, "case 1 done");
+
+    LOGD(TAG, "case =2");
+    pthread_t costly_pthread;
+    pthread_create(&costly_pthread, nullptr, costly_routine, nullptr);
+    pthread_join(costly_pthread, nullptr);
+    LOGD(TAG, "case 2 done");
+
+
 }
 
 #ifdef __cplusplus
