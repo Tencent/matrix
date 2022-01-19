@@ -171,15 +171,17 @@ object ProcessSupervisor : IProcessListener by ProcessSubordinate.processListene
             }
 
             override fun onServiceDisconnected(name: ComponentName?) {
-                MatrixLog.e(tag, "onServiceDisconnected $name")
-                supervisorProxy = null
-                ProcessUILifecycleOwner.onSceneChangedListener = null
-                DispatcherStateOwner.detach()
-                SupervisorPacemaker.install(app)
-                // try to re-bind supervisor, but don't auto create here
-                safeApply(log = false) { app.unbindService(this) }
-                app.bindService(intent, this, BIND_ABOVE_CLIENT)
-                MatrixLog.e(tag, "rebound supervisor")
+                MatrixLifecycleThread.handler.post {
+                    MatrixLog.e(tag, "onServiceDisconnected $name")
+                    supervisorProxy = null
+                    ProcessUILifecycleOwner.onSceneChangedListener = null
+                    DispatcherStateOwner.detach()
+                    SupervisorPacemaker.install(app)
+                    // try to re-bind supervisor, but don't auto create here
+                    safeApply(log = false) { app.unbindService(this) }
+                    app.bindService(intent, this, BIND_ABOVE_CLIENT)
+                    MatrixLog.e(tag, "rebound supervisor")
+                }
             }
         }
 
