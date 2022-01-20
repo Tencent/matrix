@@ -19,6 +19,10 @@ void self_dlclose(void *handle) {
     else enhance::dlclose(handle);
 }
 
+void self_clean(void* handle) {
+    if (!use_origin_) enhance::dlclose(handle);
+}
+
 void *self_dlopen(const char *filename) {
     if (use_origin_) return dlopen(filename, RTLD_NOW);
     else return enhance::dlopen(filename, RTLD_NOW);

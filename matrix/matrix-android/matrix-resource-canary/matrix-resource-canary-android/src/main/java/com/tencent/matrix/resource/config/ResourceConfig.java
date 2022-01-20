@@ -34,8 +34,9 @@ public final class ResourceConfig {
         AUTO_DUMP, // auto dump hprof
         MANUAL_DUMP, // notify only
         SILENCE_ANALYSE, // dump and analyse hprof when screen off
-        FORK_DUMP, // fork dump hprof immediately TODO
-        FORK_ANALYSE, // fork dump and analyse hprof immediately TODO
+        FORK_DUMP, // fork dump hprof immediately
+        FORK_ANALYSE, // fork dump and analyse hprof immediately
+        LAZY_FORK_ANALYZE, // fork dump immediately but analyze hprof until the screen is off
     }
 
     private static final long DEFAULT_DETECT_INTERVAL_MILLIS = TimeUnit.MINUTES.toMillis(1);

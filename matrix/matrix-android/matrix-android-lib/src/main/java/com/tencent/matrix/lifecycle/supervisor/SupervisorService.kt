@@ -4,6 +4,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.os.*
+import com.tencent.matrix.lifecycle.MatrixLifecycleThread
 import com.tencent.matrix.lifecycle.StatefulOwner
 import com.tencent.matrix.util.*
 import junit.framework.Assert
@@ -37,6 +38,8 @@ class SupervisorService : Service() {
             private set
     }
 
+    private val runningHandler = MatrixLifecycleThread.handler
+
     private val tokenRecord: TokenRecord = TokenRecord()
 
     private val backgroundProcessLru by lazy(LazyThreadSafetyMode.SYNCHRONIZED) { ConcurrentLinkedQueue<ProcessToken>() }
@@ -69,63 +72,90 @@ class SupervisorService : Service() {
         ) {
             val pid = Binder.getCallingPid()
 
-            MatrixLog.d(
-                TAG,
-                "supervisor called register, tokens(${tokens.size}): ${tokens.contentToString()}"
-            )
+            runningHandler.post {
+                MatrixLog.d(
+                    TAG,
+                    "supervisor called register, tokens(${tokens.size}): ${tokens.contentToString()}"
+                )
 
-            tokens.first().apply {
-                tokenRecord.addToken(this)
-                ProcessSubordinate.manager.addProxy(this, subordinateProxy)
-                backgroundProcessLru.moveOrAddFirst(this)
-                MatrixLog.i(TAG, "CREATED: [$pid-${name}] -> [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}")
+                tokens.first().apply {
+                    tokenRecord.addToken(this)
+                    ProcessSubordinate.manager.addProxy(this, subordinateProxy)
+                    backgroundProcessLru.moveOrAddFirst(this)
+                    MatrixLog.i(
+                        TAG,
+                        "CREATED: [$pid-${name}] -> [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}"
+                    )
 
-                safeApply(TAG) {
-                    linkToDeath {
-                        safeApply(TAG) {
-                            val dead = tokenRecord.removeToken(pid)
-                            val lruRemoveSuccess = backgroundProcessLru.remove(dead)
-                            ProcessSubordinate.manager.removeProxy(dead)
-                            val proxyRemoveSuccess = RemoteProcessLifecycleProxy.removeProxy(dead)
-                            ProcessSubordinate.manager.dispatchDeath(recentScene, dead.name, dead.pid, !lruRemoveSuccess && !proxyRemoveSuccess)
-                            MatrixLog.i(
-                                TAG,
-                                "$pid-$dead was dead. is LRU kill? ${!lruRemoveSuccess && !proxyRemoveSuccess}"
-                            )
+                    safeApply(TAG) {
+                        linkToDeath {
+                            safeApply(TAG) {
+                                val dead = tokenRecord.removeToken(pid)
+                                val lruRemoveSuccess = backgroundProcessLru.remove(dead)
+                                ProcessSubordinate.manager.removeProxy(dead)
+                                val proxyRemoveSuccess =
+                                    RemoteProcessLifecycleProxy.removeProxy(dead)
+                                ProcessSubordinate.manager.dispatchDeath(
+                                    recentScene,
+                                    dead.name,
+                                    dead.pid,
+                                    !lruRemoveSuccess && !proxyRemoveSuccess
+                                )
+                                MatrixLog.i(
+                                    TAG,
+                                    "$pid-$dead was dead. is LRU kill? ${!lruRemoveSuccess && !proxyRemoveSuccess}"
+                                )
+                            }
                         }
                     }
                 }
-            }
 
-            tokens.forEach {
-                MatrixLog.d(TAG, "register: ${it.name}, ${it.statefulName}, ${it.state}")
-                RemoteProcessLifecycleProxy.getProxy(it).onStateChanged(it.state)
-            }
+                tokens.forEach {
+                    MatrixLog.d(TAG, "register: ${it.name}, ${it.statefulName}, ${it.state}")
+                    RemoteProcessLifecycleProxy.getProxy(it).onStateChanged(it.state)
+                }
 
-            if (tokenRecord.isEmpty()) {
-                MatrixLog.i(TAG, "stateRegister: no other process registered, ignore state changes")
-                return
+                if (tokenRecord.isEmpty()) {
+                    MatrixLog.i(
+                        TAG,
+                        "stateRegister: no other process registered, ignore state changes"
+                    )
+                    return@post
+                }
+                DispatcherStateOwner.syncStates(
+                    ProcessToken.current(applicationContext),
+                    recentScene
+                ) // sync state for new process
             }
-            DispatcherStateOwner.syncStates(ProcessToken.current(applicationContext), recentScene) // sync state for new process
         }
 
         override fun onStateChanged(token: ProcessToken) {
-            MatrixLog.i(TAG, "onStateChanged: ${token.statefulName} ${token.state} ${token.name}")
             val pid = Binder.getCallingPid()
             Assert.assertEquals(pid, token.pid)
-            RemoteProcessLifecycleProxy.getProxy(token).onStateChanged(token.state)
-            onProcessStateChanged(token)
-//            RemoteProcessLifecycleProxy.profile()
+            runningHandler.post {
+                MatrixLog.i(
+                    TAG,
+                    "onStateChanged: ${token.statefulName} ${token.state} ${token.name}"
+                )
+                RemoteProcessLifecycleProxy.getProxy(token).onStateChanged(token.state)
+                onProcessStateChanged(token)
+            }
         }
 
         private fun onProcessStateChanged(token: ProcessToken) {
             if (ProcessSupervisor.EXPLICIT_BACKGROUND_OWNER == token.statefulName) {
                 if (token.state) {
                     backgroundProcessLru.moveOrAddFirst(token)
-                    MatrixLog.i(TAG, "BACKGROUND: [${token.pid}-${token.name}] -> [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}")
+                    MatrixLog.i(
+                        TAG,
+                        "BACKGROUND: [${token.pid}-${token.name}] -> [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}"
+                    )
                 } else {
                     backgroundProcessLru.remove(token)
-                    MatrixLog.i(TAG, "FOREGROUND: [${token.pid}-${token.name}] <- [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}")
+                    MatrixLog.i(
+                        TAG,
+                        "FOREGROUND: [${token.pid}-${token.name}] <- [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}"
+                    )
                 }
             }
         }
@@ -137,27 +167,36 @@ class SupervisorService : Service() {
         override fun onProcessKilled(token: ProcessToken) {
             val pid = Binder.getCallingPid()
             Assert.assertEquals(pid, token.pid)
-            safeApply(TAG) { targetKilledCallback?.invoke(LRU_KILL_SUCCESS, token.name, token.pid) }
-            backgroundProcessLru.remove(token)
-            RemoteProcessLifecycleProxy.removeProxy(token)
-            MatrixLog.i(TAG, "KILL: [$pid-${token.name}] X [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}")
+            runningHandler.post {
+                safeApply(TAG) {
+                    targetKilledCallback?.invoke(LRU_KILL_SUCCESS, token.name, token.pid)
+                }
+                backgroundProcessLru.remove(token)
+                RemoteProcessLifecycleProxy.removeProxy(token)
+                MatrixLog.i(
+                    TAG,
+                    "KILL: [$pid-${token.name}] X [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}"
+                )
+            }
         }
 
         override fun onProcessRescuedFromKill(token: ProcessToken) {
             val pid = Binder.getCallingPid()
             Assert.assertEquals(pid, token.pid)
-            safeApply(TAG) { targetKilledCallback?.invoke(LRU_KILL_RESCUED, token.name, token.pid) }
+            runningHandler.post {
+                safeApply(TAG) {
+                    targetKilledCallback?.invoke(LRU_KILL_RESCUED, token.name, token.pid)
+                }
+            }
         }
 
         override fun onProcessKillCanceled(token: ProcessToken) {
             val pid = Binder.getCallingPid()
             Assert.assertEquals(pid, token.pid)
-            safeApply(TAG) {
-                targetKilledCallback?.invoke(
-                    LRU_KILL_CANCELED,
-                    token.name,
-                    token.pid
-                )
+            runningHandler.post {
+                safeApply(TAG) {
+                    targetKilledCallback?.invoke(LRU_KILL_CANCELED, token.name, token.pid)
+                }
             }
         }
 
@@ -178,7 +217,12 @@ class SupervisorService : Service() {
                 return@observe
             }
             MatrixLog.d(TAG, "supervisor dispatch $stateName $state")
-            ProcessSubordinate.manager.dispatchState(ProcessToken.current(applicationContext), recentScene, stateName, state)
+            ProcessSubordinate.manager.dispatchState(
+                ProcessToken.current(applicationContext),
+                recentScene,
+                stateName,
+                state
+            )
         }
     }
 

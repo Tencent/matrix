@@ -21,20 +21,20 @@
 #include "MatrixTracer.h"
 
 #include <jni.h>
-#include <stdio.h>
 #include <sys/utsname.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <android/log.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <time.h>
-#include <signal.h>
 #include <xhook_ext.h>
 #include <linux/prctl.h>
 #include <sys/prctl.h>
 #include <sys/resource.h>
 
+#include <cstdio>
+#include <ctime>
+#include <csignal>
 #include <thread>
 #include <memory>
 #include <string>
@@ -66,8 +66,8 @@ static std::optional<AnrDumper> sAnrDumper;
 static bool isTraceWrite = false;
 static bool fromMyPrintTrace = false;
 static bool isHooking = false;
-static std::string anrTracePathstring;
-static std::string printTracePathstring;
+static std::string anrTracePathString;
+static std::string printTracePathString;
 static int signalCatcherTid;
 static int currentTouchFd;
 static bool inputHasSent;
@@ -79,6 +79,8 @@ static struct StacktraceJNI {
     jmethodID AnrDetector_onANRDumped;
     jmethodID AnrDetector_onANRDumpTrace;
     jmethodID AnrDetector_onPrintTrace;
+
+    jmethodID AnrDetector_onNativeBacktraceDumped;
 
     jmethodID ThreadPriorityDetective_onMainThreadPriorityModified;
     jmethodID ThreadPriorityDetective_onMainThreadTimerSlackModified;
@@ -118,7 +120,6 @@ int my_prctl(int option, unsigned long arg2, unsigned long arg3,
 
 void writeAnr(const std::string& content, const std::string &filePath) {
     unHookAnrTraceWrite();
-    std::stringstream stringStream(content);
     std::string to;
     std::ofstream outfile;
     outfile.open(filePath);
@@ -156,9 +157,9 @@ ssize_t my_write(int fd, const void* const buf, size_t count) {
         if (buf != nullptr) {
             std::string targetFilePath;
             if (fromMyPrintTrace) {
-                targetFilePath = printTracePathstring;
+                targetFilePath = printTracePathString;
             } else {
-                targetFilePath = anrTracePathstring;
+                targetFilePath = anrTracePathString;
             }
             if (!targetFilePath.empty()) {
                 char *content = (char *) buf;
@@ -235,6 +236,16 @@ bool anrDumpTraceCallback() {
     env->CallStaticVoidMethod(gJ.AnrDetective, gJ.AnrDetector_onANRDumpTrace);
     return true;
 }
+
+bool nativeBacktraceDumpCallback() {
+    JNIEnv *env = JniInvocation::getEnv();
+    if (!env) return false;
+    env->CallStaticVoidMethod(gJ.AnrDetective, gJ.AnrDetector_onNativeBacktraceDumped);
+    std::string to;
+    std::ofstream outfile;
+    return true;
+}
+
 
 bool printTraceCallback() {
     JNIEnv *env = JniInvocation::getEnv();
@@ -322,9 +333,9 @@ void unHookAnrTraceWrite() {
 static void nativeInitSignalAnrDetective(JNIEnv *env, jclass, jstring anrTracePath, jstring printTracePath) {
     const char* anrTracePathChar = env->GetStringUTFChars(anrTracePath, nullptr);
     const char* printTracePathChar = env->GetStringUTFChars(printTracePath, nullptr);
-    anrTracePathstring = std::string(anrTracePathChar);
-    printTracePathstring = std::string(printTracePathChar);
-    sAnrDumper.emplace(anrTracePathChar, printTracePathChar, anrDumpCallback);
+    anrTracePathString = std::string(anrTracePathChar);
+    printTracePathString = std::string(printTracePathChar);
+    sAnrDumper.emplace(anrTracePathChar, printTracePathChar);
 }
 
 static void nativeFreeSignalAnrDetective(JNIEnv *env, jclass) {
@@ -351,6 +362,7 @@ static void nativeInitTouchEventLagDetective(JNIEnv *env, jclass, jint threshold
     TouchEventTracer::start(threshold);
 
 }
+
 static void nativePrintTrace() {
     fromMyPrintTrace = true;
     kill(getpid(), SIGQUIT);
@@ -392,6 +404,9 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *) {
             env->GetStaticMethodID(anrDetectiveCls, "onANRDumpTrace", "()V");
     gJ.AnrDetector_onPrintTrace =
             env->GetStaticMethodID(anrDetectiveCls, "onPrintTrace", "()V");
+
+    gJ.AnrDetector_onNativeBacktraceDumped =
+            env->GetStaticMethodID(anrDetectiveCls, "onNativeBacktraceDumped", "()V");
 
 
     if (env->RegisterNatives(

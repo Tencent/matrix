@@ -14,6 +14,7 @@ import android.os.Process
 import android.text.TextUtils
 import androidx.lifecycle.*
 import com.tencent.matrix.lifecycle.IStateObserver
+import com.tencent.matrix.lifecycle.MatrixLifecycleThread
 import com.tencent.matrix.lifecycle.StatefulOwner
 import com.tencent.matrix.listeners.IAppForeground
 import com.tencent.matrix.util.*
@@ -60,7 +61,7 @@ object ProcessUILifecycleOwner {
 
     // ========================== base ========================== //
 
-    private val runningHandler = MatrixHandlerThread.getDefaultHandler()
+    private val runningHandler = MatrixLifecycleThread.handler
 
     private val stub = Any()
     private val createdActivities = WeakHashMap<Activity, Any>()

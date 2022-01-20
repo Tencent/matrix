@@ -25,8 +25,8 @@ import android.os.SystemClock;
 import android.view.FrameMetrics;
 import android.view.Window;
 
-import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.Matrix;
+import com.tencent.matrix.lifecycle.owners.ProcessUILifecycleOwner;
 import com.tencent.matrix.report.Issue;
 import com.tencent.matrix.trace.TracePlugin;
 import com.tencent.matrix.trace.config.SharePluginInfo;
@@ -380,7 +380,7 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
                     long vsynTime = frameMetricsCopy.getMetric(FrameMetrics.VSYNC_TIMESTAMP);
                     long intendedVsyncTime = frameMetricsCopy.getMetric(FrameMetrics.INTENDED_VSYNC_TIMESTAMP);
                     frameMetricsCopy.getMetric(FrameMetrics.DRAW_DURATION);
-                    notifyListener(AppActiveMatrixDelegate.INSTANCE.getVisibleScene(), intendedVsyncTime, vsynTime, true, intendedVsyncTime, 0, 0, 0);
+                    notifyListener(ProcessUILifecycleOwner.INSTANCE.getVisibleScene(), intendedVsyncTime, vsynTime, true, intendedVsyncTime, 0, 0, 0);
                 }
             };
             this.frameListenerMap.put(activity.hashCode(), onFrameMetricsAvailableListener);

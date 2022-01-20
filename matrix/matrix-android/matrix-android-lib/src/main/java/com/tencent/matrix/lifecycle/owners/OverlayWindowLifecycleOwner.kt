@@ -6,6 +6,7 @@ import android.os.Handler
 import android.os.Looper
 import android.view.View
 import android.view.WindowManager
+import com.tencent.matrix.lifecycle.MatrixLifecycleThread
 import com.tencent.matrix.lifecycle.StatefulOwner
 import com.tencent.matrix.util.*
 
@@ -18,7 +19,7 @@ object OverlayWindowLifecycleOwner : StatefulOwner() {
     private const val TAG = "Matrix.OverlayWindowLifecycleOwner"
 
     private val overlayViews = HashSet<Any>()
-    private val runningHandler = MatrixHandlerThread.getDefaultHandler()
+    private val runningHandler = MatrixLifecycleThread.handler
     private val mainHandler = Handler(Looper.getMainLooper())
 
     private var WindowManagerGlobal_mRoots: ArrayList<*>? = null

@@ -10,8 +10,8 @@ import android.os.Handler
 import android.os.Message
 import android.os.Process
 import android.util.ArrayMap
+import com.tencent.matrix.lifecycle.MatrixLifecycleThread
 import com.tencent.matrix.lifecycle.StatefulOwner
-import com.tencent.matrix.util.MatrixHandlerThread
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.safeApply
 import com.tencent.matrix.util.safeLetOrNull
@@ -42,7 +42,7 @@ object ForegroundServiceLifecycleOwner : StatefulOwner() {
 
     private var fgServiceHandler: FgServiceHandler? = null
 
-    private val runningHandler = MatrixHandlerThread.getDefaultHandler()
+    private val runningHandler = MatrixLifecycleThread.handler
 
     fun init(context: Context) {
         if (Build.VERSION.SDK_INT > 31) { // for safety

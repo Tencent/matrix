@@ -6,16 +6,29 @@ import java.util.List;
 public class TrafficConfig {
     private boolean rxCollectorEnable;
     private boolean txCollectorEnable;
-    private boolean dumpStackTrace;
+    private boolean dumpStackTraceEnable;
+    private boolean dumpNativeBackTraceEnable;
+    private boolean lookupIpAddressEnable;
     private List<String> ignoreSoList = new ArrayList<>();
 
     public  TrafficConfig() {
 
     }
-    public TrafficConfig(boolean rxCollectorEnable, boolean txCollectorEnable, boolean dumpStackTrace) {
+
+    public TrafficConfig(boolean rxCollectorEnable, boolean txCollectorEnable, boolean dumpStackTraceEnable) {
         this.rxCollectorEnable = rxCollectorEnable;
         this.txCollectorEnable = txCollectorEnable;
-        this.dumpStackTrace = dumpStackTrace;
+        this.dumpStackTraceEnable = dumpStackTraceEnable;
+        this.dumpNativeBackTraceEnable = false;
+        this.lookupIpAddressEnable = false;
+    }
+
+    public TrafficConfig(boolean rxCollectorEnable, boolean txCollectorEnable, boolean dumpStackTraceEnable, boolean dumpNativeBackTraceEnable, boolean lookupIpAddressEnable) {
+        this.rxCollectorEnable = rxCollectorEnable;
+        this.txCollectorEnable = txCollectorEnable;
+        this.dumpStackTraceEnable = dumpStackTraceEnable;
+        this.dumpNativeBackTraceEnable = dumpNativeBackTraceEnable;
+        this.lookupIpAddressEnable = lookupIpAddressEnable;
     }
 
     public boolean isRxCollectorEnable() {
@@ -33,11 +46,27 @@ public class TrafficConfig {
     }
 
     public boolean willDumpStackTrace() {
-        return dumpStackTrace;
+        return dumpStackTraceEnable;
     }
 
-    public void setDumpStackTrace(boolean dumpStackTrace) {
-        this.dumpStackTrace = dumpStackTrace;
+    public void setDumpStackTraceEnable(boolean dumpStackTraceEnable) {
+        this.dumpStackTraceEnable = dumpStackTraceEnable;
+    }
+
+    public boolean willDumpNativeBackTrace() {
+        return dumpNativeBackTraceEnable;
+    }
+
+    public void setDumpNativeBackTrace(boolean dumpNativeBackTraceEnable) {
+        this.dumpNativeBackTraceEnable = dumpNativeBackTraceEnable;
+    }
+
+    public boolean willLookupIpAddress() {
+        return lookupIpAddressEnable;
+    }
+
+    public void setLookupIpAddressEnable(boolean lookupIpAddressEnable) {
+        this.lookupIpAddressEnable = lookupIpAddressEnable;
     }
 
     public void addIgnoreSoFile(String soName) {
