@@ -79,12 +79,13 @@ object ProcessSupervisor : IProcessListener by ProcessSubordinate.processListene
             throw IllegalStateException("Supervisor NOT initialized yet or Supervisor is disabled!!!")
         }
 
-        val serviceInfo =
+        val serviceInfo = safeLetOrNull(TAG) {
             application!!.packageManager.getPackageInfo(
                 application!!.packageName, PackageManager.GET_SERVICES
             ).services.find {
                 it.name == SupervisorService::class.java.name
             }
+        }
 
         return@lazy MatrixUtil.getProcessName(application!!) == serviceInfo?.processName
     }
