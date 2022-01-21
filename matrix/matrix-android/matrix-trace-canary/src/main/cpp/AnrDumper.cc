@@ -55,7 +55,7 @@ const char* mAnrTraceFile;
 const char* mPrintTraceFile;
 
 AnrDumper::AnrDumper(const char* anrTraceFile, const char* printTraceFile) {
-    // must unblocked SIGQUIT, otherwise the signal handler can not capture SIGQUIT
+    // must unblock SIGQUIT, otherwise the signal handler can not capture SIGQUIT
     mAnrTraceFile = anrTraceFile;
     mPrintTraceFile = printTraceFile;
     sigset_t sigSet;
