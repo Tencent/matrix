@@ -33,6 +33,11 @@ device_map = {
     'iPad4,4' : 'iPad mini 2G',
     'iPad4,5' : 'iPad mini 2G',
     'iPad4,6' : 'iPad mini 2G',
+    'iPad4,7' : 'iPad mini 3',
+    'iPad4,8' : 'iPad mini 3',
+    'iPad4,9' : 'iPad mini 3',
+    'iPad5,1' : 'iPad mini 4',
+    'iPad5,2' : 'iPad mini 4',
 
     'iPad1,1' : 'iPad 1G',
     'iPad2,1' : 'iPad 2',
@@ -48,6 +53,19 @@ device_map = {
     'iPad4,1' : 'iPad Air',
     'iPad4,2' : 'iPad Air',
     'iPad4,3' : 'iPad Air',
+    'iPad5,3' : 'iPad Air 2',
+    'iPad5,4' : 'iPad Air 2',
+    'iPad6,3' : 'iPad Pro 9.7-inch',
+    'iPad6,4' : 'iPad Pro 9.7-inch',
+    'iPad6,7' : 'iPad Pro 12.9-inch',
+    'iPad6,8' : 'iPad Pro 12.9-inch',
+    'iPad6,11' : 'iPad 5',
+    'iPad6,12' : 'iPad 5',
+    'iPad7,11' : 'iPad 6',
+    'iPad7,12' : 'iPad 6',
+    'iPad7,1' : 'iPad Pro 12.9-inch 2',
+    'iPad7,2' : 'iPad Pro 12.9-inch 2',
+    'iPad7,3' : 'iPad Pro 10.5-inch',
 
 
     'iPhone1,1' : 'iPhone',
@@ -83,6 +101,13 @@ device_map = {
     'iPhone11,4' : 'iPhone XS Max',
     'iPhone11,6' : 'iPhone XS Max',
     'iPhone11,8' : 'iPhone XR',
+    'iPhone12,1' : 'iPhone 11',
+    'iPhone12,3' : 'iPhone 11 Pro',
+    'iPhone12,5' : 'iPhone 11 Pro Max',
+    'iPhone13,1' : 'iPhone 12 mini',
+    'iPhone13,2' : 'iPhone 12',
+    'iPhone13,3' : 'iPhone 12 Pro',
+    'iPhone13,4' : 'iPhone 12 Pro Max',
 }
 
 def dump_json(obj):
