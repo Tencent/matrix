@@ -152,7 +152,7 @@ matrix {
             unusedResources = project.ext.unusedResourcesSet
         }
 
-        enable false
+        enable true
         needSign true
         shrinkArsc true
         shrinkDuplicates true
