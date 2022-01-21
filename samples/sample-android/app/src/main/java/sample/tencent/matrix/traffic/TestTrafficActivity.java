@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.plugin.PluginListener;
@@ -71,9 +72,9 @@ public class TestTrafficActivity extends Activity {
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
-                                threadTextView.setText("TotalTraffic : " + totalTraffic + " Bytes");
+                                threadTextView.setText("Total Traffic : " + totalTraffic + " Bytes");
                                 totalTrafficTextView.setText("Thread Name : " + threadName);
-                                stackTextView.setText("stack : " + stack);
+                                stackTextView.setText("Stack Trace: " + stack);
                             }
                         });
                         trafficPlugin.clearTrafficInfo();
@@ -142,6 +143,15 @@ public class TestTrafficActivity extends Activity {
             inputStream.close();
             fileOutputStream.close();
             connection.disconnect();
+            boolean delete = file.delete();
+            if (delete) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(TestTrafficActivity.this, "download finish, delete the file", Toast.LENGTH_LONG).show();
+                    }
+                });
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
