@@ -49,12 +49,13 @@
 #define O_TRUNC 00001000
 
 namespace MatrixTracer {
+static const int NATIVE_DUMP_TIMEOUT = 2; // 2 seconds
 static sigset_t old_sigSet;
 const char* mAnrTraceFile;
 const char* mPrintTraceFile;
 
-AnrDumper::AnrDumper(const char* anrTraceFile, const char* printTraceFile, AnrDumper::DumpCallbackFunction &&callback) : mCallback(callback) {
-    // must unblocked SIGQUIT, otherwise the signal handler can not capture SIGQUIT
+AnrDumper::AnrDumper(const char* anrTraceFile, const char* printTraceFile) {
+    // must unblock SIGQUIT, otherwise the signal handler can not capture SIGQUIT
     mAnrTraceFile = anrTraceFile;
     mPrintTraceFile = printTraceFile;
     sigset_t sigSet;
@@ -131,11 +132,9 @@ static void sendSigToSignalCatcher() {
 
 static void *anrCallback(void* arg) {
     anrDumpCallback();
-
     if (strlen(mAnrTraceFile) > 0) {
         hookAnrTraceWrite(false);
     }
-
     sendSigToSignalCatcher();
     return nullptr;
 }
@@ -149,22 +148,54 @@ static void *siUserCallback(void* arg) {
     return nullptr;
 }
 
-SignalHandler::Result AnrDumper::handleSignal(int sig, const siginfo_t *info, void *uc) {
-    // Only process SIGQUIT, which indicates an ANR.
-    if (sig != SIGQUIT) return NOT_HANDLED;
+void* AnrDumper::nativeBacktraceCallback(void* arg) {
+    nativeBacktraceDumpCallback();
+    restoreNativeBacktraceHandlersLocked();
+    sigval val;
+    val.sival_int = 1;
+
+    siginfo_t info;
+    memset(&info, 0, sizeof(siginfo_t));
+    info.si_signo = BIONIC_SIGNAL_DEBUGGER;
+    info.si_code = SI_QUEUE;
+    info.si_pid = getpid();
+    info.si_uid = getuid();
+    info.si_value = val;
+    syscall(SYS_rt_sigqueueinfo, getpid(), BIONIC_SIGNAL_DEBUGGER, &info);
+    sleep(NATIVE_DUMP_TIMEOUT);
+    installNativeBacktraceHandlersLocked();
+    return nullptr;
+}
+
+void AnrDumper::handleSignal(int sig, const siginfo_t *info, void *uc) {
     int fromPid1 = info->_si_pad[3];
     int fromPid2 = info->_si_pad[4];
     int myPid = getpid();
-
-    pthread_t thd;
-    if (fromPid1 != myPid && fromPid2 != myPid) {
-        pthread_create(&thd, nullptr, anrCallback, nullptr);
-    } else {
-        pthread_create(&thd, nullptr, siUserCallback, nullptr);
+    bool fromMySelf = fromPid1 == myPid || fromPid2 == myPid;
+    if (sig == SIGQUIT) {
+        pthread_t thd;
+        if (!fromMySelf) {
+            pthread_create(&thd, nullptr, anrCallback, nullptr);
+        } else {
+            pthread_create(&thd, nullptr, siUserCallback, nullptr);
+        }
+        pthread_detach(thd);
     }
-    pthread_detach(thd);
+}
 
-    return HANDLED_NO_RETRIGGER;
+
+void AnrDumper::handleDebuggerSignal(int sig, const siginfo_t *info, void *uc) {
+    if (sig == BIONIC_SIGNAL_DEBUGGER) {
+        int fromPid1 = info->_si_pad[3];
+        int fromPid2 = info->_si_pad[4];
+        int myPid = getpid();
+        bool fromMySelf = fromPid1 == myPid || fromPid2 == myPid;
+        if (!fromMySelf) {
+            pthread_t thd;
+            pthread_create(&thd, nullptr, nativeBacktraceCallback, nullptr);
+            pthread_detach(thd);
+        }
+    }
 }
 
 static void *anr_trace_callback(void* args) {

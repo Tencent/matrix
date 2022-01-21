@@ -27,6 +27,9 @@ import com.tencent.matrix.resource.analyzer.model.DestroyedActivityInfo;
 import com.tencent.matrix.resource.config.ResourceConfig;
 import com.tencent.matrix.resource.processor.AutoDumpProcessor;
 import com.tencent.matrix.resource.processor.BaseLeakProcessor;
+import com.tencent.matrix.resource.processor.ForkAnalyseProcessor;
+import com.tencent.matrix.resource.processor.ForkDumpProcessor;
+import com.tencent.matrix.resource.processor.LazyForkAnalyzeProcessor;
 import com.tencent.matrix.resource.processor.ManualDumpProcessor;
 import com.tencent.matrix.resource.processor.NoDumpProcessor;
 import com.tencent.matrix.resource.processor.SilenceAnalyseProcessor;
@@ -49,20 +52,20 @@ import java.util.concurrent.TimeUnit;
 public class ActivityRefWatcher extends FilePublisher implements Watcher {
     private static final String TAG = "Matrix.ActivityRefWatcher";
 
-    private static final int  CREATED_ACTIVITY_COUNT_THRESHOLD = 1;
-    private static final long FILE_CONFIG_EXPIRED_TIME_MILLIS  = TimeUnit.DAYS.toMillis(1);
+    private static final int CREATED_ACTIVITY_COUNT_THRESHOLD = 1;
+    private static final long FILE_CONFIG_EXPIRED_TIME_MILLIS = TimeUnit.DAYS.toMillis(1);
 
     private static final String ACTIVITY_REFKEY_PREFIX = "MATRIX_RESCANARY_REFKEY_";
 
     private final ResourcePlugin mResourcePlugin;
 
-    private final RetryableTaskExecutor             mDetectExecutor;
-    private final int                               mMaxRedetectTimes;
-    private final long                              mBgScanTimes;
-    private final long                              mFgScanTimes;
+    private final RetryableTaskExecutor mDetectExecutor;
+    private final int mMaxRedetectTimes;
+    private final long mBgScanTimes;
+    private final long mFgScanTimes;
 
-    private final HandlerThread                     mHandlerThread;
-    private final Handler                           mHandler;
+    private final HandlerThread mHandlerThread;
+    private final Handler mHandler;
 
     private final ConcurrentLinkedQueue<DestroyedActivityInfo> mDestroyedActivityInfos;
 
@@ -93,6 +96,12 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher {
                     return new ManualDumpProcessor(watcher, watcher.getResourcePlugin().getConfig().getTargetActivity());
                 case SILENCE_ANALYSE:
                     return new SilenceAnalyseProcessor(watcher);
+                case FORK_DUMP:
+                    return new ForkDumpProcessor(watcher);
+                case FORK_ANALYSE:
+                    return new ForkAnalyseProcessor(watcher);
+                case LAZY_FORK_ANALYZE:
+                    return new LazyForkAnalyzeProcessor(watcher);
                 case NO_DUMP:
                 default:
                     return new NoDumpProcessor(watcher);

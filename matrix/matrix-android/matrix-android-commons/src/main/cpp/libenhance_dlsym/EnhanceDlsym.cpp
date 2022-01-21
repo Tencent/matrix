@@ -32,7 +32,7 @@
 #include <dlfcn.h>
 #include <set>
 #include "EnhanceDlsym.h"
-#include "JeLog.h"
+#include "../../../../../matrix-jectl/src/main/cpp/jectl/JeLog.h"
 
 #define TAG "Matrix.EnhanceDl"
 
@@ -283,8 +283,7 @@ namespace enhance {
         if (__handle) {
             auto info = static_cast<DlInfo *>(__handle);
             m_opened_info.erase(info);
-            free(info->strtab);
-            free(info);
+            delete info;
 
             std::map<void *, ElfW(Sym) *> empty;
             empty.swap(m_founded_symtab);

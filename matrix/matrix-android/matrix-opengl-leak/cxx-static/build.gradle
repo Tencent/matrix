@@ -1,0 +1,72 @@
+apply plugin: 'com.android.library'
+
+apply from: rootProject.file('gradle/WeChatNativeDepend.gradle')
+
+android {
+    compileSdkVersion rootProject.compileSdkVersion
+
+    defaultConfig {
+        minSdkVersion MIN_SDK_VERSION_FOR_HOOK
+        targetSdkVersion rootProject.targetSdkVersion
+        versionCode rootProject.VERSION_CODE
+        versionName rootProject.VERSION_NAME
+
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+
+        ndk {
+            abiFilters rootProject.ABI_FILTERS as String[]
+        }
+
+        externalNativeBuild {
+            cmake {
+                arguments = ['-DANDROID_STL=c++_static', "-DEnableLOG=${gradle.enableLog() ? "ON" : "OFF"}" as String]
+            }
+
+            exportHeaders {
+                from('../src/main/cpp/common') {
+                    include '**/*.h'
+                    include '*.h'
+                }
+            }
+        }
+    }
+
+    buildTypes {
+
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path "../CMakeLists.txt"
+        }
+    }
+
+    sourceSets {
+        main {
+            java.srcDirs = ['../src/main/java']
+            res.srcDirs = ['../src/main/res']
+            aidl.srcDirs = ['../src/main/aidl']
+            manifest.srcFile '../src/main/AndroidManifest.xml'
+        }
+    }
+
+}
+
+apply from: project.file('../dependencies.gradle')
+
+group = rootProject.GROUP
+version = "${rootProject.VERSION_NAME}-STATIC"
+
+if("External" == rootProject.ext.PUBLISH_CHANNEL) {
+    apply from: rootProject.file('gradle/android-publish.gradle')
+}
+else {
+    apply from: rootProject.file('gradle/WeChatPublish.gradle')
+    wechatPublish {
+        artifactId = POM_ARTIFACT_ID
+    }
+}

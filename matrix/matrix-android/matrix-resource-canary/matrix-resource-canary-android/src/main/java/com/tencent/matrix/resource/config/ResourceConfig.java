@@ -27,13 +27,16 @@ import java.util.concurrent.TimeUnit;
 public final class ResourceConfig {
     public static final String TAG = "Matrix.ResourceConfig";
 
+    public static final int FORK_DUMP_SUPPORTED_API_GUARD = 31; // Now is Android 12 (S).
+
     public enum DumpMode {
         NO_DUMP, // report only
         AUTO_DUMP, // auto dump hprof
         MANUAL_DUMP, // notify only
         SILENCE_ANALYSE, // dump and analyse hprof when screen off
-        FORK_DUMP, // fork dump hprof immediately TODO
-        FORK_ANALYSE, // fork dump and analyse hprof immediately TODO
+        FORK_DUMP, // fork dump hprof immediately
+        FORK_ANALYSE, // fork dump and analyse hprof immediately
+        LAZY_FORK_ANALYZE, // fork dump immediately but analyze hprof until the screen is off
     }
 
     private static final long DEFAULT_DETECT_INTERVAL_MILLIS = TimeUnit.MINUTES.toMillis(1);
@@ -45,12 +48,14 @@ public final class ResourceConfig {
     private final DumpMode mDumpHprofMode;
     private final boolean mDetectDebugger;
     private final String mTargetActivity;
+    private final String mManufacture;
 
-    private ResourceConfig(IDynamicConfig dynamicConfig, DumpMode dumpHprofMode, boolean detectDebuger, String targetActivity) {
+    private ResourceConfig(IDynamicConfig dynamicConfig, DumpMode dumpHprofMode, boolean detectDebuger, String targetActivity, String manufacture) {
         this.mDynamicConfig = dynamicConfig;
         this.mDumpHprofMode = dumpHprofMode;
         this.mDetectDebugger = detectDebuger;
         this.mTargetActivity = targetActivity;
+        this.mManufacture = manufacture;
     }
 
     public long getScanIntervalMillis() {
@@ -77,12 +82,17 @@ public final class ResourceConfig {
         return mDetectDebugger;
     }
 
+    public String getManufacture() {
+        return mManufacture;
+    }
+
     public static final class Builder {
 
         private DumpMode mDefaultDumpHprofMode = DEFAULT_DUMP_HPROF_MODE;
         private IDynamicConfig dynamicConfig;
         private String mTargetActivity;
         private boolean mDetectDebugger = false;
+        private String mManufacture;
 
         public Builder dynamicConfig(IDynamicConfig dynamicConfig) {
             this.dynamicConfig = dynamicConfig;
@@ -104,8 +114,13 @@ public final class ResourceConfig {
             return this;
         }
 
+        public Builder setManufacture(String manufacture) {
+            mManufacture = manufacture;
+            return this;
+        }
+
         public ResourceConfig build() {
-            return new ResourceConfig(dynamicConfig, mDefaultDumpHprofMode, mDetectDebugger, mTargetActivity);
+            return new ResourceConfig(dynamicConfig, mDefaultDumpHprofMode, mDetectDebugger, mTargetActivity, mManufacture);
         }
     }
 }

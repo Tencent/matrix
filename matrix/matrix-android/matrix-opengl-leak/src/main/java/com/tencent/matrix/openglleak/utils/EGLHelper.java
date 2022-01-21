@@ -7,10 +7,11 @@ import android.opengl.EGLDisplay;
 import android.opengl.EGLSurface;
 import android.opengl.GLES20;
 import android.os.Build;
-
 import androidx.annotation.RequiresApi;
 
 public class EGLHelper {
+
+    private static final String TAG = "MicroMsg.EGLHelper";
 
     private static EGLDisplay mEGLDisplay;
     private static EGLConfig mEglConfig;
@@ -73,6 +74,22 @@ public class EGLHelper {
         }
 
         GLES20.glFlush();
+    }
+
+    public static boolean isEglContextAlive(EGLContext context) {
+        int[] eglContextAttribList = new int[]{
+                EGL14.EGL_CONTEXT_CLIENT_VERSION, 2,
+                EGL14.EGL_NONE
+        };
+
+        EGLContext testContext = EGL14.eglCreateContext(mEGLDisplay, mEglConfig, context, eglContextAttribList, 0);
+        if (testContext == EGL14.EGL_NO_CONTEXT) {
+            return false;
+        }
+
+        EGL14.eglDestroyContext(mEGLDisplay, testContext);
+
+        return true;
     }
 
 }

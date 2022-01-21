@@ -28,14 +28,11 @@
 
 
 namespace thread_trace {
-    //void add_hook_parent_thread_name(const char *__regex_str);
     void thread_trace_init();
 
     void add_hook_thread_name(const char *regex_str);
 
-    void pthread_dump(const char *path = "/sdcard/pthread_hook.log");
-
-    void pthread_dump_json(const char *path = "/sdcard/pthread_hook.log");
+    void pthread_dump_json(const char *path);
 
     void enable_quicken_unwind(const bool enable);
 

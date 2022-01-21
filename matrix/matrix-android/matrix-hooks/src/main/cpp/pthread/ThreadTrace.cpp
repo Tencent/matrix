@@ -238,7 +238,7 @@ static void notify_routine(const pthread_t pthread) {
     m_subroutine_cv.notify_all();
 }
 
-// notice: 在父线程回调此函数
+// notice: call from parent thread who calls pthread_create
 void thread_trace::handle_pthread_create(const pthread_t pthread) {
     const char *arch =
 #ifdef __aarch64__
@@ -286,13 +286,6 @@ void thread_trace::handle_pthread_create(const pthread_t pthread) {
     LOGD(TAG, "------ on_pthread_create end");
 }
 
-/**
- * ~~handle_pthread_setname_np 有可能在 handle_pthread_create 之前先执行~~
- * 在增加了 cond 之后, 必然后于 on_pthread_create 执行
- *
- * @param pthread
- * @param name
- */
 void thread_trace::handle_pthread_setname_np(pthread_t pthread, const char *name) {
     if (NULL == name) {
         LOGE(TAG, "setting name null");
@@ -312,8 +305,7 @@ void thread_trace::handle_pthread_setname_np(pthread_t pthread, const char *name
     {
         pthread_meta_lock meta_lock(m_pthread_meta_mutex);
 
-        if (!m_pthread_metas.count(pthread)) { // always false
-            // 到这里说明没有回调 on_pthread_create, setname 对 on_pthread_create 是可见的
+        if (UNLIKELY(!m_pthread_metas.count(pthread))) {
             auto lost_thread_name = static_cast<char *>(malloc(sizeof(char) * THREAD_NAME_LEN));
             pthread_getname_ext(pthread, lost_thread_name, THREAD_NAME_LEN);
             LOGE(TAG,
@@ -322,8 +314,6 @@ void thread_trace::handle_pthread_setname_np(pthread_t pthread, const char *name
             free(lost_thread_name);
             return;
         }
-
-        // 到这里说明 on_pthread_create 已经回调了, 需要修正并检查新的线程名是否 match 正则
 
         pthread_meta_t &meta = m_pthread_metas.at(pthread);
 
@@ -334,14 +324,14 @@ void thread_trace::handle_pthread_setname_np(pthread_t pthread, const char *name
 
         bool parent_match = m_filtered_pthreads.count(pthread) != 0;
 
-        // 如果新线程名不 match, 但父线程名 match, 说明需要从 filter 集合中移除
+        // new thread name does NOT match the regex, should be removed
         if (!test_match_thread_name(meta) && parent_match) {
             m_filtered_pthreads.erase(pthread);
             LOGD(TAG, "--------------------------");
             return;
         }
 
-        // 如果新线程 match, 但父线程名不 match, 说明需要添加仅 filter 集合
+        // new thread name matches the regex, should be added
         if (test_match_thread_name(meta) && !parent_match) {
             m_filtered_pthreads.insert(pthread);
             LOGD(TAG, "--------------------------");
@@ -349,7 +339,6 @@ void thread_trace::handle_pthread_setname_np(pthread_t pthread, const char *name
         }
     }
 
-    // 否则, 啥也不干 (都 match, 都不 match)
     LOGD(TAG, "--------------------------");
 }
 
@@ -451,22 +440,6 @@ static inline void pthread_dump_impl(FILE *log_file) {
                      meta.java_stacktrace.load(std::memory_order_acquire));
         }
     }
-}
-
-void thread_trace::pthread_dump(const char *path) {
-    LOGD(TAG,
-         ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> pthread dump begin <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
-    pthread_meta_lock meta_lock(m_pthread_meta_mutex);
-
-    FILE *log_file = fopen(path, "w+");
-    LOGD(TAG, "pthread dump path = %s", path);
-
-    pthread_dump_impl(log_file);
-
-    fclose(log_file);
-
-    LOGD(TAG,
-         ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> pthread dump end <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
 }
 
 static inline bool append_meta_2_json_array(cJSON *json_array,
@@ -597,10 +570,12 @@ static inline void pthread_dump_json_impl(FILE *log_file) {
     std::map<uint64_t, std::vector<pthread_meta_t>> pthread_metas_not_exited;
 
     for (auto &i : m_filtered_pthreads) {
-        auto &meta = m_pthread_metas[i];
-        if (meta.hash) {
-            auto &hash_bucket = pthread_metas_not_exited[meta.hash];
-            hash_bucket.emplace_back(meta);
+        if (m_pthread_metas.count(i)) {
+            auto &meta = m_pthread_metas.at(i);
+            if (meta.hash) {
+                auto &hash_bucket = pthread_metas_not_exited[meta.hash];
+                hash_bucket.emplace_back(meta);
+            }
         }
     }
 
@@ -688,7 +663,7 @@ static void erase_meta(std::map<pthread_t, pthread_meta_t> &metas, pthread_t &pt
         free(java_stacktrace);
     }
 
-    m_pthread_metas.erase(pthread);
+    metas.erase(pthread);
 }
 
 static void on_pthread_release(pthread_t pthread) {
@@ -700,8 +675,10 @@ static void on_pthread_release(pthread_t pthread) {
         return;
     }
 
-    erase_meta(m_pthread_metas, pthread, m_pthread_metas.at(pthread));
-
+    auto &meta = m_pthread_metas.at(pthread);
+    if (meta.exited) { // for pthread_join, it is always true. for pthread_detach, it is more likely to be false and do erase when routine exited
+        erase_meta(m_pthread_metas, pthread, meta);
+    }
     LOGD(TAG, "on_pthread_release end");
 }
 
