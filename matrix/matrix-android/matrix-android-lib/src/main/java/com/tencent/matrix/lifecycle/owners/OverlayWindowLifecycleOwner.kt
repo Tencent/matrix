@@ -5,6 +5,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.view.View
+import android.view.ViewGroup
 import android.view.WindowManager
 import com.tencent.matrix.lifecycle.MatrixLifecycleThread
 import com.tencent.matrix.lifecycle.StatefulOwner
@@ -24,6 +25,9 @@ object OverlayWindowLifecycleOwner : StatefulOwner() {
 
     private var WindowManagerGlobal_mRoots: ArrayList<*>? = null
 
+    @Volatile
+    private var injected = false
+
     private val Field_ViewRootImpl_mView by lazy {
         safeLetOrNull(TAG) {
             ReflectFiled<View>(Class.forName("android.view.ViewRootImpl"), "mView")
@@ -38,6 +42,14 @@ object OverlayWindowLifecycleOwner : StatefulOwner() {
         inject()
     }
 
+    private fun ViewGroup.LayoutParams.isOverlayType(): Boolean {
+        return this is WindowManager.LayoutParams && if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            this.type == WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY || this.type == WindowManager.LayoutParams.TYPE_PHONE
+        } else {
+            this.type == WindowManager.LayoutParams.TYPE_PHONE
+        }
+    }
+
     private val onViewRootChangedListener: ArrayListProxy.OnDataChangedListener by lazy {
         object : ArrayListProxy.OnDataChangedListener {
             override fun onAdded(o: Any) {
@@ -46,11 +58,7 @@ object OverlayWindowLifecycleOwner : StatefulOwner() {
                     val view = safeLetOrNull(TAG) {
                         Field_ViewRootImpl_mView?.get(o) as View
                     }
-                    val layoutParams = view?.layoutParams
-                    if (layoutParams is WindowManager.LayoutParams
-                        && (layoutParams.type == WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-                                || layoutParams.type == WindowManager.LayoutParams.TYPE_PHONE)
-                    ) {
+                    if (view?.layoutParams?.isOverlayType() == true) {
                         if (overlayViews.isEmpty()) {
                             runningHandler.post {
                                 turnOn()
@@ -74,6 +82,10 @@ object OverlayWindowLifecycleOwner : StatefulOwner() {
 
     @Suppress("LocalVariableName")
     private fun inject() = safeApply(TAG) {
+        if (injected) {
+            MatrixLog.e(TAG, "already injected")
+            return@safeApply
+        }
         val Clazz_WindowManagerGlobal = Class.forName("android.view.WindowManagerGlobal")
 
         val WindowManagerGlobal_instance =
@@ -89,18 +101,24 @@ object OverlayWindowLifecycleOwner : StatefulOwner() {
                 WindowManagerGlobal_instance
             )
             val proxy = ArrayListProxy(origin, onViewRootChangedListener)
-            ReflectUtils.set(Clazz_WindowManagerGlobal, "mRoots", WindowManagerGlobal_instance, proxy)
+            ReflectUtils.set(
+                Clazz_WindowManagerGlobal,
+                "mRoots",
+                WindowManagerGlobal_instance,
+                proxy
+            )
             WindowManagerGlobal_mRoots = proxy
         }
+        injected = true
     }
 
+    @Volatile
     private var fallbacked = false
 
-    fun hasVisibleWindow() = safeLet(TAG, log = true, defVal = false) {
+    private fun prepareWindowGlobal() {
         if (WindowManagerGlobal_mRoots == null) {
             if (fallbacked) {
-                MatrixLog.e(TAG, "WindowManagerGlobal_mRoots not found")
-                return@safeLet false
+                throw ClassNotFoundException("WindowManagerGlobal_mRoots not found")
             }
             MatrixLog.i(TAG, "monitor disabled, fallback init")
             fallbacked = true
@@ -112,13 +130,15 @@ object OverlayWindowLifecycleOwner : StatefulOwner() {
             }
         }
         if (WindowManagerGlobal_mRoots == null) {
-            MatrixLog.e(TAG, "WindowManagerGlobal_mRoots not found")
-            return@safeLet false
+            throw ClassNotFoundException("WindowManagerGlobal_mRoots not found")
         }
         if (Field_ViewRootImpl_mView == null) {
-            MatrixLog.e(TAG, "Field_ViewRootImpl_mView not found")
-            return@safeLet false
+            throw ClassNotFoundException("Field_ViewRootImpl_mView not found")
         }
+    }
+
+    fun hasVisibleWindow() = safeLet(TAG, log = true, defVal = false) {
+        prepareWindowGlobal()
         return@safeLet WindowManagerGlobal_mRoots!!.any {
             val v = Field_ViewRootImpl_mView!!.get(it)
             // windowVisibility is determined by app vibility
@@ -127,12 +147,26 @@ object OverlayWindowLifecycleOwner : StatefulOwner() {
         }
     }
 
-    fun hasOverlayWindow() = active()
+    fun hasOverlayWindow() = if (injected) {
+        active()
+    } else safeLet(TAG, log = true, defVal = false) {
+        prepareWindowGlobal()
+        return@safeLet WindowManagerGlobal_mRoots!!.any {
+            val v = Field_ViewRootImpl_mView!!.get(it)
+            // windowVisibility is determined by app vibility
+            // until the PRIVATE_FLAG_FORCE_DECOR_VIEW_VISIBILITY is set, which is blocked in Q
+            return@any v != null
+                    && v.layoutParams?.isOverlayType() == true
+                    && View.VISIBLE == v.visibility
+                    && View.VISIBLE == v.windowVisibility
+        }
+    }
 
     /**
      * requires enable the monitor
      */
     internal fun getAllViews() = safeLet(TAG, log = true, defVal = emptyList<View>()) {
+        prepareWindowGlobal()
         return@safeLet WindowManagerGlobal_mRoots
             ?.map { Field_ViewRootImpl_mView!!.get(it) }
             ?.toList()
