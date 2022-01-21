@@ -1,0 +1,11 @@
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+
+    implementation project(':matrix-android-lib')
+    implementation project(':matrix-android-commons')
+    implementation project(':matrix-backtrace')
+
+    testImplementation 'junit:junit:4.12'
+    androidTestImplementation 'androidx.annotation:annotation:1.0.0'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.1'
+}

@@ -1,0 +1,12 @@
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+
+    testImplementation 'junit:junit:4.12'
+    implementation 'androidx.annotation:annotation:1.0.0'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.1'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.1.0'
+//    implementation "com.tencent.stubs:logger:${rootProject.LOGGER_VERSION}"
+    implementation project(':matrix-android-lib')
+    implementation project(':matrix-backtrace')
+    implementation project(':matrix-android-commons')
+}
