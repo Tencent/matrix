@@ -56,14 +56,12 @@ public class ThreadPriorityTracer extends Tracer {
     private static native void nativeInitMainThreadPriorityDetective();
 
     @Keep
-    private static void onMainThreadPriorityModified(int priority) {
+    private static void onMainThreadPriorityModified(int priorityBefore, int priorityAfter) {
+        if (sMainThreadPriorityModifiedListener != null) {
+            sMainThreadPriorityModifiedListener.onMainThreadPriorityModified(priorityBefore, priorityAfter);
+            return;
+        }
         try {
-
-            if (sMainThreadPriorityModifiedListener != null) {
-                sMainThreadPriorityModifiedListener.onMainThreadPriorityModified(priority);
-                return;
-            }
-
             TracePlugin plugin = Matrix.with().getPluginByClass(TracePlugin.class);
             if (null == plugin) {
                 return;
@@ -75,7 +73,7 @@ public class ThreadPriorityTracer extends Tracer {
             jsonObject = DeviceUtil.getDeviceInfo(jsonObject, Matrix.with().getApplication());
             jsonObject.put(SharePluginInfo.ISSUE_STACK_TYPE, Constants.Type.PRIORITY_MODIFIED);
             jsonObject.put(SharePluginInfo.ISSUE_THREAD_STACK, stackTrace);
-            jsonObject.put(SharePluginInfo.ISSUE_PROCESS_PRIORITY, priority);
+            jsonObject.put(SharePluginInfo.ISSUE_PROCESS_PRIORITY, priorityAfter);
 
             Issue issue = new Issue();
             issue.setTag(SharePluginInfo.TAG_PLUGIN_EVIL_METHOD);
@@ -121,7 +119,7 @@ public class ThreadPriorityTracer extends Tracer {
     }
 
     public interface MainThreadPriorityModifiedListener {
-        void onMainThreadPriorityModified(int priority);
+        void onMainThreadPriorityModified(int priorityBefore, int priorityAfter);
 
         void onMainThreadTimerSlackModified(long timerSlack);
     }

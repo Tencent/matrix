@@ -1,13 +1,14 @@
 package com.tencent.matrix.batterycanary;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore.Callback;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature;
+import com.tencent.matrix.batterycanary.utils.Consumer;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 /**
  * Matrix Battery Canary Plugin Facades.
@@ -26,6 +27,18 @@ final public class BatteryCanary {
             }
         }
         return null;
+    }
+
+    public static <T extends MonitorFeature> void getMonitorFeature(Class<T> clazz, Consumer<T> block) {
+        if (Matrix.isInstalled()) {
+            BatteryMonitorPlugin plugin = Matrix.with().getPluginByClass(BatteryMonitorPlugin.class);
+            if (plugin != null) {
+                T feat = plugin.core().getMonitorFeature(clazz);
+                if (feat != null) {
+                    block.accept(feat);
+                }
+            }
+        }
     }
 
     public static void currentJiffies(@NonNull final Callback<JiffiesSnapshot> callback) {

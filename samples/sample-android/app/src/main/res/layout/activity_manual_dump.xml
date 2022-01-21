@@ -1,21 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:orientation="vertical" android:layout_width="match_parent"
+    android:gravity="center"
+    android:layout_margin="16dp"
     android:layout_height="match_parent">
 
     <TextView
+        android:id="@+id/leak_activity"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:padding="10dp"
-        android:text="manual dump"
-        />
+        tools:text="Leak Activity"/>
 
-    <Button
+    <TextView
+        android:id="@+id/leak_process"
+        android:layout_marginTop="32dp"
+        android:layout_marginBottom="32dp"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:onClick="dump"
-        android:text="dump"/>
+        android:padding="10dp"
+        tools:text="Leak Process"/>
+
+    <TextView
+        android:id="@+id/reference_chain"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:padding="10dp"
+        tools:text="Reference Chain"/>
 
 </LinearLayout>

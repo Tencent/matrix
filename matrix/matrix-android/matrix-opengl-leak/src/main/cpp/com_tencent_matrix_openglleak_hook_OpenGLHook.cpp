@@ -38,6 +38,14 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_tencent_matrix_openglleak_hook_Op
         method_getStack = env->GetStaticMethodID(class_OpenGLHook, "getStack",
                                                  "()Ljava/lang/String;");
 
+        method_onGlBindTexture = env->GetStaticMethodID(class_OpenGLHook, "onGlBindTexture", "(II)V");
+        method_onGlBindBuffer = env->GetStaticMethodID(class_OpenGLHook, "onGlBindBuffer", "(II)V");
+        method_onGlBindFramebuffer = env->GetStaticMethodID(class_OpenGLHook, "onGlBindFramebuffer", "(II)V");
+        method_onGlBindRenderbuffer = env->GetStaticMethodID(class_OpenGLHook, "onGlBindRenderbuffer", "(II)V");
+        method_onGlTexImage2D = env->GetStaticMethodID(class_OpenGLHook, "onGlTexImage2D", "(IIIIIIIIJLjava/lang/String;J)V");
+        method_onGlTexImage3D = env->GetStaticMethodID(class_OpenGLHook, "onGlTexImage3D", "(IIIIIIIIIJLjava/lang/String;J)V");
+        method_onGlBufferData = env->GetStaticMethodID(class_OpenGLHook, "onGlBufferData", "(IIJLjava/lang/String;J)V");
+        method_onGlRenderbufferStorage = env->GetStaticMethodID(class_OpenGLHook, "onGlRenderbufferStorage", "(IIIIJLjava/lang/String;J)V");
         return true;
     }
 
@@ -252,4 +260,142 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_tencent_matrix_openglleak_hook_Op
 
     return true;
 }
+
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_com_tencent_matrix_openglleak_hook_OpenGLHook_hookGlTexImage2D(JNIEnv *env, jclass clazz, jint index) {
+    gl_hooks_t *hooks = get_gl_hooks();
+    if (NULL == hooks) {
+        return false;
+    }
+
+    void **origFunPtr = NULL;
+
+    origFunPtr = (void **) (&hooks->gl.foo1 + index);
+    system_glTexImage2D = (System_GlTexImage2D) *origFunPtr;
+    *origFunPtr = (void *) my_glTexImage2D;
+
+    return true;
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_com_tencent_matrix_openglleak_hook_OpenGLHook_hookGlTexImage3D(JNIEnv *env, jclass clazz, jint index) {
+    gl_hooks_t *hooks = get_gl_hooks();
+    if (NULL == hooks) {
+        return false;
+    }
+
+    void **origFunPtr = NULL;
+
+    origFunPtr = (void **) (&hooks->gl.foo1 + index);
+    system_glTexImage3D = (System_GlTexImage3D) *origFunPtr;
+    *origFunPtr = (void *) my_glTexImage3D;
+
+    return true;
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_com_tencent_matrix_openglleak_hook_OpenGLHook_hookGlBindTexture(JNIEnv *env, jclass clazz, jint index) {
+    gl_hooks_t *hooks = get_gl_hooks();
+    if (NULL == hooks) {
+        return false;
+    }
+
+    void **origFunPtr = NULL;
+
+    origFunPtr = (void **) (&hooks->gl.foo1 + index);
+    system_glBindTexture = (System_GlBind_TYPE) *origFunPtr;
+    *origFunPtr = (void *) my_glBindTexture;
+
+    return true;
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_com_tencent_matrix_openglleak_hook_OpenGLHook_hookGlBindBuffer(JNIEnv *env, jclass clazz, jint index) {
+    gl_hooks_t *hooks = get_gl_hooks();
+    if (NULL == hooks) {
+        return false;
+    }
+
+    void **origFunPtr = NULL;
+
+    origFunPtr = (void **) (&hooks->gl.foo1 + index);
+    system_glBindBuffer = (System_GlBind_TYPE) *origFunPtr;
+    *origFunPtr = (void *) my_glBindBuffer;
+
+    return true;
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_com_tencent_matrix_openglleak_hook_OpenGLHook_hookGlBindFramebuffer(JNIEnv *env, jclass clazz, jint index) {
+    gl_hooks_t *hooks = get_gl_hooks();
+    if (NULL == hooks) {
+        return false;
+    }
+
+    void **origFunPtr = NULL;
+
+    origFunPtr = (void **) (&hooks->gl.foo1 + index);
+    system_glBindFramebuffer = (System_GlBind_TYPE) *origFunPtr;
+    *origFunPtr = (void *) my_glBindFramebuffer;
+
+    return true;
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_com_tencent_matrix_openglleak_hook_OpenGLHook_hookGlBindRenderbuffer(JNIEnv *env, jclass clazz, jint index) {
+    gl_hooks_t *hooks = get_gl_hooks();
+    if (NULL == hooks) {
+        return false;
+    }
+
+    void **origFunPtr = NULL;
+
+    origFunPtr = (void **) (&hooks->gl.foo1 + index);
+    system_glBindRenderbuffer = (System_GlBind_TYPE) *origFunPtr;
+    *origFunPtr = (void *) my_glBindRenderbuffer;
+
+    return true;
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_com_tencent_matrix_openglleak_hook_OpenGLHook_hookGlBufferData(JNIEnv *env, jclass clazz, jint index) {
+    gl_hooks_t *hooks = get_gl_hooks();
+    if (NULL == hooks) {
+        return false;
+    }
+
+    void **origFunPtr = NULL;
+
+    origFunPtr = (void **) (&hooks->gl.foo1 + index);
+    system_glBufferData = (System_GlBufferData) *origFunPtr;
+    *origFunPtr = (void *) my_glBufferData;
+
+    return true;
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_com_tencent_matrix_openglleak_hook_OpenGLHook_hookGlRenderbufferStorage(JNIEnv *env, jclass clazz, jint index) {
+    gl_hooks_t *hooks = get_gl_hooks();
+    if (NULL == hooks) {
+        return false;
+    }
+
+    void **origFunPtr = NULL;
+
+    origFunPtr = (void **) (&hooks->gl.foo1 + index);
+    system_glRenderbufferStorage = (System_GlRenderbufferStorage) *origFunPtr;
+    *origFunPtr = (void *) my_glRenderbufferStorage;
+
+    return true;
+}
+
+
 

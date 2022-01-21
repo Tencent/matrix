@@ -71,6 +71,7 @@ public final class BatteryCanaryUtil {
     public interface Proxy {
         String getProcessName();
         String getPackageName();
+        int getBatteryTemperature(Context context);
         @AppStats.AppStatusDef int getAppStat(Context context, boolean isForeground);
         @AppStats.DevStatusDef int getDevStat(Context context);
         void updateAppStat(int value);
@@ -96,6 +97,7 @@ public final class BatteryCanaryUtil {
     static Proxy sCacheStub = new Proxy() {
         private String mProcessName;
         private String mPackageName;
+        private ExpireRef mBatteryTemp;
         private ExpireRef mLastAppStat;
         private ExpireRef mLastDevStat;
 
@@ -123,6 +125,16 @@ public final class BatteryCanaryUtil {
             }
             mPackageName = plugin.getPackageName();
             return mPackageName;
+        }
+
+        @Override
+        public int getBatteryTemperature(Context context) {
+            if (mBatteryTemp != null && !mBatteryTemp.isExpired()) {
+                return mBatteryTemp.value;
+            }
+            int tmp = getBatteryTemperatureImmediately(context);
+            mBatteryTemp = new ExpireRef(tmp, DEFAULT_AMS_CACHE_MILLIS);
+            return mBatteryTemp.value;
         }
 
         @Override
@@ -211,11 +223,11 @@ public final class BatteryCanaryUtil {
                 }
             }
         }
-        StringBuilder sb = new StringBuilder(stacks.size());
-        for (StackTraceElement stackTraceElement : stacks) {
-            sb.append(stackTraceElement).append('\n');
+        StringBuilder sb = new StringBuilder();
+        for (StackTraceElement traceElement : stacks) {
+            sb.append("\n").append("at ").append(traceElement);
         }
-        return sb.toString();
+        return sb.length() > 0 ? "Matrix" + sb.toString() : "";
     }
 
     public static String getThrowableStack(Throwable throwable) {
@@ -302,6 +314,10 @@ public final class BatteryCanaryUtil {
     }
 
     public static int getBatteryTemperature(Context context) {
+        return sCacheStub.getBatteryTemperature(context);
+    }
+
+    public static int getBatteryTemperatureImmediately(Context context) {
         try {
             Intent batIntent = context.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
             if (batIntent == null) return 0;

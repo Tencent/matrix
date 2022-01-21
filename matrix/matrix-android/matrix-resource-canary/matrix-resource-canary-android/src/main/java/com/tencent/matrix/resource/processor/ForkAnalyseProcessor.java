@@ -1,5 +1,7 @@
 package com.tencent.matrix.resource.processor;
 
+import android.os.Build;
+
 import com.tencent.matrix.memorydump.MemoryDumpManager;
 import com.tencent.matrix.resource.analyzer.model.ActivityLeakResult;
 import com.tencent.matrix.resource.analyzer.model.DestroyedActivityInfo;
@@ -26,6 +28,16 @@ public class ForkAnalyseProcessor extends BaseLeakProcessor {
 
     @Override
     public boolean process(DestroyedActivityInfo destroyedActivityInfo) {
+        if (Build.VERSION.SDK_INT > ResourceConfig.FORK_DUMP_SUPPORTED_API_GUARD) {
+            MatrixLog.e(TAG, "cannot fork-dump with unsupported API version " + Build.VERSION.SDK_INT);
+            publishIssue(
+                    SharePluginInfo.IssueType.ERR_UNSUPPORTED_API,
+                    ResourceConfig.DumpMode.FORK_ANALYSE,
+                    destroyedActivityInfo.mActivityName, destroyedActivityInfo.mKey,
+                    "Unsupported API", "0");
+            return false;
+        }
+
         getWatcher().triggerGc();
 
         if (dumpAndAnalyse(
@@ -47,14 +59,20 @@ public class ForkAnalyseProcessor extends BaseLeakProcessor {
 
         final File hprof = getDumpStorageManager().newHprofFile();
 
-        if (hprof == null) {
-            MatrixLog.e(TAG, "cannot create hprof file");
-            return false;
+        if (hprof != null) {
+            if (!MemoryDumpManager.dumpBlock(hprof.getPath())) {
+                MatrixLog.e(TAG, String.format("heap dump for further analyzing activity with key [%s] was failed, just ignore.",
+                        key));
+                return false;
+            }
         }
 
-        if (!MemoryDumpManager.dumpBlock(hprof.getPath())) {
-            MatrixLog.e(TAG, String.format("heap dump for further analyzing activity with key [%s] was failed, just ignore.",
-                    key));
+        if (hprof == null || hprof.length() == 0) {
+            publishIssue(
+                    SharePluginInfo.IssueType.ERR_FILE_NOT_FOUND,
+                    ResourceConfig.DumpMode.FORK_ANALYSE,
+                    activity, key, "FileNull", "0");
+            MatrixLog.e(TAG, "cannot create hprof file");
             return false;
         }
 

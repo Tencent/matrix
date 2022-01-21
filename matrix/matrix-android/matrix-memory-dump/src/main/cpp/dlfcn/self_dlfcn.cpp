@@ -3,7 +3,7 @@
 //
 
 #include "self_dlfcn.h"
-#include "enhance/EnhanceDlsym.h"
+#include <EnhanceDlsym.h>
 #include <dlfcn.h>
 
 extern "C" {
@@ -17,6 +17,10 @@ void self_dlfcn_mode(int api) {
 void self_dlclose(void *handle) {
     if (use_origin_) dlclose(handle);
     else enhance::dlclose(handle);
+}
+
+void self_clean(void* handle) {
+    if (!use_origin_) enhance::dlclose(handle);
 }
 
 void *self_dlopen(const char *filename) {

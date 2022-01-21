@@ -33,6 +33,7 @@ import android.os.RemoteException;
 
 import androidx.annotation.Nullable;
 
+import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 import com.tencent.matrix.xlog.XLogNative;
 
@@ -221,8 +222,8 @@ public class WarmUpService extends Service {
 
     final static int CMD_WARM_UP_SINGLE_ELF_FILE = 100;
 
-    private final Messenger mMessenger = new Messenger(new Handler() {
-        @SuppressLint("HandlerLeak")
+    @SuppressLint("HandlerLeak")
+    private final Messenger mMessenger = new Messenger(new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper()) {
         @Override
         public void handleMessage(final Message msg) {
             super.handleMessage(msg);

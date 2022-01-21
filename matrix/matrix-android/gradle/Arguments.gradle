@@ -24,3 +24,7 @@ gradle.ext.gonnaPublish = {
 
     return false
 }
+
+gradle.ext.staticLinkCXX = {
+    return gradle.startParameter.projectProperties.containsKey("publishStaticLinkCXXFlavor" as String)
+}

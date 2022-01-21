@@ -17,7 +17,6 @@ set(SOURCE_DIR src/main/cpp)
 set(
         SOURCE_FILES
         ${SOURCE_DIR}/jectl/JeCtl.cpp
-        ${SOURCE_DIR}/jectl/EnhanceDlsym.cpp
         ${SOURCE_DIR}/jectl/JeHooks.cpp
 )
 
@@ -53,7 +52,15 @@ target_link_libraries( # Specifies the target library.
         ${TARGET}
         # Links the target library to the log library
         # included in the NDK.
-        ${log-lib})
+        PUBLIC ${log-lib}
+        PRIVATE -Wl,--whole-archive ${EXT_DEP}/lib/${ANDROID_ABI}/libenhance_dlsym.a -Wl,--no-whole-archive
+        )
+
+target_include_directories(
+        ${TARGET}
+        PUBLIC ${SOURCE_DIR}
+        PUBLIC ${EXT_DEP}/include
+)
 
 TARGET_COMPILE_OPTIONS(
         ${TARGET}

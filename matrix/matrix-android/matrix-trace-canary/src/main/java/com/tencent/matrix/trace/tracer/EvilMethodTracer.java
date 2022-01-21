@@ -18,6 +18,7 @@ package com.tencent.matrix.trace.tracer;
 
 import android.os.Process;
 
+import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.report.Issue;
 import com.tencent.matrix.trace.TracePlugin;
@@ -97,7 +98,7 @@ public class EvilMethodTracer extends Tracer {
                 long[] data = AppMethodBeat.getInstance().copyData(indexRecord);
                 long[] queueCosts = new long[3];
                 System.arraycopy(queueTypeCosts, 0, queueCosts, 0, 3);
-                String scene = AppMethodBeat.getVisibleScene();
+                String scene = AppActiveMatrixDelegate.INSTANCE.getVisibleScene();
                 MatrixHandlerThread.getDefaultHandler().post(new AnalyseTask(isForeground(), scene, data, queueCosts, cpuEndMs - cpuBeginMs, dispatchCost, endNs / Constants.TIME_MILLIS_TO_NANO));
             }
         } finally {

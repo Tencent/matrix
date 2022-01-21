@@ -1,8 +1,11 @@
 package com.tencent.matrix.resource.processor;
 
+import android.os.Build;
+
 import com.tencent.matrix.memorydump.MemoryDumpManager;
 import com.tencent.matrix.resource.analyzer.model.DestroyedActivityInfo;
 import com.tencent.matrix.resource.analyzer.model.HeapDump;
+import com.tencent.matrix.resource.config.ResourceConfig;
 import com.tencent.matrix.resource.watcher.ActivityRefWatcher;
 import com.tencent.matrix.util.MatrixLog;
 
@@ -24,6 +27,11 @@ public class ForkDumpProcessor extends BaseLeakProcessor {
 
     @Override
     public boolean process(DestroyedActivityInfo destroyedActivityInfo) {
+        if (Build.VERSION.SDK_INT > ResourceConfig.FORK_DUMP_SUPPORTED_API_GUARD) {
+            MatrixLog.e(TAG, "unsupported API version " + Build.VERSION.SDK_INT);
+            return false;
+        }
+
         final long dumpStart = System.currentTimeMillis();
 
         final File hprof = getDumpStorageManager().newHprofFile();

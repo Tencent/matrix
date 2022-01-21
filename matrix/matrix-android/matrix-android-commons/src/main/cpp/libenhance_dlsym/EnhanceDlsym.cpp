@@ -18,11 +18,9 @@
 // Created by Yves on 2020/7/15.
 //
 
-#include "EnhanceDlsym.h"
-
 #include <cstdio>
 #include <elf.h>
-#include <cinttypes>
+#include <inttypes.h>
 #include <android/log.h>
 #include <fstream>
 #include <sstream>
@@ -33,8 +31,8 @@
 #include <unistd.h>
 #include <dlfcn.h>
 #include <set>
-
-#include "../../internal/log.h"
+#include "EnhanceDlsym.h"
+#include "../../../../../matrix-jectl/src/main/cpp/jectl/JeLog.h"
 
 #define TAG "Matrix.EnhanceDl"
 
@@ -115,18 +113,18 @@ namespace enhance {
                 continue;
             }
 
-//            _debug_log(TAG, "%s", aline.c_str());
+//            LOGD(TAG, "%s", aline.c_str());
 
             if (end_with(map_file_name, __file_name)
                 && 0 != check_loaded_so((void *) map_base_addr)) {
                 found = true;
-                _debug_log(TAG, "found entry [%s]", aline.c_str());
+                LOGD(TAG, "found entry [%s]", aline.c_str());
                 break;
             }
         }
 
         if (!found || map_perm[0] != 'r' || map_perm[3] != 'p') {
-            _error_log(TAG, "maps entry not found, %d, %c, %c", found, map_perm[0], map_perm[3]);
+            LOGE(TAG, "maps entry not found, %d, %c, %c", found, map_perm[0], map_perm[3]);
             return false;
         }
 
@@ -138,17 +136,17 @@ namespace enhance {
         //find the first load-segment with offset 0
         ElfW(Phdr)    *phdr0 = get_first_segment_by_type_offset(__info, PT_LOAD, 0);
         if (!phdr0) {
-            _error_log(TAG, "Can NOT found the first load segment. %s", map_file_name);
+            LOGE(TAG, "Can NOT found the first load segment. %s", map_file_name);
             return false;
         }
 
         //save load bias addr
         if (__info.base_addr < phdr0->p_vaddr) {
-            _error_log(TAG, "base_addr < phdr0->p_vaddr");
+            LOGE(TAG, "base_addr < phdr0->p_vaddr");
             return false;
         }
         __info.bias_addr = __info.base_addr - phdr0->p_vaddr;
-        _debug_log(TAG, "bias_addr = %p, bias = %p", (void *)__info.bias_addr, (void *)phdr0->p_vaddr);
+        LOGD(TAG, "bias_addr = %p, bias = %p", (void *)__info.bias_addr, (void *)phdr0->p_vaddr);
 
         return true;
     }
@@ -157,7 +155,7 @@ namespace enhance {
 
         int fd = open(__info.pathname.c_str(), O_RDONLY | O_CLOEXEC);
         if (-1 == fd) {
-            _error_log(TAG, "open file failed: %s", strerror(errno));
+            LOGE(TAG, "open file failed: %s", strerror(errno));
             return false;
         }
 
@@ -193,7 +191,7 @@ namespace enhance {
             switch (shdr_end->sh_type) {
 
                 case SHT_SYMTAB:
-                    _debug_log(TAG, "SHT_SYMTAB[%zu]", count++);
+                    LOGD(TAG, "SHT_SYMTAB[%zu]", count++);
                     __info.symtab = static_cast<ElfW(Sym) *>(malloc(shdr_end->sh_size));
                     memcpy(__info.symtab,
                            reinterpret_cast<const void *>(((uintptr_t) elf) + shdr_end->sh_offset),
@@ -204,7 +202,7 @@ namespace enhance {
                     break;
 
                 case SHT_STRTAB:
-                    _debug_log(TAG, "SHT_STRTAB[%zu]", count++);
+                    LOGD(TAG, "SHT_STRTAB[%zu]", count++);
 
                     if (0 == strcmp(shstr + shdr_end->sh_name, ".strtab")) {
                         __info.strtab      = static_cast<char *>(malloc(shdr_end->sh_size));
@@ -220,7 +218,7 @@ namespace enhance {
                     break;
             }
 
-            _debug_log(TAG, "flag = %d", flag);
+            LOGD(TAG, "flag = %d", flag);
 
         } while (flag && shdr_end != shdr);
 //        for (; shdr < shdr_end; shdr++) {
@@ -245,7 +243,7 @@ namespace enhance {
 //                    break;
 //            }
 //        }
-        _debug_log(TAG, "got symtab size = %d", __info.symtab_num);
+        LOGD(TAG, "got symtab size = %d", __info.symtab_num);
 
         munmap(elf, elf_size);
         close(fd);
@@ -265,7 +263,7 @@ namespace enhance {
         }
 
         std::string &&suffix_name = prepare_filename(__file_name);
-        _debug_log(TAG, "final filename = %s", suffix_name.c_str());
+        LOGD(TAG, "final filename = %s", suffix_name.c_str());
 
         auto info = new DlInfo;
 
@@ -285,8 +283,7 @@ namespace enhance {
         if (__handle) {
             auto info = static_cast<DlInfo *>(__handle);
             m_opened_info.erase(info);
-            free(info->strtab);
-            free(info);
+            delete info;
 
             std::map<void *, ElfW(Sym) *> empty;
             empty.swap(m_founded_symtab);
@@ -315,14 +312,14 @@ namespace enhance {
         for (; symtab_idx < symtab_end; symtab_idx++) {
 
             if (info->strtab_size <= symtab_idx->st_name) {
-                _debug_log(TAG, "context.strtabsz = %d, symtab_idx->st_name = %d",
+                LOGD(TAG, "context.strtabsz = %d, symtab_idx->st_name = %d",
                         info->strtab_size, symtab_idx->st_name);
             }
             assert (info->strtab_size > symtab_idx->st_name);
 
             std::string sym_name(info->strtab + symtab_idx->st_name);
             if (sym_name == __symbol) {
-                _debug_log(TAG, "st_value=%x", symtab_idx->st_value);
+                LOGD(TAG, "st_value=%x", symtab_idx->st_value);
                 uintptr_t found_sym_addr = symtab_idx->st_value + info->bias_addr;
                 if (check_loaded_so((void *)found_sym_addr) != 0) {
                     auto res = reinterpret_cast<void *>(found_sym_addr);
