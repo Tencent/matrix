@@ -7,7 +7,7 @@ buildscript {
         buildToolsVersion = '29.0.2'
         javaVersion = JavaVersion.VERSION_1_8
 
-        MATRIX_VERSION = "2.0.2-SNAPSHOT"
+        MATRIX_VERSION = "2.0.5"
 
         GROUP = 'com.tencent.matrix'
         VERSION_NAME = "${MATRIX_VERSION}"

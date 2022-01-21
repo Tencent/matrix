@@ -42,14 +42,13 @@ android {
 
     buildTypes {
         release {
+            debuggable false
             minifyEnabled true
             signingConfig signingConfigs.debug
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
         debug {
             debuggable true
-            minifyEnabled false
-            signingConfig signingConfigs.debug
         }
     }
 
@@ -153,7 +152,7 @@ matrix {
             unusedResources = project.ext.unusedResourcesSet
         }
 
-        enable true
+        enable false
         needSign true
         shrinkArsc true
         shrinkDuplicates true
