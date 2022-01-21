@@ -138,8 +138,13 @@ public class MatrixApplication extends Application {
         SignalAnrTracer signalAnrTracer = new SignalAnrTracer(this, anrFilePath, printTraceFile);
         signalAnrTracer.setSignalAnrDetectedListener(new SignalAnrTracer.SignalAnrDetectedListener() {
             @Override
-            public void onAnrDetected(String stackTrace, String mMessageString, long mMessageWhen, boolean fromProcessErrorState, String cpuset) {
+            public void onAnrDetected(String stackTrace, String mMessageString, long mMessageWhen, boolean fromProcessErrorState, String cgroup) {
                 // got an ANR
+            }
+
+            @Override
+            public void onNativeBacktraceDetected(String backtrace, String mMessageString, long mMessageWhen, boolean fromProcessErrorState) {
+
             }
         });
         signalAnrTracer.onStartTrace();
