@@ -27,10 +27,10 @@ import com.tencent.matrix.resource.analyzer.model.DestroyedActivityInfo;
 import com.tencent.matrix.resource.config.ResourceConfig;
 import com.tencent.matrix.resource.processor.AutoDumpProcessor;
 import com.tencent.matrix.resource.processor.BaseLeakProcessor;
-import com.tencent.matrix.resource.processor.ForkAnalyseProcessor;
 import com.tencent.matrix.resource.processor.ForkDumpProcessor;
 import com.tencent.matrix.resource.processor.LazyForkAnalyzeProcessor;
 import com.tencent.matrix.resource.processor.ManualDumpProcessor;
+import com.tencent.matrix.resource.processor.NativeForkAnalyzeProcessor;
 import com.tencent.matrix.resource.processor.NoDumpProcessor;
 import com.tencent.matrix.resource.processor.SilenceAnalyseProcessor;
 import com.tencent.matrix.resource.watcher.RetryableTaskExecutor.RetryableTask;
@@ -99,7 +99,7 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher {
                 case FORK_DUMP:
                     return new ForkDumpProcessor(watcher);
                 case FORK_ANALYSE:
-                    return new ForkAnalyseProcessor(watcher);
+                    return new NativeForkAnalyzeProcessor(watcher);
                 case LAZY_FORK_ANALYZE:
                     return new LazyForkAnalyzeProcessor(watcher);
                 case NO_DUMP:

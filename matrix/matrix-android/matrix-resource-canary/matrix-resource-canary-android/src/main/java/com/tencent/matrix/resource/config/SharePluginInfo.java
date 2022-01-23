@@ -39,5 +39,6 @@ public class SharePluginInfo {
         public static final int ERR_FILE_NOT_FOUND  = 2;
         public static final int ERR_ANALYSE_OOM     = 3;
         public static final int ERR_UNSUPPORTED_API = 4;
+        public static final int ERR_EXCEPTION       = 5;
     }
 }

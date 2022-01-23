@@ -2,7 +2,7 @@ package com.tencent.matrix.resource.processor;
 
 import android.os.Build;
 
-import com.tencent.matrix.memorydump.MemoryDumpManager;
+import com.tencent.matrix.resource.MemoryUtil;
 import com.tencent.matrix.resource.analyzer.model.DestroyedActivityInfo;
 import com.tencent.matrix.resource.analyzer.model.HeapDump;
 import com.tencent.matrix.resource.config.ResourceConfig;
@@ -41,7 +41,7 @@ public class ForkDumpProcessor extends BaseLeakProcessor {
             return true;
         }
 
-        if (!MemoryDumpManager.dumpBlock(hprof.getPath())) {
+        if (!MemoryUtil.dumpBlock(hprof.getPath())) {
             MatrixLog.e(TAG, String.format("heap dump for further analyzing activity with key [%s] was failed, just ignore.",
                     destroyedActivityInfo.mKey));
             return true;
