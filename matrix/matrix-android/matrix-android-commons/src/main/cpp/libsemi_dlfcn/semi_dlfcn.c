@@ -1,3 +1,4 @@
+#include <stdatomic.h>
 //
 // Created by YinSheng Tang on 2021/7/21.
 //
@@ -27,9 +28,9 @@ typedef struct {
     uint32_t magic;
 
     const char* pathname;
-    const void* base_addr;
+    const ElfW(Ehdr)* ehdr;
 
-    ElfW(Phdr)* phdrs;
+    const ElfW(Phdr)* phdrs;
     ElfW(Word) phdr_count;
 
     ElfW(Addr) load_bias;
@@ -82,11 +83,21 @@ static bool validate_elf_header(uintptr_t base_addr) {
     return true;
 }
 
+static ElfW(Addr) find_load_bias(ElfW(Addr) base, const ElfW(Phdr*) phdrs, ElfW(Half) phnum) {
+    for (int i = 0; i < phnum; ++i) {
+        const ElfW(Phdr*) phdr = phdrs + i;
+        if (phdr->p_type == PT_LOAD) {
+            return base - phdr->p_vaddr;
+        }
+    }
+    return 0;
+}
+
 static int legacy_iterate_maps(iterate_callback cb, void* data) {
     int res = 0;
-    FILE* fp = fopen("/proc/thread-self/maps", "r");
+    FILE* fp = fopen("/proc/self/maps", "r");
     if (fp == NULL) {
-        LOGE(LOG_TAG, "Fail to open /proc/thread-self/maps.");
+        LOGE(LOG_TAG, "Fail to open /proc/self/maps.");
         return res;
     }
     char line[512] = {};
@@ -96,7 +107,8 @@ static int legacy_iterate_maps(iterate_callback cb, void* data) {
         int offset = 0;
         int pathname_pos = 0;
 
-        if (sscanf(line, "%"PRIxPTR"-%*" PRIxPTR " %4s %x %*x:%*x %*d%n", &base_addr, perm, &offset, &pathname_pos) != 3) {
+        if (sscanf(line, "%"PRIxPTR"-%*" PRIxPTR " %4s %x %*x:%*x %*d%n", // NOLINT(cert-err34-c)
+                   &base_addr, perm, &offset, &pathname_pos) != 3) {
             continue;
         }
 
@@ -147,11 +159,12 @@ static int legacy_iterate_maps(iterate_callback cb, void* data) {
             continue;
         }
 
-        struct dl_phdr_info info;
-        info.dlpi_addr = base_addr;
+        struct dl_phdr_info info = {0};
         info.dlpi_name = pathname;
-        info.dlpi_phdr = (ElfW(Phdr)*) (base_addr + ((ElfW(Ehdr)*) base_addr)->e_phoff);
-        info.dlpi_phnum = ((ElfW(Ehdr)*) base_addr)->e_phnum;
+        const ElfW(Ehdr)* ehdr = (const ElfW(Ehdr)*) base_addr;
+        info.dlpi_phdr = (ElfW(Phdr)*) (base_addr + ehdr->e_phoff);
+        info.dlpi_phnum = ehdr->e_phnum;
+        info.dlpi_addr = find_load_bias(base_addr, info.dlpi_phdr, info.dlpi_phnum);
         res = cb(&info, sizeof(struct dl_phdr_info), data);
 
         if (res != 0) {
@@ -164,8 +177,12 @@ static int legacy_iterate_maps(iterate_callback cb, void* data) {
     return res;
 }
 
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "readability-redundant-declaration"
+#pragma ide diagnostic ignored "bugprone-reserved-identifier"
 // Make compiler happy.
 extern int dl_iterate_phdr(int (*__callback)(struct dl_phdr_info*, size_t, void*), void* __data) __attribute__((weak));
+#pragma clang diagnostic pop
 
 #ifdef __LP64__
 #define LINKER_PATHNAME_SUFFIX "/system/bin/linker64"
@@ -176,11 +193,11 @@ extern int dl_iterate_phdr(int (*__callback)(struct dl_phdr_info*, size_t, void*
 #define LINKER_PATHNAME_SUFFIX_LEN (sizeof(LINKER_PATHNAME_SUFFIX) - 1)
 
 static pthread_mutex_t s_linker_base_mutex = PTHREAD_MUTEX_INITIALIZER;
-static const void* s_linker_base = NULL;
+static ElfW(Addr) s_linker_base = 0;
 static pthread_mutex_t s_dl_mutex_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t* s_dl_mutex_address = NULL;
 
-static int find_linker_base_iter_cb(struct dl_phdr_info* info, size_t info_size, void* data) {
+static int find_linker_base_iter_cb(struct dl_phdr_info* info, __unused size_t info_size, void* data) {
     const char* pathname = info->dlpi_name;
     size_t pathname_len = sizeof(pathname);
     if (pathname_len < LINKER_PATHNAME_SUFFIX_LEN) {
@@ -194,14 +211,14 @@ static int find_linker_base_iter_cb(struct dl_phdr_info* info, size_t info_size,
     return 0;
 }
 
-static const void* get_linker_base_address() {
+static ElfW(Addr) get_linker_base_address() {
     pthread_mutex_lock(&s_linker_base_mutex);
-    if (s_linker_base != NULL) {
+    if (s_linker_base != 0) {
         goto bail;
     }
 
-    s_linker_base = (const void*) getauxval(AT_BASE);
-    if (s_linker_base == NULL) {
+    s_linker_base = (ElfW(Addr)) getauxval(AT_BASE);
+    if (s_linker_base == 0) {
         legacy_iterate_maps(find_linker_base_iter_cb, &s_linker_base);
     }
 
@@ -209,6 +226,8 @@ static const void* get_linker_base_address() {
     pthread_mutex_unlock(&s_linker_base_mutex);
     return s_linker_base;
 }
+
+static bool fill_rest_neccessary_data(semi_dlinfo_t* semi_dlinfo);
 
 #define LINKER_DL_MUTEX_SYMNAME "__dl__ZL10g_dl_mutex"
 
@@ -218,12 +237,20 @@ static pthread_mutex_t* get_dl_mutex_address() {
         goto bail;
     }
 
-    const void* linker_base = get_linker_base_address();
-    if (linker_base == NULL) {
+    ElfW(Addr) linker_base = get_linker_base_address();
+    if (linker_base == 0) {
         goto bail;
     }
+    semi_dlinfo_t semi_dlinfo = {0};
+    semi_dlinfo.magic = SEMI_DLINFO_MAGIC;
+    semi_dlinfo.pathname = LINKER_PATHNAME_SUFFIX;
+    semi_dlinfo.ehdr = (ElfW(Ehdr)*) linker_base;
+    semi_dlinfo.phdrs = (const ElfW(Phdr)*) (((ElfW(Addr)) linker_base) + semi_dlinfo.ehdr->e_phoff);
+    semi_dlinfo.phdr_count = semi_dlinfo.ehdr->e_phnum;
+    semi_dlinfo.load_bias = find_load_bias(linker_base, semi_dlinfo.phdrs, semi_dlinfo.phdr_count);
+    fill_rest_neccessary_data(&semi_dlinfo);
 
-    s_dl_mutex_address = semi_dlsym(linker_base, LINKER_DL_MUTEX_SYMNAME);
+    s_dl_mutex_address = semi_dlsym(&semi_dlinfo, LINKER_DL_MUTEX_SYMNAME);
 
     bail:
     pthread_mutex_unlock(&s_dl_mutex_mutex);
@@ -232,22 +259,29 @@ static pthread_mutex_t* get_dl_mutex_address() {
 
 int semi_dl_iterate_phdr(iterate_callback cb, void* data) {
     int sdk = android_get_device_api_level();
-    if (sdk < 21) {
+    bool fallback_to_legacy = false;
+    Dl_info tmp_info = {};
+    dladdr(&semi_dl_iterate_phdr, &tmp_info);
+    if (tmp_info.dli_fname != NULL && tmp_info.dli_fname[0] != '/') {
+        LOGW(LOG_TAG, "dladdr only tell us relative path of loaded so, fallbacl to legacy iterate mode.");
+        fallback_to_legacy = true;
+    }
+    if (sdk < 21 || fallback_to_legacy) {
         return legacy_iterate_maps(cb, data);
     } else if (sdk >= 21 && sdk <= 22) {
         pthread_mutex_t *dl_mutex = get_dl_mutex_address();
         if (dl_mutex != NULL) {
             pthread_mutex_lock(dl_mutex);
         }
-        const void *linker_base = get_linker_base_address();
+        ElfW(Addr) linker_base = get_linker_base_address();
         int ret = 0;
-        if (linker_base != NULL) {
-            struct dl_phdr_info dlinfo;
-            dlinfo.dlpi_addr = (ElfW(Addr)) linker_base;
+        if (linker_base != 0) {
+            struct dl_phdr_info dlinfo = {0};
             dlinfo.dlpi_name = LINKER_PATHNAME_SUFFIX;
             ElfW(Ehdr)* ehdr = (ElfW(Ehdr)*) linker_base;
             dlinfo.dlpi_phdr = (ElfW(Phdr)*) (((uintptr_t) linker_base) + ehdr->e_phoff);
             dlinfo.dlpi_phnum = ehdr->e_phnum;
+            dlinfo.dlpi_addr = find_load_bias(linker_base, dlinfo.dlpi_phdr, dlinfo.dlpi_phnum);
             ret = cb(&dlinfo, sizeof(struct dl_phdr_info), data);
         } else {
             LOGW(LOG_TAG, "Cannot find base of linker.");
@@ -264,15 +298,15 @@ int semi_dl_iterate_phdr(iterate_callback cb, void* data) {
         }
         return ret;
     } else if (sdk >= 23 && sdk <= 26) {
-        const void *linker_base = get_linker_base_address();
+        ElfW(Addr) linker_base = get_linker_base_address();
         int ret = 0;
-        if (linker_base != NULL) {
-            struct dl_phdr_info dlinfo;
-            dlinfo.dlpi_addr = (ElfW(Addr)) linker_base;
+        if (linker_base != 0) {
+            struct dl_phdr_info dlinfo = {0};
             dlinfo.dlpi_name = LINKER_PATHNAME_SUFFIX;
             ElfW(Ehdr)* ehdr = (ElfW(Ehdr)*) linker_base;
             dlinfo.dlpi_phdr = (ElfW(Phdr)*) (((uintptr_t) linker_base) + ehdr->e_phoff);
             dlinfo.dlpi_phnum = ehdr->e_phnum;
+            dlinfo.dlpi_addr = find_load_bias((ElfW(Addr)) linker_base, dlinfo.dlpi_phdr, dlinfo.dlpi_phnum);
             ret = cb(&dlinfo, sizeof(struct dl_phdr_info), data);
         } else {
             LOGW(LOG_TAG, "Cannot find base of linker.");
@@ -296,7 +330,7 @@ typedef struct {
     semi_dlinfo_t* semi_dlinfo;
 } semi_dlopen_iter_info;
 
-static int dlopen_iter_cb(struct dl_phdr_info* info, size_t info_size, void* data) {
+static int dlopen_iter_cb(struct dl_phdr_info* info, __unused size_t info_size, void* data) {
     semi_dlopen_iter_info* iter_info = (semi_dlopen_iter_info*) data;
     semi_dlinfo_t* semi_dlinfo = iter_info->semi_dlinfo;
 
@@ -311,14 +345,23 @@ static int dlopen_iter_cb(struct dl_phdr_info* info, size_t info_size, void* dat
         return 0;
     }
 
-    LOGD(LOG_TAG, "dlopen_iter_cb, pathname: %s, name_suffix: %s, suffix_len: %zu", pathname, name_suffix, name_suffix_len);
+    LOGD(LOG_TAG, "pathname: %s, suffix_to_find: %s", info->dlpi_name, name_suffix);
 
     if (strncmp(pathname + pathname_len - name_suffix_len, name_suffix, name_suffix_len) == 0) {
         semi_dlinfo->pathname = pathname;
-        semi_dlinfo->base_addr = (const void*) info->dlpi_addr;
-        ElfW(Ehdr)* ehdr = (ElfW(Ehdr)*) info->dlpi_addr;
-        semi_dlinfo->phdrs = (ElfW(Phdr)*) (((uintptr_t) info->dlpi_addr) + ehdr->e_phoff);
-        semi_dlinfo->phdr_count = ehdr->e_phnum;
+        semi_dlinfo->phdrs = info->dlpi_phdr;
+        semi_dlinfo->phdr_count = info->dlpi_phnum;
+        semi_dlinfo->load_bias = info->dlpi_addr;
+        for (int phdrIdx = 0; phdrIdx < info->dlpi_phnum; ++phdrIdx) {
+            const ElfW(Phdr)* phdr = info->dlpi_phdr + phdrIdx;
+            if (phdr->p_type == PT_LOAD) {
+                // dlpi_addr is actually load_bias.
+                semi_dlinfo->ehdr = (ElfW(Ehdr)*) (info->dlpi_addr + phdr->p_vaddr);
+                break;
+            }
+        }
+        LOGD(LOG_TAG, "dlopen_iter_cb, pathname: %s, name_suffix: %s, suffix_len: %zu, dlpi_addr: %p, ehdr: %p, phdr: %p",
+             pathname, name_suffix, name_suffix_len, (void*) info->dlpi_addr, semi_dlinfo->ehdr, info->dlpi_phdr);
         return 1;
     }
 
@@ -346,7 +389,10 @@ static bool load_section(int fd, off_t file_offset, size_t section_size, void** 
         goto fail;
     }
 
+    #pragma clang diagnostic push
+    #pragma ide diagnostic ignored "UnreachableCode"
     goto bail;
+    #pragma clang diagnostic pop
 
     fail:
     res = false;
@@ -359,17 +405,11 @@ static bool load_section(int fd, off_t file_offset, size_t section_size, void** 
 }
 
 static bool fill_rest_neccessary_data(semi_dlinfo_t* semi_dlinfo) {
-    ElfW(Ehdr)* ehdr = (ElfW(Ehdr)*) semi_dlinfo->base_addr;
-    ElfW(Phdr)* phdrs = semi_dlinfo->phdrs;
-    for (int i = 0; i < semi_dlinfo->phdr_count; ++i) {
-        if (phdrs[i].p_type == PT_LOAD) {
-            if ((ElfW(Addr)) semi_dlinfo->base_addr < phdrs[i].p_vaddr) {
-                LOGE(LOG_TAG, "Unexpected first program header.");
-                return false;
-            }
-            semi_dlinfo->load_bias = ((uintptr_t) semi_dlinfo->base_addr) - phdrs[i].p_vaddr;
-            break;
-        }
+    const ElfW(Ehdr)* ehdr = semi_dlinfo->ehdr;
+
+    if (semi_dlinfo->phdr_count != semi_dlinfo->ehdr->e_phnum) {
+        LOGE(LOG_TAG, "Phdr count mismatch in \"%s\".", semi_dlinfo->pathname);
+        return false;
     }
 
     int fd = open(semi_dlinfo->pathname, O_RDONLY);
@@ -427,6 +467,14 @@ static bool fill_rest_neccessary_data(semi_dlinfo_t* semi_dlinfo) {
         return true;
     } else {
         LOGE(LOG_TAG, "Failure in fill_rest_neccessary_data.");
+        if (semi_dlinfo->strs != NULL) {
+            free(semi_dlinfo->strs);
+            semi_dlinfo->strs = NULL;
+        }
+        if (semi_dlinfo->syms != NULL) {
+            free(semi_dlinfo->syms);
+            semi_dlinfo->syms = NULL;
+        }
         return false;
     }
 }
@@ -471,7 +519,7 @@ void* semi_dlopen(const char* pathname) {
 
     semi_dl_iterate_phdr(dlopen_iter_cb, &iter_info);
 
-    if (result->base_addr != NULL) {
+    if (result->ehdr != NULL) {
         if (!fill_rest_neccessary_data(result)) {
             goto fail;
         }
@@ -499,7 +547,7 @@ void* semi_dlopen(const char* pathname) {
 void* semi_dlsym(const void* semi_hlib, const char* sym_name) {
     semi_dlinfo_t* semi_dlinfo = (semi_dlinfo_t*) semi_hlib;
     if (UNLIKELY(semi_dlinfo->magic != SEMI_DLINFO_MAGIC)) {
-        LOGE(LOG_TAG, "Invalid semi_hlib, skip doing dlsym.");
+        LOGE(LOG_TAG, "Invalid semi_hlib, skip doing dlsym. %x", semi_dlinfo->magic);
         return NULL;
     }
 
@@ -528,9 +576,11 @@ void semi_dlclose(void* semi_hlib) {
     }
     if (semi_dlinfo->strs != NULL) {
         free(semi_dlinfo->strs);
+        semi_dlinfo->strs = NULL;
     }
     if (semi_dlinfo->syms != NULL) {
         free(semi_dlinfo->syms);
+        semi_dlinfo->syms = NULL;
     }
     free(semi_hlib);
 }
