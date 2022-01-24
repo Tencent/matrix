@@ -11,6 +11,7 @@
 #include <asm/mman.h>
 #include <regex.h>
 #include <malloc.h>
+#include <semi_dlfcn.h>
 #include "xhook_ext.h"
 #include "xh_core.h"
 #include "xh_elf.h"
@@ -62,13 +63,20 @@ void xhook_elf_close(void *h_lib)
     xh_core_elf_close(h_lib);
 }
 
-static int xh_export_symtable_hook(const char* pathname, const void* base_addr, const char* symbol_name, void* handler,
-                                   void** original_address) {
+static int xh_export_symtable_hook(
+        const char* pathname,
+        const void* bias_addr,
+        ElfW(Phdr)* phdrs,
+        ElfW(Half) phdr_count,
+        const char* symbol_name,
+        void* handler,
+        void** original_address
+) {
     if(NULL == symbol_name || NULL == handler) return XH_ERRNO_INVAL;
 
     xh_elf_t self = {};
     {
-        int error = xh_elf_init(&self, (uintptr_t) base_addr, pathname);
+        int error = xh_elf_init(&self, (uintptr_t) bias_addr, phdrs, phdr_count, pathname);
         if (error != 0) return error;
     }
     XH_LOG_INFO("hooking %s in %s using export table hook.\n", symbol_name, pathname);
@@ -107,97 +115,76 @@ static int xh_export_symtable_hook(const char* pathname, const void* base_addr, 
     return 0;
 }
 
-static int xhook_find_library_base_addr(const char* owner_lib_name, char path_name_out[PATH_MAX + 1], const void** base_addr_out) {
-    FILE* fp = fopen("/proc/self/maps", "r");
-    if(fp == NULL) {
-        XH_LOG_ERROR("fopen /proc/self/maps failed");
-        return XH_ERRNO_ELFINIT;
+typedef struct found_lib_info {
+    struct {
+        const char* owner_lib_name;
+    } args_in;
+
+    struct {
+        char path_name[PATH_MAX + 1];
+        const void* bias_addr;
+        ElfW(Phdr)* phdrs;
+        ElfW(Half) phdr_count;
+    } args_out;
+} found_lib_info_t;
+
+#define MAPS_ITER_RET_NOTFOUND 0
+#define MAPS_ITER_RET_FOUND 1
+
+static int find_owner_library_cb(struct dl_phdr_info* info, size_t info_size, void* data) {
+    found_lib_info_t* found_lib_info = (found_lib_info_t*) data;
+
+    const char* owner_lib_name = found_lib_info->args_in.owner_lib_name;
+    size_t owner_name_len = strlen(owner_lib_name);
+    if (owner_name_len == 0) return MAPS_ITER_RET_NOTFOUND;
+
+    char real_suffix[PATH_MAX + 1];
+    if (owner_lib_name[0] != '/') {
+        real_suffix[0] = '/';
+        strncpy(real_suffix + 1, owner_lib_name, PATH_MAX);
+        ++owner_name_len;
+    } else {
+        strncpy(real_suffix, owner_lib_name, PATH_MAX);
     }
+    if (owner_name_len > PATH_MAX) owner_name_len = PATH_MAX;
+    real_suffix[owner_name_len] = '\0';
 
-    char line[512] = {};
-    while(fgets(line, sizeof(line), fp)) {
-        uintptr_t base_addr = 0;
-        char perm[5] = {};
-        unsigned long offset = 0;
-        int pathname_pos = 0;
-        if (sscanf(line, "%"PRIxPTR"-%*lx %4s %lx %*x:%*x %*d%n", &base_addr, perm, &offset, &pathname_pos) != 3) {
-            continue;
-        }
+    XH_LOG_DEBUG("find_owner_library_cb: curr_pathname: %s, real_suffix: %s", info->dlpi_name, real_suffix);
 
-        //check permission
-        if (perm[0] != 'r') continue;
-        if (perm[3] != 'p') continue; //do not touch the shared memory
-
-        //check offset
-        //
-        //We are trying to find ELF header in memory.
-        //It can only be found at the beginning of a mapped memory regions
-        //whose offset is 0.
-        if (0 != offset) continue;
-
-        // Skip normal mmapped region.
-        // Some libraries may mmap specific elf file into memory for
-        // accessing as a normal file.
-        {
-            Dl_info info;
-            if (dladdr((void*) base_addr, &info) == 0) {
-                continue;
-            }
-        }
-
-        //get pathname
-        while (isspace(line[pathname_pos]) && pathname_pos < (int) (sizeof(line) - 1)) {
-            pathname_pos += 1;
-        }
-        if (pathname_pos >= (int) (sizeof(line) - 1)) continue;
-        char* pathname = line + pathname_pos;
-        size_t pathname_len = strlen(pathname);
-        if (0 == pathname_len) continue;
-        if (pathname[pathname_len - 1] == '\n') {
-            pathname[pathname_len - 1] = '\0';
-            pathname_len -= 1;
-        }
-        if (0 == pathname_len) continue;
-        if ('[' == pathname[0]) continue;
-
-        //check pathname
-        //if we need to hook this elf?
-        char real_suffix[PATH_MAX + 1] = {};
-        size_t real_suffix_len = snprintf(real_suffix, sizeof(real_suffix), "/%s", owner_lib_name);
-        if (pathname_len < real_suffix_len) {
-            continue;
-        }
-        if (strncmp(pathname + pathname_len - real_suffix_len, real_suffix, real_suffix_len) != 0) {
-            continue;
-        }
-
-        //check elf header format
-        //We are trying to do ELF header checking as late as possible.
-        if (0 != xh_elf_check_elfheader(base_addr)) continue;
-
-        XH_LOG_DEBUG("found library, owner_lib_name: %s, path: %s, base: %" PRIxPTR,
-                     owner_lib_name, pathname, base_addr);
-
-        if (path_name_out != NULL) {
-            strncpy(path_name_out, pathname, PATH_MAX);
-        }
-        if (base_addr_out != NULL) {
-            *base_addr_out = (const void*) base_addr;
-        }
-        fclose(fp);
-        return 0;
+    size_t curr_pathname_len = strlen(info->dlpi_name);
+    if (strncmp(info->dlpi_name + curr_pathname_len - owner_name_len, real_suffix, owner_name_len) == 0) {
+        strcpy(found_lib_info->args_out.path_name, info->dlpi_name);
+        found_lib_info->args_out.bias_addr = (const void*) info->dlpi_addr;
+        found_lib_info->args_out.phdrs = (ElfW(Phdr)*) info->dlpi_phdr;
+        found_lib_info->args_out.phdr_count = info->dlpi_phnum;
+        XH_LOG_INFO("Found owner lib '%s' by suffix '%s'.", info->dlpi_name, real_suffix);
+        return MAPS_ITER_RET_FOUND;
+    } else {
+        return MAPS_ITER_RET_NOTFOUND;
     }
-    fclose(fp);
-    return XH_ERRNO_NOTFND;
 }
 
 int xhook_export_symtable_hook(const char* owner_lib_name, const char* symbol_name, void* handler,
                                void** original_address) {
-    char path_name[PATH_MAX + 1] = {};
-    const void* base_addr = NULL;
-    if (xhook_find_library_base_addr(owner_lib_name, path_name, &base_addr) == 0) {
-        return xh_export_symtable_hook(path_name, base_addr, symbol_name, handler, original_address);
-    } else {
-        return XH_ERRNO_NOTFND;
+    found_lib_info_t found_lib_info = {};
+    found_lib_info.args_in.owner_lib_name = owner_lib_name;
+    switch (semi_dl_iterate_phdr(find_owner_library_cb, &found_lib_info)) {
+        case MAPS_ITER_RET_FOUND: {
+            return xh_export_symtable_hook(
+                    found_lib_info.args_out.path_name,
+                    found_lib_info.args_out.bias_addr,
+                    found_lib_info.args_out.phdrs,
+                    found_lib_info.args_out.phdr_count,
+                    symbol_name,
+                    handler,
+                    original_address
+            );
+        }
+        case MAPS_ITER_RET_NOTFOUND: {
+            return XH_ERRNO_NOTFND;
+        }
+        case XH_ERRNO_NOMEM: {
+            return XH_ERRNO_NOMEM;
+        }
     }
 }

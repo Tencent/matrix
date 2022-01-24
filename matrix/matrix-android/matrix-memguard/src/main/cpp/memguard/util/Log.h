@@ -10,13 +10,13 @@
 #include "Auxiliary.h"
 #include "LogFn.h"
 
-#ifndef EnableLOG
-    #undef MEMGUARD_LOG_LEVEL
-    #define MEMGUARD_LOG_LEVEL LOG_SILENT
-#else
+#ifdef EnableLOG
     #ifndef MEMGUARD_LOG_LEVEL
         #define MEMGUARD_LOG_LEVEL LOG_VERBOSE
     #endif
+#else
+    #undef MEMGUARD_LOG_LEVEL
+    #define MEMGUARD_LOG_LEVEL LOG_SILENT
 #endif
 
 #define LOG_VERBOSE 2

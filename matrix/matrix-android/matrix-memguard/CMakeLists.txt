@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.4.1)
 
-option(EnableLOG "Enable QUT Logs" ON)
+option(EnableLOG "Enable Logs" ON)
 if(EnableLOG)
     add_definitions(-DEnableLOG)
 endif()
@@ -54,7 +54,6 @@ target_link_libraries(
   PUBLIC -Wl,--gc-sections
   PUBLIC ${EXT_DEP}/lib/${ANDROID_ABI}/libmatrix-hookcommon.so
   PUBLIC ${EXT_DEP}/lib/${ANDROID_ABI}/libwechatbacktrace.so
-  PUBLIC ${EXT_DEP}/lib/${ANDROID_ABI}/libunwindstack.a
   PUBLIC ${EXT_DEP}/lib/${ANDROID_ABI}/libunwindstack.a
 )
 

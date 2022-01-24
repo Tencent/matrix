@@ -49,8 +49,8 @@ target_link_libraries(
       PUBLIC ${log-lib}
       PRIVATE -Wl,--whole-archive fastunwind -Wl,--no-whole-archive
       PUBLIC ${EXT_DEP}/lib/${ANDROID_ABI}/libwechatbacktrace.so
-      PRIVATE -Wl,--whole-archive ${EXT_DEP}/lib/${ANDROID_ABI}/libxhook.a -Wl,--no-whole-archive
       PRIVATE -Wl,--whole-archive ${EXT_DEP}/lib/${ANDROID_ABI}/libsemi_dlfcn.a -Wl,--no-whole-archive
+      PRIVATE -Wl,--whole-archive ${EXT_DEP}/lib/${ANDROID_ABI}/libxhook.a -Wl,--no-whole-archive
       PRIVATE -Wl,--version-script=${SOURCE_DIR}/common/common.ver
 )
 #################################################################################

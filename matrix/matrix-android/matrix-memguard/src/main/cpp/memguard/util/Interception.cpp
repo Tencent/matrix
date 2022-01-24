@@ -589,15 +589,11 @@ bool memguard::interception::Install() {
 
     for (auto & pattern : gOpts.targetSOPatterns) {
         ENUM_C_ALLOC_FUNCTIONS(pattern.c_str())
-        ENUM_C_DEALLOC_AND_OTHER_FUNCTIONS(pattern.c_str())
         ENUM_CPP_ALLOC_FUNCTIONS(pattern.c_str())
-        ENUM_CPP_DEALLOC_FUNCTIONS(pattern.c_str())
     }
 
-    ENUM_C_DEALLOC_AND_OTHER_FUNCTIONS(".*/libstlport_shared\\.so$")
-    ENUM_C_DEALLOC_AND_OTHER_FUNCTIONS(".*/libc++_shared\\.so$")
-    ENUM_C_DEALLOC_AND_OTHER_FUNCTIONS(".*/libc++\\.so$")
-    ENUM_C_DEALLOC_AND_OTHER_FUNCTIONS(".*/libgnustl_shared\\.so$")
+    ENUM_C_DEALLOC_AND_OTHER_FUNCTIONS(".*\\.so$")
+    ENUM_CPP_DEALLOC_FUNCTIONS(".*\\.so$")
   #undef X
 
     if (xhook_export_symtable_hook("libc.so", "free", reinterpret_cast<void*>(HandleFree), nullptr) != 0) {
@@ -614,7 +610,12 @@ bool memguard::interception::Install() {
     // INTERCEPT_DLOPEN(".*/libjavacore\\.so$", false);
     // INTERCEPT_DLOPEN(".*/libnativehelper\\.so$", false);
 
-    NOTIFY_COMMON_IGNORE_LIBS(HOOK_REQUEST_GROUPID_MEMGUARD);
+    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_MEMGUARD, ".*/libwechatcrash\\.so$", NULL);
+    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_MEMGUARD, ".*/liblog\\.so$", NULL);
+    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_MEMGUARD, ".*/libc\\.so$", NULL);
+    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_MEMGUARD, ".*/libmatrix-hookcommon\\.so$", NULL);
+    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_MEMGUARD, ".*/libmatrix-memguard\\.so$", NULL);
+    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_MEMGUARD, ".*/libwechatbacktrace\\.so$", NULL);
 
     return EndHook(gOpts.ignoredSOPatterns);
 }
