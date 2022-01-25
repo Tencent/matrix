@@ -7,6 +7,7 @@
 #include <backtrace/Backtrace.h>
 #include <xhook.h>
 #include <xhook_ext.h>
+#include <xh_maps.h>
 #include <android/log.h>
 #include <sys/resource.h>
 #include <set>
@@ -75,6 +76,7 @@ namespace matrix {
         std::lock_guard lock(sDlOpenHandlerMutex);
         void* hLib = dlopen_fn(args);
         if (hLib != nullptr && (args->flags & RTLD_NOLOAD) == 0) {
+            xh_maps_invalidate();
             NotifySoLoad(args->filename);
         }
         return hLib;
