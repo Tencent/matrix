@@ -20,7 +20,6 @@ object OverlayWindowLifecycleOwner : StatefulOwner() {
     private const val TAG = "Matrix.OverlayWindowLifecycleOwner"
 
     private val overlayViews = HashSet<Any>()
-    private val runningHandler = MatrixLifecycleThread.handler
     private val mainHandler = Handler(Looper.getMainLooper())
 
     private var WindowManagerGlobal_mRoots: ArrayList<*>? = null
@@ -60,9 +59,7 @@ object OverlayWindowLifecycleOwner : StatefulOwner() {
                     }
                     if (view?.layoutParams?.isOverlayType() == true) {
                         if (overlayViews.isEmpty()) {
-                            runningHandler.post {
-                                turnOn()
-                            }
+                            turnOn()
                         }
                         overlayViews.add(o)
                     }
@@ -72,9 +69,7 @@ object OverlayWindowLifecycleOwner : StatefulOwner() {
             override fun onRemoved(o: Any) {
                 overlayViews.remove(o)
                 if (overlayViews.isEmpty()) {
-                    runningHandler.post {
-                        turnOff()
-                    }
+                    turnOff()
                 }
             }
         }
@@ -137,6 +132,9 @@ object OverlayWindowLifecycleOwner : StatefulOwner() {
         }
     }
 
+    /**
+     * including Activity window, for fallback checks
+     */
     fun hasVisibleWindow() = safeLet(TAG, log = true, defVal = false) {
         prepareWindowGlobal()
         return@safeLet WindowManagerGlobal_mRoots!!.any {

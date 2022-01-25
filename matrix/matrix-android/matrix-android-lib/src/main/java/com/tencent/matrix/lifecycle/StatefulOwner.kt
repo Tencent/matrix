@@ -15,7 +15,8 @@ interface IStateful {
 fun IStatefulOwner.reverse(): IStatefulOwner = object : IStatefulOwner {
     override fun active() = !this@reverse.active()
 
-    inner class ReverseObserverWrapper(val origin: IStateObserver) : IStateObserver {
+    inner class ReverseObserverWrapper(val origin: IStateObserver) : IStateObserver,
+        ISerialObserver {
         override fun on() = origin.off()
         override fun off() = origin.on()
         override fun toString() = origin.toString()
@@ -23,6 +24,14 @@ fun IStatefulOwner.reverse(): IStatefulOwner = object : IStatefulOwner {
         override fun equals(other: Any?): Boolean {
             return if (other is ReverseObserverWrapper) {
                 origin == other.origin
+            } else {
+                false
+            }
+        }
+
+        override fun serial(): Boolean {
+            return if (origin is ISerialObserver) {
+                origin.serial()
             } else {
                 false
             }
@@ -41,11 +50,14 @@ fun IStatefulOwner.reverse(): IStatefulOwner = object : IStatefulOwner {
         this@reverse.removeObserver(observer.wrap())
 }
 
-fun IStatefulOwner.shadow(): IStatefulOwner = object : StatefulOwner() {
+fun IStatefulOwner.shadow() = shadow(false)
+
+internal fun IStatefulOwner.shadow(serial: Boolean): IStatefulOwner = object : StatefulOwner(serial) {
     init {
-        this@shadow.observeForever(object : IStateObserver {
+        this@shadow.observeForever(object : IStateObserver, ISerialObserver {
             override fun on() = turnOn()
             override fun off() = turnOff()
+            override fun serial() = serial
         })
     }
 }
@@ -53,6 +65,10 @@ fun IStatefulOwner.shadow(): IStatefulOwner = object : StatefulOwner() {
 interface IStateObserver {
     fun on()
     fun off()
+}
+
+internal interface ISerialObserver : IStateObserver {
+    fun serial() = true
 }
 
 interface IStateObservable {
@@ -112,8 +128,9 @@ private enum class State(val dispatch: ((observer: IStateObserver) -> Unit)?) {
     OFF({ observer -> observer.off() });
 }
 
-open class StatefulOwner : IStatefulOwner {
+open class StatefulOwner(val async: Boolean = true) : IStatefulOwner {
 
+    @Volatile
     private var state = State.INIT
 
     private val observerMap = ConcurrentHashMap<IStateObserver, ObserverWrapper>()
@@ -150,7 +167,11 @@ open class StatefulOwner : IStatefulOwner {
             wrapper.checkLifecycle(lifecycleOwner)
         } else {
             observerMap[observer] = AutoReleaseObserverWrapper(lifecycleOwner, this, observer)
-            state.dispatch?.invoke(observer)
+            if (async) {
+                state.dispatch?.invokeAsync(observer)
+            } else {
+                state.dispatch?.invoke(observer)
+            }
         }
     }
 
@@ -165,9 +186,7 @@ open class StatefulOwner : IStatefulOwner {
             return
         }
         state = State.ON
-        observerMap.forEach {
-            state.dispatch?.invoke(it.key)
-        }
+        dispatchStateChanged()
     }
 
     @Synchronized
@@ -176,8 +195,39 @@ open class StatefulOwner : IStatefulOwner {
             return
         }
         state = State.OFF
-        observerMap.forEach {
-            state.dispatch?.invoke(it.key)
+        dispatchStateChanged()
+    }
+
+    private fun ((observer: IStateObserver) -> Unit).invokeAsync(observer: IStateObserver) {
+        if (observer is ISerialObserver) {
+            if (observer.serial()) {
+                MatrixLifecycleThread.handler.post {
+                    this.invoke(observer)
+                }
+                return
+            }
+        }
+        MatrixLifecycleThread.executor.execute(object : Runnable {
+            override fun run() {
+                this@invokeAsync.invoke(observer)
+            }
+
+            override fun toString(): String {
+                return "${super.toString()}#$observer"
+            }
+        })
+    }
+
+    private fun dispatchStateChanged() {
+        if (async) {
+            val s = state // copy current state
+            observerMap.forEach {
+                s.dispatch?.invokeAsync(it.key)
+            }
+        } else {
+            observerMap.forEach {
+                state.dispatch?.invoke(it.key)
+            }
         }
     }
 }
@@ -189,8 +239,9 @@ open class StatefulOwner : IStatefulOwner {
  * @since 2021/9/24
  */
 class LifecycleDelegateStatefulOwner private constructor(
-    private val source: LifecycleOwner
-) : StatefulOwner(), LifecycleObserver {
+    private val source: LifecycleOwner,
+    async: Boolean = true
+) : StatefulOwner(async), LifecycleObserver {
 
     companion object {
         fun LifecycleOwner.toStateOwner(): LifecycleDelegateStatefulOwner =
@@ -221,8 +272,8 @@ class LifecycleDelegateStatefulOwner private constructor(
  */
 open class MultiSourceStatefulOwner(
     private val reduceOperator: (statefuls: Collection<IStateful>) -> Boolean,
-    vararg statefulOwners: IStatefulOwner
-) : StatefulOwner(), IStateObserver, IMultiSourceOwner {
+    vararg statefulOwners: IStatefulOwner,
+) : StatefulOwner(true), IStateObserver, IMultiSourceOwner {
 
     private val sourceOwners = ConcurrentLinkedQueue<IStatefulOwner>()
 

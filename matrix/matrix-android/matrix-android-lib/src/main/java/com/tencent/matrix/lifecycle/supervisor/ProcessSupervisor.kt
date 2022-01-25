@@ -104,11 +104,11 @@ object ProcessSupervisor : IProcessListener by ProcessSubordinate.processListene
     // @formatter:on
 
     private class AppStagedBackgroundOwner(
-        private val delegate: MultiSourceStatefulOwner = MultiSourceStatefulOwner(
+        private val delegate: MultiSourceStatefulOwner = object : MultiSourceStatefulOwner(
             ReduceOperators.AND,
-            appExplicitBackgroundOwner.shadow(),
-            appDeepBackgroundOwner.reverse().shadow()
-        )
+            appExplicitBackgroundOwner.shadow(true),
+            appDeepBackgroundOwner.reverse().shadow(true)
+        ), ISerialObserver {}
     ) : IBackgroundStatefulOwner, IStatefulOwner by delegate
 
     val appStagedBackgroundOwner: IBackgroundStatefulOwner = AppStagedBackgroundOwner()
