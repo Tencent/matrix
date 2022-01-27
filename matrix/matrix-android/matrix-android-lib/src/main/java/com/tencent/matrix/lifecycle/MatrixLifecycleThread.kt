@@ -6,16 +6,33 @@ import com.tencent.matrix.util.MatrixLog
 import java.util.*
 import java.util.concurrent.*
 
+private const val TAG = "Matrix.Lifecycle.Thread"
+
+data class LifecycleThreadConfig(
+    val maxPoolSize: Int = 5,
+    val keepAliveSeconds: Long = 30L,
+    val onHeavyTaskDetected: (task: String, cost: Long) -> Unit = { task, cost ->
+        MatrixLog.e(TAG, "heavy task(cost ${cost}ms):$task")
+    },
+    val onWorkerBlocked: (thread: String, stacktrace: String, cost: Long) -> Unit = { thread, stacktrace, cost ->
+        MatrixLog.e(TAG, "thread: $thread, cost: $cost, $stacktrace")
+    }
+)
+
 /**
  * Created by Yves on 2022/1/11
  */
 internal object MatrixLifecycleThread {
 
-    private const val TAG = "Matrix.Lifecycle.Thread"
-
     private const val CORE_POOL_SIZE = 0
     private const val MAX_POOL_SIZE = 5
     private const val KEEP_ALIVE_SECONDS = 30L
+
+    private var config = LifecycleThreadConfig()
+
+    fun init(config: LifecycleThreadConfig) {
+        this.config = config
+    }
 
     val handler by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
         Handler(MatrixHandlerThread.getNewHandlerThread("matrix_li", Thread.NORM_PRIORITY).looper)
@@ -68,13 +85,12 @@ internal object MatrixLifecycleThread {
 //            MatrixLog.d(TAG, "-> ${it.value.task} -> $cost")
             if (cost > TimeUnit.SECONDS.toMillis(30)) {
                 buildString {
-                    append("Dispatcher Thread Not Responding : ${it.key.name}\n")
+                    append("Dispatcher Thread Not Responding:\n")
                     it.key.stackTrace.forEach { s ->
                         append("\tat $s\n")
                     }
                 }.let { stacktrace ->
-                    // TODO: 2022/1/25 profiling
-                    MatrixLog.e(TAG, stacktrace)
+                    config.onWorkerBlocked.invoke(it.key.name, stacktrace, cost)
                 }
             }
         }
@@ -95,8 +111,7 @@ internal object MatrixLifecycleThread {
 
             val cost = System.currentTimeMillis() - begin
             if (cost > 500) {
-                // TODO: 2022/1/25 profiling
-                MatrixLog.e(TAG, "heavy task(cost ${cost}ms):$this")
+                config.onHeavyTaskDetected.invoke(this.toString(), cost)
             }
         }
 

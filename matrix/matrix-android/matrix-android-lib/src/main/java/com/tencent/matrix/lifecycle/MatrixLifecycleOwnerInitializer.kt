@@ -19,11 +19,13 @@ data class MatrixLifecycleConfig(
     /**
      * Injects Service#mActivityManager if true
      */
-    val fgServiceMonitorEnable: Boolean = false,
+    val enableFgServiceMonitor: Boolean = false,
     /**
      * Injects WindowManagerGlobal#mRoots if true
      */
-    val overlayWindowMonitorEnable: Boolean = false
+    val enableOverlayWindowMonitor: Boolean = false,
+
+    val lifecycleThreadConfig: LifecycleThreadConfig = LifecycleThreadConfig()
 )
 
 /**
@@ -40,8 +42,7 @@ class MatrixLifecycleOwnerInitializer {
         @JvmStatic
         fun init(
             @NonNull app: Application,
-            enableFgServiceMonitor: Boolean,
-            enableOverlayWindowMonitor: Boolean
+            config: MatrixLifecycleConfig
         ) {
             if (inited) {
                 return
@@ -56,11 +57,12 @@ class MatrixLifecycleOwnerInitializer {
                 }
                 return
             }
+            MatrixLifecycleThread.init(config.lifecycleThreadConfig)
             ProcessUILifecycleOwner.init(app)
-            if (enableFgServiceMonitor) {
+            if (config.enableFgServiceMonitor) {
                 ForegroundServiceLifecycleOwner.init(app)
             }
-            if (enableOverlayWindowMonitor) {
+            if (config.enableOverlayWindowMonitor) {
                 OverlayWindowLifecycleOwner.init()
             }
         }

@@ -213,7 +213,7 @@ open class StatefulOwner(val async: Boolean = true) : IStatefulOwner {
             }
 
             override fun toString(): String {
-                return "${super.toString()}#$observer"
+                return "$observer"
             }
         })
     }
