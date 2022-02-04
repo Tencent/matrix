@@ -613,6 +613,7 @@ static float *g_cpuHighThreadValueArray = NULL;
         mach_msg_type_number_t thread_info_count = THREAD_INFO_MAX;
         kr = thread_info(thread_list[j], THREAD_BASIC_INFO, (thread_info_t)thinfo, &thread_info_count);
         if (kr != KERN_SUCCESS) {
+            vm_deallocate(mach_task_self(), (vm_offset_t)thread_list, thread_count * sizeof(thread_t));
             return -1;
         }
         thread_basic_info_t basic_info_th = (thread_basic_info_t)thinfo;
@@ -661,6 +662,7 @@ static float *g_cpuHighThreadValueArray = NULL;
         mach_msg_type_number_t thread_info_count = THREAD_INFO_MAX;
         kr = thread_info(current_thread, THREAD_BASIC_INFO, (thread_info_t)thinfo, &thread_info_count);
         if (kr != KERN_SUCCESS) {
+            vm_deallocate(mach_task_self(), (vm_offset_t)thread_list, *thread_count * sizeof(thread_t));
             return -1;
         }
 
