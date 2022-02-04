@@ -52,10 +52,12 @@
 
     KSThread currentThread = ksthread_self();
     if (mainThread == currentThread) {
+        vm_deallocate(mach_task_self(), (vm_address_t)threads, sizeof(thread_t) * thread_count);
         return 0;
     }
 
     if (thread_suspend(mainThread) != KERN_SUCCESS) {
+        vm_deallocate(mach_task_self(), (vm_address_t)threads, sizeof(thread_t) * thread_count);
         return 0;
     }
 
