@@ -1,4 +1,4 @@
-apply from:"$rootDir/gradle/Arguments.gradle"
+apply from: "$rootDir/gradle/Arguments.gradle"
 
 // Gradle plugin
 include ':matrix-gradle-plugin'
@@ -34,3 +34,9 @@ include ':test:matrix-backtrace-benchmark'
 include ':test:test-backtrace'
 include ':test:test-memoryhook'
 include ':matrix-memory-canary'
+
+if (gradle.staticLinkCXX()) {
+    include ':matrix-hooks:cxx-static'
+    include ':matrix-opengl-leak:cxx-static'
+    include ':matrix-backtrace:cxx-static'
+}

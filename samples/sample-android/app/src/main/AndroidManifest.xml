@@ -1,13 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
 
     xmlns:tools="http://schemas.android.com/tools"
     package="sample.tencent.matrix">
 
-    <uses-permission android:name="android.permission.INTERNET"/>
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
-    <uses-permission android:name="android.permission.MOUNT_UNMOUNT_FILESYSTEMS"/>
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
-    <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.MOUNT_UNMOUNT_FILESYSTEMS" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <application
@@ -17,23 +18,25 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name=".MainActivity">
-
-        </activity>
-
-        <activity android:name=".issue.IssuesListActivity" android:launchMode="singleTask"/>
-
+        <activity
+            android:name=".traffic.TestTrafficActivity"
+            android:exported="false" />
+        <activity android:name=".MainActivity"></activity>
+        <activity
+            android:name=".issue.IssuesListActivity"
+            android:launchMode="singleTask" />
         <activity android:name=".SplashActivity">
             <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
+                <action android:name="android.intent.action.MAIN" />
 
-                <category android:name="android.intent.category.LAUNCHER"/>
+                <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".resource.ManualDumpActivity"/>
+        <activity android:name=".resource.ManualDumpActivity" />
         <activity android:name=".io.TestIOActivity" />
-        <activity android:name=".resource.TestLeakActivity"
-            android:process=":leaktest"/>
+        <activity
+            android:name=".resource.TestLeakActivity"
+            android:process=":leaktest" />
         <activity android:name=".trace.TestTraceMainActivity" />
         <activity android:name=".trace.TestTraceFragmentActivity" />
         <activity android:name=".trace.TestEnterActivity" />
@@ -42,7 +45,9 @@
         <activity android:name=".battery.TestBatteryActivity" />
         <activity android:name=".hooks.TestHooksActivity" />
 
-        <service android:name=".hooks.OtherProcessService" android:process=":other"/>
+        <service
+            android:name=".hooks.OtherProcessService"
+            android:process=":other" />
         <service android:name="com.tencent.matrix.lifecycle.supervisor.SupervisorService"
             android:exported="false"
             android:process=":supervisor"
@@ -51,7 +56,6 @@
         <service android:name=".MainActivity$StubService"
             android:exported="false"
             android:process=":supervisor"/>
-
     </application>
 
 </manifest>

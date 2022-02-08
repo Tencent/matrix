@@ -84,6 +84,14 @@
                 android:text="SQLite Lint" />
 
             <Button
+                android:id="@+id/test_traffic_enter"
+                style="@style/EntryButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Network Traffic" />
+
+            <Button
                 android:id="@+id/test_supervisor"
                 style="@style/EntryButton"
                 android:layout_width="match_parent"

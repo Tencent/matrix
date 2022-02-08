@@ -15,9 +15,15 @@
 #-keepclassmembers class fqcn.of.javascript.interface.for.webview {
 #   public *;
 #}
+
+-optimizationpasses 1
+
 -printconfiguration configuration.txt
 
 -keepattributes SourceFile,LineNumberTable
+
+-dontwarn com.squareup.haha.**
+
 
 
 
