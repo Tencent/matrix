@@ -59,6 +59,7 @@ object ProcessSupervisor : IProcessListener by ProcessSubordinate.processListene
         }
     }
 
+    @Volatile
     private var application: Application? = null
     internal var config: SupervisorConfig? = null
 
@@ -87,7 +88,8 @@ object ProcessSupervisor : IProcessListener by ProcessSubordinate.processListene
             }
         }
 
-        return@lazy MatrixUtil.getProcessName(application!!) == serviceInfo?.processName
+        // serviceInfo might be null
+        return@lazy MatrixUtil.getProcessName(application!!) == serviceInfo?.processName || SupervisorService.isSupervisor
     }
 
     @Volatile

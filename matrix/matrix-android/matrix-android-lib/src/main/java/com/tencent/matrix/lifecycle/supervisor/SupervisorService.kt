@@ -18,13 +18,15 @@ class SupervisorService : Service() {
 
     companion object {
         private const val TAG = "Matrix.ProcessSupervisor.Service"
-        private var isSupervisor = false
+
+        @Volatile
+        internal var isSupervisor = false
+            private set
 
         @Volatile
         internal var recentScene: String = ""
 
         internal fun start(context: Context) = safeApply(TAG) {
-            isSupervisor = true
             if (instance != null) {
                 MatrixLog.e(TAG, "duplicated start")
                 return@safeApply
