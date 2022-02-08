@@ -148,7 +148,11 @@ open class StatefulOwner(val async: Boolean = true) : IStatefulOwner {
             wrapper.checkLifecycle(null)
         } else {
             observerMap[observer] = ObserverWrapper(observer, this)
-            state.dispatch?.invoke(observer)
+            if (async) {
+                state.dispatch?.invokeAsync(observer)
+            } else {
+                state.dispatch?.invoke(observer)
+            }
         }
     }
 
