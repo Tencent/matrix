@@ -62,6 +62,18 @@ class MatrixTrace(
             }
         }
 
+        fun appendSuffix(jarFile: File, suffix: String): String {
+            val origJarName = jarFile.name
+            val dotPos = origJarName.lastIndexOf('.')
+            return if (dotPos < 0) {
+                String.format("%s_%s", origJarName, suffix)
+            } else {
+                val nameWithoutDotExt = origJarName.substring(0, dotPos)
+                val dotExt = origJarName.substring(dotPos)
+                String.format("%s_%s%s", nameWithoutDotExt, suffix, dotExt)
+            }
+        }
+
     }
 
     fun doTransform(classInputs: Collection<File>,
@@ -71,7 +83,8 @@ class MatrixTrace(
                     skipCheckClass: Boolean,
                     traceClassDirectoryOutput: File,
                     legacyReplaceChangedFile: ((File, Map<File, Status>) -> Object)?,
-                    legacyReplaceFile: ((File, File) -> (Object))?
+                    legacyReplaceFile: ((File, File) -> (Object))?,
+                    uniqueOutputName: Boolean
     ) {
 
         val executor: ExecutorService = Executors.newFixedThreadPool(16)
@@ -125,6 +138,7 @@ class MatrixTrace(
                         isIncremental = isIncremental,
                         traceClassFileOutput = traceClassDirectoryOutput,
                         legacyReplaceFile = legacyReplaceFile,
+                        uniqueOutputName = uniqueOutputName,
 
                         // result
                         resultOfDirInputToOut = dirInputOutMap,
@@ -327,6 +341,7 @@ class MatrixTrace(
             private val isIncremental: Boolean,
             private val traceClassFileOutput: File,
             private val legacyReplaceFile: ((File, File) -> (Object))?,             // Will be removed in the future
+            private val uniqueOutputName: Boolean,
             private val resultOfDirInputToOut: MutableMap<File, File>,
             private val resultOfJarInputToOut: MutableMap<File, File>
     ) : Runnable {
@@ -346,7 +361,11 @@ class MatrixTrace(
             val jarOutput = if (inputToOutput.containsKey(jarInput)) {
                 inputToOutput[jarInput]!!
             } else {
-                File(traceClassFileOutput, getUniqueJarName(jarInput))
+                val outputJarName = if (uniqueOutputName)
+                    getUniqueJarName(jarInput)
+                else
+                    appendSuffix(jarInput, "traced")
+                File(traceClassFileOutput, outputJarName)
             }
 
             Log.d(TAG, "CollectJarInputTask input %s -> output %s", jarInput, jarOutput)

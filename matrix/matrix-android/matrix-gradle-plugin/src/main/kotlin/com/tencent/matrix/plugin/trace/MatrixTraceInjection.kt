@@ -111,7 +111,7 @@ class MatrixTraceInjection : ITraceSwitchListener {
                 val taskProvider = BaseCreationAction.findNamedTask(project.tasks, dexBuilderTaskName)
 
                 taskProvider?.configure { task: Task ->
-                    traceTaskProvider.get().wired(task as DexArchiveBuilderTask)
+                    traceTaskProvider.get().wired(creationConfig, task as DexArchiveBuilderTask)
                 }
 
                 if (taskProvider == null) {

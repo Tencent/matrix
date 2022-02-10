@@ -13,7 +13,7 @@ import android.os.Bundle
 import android.os.Process
 import android.text.TextUtils
 import androidx.lifecycle.*
-import com.tencent.matrix.lifecycle.IStateObserver
+import com.tencent.matrix.lifecycle.ISerialObserver
 import com.tencent.matrix.lifecycle.MatrixLifecycleThread
 import com.tencent.matrix.lifecycle.StatefulOwner
 import com.tencent.matrix.listeners.IAppForeground
@@ -82,13 +82,8 @@ object ProcessUILifecycleOwner {
     private var stopSent = true
 
     private open class AsyncOwner : StatefulOwner() {
-        open fun turnOnAsync() {
-            runningHandler.post { turnOn() }
-        }
-
-        open fun turnOffAsync() {
-            runningHandler.post { turnOff() }
-        }
+        open fun turnOnAsync() = turnOn()
+        open fun turnOffAsync() = turnOff()
     }
 
     private class CreatedStateOwner : AsyncOwner() {
@@ -423,13 +418,13 @@ object ProcessUILifecycleOwner {
         visibleScene = scene
     }
 
-    class DefaultLifecycleObserver : IStateObserver {
+    class DefaultLifecycleObserver : ISerialObserver {
         private fun onDispatchForeground() {
             if (isProcessForeground) {
                 return
             }
             MatrixLog.i(TAG, "onForeground... visibleScene[$visibleScene@$processName]")
-            runningHandler.post {
+            MatrixLifecycleThread.executor.execute {
                 isProcessForeground = true
                 synchronized(mListeners) {
                     for (listener in mListeners) {
@@ -444,7 +439,7 @@ object ProcessUILifecycleOwner {
                 return
             }
             MatrixLog.i(TAG, "onBackground... visibleScene[$visibleScene@$processName]")
-            runningHandler.post {
+            MatrixLifecycleThread.executor.execute {
                 isProcessForeground = false
                 synchronized(mListeners) {
                     for (listener in mListeners) {

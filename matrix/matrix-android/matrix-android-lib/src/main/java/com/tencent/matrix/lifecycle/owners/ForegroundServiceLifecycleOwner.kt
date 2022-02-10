@@ -42,8 +42,6 @@ object ForegroundServiceLifecycleOwner : StatefulOwner() {
 
     private var fgServiceHandler: FgServiceHandler? = null
 
-    private val runningHandler = MatrixLifecycleThread.handler
-
     fun init(context: Context) {
         if (Build.VERSION.SDK_INT > 31) { // for safety
             MatrixLog.e(TAG, "NOT support for api-level ${Build.VERSION.SDK_INT} yet!!!")
@@ -172,10 +170,8 @@ object ForegroundServiceLifecycleOwner : StatefulOwner() {
         fun onStartForeground(componentName: ComponentName) {
             MatrixLog.i(TAG, "hack onStartForeground: $componentName")
             if (fgServiceRecord.isEmpty()) {
-                runningHandler.post {
-                    MatrixLog.i(TAG, "turn ON")
-                    turnOn()
-                }
+                MatrixLog.i(TAG, "turn ON")
+                turnOn()
             }
             fgServiceRecord.add(componentName)
         }
@@ -184,10 +180,8 @@ object ForegroundServiceLifecycleOwner : StatefulOwner() {
             MatrixLog.i(TAG, "hack onStopForeground: $componentName")
             fgServiceRecord.remove(componentName)
             if (fgServiceRecord.isEmpty()) {
-                runningHandler.post {
-                    MatrixLog.i(TAG, "turn OFF")
-                    turnOff()
-                }
+                MatrixLog.i(TAG, "turn OFF")
+                turnOff()
             }
         }
     }

@@ -72,12 +72,12 @@ object ExplicitBackgroundOwner : StatefulOwner(), IBackgroundStatefulOwner {
     }
 
     init {
-        ImmutableMultiSourceStatefulOwner(
+        object : ImmutableMultiSourceStatefulOwner(
             ReduceOperators.OR,
             ProcessUILifecycleOwner.startedStateOwner,
             ForegroundServiceLifecycleOwner,
             OverlayWindowLifecycleOwner
-        ).observeForever(object : IStateObserver {
+        ), ISerialObserver {}.observeForever(object : ISerialObserver {
             override fun on() { // Activity foreground
                 checkTask.stop()
                 turnOff()
@@ -151,7 +151,7 @@ object StagedBackgroundOwner : StatefulOwner(), IBackgroundStatefulOwner {
     }
 
     init {
-        ExplicitBackgroundOwner.observeForever(object : IStateObserver {
+        ExplicitBackgroundOwner.observeForever(object : ISerialObserver {
             override fun on() { // explicit background
                 checkTask.post()
             }
@@ -176,12 +176,12 @@ object StagedBackgroundOwner : StatefulOwner(), IBackgroundStatefulOwner {
 
 object DeepBackgroundOwner : StatefulOwner(), IBackgroundStatefulOwner {
 
-    private val delegate = ImmutableMultiSourceStatefulOwner(
+    private val delegate = object : ImmutableMultiSourceStatefulOwner(
         ReduceOperators.AND,
         ProcessUILifecycleOwner.createdStateOwner.reverse(), // move to first to avoid useless checks
         ExplicitBackgroundOwner,
         StagedBackgroundOwner.reverse()
-    )
+    ), ISerialObserver {}
 
     override fun active() = delegate.active()
 

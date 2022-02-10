@@ -59,6 +59,7 @@ object ProcessSupervisor : IProcessListener by ProcessSubordinate.processListene
         }
     }
 
+    @Volatile
     private var application: Application? = null
     internal var config: SupervisorConfig? = null
 
@@ -87,7 +88,8 @@ object ProcessSupervisor : IProcessListener by ProcessSubordinate.processListene
             }
         }
 
-        return@lazy MatrixUtil.getProcessName(application!!) == serviceInfo?.processName
+        // serviceInfo might be null
+        return@lazy MatrixUtil.getProcessName(application!!) == serviceInfo?.processName || SupervisorService.isSupervisor
     }
 
     @Volatile
@@ -104,11 +106,11 @@ object ProcessSupervisor : IProcessListener by ProcessSubordinate.processListene
     // @formatter:on
 
     private class AppStagedBackgroundOwner(
-        private val delegate: MultiSourceStatefulOwner = MultiSourceStatefulOwner(
+        private val delegate: MultiSourceStatefulOwner = object : MultiSourceStatefulOwner(
             ReduceOperators.AND,
-            appExplicitBackgroundOwner.shadow(),
-            appDeepBackgroundOwner.reverse().shadow()
-        )
+            appExplicitBackgroundOwner.shadow(true),
+            appDeepBackgroundOwner.reverse().shadow(true)
+        ), ISerialObserver {}
     ) : IBackgroundStatefulOwner, IStatefulOwner by delegate
 
     val appStagedBackgroundOwner: IBackgroundStatefulOwner = AppStagedBackgroundOwner()
@@ -149,7 +151,8 @@ object ProcessSupervisor : IProcessListener by ProcessSubordinate.processListene
         val conn = object : ServiceConnection {
             override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
                 MatrixLifecycleThread.handler.post { // do NOT run ipc in main thread
-                    SupervisorPacemaker.uninstallPacemaker()
+                    SupervisorPacemaker.uninstall()
+                    SubordinatePacemaker.uninstall(app)
                     supervisorProxy = ISupervisorProxy.Stub.asInterface(service)
                     MatrixLog.i(tag, "on Supervisor Connected $supervisorProxy")
 
@@ -180,8 +183,21 @@ object ProcessSupervisor : IProcessListener by ProcessSubordinate.processListene
                     SupervisorPacemaker.install(app)
                     // try to re-bind supervisor, but don't auto create here
                     safeApply(log = false) { app.unbindService(this) }
-                    app.bindService(intent, this, BIND_ABOVE_CLIENT)
-                    MatrixLog.e(tag, "rebound supervisor")
+
+                    safeLet({
+                        app.bindService(intent, this, BIND_ABOVE_CLIENT)
+                        MatrixLog.e(tag, "rebound supervisor")
+                    }, failed = {
+                        // install subordinate pacemaker
+                        MatrixLog.printErrStackTrace(tag, it, "rebound supervisor failed")
+                        SubordinatePacemaker.install(app) {
+                            safeApply(tag) {
+                                app.bindService(intent, this, BIND_ABOVE_CLIENT)
+                                SubordinatePacemaker.uninstall(app)
+                                MatrixLog.i(tag, "subordinate pacemaker rebound supervisor")
+                            }
+                        }
+                    })
                 }
             }
         }

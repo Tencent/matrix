@@ -18,13 +18,15 @@ class SupervisorService : Service() {
 
     companion object {
         private const val TAG = "Matrix.ProcessSupervisor.Service"
-        private var isSupervisor = false
+
+        @Volatile
+        internal var isSupervisor = false
+            private set
 
         @Volatile
         internal var recentScene: String = ""
 
         internal fun start(context: Context) = safeApply(TAG) {
-            isSupervisor = true
             if (instance != null) {
                 MatrixLog.e(TAG, "duplicated start")
                 return@safeApply
@@ -84,7 +86,7 @@ class SupervisorService : Service() {
                     backgroundProcessLru.moveOrAddFirst(this)
                     MatrixLog.i(
                         TAG,
-                        "CREATED: [$pid-${name}] -> [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}"
+                        "CREATED: [${this.pid}-${name}] -> [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}"
                     )
 
                     safeApply(TAG) {
@@ -130,8 +132,6 @@ class SupervisorService : Service() {
         }
 
         override fun onStateChanged(token: ProcessToken) {
-            val pid = Binder.getCallingPid()
-            Assert.assertEquals(pid, token.pid)
             runningHandler.post {
                 MatrixLog.i(
                     TAG,
@@ -165,8 +165,6 @@ class SupervisorService : Service() {
         }
 
         override fun onProcessKilled(token: ProcessToken) {
-            val pid = Binder.getCallingPid()
-            Assert.assertEquals(pid, token.pid)
             runningHandler.post {
                 safeApply(TAG) {
                     targetKilledCallback?.invoke(LRU_KILL_SUCCESS, token.name, token.pid)
@@ -175,14 +173,12 @@ class SupervisorService : Service() {
                 RemoteProcessLifecycleProxy.removeProxy(token)
                 MatrixLog.i(
                     TAG,
-                    "KILL: [$pid-${token.name}] X [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}"
+                    "KILL: [${token.pid}-${token.name}] X [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}"
                 )
             }
         }
 
         override fun onProcessRescuedFromKill(token: ProcessToken) {
-            val pid = Binder.getCallingPid()
-            Assert.assertEquals(pid, token.pid)
             runningHandler.post {
                 safeApply(TAG) {
                     targetKilledCallback?.invoke(LRU_KILL_RESCUED, token.name, token.pid)
@@ -191,8 +187,6 @@ class SupervisorService : Service() {
         }
 
         override fun onProcessKillCanceled(token: ProcessToken) {
-            val pid = Binder.getCallingPid()
-            Assert.assertEquals(pid, token.pid)
             runningHandler.post {
                 safeApply(TAG) {
                     targetKilledCallback?.invoke(LRU_KILL_CANCELED, token.name, token.pid)
@@ -224,6 +218,8 @@ class SupervisorService : Service() {
                 state
             )
         }
+
+        SubordinatePacemaker.notifySupervisorInstalled(applicationContext)
     }
 
     override fun onBind(intent: Intent?): IBinder {

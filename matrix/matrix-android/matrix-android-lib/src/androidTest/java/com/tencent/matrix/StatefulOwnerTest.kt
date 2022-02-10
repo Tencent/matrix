@@ -1,10 +1,9 @@
 package com.tencent.matrix
 
+import android.os.SystemClock
+import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.tencent.matrix.lifecycle.IStateObserver
-import com.tencent.matrix.lifecycle.MultiSourceStatefulOwner
-import com.tencent.matrix.lifecycle.ReduceOperators
-import com.tencent.matrix.lifecycle.StatefulOwner
+import com.tencent.matrix.lifecycle.*
 import com.tencent.matrix.util.MatrixLog
 import junit.framework.Assert.assertEquals
 import org.junit.Test
@@ -25,7 +24,10 @@ class StatefulOwnerTest {
 
         class TestMsOwner: MultiSourceStatefulOwner(ReduceOperators.OR)
 
-        class TestStatefulOwner: StatefulOwner()
+        class TestStatefulOwner: StatefulOwner() {
+            fun handleOn() = turnOn()
+            fun handleOff() = turnOff()
+        }
 
         val msOwner = TestMsOwner()
         msOwner.observeForever(object : IStateObserver {
@@ -41,7 +43,7 @@ class StatefulOwnerTest {
         assertEquals(msOwner.active(), false)
 
         val s1 = TestStatefulOwner().apply {
-//            turnOn()
+            handleOn()
             MatrixLog.d(TAG, "add s1")
             msOwner.addSourceOwner(this)
         }
@@ -49,7 +51,7 @@ class StatefulOwnerTest {
         assertEquals(msOwner.active(), true)
 
         val s2 = TestStatefulOwner().apply {
-//            turnOn()
+            handleOff()
             MatrixLog.d(TAG, "add s2")
             msOwner.addSourceOwner(this)
         }
@@ -62,8 +64,68 @@ class StatefulOwnerTest {
         assertEquals(msOwner.active(), false)
 
         MatrixLog.d(TAG, "turn off s2")
-//        s2.turnOff()
+        s2.handleOff()
 
+    }
+
+    @Test
+    fun scheduleTest() {
+        val o1 = object : StatefulOwner(true) {
+            fun handleOn() = turnOn()
+            fun handleOff() = turnOff()
+        }
+
+        o1.observeForever(object : IStateObserver {
+            override fun on() {
+                Log.d(TAG, "on: normal observe at ${Thread.currentThread().name}")
+            }
+
+            override fun off() {
+                Log.d(TAG, "off: normal observe at ${Thread.currentThread().name}")
+            }
+        })
+
+        o1.observeForever(object : ISerialObserver {
+            override fun on() {
+                Log.d(TAG, "on: serial observe at ${Thread.currentThread().name} pool size = ${MatrixLifecycleThread.executor.poolSize}")
+            }
+
+            override fun off() {
+                Log.d(TAG, "off: serial observe at ${Thread.currentThread().name} pool size = ${MatrixLifecycleThread.executor.poolSize}")
+            }
+        })
+
+        o1.handleOn()
+        o1.handleOff()
+        SystemClock.sleep(100)
+        o1.handleOn()
+        o1.handleOff()
+        SystemClock.sleep(100)
+        o1.handleOn()
+        o1.handleOff()
+
+        val m1 = MultiSourceStatefulOwner(ReduceOperators.AND, o1)
+        m1.observeForever(object : IStateObserver {
+            override fun on() {
+                Log.d(TAG, "Multi on: normal observe at ${Thread.currentThread().name}")
+            }
+
+            override fun off() {
+                Log.d(TAG, "Multi off: normal observe at ${Thread.currentThread().name}")
+            }
+        })
+        m1.observeForever(object : ISerialObserver {
+            override fun on() {
+                Log.d(TAG, "Multi on: serial observe at ${Thread.currentThread().name} pool size = ${MatrixLifecycleThread.executor.poolSize}")
+            }
+
+            override fun off() {
+                Log.d(TAG, "Multi off: serial observe at ${Thread.currentThread().name} pool size = ${MatrixLifecycleThread.executor.poolSize}")
+            }
+        })
+
+        o1.handleOn()
+        o1.handleOff()
     }
 
 }

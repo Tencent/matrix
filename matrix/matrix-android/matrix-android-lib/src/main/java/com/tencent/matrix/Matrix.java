@@ -43,7 +43,7 @@ public class Matrix {
     private Matrix(Application app, PluginListener listener, HashSet<Plugin> plugins, MatrixLifecycleConfig config) {
         this.application = app;
         this.plugins = plugins;
-        MatrixLifecycleOwnerInitializer.init(app, config.getFgServiceMonitorEnable(), config.getOverlayWindowMonitorEnable());
+        MatrixLifecycleOwnerInitializer.init(app, config);
         ProcessSupervisor.INSTANCE.init(app, config.getSupervisorConfig());
         for (Plugin plugin : plugins) {
             plugin.init(application, listener);

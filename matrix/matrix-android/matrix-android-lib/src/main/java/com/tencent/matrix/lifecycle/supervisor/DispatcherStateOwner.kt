@@ -20,7 +20,7 @@ internal open class DispatcherStateOwner(
     reduceOperator: (stateful: Collection<IStateful>) -> Boolean,
     val attachedSource: StatefulOwner,
     val name: String
-) : MultiSourceStatefulOwner(reduceOperator) {
+) : MultiSourceStatefulOwner(reduceOperator), ISerialObserver {
 
     companion object {
         private val dispatchOwners = ConcurrentHashMap<String, DispatcherStateOwner>()
@@ -56,7 +56,7 @@ internal open class DispatcherStateOwner(
             dispatchOwners.forEach {
                 it.value.apply {
                     attachedObserver?.let { o -> attachedSource.removeObserver(o) } // prevent double-observe
-                    attachedObserver = object : IStateObserver {
+                    attachedObserver = object : IStateObserver, ISerialObserver {
                         override fun on() {
                             MatrixLog.d(ProcessSupervisor.tag, "attached ${it.key} turned ON")
                             safeApply("${ProcessSupervisor.tag}.${it.key}") {
@@ -93,7 +93,7 @@ internal open class DispatcherStateOwner(
 
         fun observe(observer: (stateName: String, state: Boolean) -> Unit) {
             dispatchOwners.forEach {
-                it.value.observeForever(object : IStateObserver {
+                it.value.observeForever(object : IStateObserver, ISerialObserver {
                     override fun on() {
                         observer.invoke(it.key, true)
                     }
@@ -120,7 +120,10 @@ internal open class DispatcherStateOwner(
         dispatchOwners[name] = this
     }
 
-    private val h = MatrixLifecycleThread.handler
-    private fun dispatchOn() = h.post { turnOn() }
-    private fun dispatchOff() = h.post { turnOff() }
+    private fun dispatchOn() = turnOn()
+    private fun dispatchOff() = turnOff()
+
+    override fun toString(): String {
+        return "DispatcherStateOwner_$name"
+    }
 }
