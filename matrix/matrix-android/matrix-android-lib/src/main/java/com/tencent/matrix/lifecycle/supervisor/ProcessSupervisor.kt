@@ -151,7 +151,8 @@ object ProcessSupervisor : IProcessListener by ProcessSubordinate.processListene
         val conn = object : ServiceConnection {
             override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
                 MatrixLifecycleThread.handler.post { // do NOT run ipc in main thread
-                    SupervisorPacemaker.uninstallPacemaker()
+                    SupervisorPacemaker.uninstall()
+                    SubordinatePacemaker.uninstall(app)
                     supervisorProxy = ISupervisorProxy.Stub.asInterface(service)
                     MatrixLog.i(tag, "on Supervisor Connected $supervisorProxy")
 
@@ -182,8 +183,21 @@ object ProcessSupervisor : IProcessListener by ProcessSubordinate.processListene
                     SupervisorPacemaker.install(app)
                     // try to re-bind supervisor, but don't auto create here
                     safeApply(log = false) { app.unbindService(this) }
-                    app.bindService(intent, this, BIND_ABOVE_CLIENT)
-                    MatrixLog.e(tag, "rebound supervisor")
+
+                    safeLet({
+                        app.bindService(intent, this, BIND_ABOVE_CLIENT)
+                        MatrixLog.e(tag, "rebound supervisor")
+                    }, failed = {
+                        // install subordinate pacemaker
+                        MatrixLog.printErrStackTrace(tag, it, "rebound supervisor failed")
+                        SubordinatePacemaker.install(app) {
+                            safeApply(tag) {
+                                app.bindService(intent, this, BIND_ABOVE_CLIENT)
+                                SubordinatePacemaker.uninstall(app)
+                                MatrixLog.i(tag, "subordinate pacemaker rebound supervisor")
+                            }
+                        }
+                    })
                 }
             }
         }

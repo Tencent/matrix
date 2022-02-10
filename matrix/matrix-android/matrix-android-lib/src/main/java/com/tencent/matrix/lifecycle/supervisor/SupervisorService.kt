@@ -218,6 +218,8 @@ class SupervisorService : Service() {
                 state
             )
         }
+
+        SubordinatePacemaker.notifySupervisorInstalled(applicationContext)
     }
 
     override fun onBind(intent: Intent?): IBinder {

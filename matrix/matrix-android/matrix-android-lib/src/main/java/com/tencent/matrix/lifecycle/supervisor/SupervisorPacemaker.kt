@@ -45,7 +45,7 @@ internal object SupervisorPacemaker : BroadcastReceiver() {
         }
     }
 
-    internal fun uninstallPacemaker() {
+    internal fun uninstall() {
         if (pacemaker != null) {
             ProcessUILifecycleOwner.startedStateOwner.removeObserver(pacemaker!!)
             pacemaker = null
