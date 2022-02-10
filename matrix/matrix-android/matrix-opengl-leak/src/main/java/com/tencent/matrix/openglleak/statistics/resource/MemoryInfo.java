@@ -10,6 +10,7 @@ import static android.opengl.GLES20.GL_TEXTURE_CUBE_MAP_POSITIVE_Z;
 import static android.opengl.GLES30.GL_TEXTURE_2D_ARRAY;
 import static android.opengl.GLES30.GL_TEXTURE_3D;
 
+import com.tencent.matrix.openglleak.hook.OpenGLHook;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.Arrays;
@@ -84,7 +85,7 @@ public class MemoryInfo {
         }
 
         if (this.nativeStackPtr != 0) {
-            ResRecordManager.releaseNative(this.nativeStackPtr);
+            OpenGLHook.releaseNative(this.nativeStackPtr);
         }
 
         this.javaStack = javaStack;
@@ -120,7 +121,7 @@ public class MemoryInfo {
     }
 
     public String getNativeStack() {
-        return nativeStackPtr != 0 ? ResRecordManager.dumpNativeStack(nativeStackPtr) : "";
+        return nativeStackPtr != 0 ? OpenGLHook.dumpNativeStack(nativeStackPtr) : "";
     }
 
     public long getNativeStackPtr() {

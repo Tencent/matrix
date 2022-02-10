@@ -133,6 +133,10 @@ public class OpenGLHook {
 
     private static native boolean hookGlRenderbufferStorage(int index);
 
+    public static native String dumpNativeStack(long nativeStackPtr);
+
+    public static native void releaseNative(long nativeStackPtr);
+
     public static void onGlGenTextures(int[] ids, final String threadId, final String javaStack, final long nativeStackPtr) {
         if (ids.length > 0) {
             final AtomicInteger counter = new AtomicInteger(ids.length);

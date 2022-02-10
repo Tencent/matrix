@@ -2,6 +2,7 @@ package com.tencent.matrix.openglleak.statistics.resource;
 
 import android.annotation.SuppressLint;
 
+import com.tencent.matrix.openglleak.hook.OpenGLHook;
 import com.tencent.matrix.openglleak.utils.AutoWrapBuilder;
 import com.tencent.matrix.openglleak.utils.EGLHelper;
 
@@ -73,7 +74,7 @@ public class ResRecordManager {
             AtomicInteger counter = info.getCounter();
             counter.set(counter.get() - 1);
             if (counter.get() == 0) {
-                releaseNative(info.getNativeStackPtr());
+                OpenGLHook.releaseNative(info.getNativeStackPtr());
             }
 
             // 释放 memory info
@@ -81,7 +82,7 @@ public class ResRecordManager {
             if (null != memoryInfo) {
                 long memNativePtr = memoryInfo.getNativeStackPtr();
                 if (memNativePtr != 0) {
-                    releaseNative(memNativePtr);
+                    OpenGLHook.releaseNative(memNativePtr);
                     memoryInfo.releaseNativeStackPtr();
                 }
             }
@@ -129,16 +130,12 @@ public class ResRecordManager {
             }
             long nativeStackPtr = info.getNativeStackPtr();
             if (nativeStackPtr != 0L) {
-                ret = dumpNativeStack(nativeStackPtr);
+                ret = OpenGLHook.dumpNativeStack(nativeStackPtr);
             }
 
             return ret;
         }
     }
-
-    public static native String dumpNativeStack(long nativeStackPtr);
-
-    public static native void releaseNative(long nativeStackPtr);
 
     protected void registerCallback(Callback callback) {
         if (null == callback) {
