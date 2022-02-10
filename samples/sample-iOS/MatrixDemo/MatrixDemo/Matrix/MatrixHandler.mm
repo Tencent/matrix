@@ -15,7 +15,7 @@
  */
 
 #import "MatrixHandler.h"
-#import <matrix-wechat/WCCrashBlockFileHandler.h>
+#import <Matrix/WCCrashBlockFileHandler.h>
 #import <UIKit/UIKit.h>
 #import "AppDelegate.h"
 #import "TextViewController.h"
@@ -69,9 +69,7 @@ void kscrash_crashCallback(const KSCrashReportWriter *writer)
     blockMonitorConfig.bMainThreadHandle = YES;
     blockMonitorConfig.bFilterSameStack = YES;
     blockMonitorConfig.triggerToBeFilteredCount = 10;
-    blockMonitorConfig.bGetCPUHighLog = NO;
     blockMonitorConfig.bGetPowerConsumeStack = YES;
-    
     crashBlockConfig.blockMonitorConfiguration = blockMonitorConfig;
     
     WCCrashBlockMonitorPlugin *crashBlockPlugin = [[WCCrashBlockMonitorPlugin alloc] init];
@@ -131,7 +129,7 @@ void kscrash_crashCallback(const KSCrashReportWriter *writer)
                         dumpTypeDes = @"CPU Too High";
                         break;
                     case EDumpType_PowerConsume:
-                        dumpTypeDes = @"Power Consume";
+                        dumpTypeDes = @"Power Consume Calltree";
                         break;
                     case EDumpType_LaunchBlock:
                         dumpTypeDes = @"Launching Main Thread Block";
@@ -195,7 +193,7 @@ void kscrash_crashCallback(const KSCrashReportWriter *writer)
     
 }
 
-- (NSDictionary *)onCrashBlockGetUserInfoForFPSWithDumpType:(EDumpType)dumpType
+- (NSDictionary *)onCrashBlockMonitorGetCustomUserInfoForDumpType:(EDumpType)dumpType
 {
     return nil;
 }

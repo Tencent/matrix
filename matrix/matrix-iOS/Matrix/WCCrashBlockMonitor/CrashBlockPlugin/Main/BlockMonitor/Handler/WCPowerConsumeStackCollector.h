@@ -18,26 +18,13 @@
 #import "KSStackCursor_Backtrace.h"
 
 // ============================================================================
-#pragma mark - WCAddressFrame
-// ============================================================================
-
-@interface WCAddressFrame : NSObject
-
-- (id)initWithAddress:(uintptr_t)address withRepeatCount:(uint32_t)count;
-- (void)addChildFrame:(WCAddressFrame *)addressFrame;
-
-@end
-
-// ============================================================================
 #pragma mark - WCStackTracePool
 // ============================================================================
 
 @interface WCStackTracePool : NSObject
 
-@property (nonatomic, assign) BOOL bTryToSymbolicate;
-
 - (id)initWithMaxStackTraceCount:(NSUInteger)maxStackTraceCount;
-- (void)addThreadStack:(uintptr_t *)stackArray andLength:(size_t)stackCount andCPU:(float)stackCPU;
+- (void)addThreadStack:(uintptr_t *)stackArray andLength:(size_t)stackCount andCPU:(float)stackCPU isInBackground:(BOOL)isInBackground;
 - (NSArray<NSDictionary *> *)makeCallTree;
 
 @end
@@ -55,7 +42,6 @@
 @interface WCPowerConsumeStackCollector : NSObject
 
 @property (nonatomic, weak) id<WCPowerConsumeStackCollectorDelegate> delegate;
-@property (nonatomic, assign) BOOL bTryToSymbolicate;
 
 - (id)initWithCPULimit:(float)cpuLimit;
 
@@ -75,11 +61,5 @@
 
 /** get cpu high thread value array **/
 - (float *)getCpuHighThreadValueArray;
-
-/**
- *  get current CPU usage
- *  @return current cpu usage. Single core is full 100%, dual core is full 200%, and so on.
- */
-+ (float)getCurrentCPUUsage;
 
 @end

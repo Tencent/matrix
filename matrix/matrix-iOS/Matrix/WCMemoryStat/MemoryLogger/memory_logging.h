@@ -22,7 +22,7 @@
 
 extern int dump_call_stacks;
 
-int enable_memory_logging(const char *log_dir);
+int enable_memory_logging(const char *root_dir, const char *log_dir);
 void disable_memory_logging(void);
 
 bool memory_dump(void (*callback)(const char *, size_t), summary_report_param param);

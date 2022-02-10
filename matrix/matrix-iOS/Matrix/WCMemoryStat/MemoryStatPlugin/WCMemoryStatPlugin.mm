@@ -20,6 +20,7 @@
 #import "MatrixLogDef.h"
 #import "MatrixAppRebootAnalyzer.h"
 #import "MatrixDeviceInfo.h"
+#import "MatrixPathUtil.h"
 
 #import "memory_logging.h"
 #import "logger_internal.h"
@@ -33,7 +34,7 @@
 
 #import <objc/runtime.h>
 
-#define g_matrix_memory_stat_plguin_tag "MemoryStat"
+#define g_matrix_memory_stat_plugin_tag "MemoryStat"
 
 // ============================================================================
 #pragma mark - Memory dump callback
@@ -191,6 +192,10 @@ void memory_dump_callback(const char *data, size_t len) {
     [m_recordManager deleteAllRecords];
 }
 
+- (size_t)pluginMemoryUsed {
+    return inter_malloc_zone_statistics();
+}
+
 // ============================================================================
 #pragma mark - Private
 // ============================================================================
@@ -244,10 +249,11 @@ void memory_dump_callback(const char *data, size_t len) {
     m_currRecord.appUUID = @(app_uuid());
 
     NSString *dataPath = [m_currRecord recordDataPath];
+    NSString *rootPath = [[MatrixPathUtil memoryStatPluginCachePath] stringByAppendingPathComponent:@"Data"];
     [[NSFileManager defaultManager] removeItemAtPath:dataPath error:nil];
     [[NSFileManager defaultManager] createDirectoryAtPath:dataPath withIntermediateDirectories:YES attributes:nil error:nil];
 
-    if ((ret = enable_memory_logging(dataPath.UTF8String)) == MS_ERRC_SUCCESS) {
+    if ((ret = enable_memory_logging(rootPath.UTF8String, dataPath.UTF8String)) == MS_ERRC_SUCCESS) {
         [m_recordManager insertNewRecord:m_currRecord];
         return YES;
     } else {
@@ -284,9 +290,9 @@ void memory_dump_callback(const char *data, size_t len) {
 
 - (void)reportIssueCompleteWithIssue:(MatrixIssue *)issue success:(BOOL)bSuccess {
     if (bSuccess) {
-        MatrixInfo(@"report issuse success: %@", issue);
+        MatrixInfo(@"report issue success: %@", issue);
     } else {
-        MatrixInfo(@"report issuse failed: %@", issue);
+        MatrixInfo(@"report issue failed: %@", issue);
     }
     if ([issue.issueTag isEqualToString:[WCMemoryStatPlugin getTag]]) {
         if (bSuccess) {
@@ -300,7 +306,7 @@ void memory_dump_callback(const char *data, size_t len) {
 }
 
 + (NSString *)getTag {
-    return @g_matrix_memory_stat_plguin_tag;
+    return @g_matrix_memory_stat_plugin_tag;
 }
 
 @end

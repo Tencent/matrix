@@ -21,41 +21,42 @@
 
 @implementation WCDumpInterface
 
-+ (NSString *)dumpReportWithReportType:(EDumpType)dumpType withBlockTime:(uint64_t)blockTime {
-    return [WCDumpInterface dumpReportWithReportType:dumpType withBlockTime:blockTime withExceptionReason:@""];
-}
-
-+ (NSString *)dumpReportWithReportType:(EDumpType)dumpType withBlockTime:(uint64_t)blockTime withExceptionReason:(NSString *)exceptionReason {
-    return [WCDumpInterface dumpReportWithReportType:dumpType withBlockTime:blockTime withExceptionReason:@"" selfDefinedPath:YES];
++ (NSString *)dumpReportWithReportType:(EDumpType)dumpType
+                     suspendAllThreads:(BOOL)suspendAllThreads
+                        enableSnapshot:(BOOL)enableSnapshot {
+    return [WCDumpInterface dumpReportWithReportType:dumpType
+                                 withExceptionReason:@""
+                                   suspendAllThreads:suspendAllThreads
+                                      enableSnapshot:enableSnapshot
+                                       writeCpuUsage:NO
+                                     selfDefinedPath:YES];
 }
 
 + (NSString *)dumpReportWithReportType:(EDumpType)dumpType
-                         withBlockTime:(uint64_t)blockTime
                    withExceptionReason:(NSString *)exceptionReason
+                     suspendAllThreads:(BOOL)suspendAllThreads
+                        enableSnapshot:(BOOL)enableSnapshot
+                         writeCpuUsage:(BOOL)writeCpuUsage
                        selfDefinedPath:(BOOL)bSelfDefined {
     KSCrash *handler = [KSCrash sharedInstance];
     NSString *name = [NSString stringWithFormat:@"%lu", (unsigned long)dumpType];
-    NSString *crashReportPath = @"";
+    NSString *crashReportPath = nil;
     if (bSelfDefined) {
         crashReportPath = [WCDumpInterface genFilePathWithReportType:dumpType];
-        [handler reportUserException:name
-                              reason:exceptionReason
-                            language:@""
-                          lineOfCode:NULL
-                          stackTrace:NULL
-                       logAllThreads:true
-                    terminateProgram:false
-                        dumpFilePath:crashReportPath
-                            dumpType:(int)dumpType];
-    } else {
-        [handler reportUserException:name
-                              reason:exceptionReason
-                            language:@""
-                          lineOfCode:NULL
-                          stackTrace:NULL
-                       logAllThreads:true
-                    terminateProgram:false];
     }
+
+    [handler reportUserException:name
+                          reason:exceptionReason
+                        language:@""
+                      lineOfCode:NULL
+                      stackTrace:NULL
+                   logAllThreads:suspendAllThreads
+                  enableSnapshot:enableSnapshot
+                terminateProgram:false
+                   writeCpuUsage:writeCpuUsage
+                    dumpFilePath:crashReportPath
+                        dumpType:(int)dumpType];
+
     return crashReportPath;
 }
 

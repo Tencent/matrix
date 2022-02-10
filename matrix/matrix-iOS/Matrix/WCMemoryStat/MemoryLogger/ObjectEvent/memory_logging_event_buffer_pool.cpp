@@ -18,7 +18,7 @@
 
 #include <dispatch/dispatch.h>
 
-#define BUFFER_SIZE (2 << 10)
+#define BUFFER_SIZE (3 << 10)
 #define MAX_BUFFER_COUNT (4 << 10)
 
 #pragma mark -
@@ -34,6 +34,8 @@ struct memory_logging_event_buffer_pool {
     void *pool_memory;
     memory_logging_event_buffer *curr_buffer;
     memory_logging_event_buffer *tail_buffer;
+
+    memory_logging_event_buffer *main_thread_buffer;
 };
 
 extern int dump_call_stacks;
@@ -78,6 +80,7 @@ memory_logging_event_buffer_pool *memory_logging_event_buffer_pool_create() {
 
     buffer_pool->curr_buffer = (memory_logging_event_buffer *)buffer_pool->pool_memory;
     buffer_pool->tail_buffer = last_buffer;
+    buffer_pool->main_thread_buffer = NULL;
 
     return buffer_pool;
 }
@@ -87,23 +90,27 @@ void memory_logging_event_buffer_pool_free(memory_logging_event_buffer_pool *buf
         return;
     }
 
-    // avoid that after the memory monitoring stops, there are still some events being written
-    while (dispatch_semaphore_wait(buffer_pool->pool_semaphore, DISPATCH_TIME_NOW) != 0) {
-        buffer_pool->curr_buffer = (memory_logging_event_buffer *)buffer_pool->pool_memory;
-        dispatch_semaphore_signal(buffer_pool->pool_semaphore);
+    if (buffer_pool->pool_memory) {
+        // avoid that after the memory monitoring stops, there are still some events being written
+        while (dispatch_semaphore_wait(buffer_pool->pool_semaphore, DISPATCH_TIME_NOW) != 0) {
+            buffer_pool->curr_buffer = (memory_logging_event_buffer *)buffer_pool->pool_memory;
+            dispatch_semaphore_signal(buffer_pool->pool_semaphore);
+        }
+
+        inter_free(buffer_pool->pool_memory);
     }
 
-    inter_free(buffer_pool->pool_memory);
     inter_free(buffer_pool);
 }
 
 memory_logging_event_buffer *memory_logging_event_buffer_pool_new_buffer(memory_logging_event_buffer_pool *buffer_pool, thread_id t_id) {
     memory_logging_event_buffer *event_buffer;
 
-    if (t_id == s_main_thread_id) {
+    if (0 && t_id == s_main_thread_id) {
         if (dispatch_semaphore_wait(buffer_pool->pool_semaphore, DISPATCH_TIME_NOW) != 0) {
             event_buffer = (memory_logging_event_buffer *)inter_malloc(buffer_pool->buffer_size);
             event_buffer->is_from_buffer_pool = false;
+            event_buffer->need_free = false;
             event_buffer->lock = __malloc_lock_init();
             event_buffer->buffer = (uint8_t *)event_buffer + sizeof(memory_logging_event_buffer); // % 8 = 0
             event_buffer->buffer_size = buffer_pool->buffer_size - sizeof(memory_logging_event_buffer);
@@ -112,6 +119,14 @@ memory_logging_event_buffer *memory_logging_event_buffer_pool_new_buffer(memory_
 
             event_buffer = buffer_pool->curr_buffer;
             buffer_pool->curr_buffer = event_buffer->next_event_buffer;
+
+            // free main_thread_buffer
+            memory_logging_event_buffer *next_main_thread_buffer = buffer_pool->main_thread_buffer;
+            while (next_main_thread_buffer && next_main_thread_buffer->need_free) {
+                buffer_pool->main_thread_buffer = next_main_thread_buffer->next_event_buffer;
+                inter_free(next_main_thread_buffer);
+                next_main_thread_buffer = buffer_pool->main_thread_buffer;
+            }
 
             __malloc_lock_unlock(&buffer_pool->lock);
         }
@@ -136,7 +151,14 @@ memory_logging_event_buffer *memory_logging_event_buffer_pool_new_buffer(memory_
 
 bool memory_logging_event_buffer_pool_free_buffer(memory_logging_event_buffer_pool *buffer_pool, memory_logging_event_buffer *event_buffer) {
     if (event_buffer->is_from_buffer_pool == false) {
-        inter_free(event_buffer);
+        event_buffer->need_free = true;
+
+        __malloc_lock_lock(&buffer_pool->lock);
+
+        event_buffer->next_event_buffer = buffer_pool->main_thread_buffer;
+        buffer_pool->main_thread_buffer = event_buffer;
+
+        __malloc_lock_unlock(&buffer_pool->lock);
         return false;
     }
 

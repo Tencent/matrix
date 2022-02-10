@@ -23,7 +23,7 @@
 #pragma mark - Interface
 // ============================================================================
 
-+ (WCDumpReportTaskData *)getTodayOneReportDataWithLimitType:(NSString *)limitTypeString {
++ (WCDumpReportTaskData *)getTodayOneReportDataWithLimitType:(NSString *)limitTypeString withLimitReportID:(NSArray<NSString *> *)limitReportIDs {
     NSMutableArray *arrPriorityHigh = [[NSMutableArray alloc] init];
     NSMutableArray *arrPriorityDefault = [[NSMutableArray alloc] init];
     NSMutableArray *arrPriorityLow = [[NSMutableArray alloc] init];
@@ -65,21 +65,27 @@
 
     WCDumpReportTaskData *retReportData = nil;
     for (NSNumber *type in arrPriorityHigh) {
-        retReportData = [WCDumpReportDataProvider getDumpReportDataWithDumpType:(EDumpType)[type intValue] withDate:nsDate];
+        retReportData = [WCDumpReportDataProvider getDumpReportDataWithDumpType:(EDumpType)[type intValue]
+                                                                       withDate:nsDate
+                                                             withLimitReportIDs:limitReportIDs];
         if (retReportData && retReportData.m_uploadFilesArray.count) {
             return retReportData;
         }
     }
 
     for (NSNumber *type in arrPriorityDefault) {
-        retReportData = [WCDumpReportDataProvider getDumpReportDataWithDumpType:(EDumpType)[type intValue] withDate:nsDate];
+        retReportData = [WCDumpReportDataProvider getDumpReportDataWithDumpType:(EDumpType)[type intValue]
+                                                                       withDate:nsDate
+                                                             withLimitReportIDs:limitReportIDs];
         if (retReportData && retReportData.m_uploadFilesArray.count) {
             return retReportData;
         }
     }
 
     for (NSNumber *type in arrPriorityLow) {
-        retReportData = [WCDumpReportDataProvider getDumpReportDataWithDumpType:(EDumpType)[type intValue] withDate:nsDate];
+        retReportData = [WCDumpReportDataProvider getDumpReportDataWithDumpType:(EDumpType)[type intValue]
+                                                                       withDate:nsDate
+                                                             withLimitReportIDs:limitReportIDs];
         if (retReportData && retReportData.m_uploadFilesArray.count) {
             return retReportData;
         }
@@ -107,7 +113,7 @@
         }
     }
 
-    return [arrReportData copy];
+    return arrReportData;
 }
 
 + (NSArray<WCDumpReportTaskData *> *)getReportDataWithType:(EDumpType)dumpType onDate:(NSString *)nsDate {
@@ -137,7 +143,16 @@
 
 + (WCDumpReportTaskData *)getDumpReportDataWithDumpType:(EDumpType)dumpType withDate:(NSString *)limitDate {
     WCDumpReportTaskData *reportData = [[WCDumpReportTaskData alloc] init];
-    reportData.m_uploadFilesArray = [[WCCrashBlockFileHandler getLagReportIDWithType:dumpType withDate:limitDate] mutableCopy];
+    reportData.m_uploadFilesArray = [WCCrashBlockFileHandler getLagReportIDWithType:dumpType withDate:limitDate];
+    reportData.m_dumpType = dumpType;
+    return reportData;
+}
+
++ (WCDumpReportTaskData *)getDumpReportDataWithDumpType:(EDumpType)dumpType
+                                               withDate:(NSString *)limitDate
+                                     withLimitReportIDs:(NSArray<NSString *> *)limitReportIDs {
+    WCDumpReportTaskData *reportData = [[WCDumpReportTaskData alloc] init];
+    reportData.m_uploadFilesArray = [WCCrashBlockFileHandler getLagReportIDWithType:dumpType withDate:limitDate withLimitReportID:limitReportIDs];
     reportData.m_dumpType = dumpType;
     return reportData;
 }

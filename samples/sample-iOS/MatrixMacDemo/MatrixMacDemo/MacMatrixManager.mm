@@ -15,8 +15,8 @@
  */
 
 #import "MacMatrixManager.h"
-#import <matrix-wechat/Matrix.h>
-#import <matrix-wechat/WCCrashBlockFileHandler.h>
+#import <Matrix/Matrix.h>
+#import <Matrix/WCCrashBlockFileHandler.h>
 #import "IssueDetailViewController.h"
 
 @interface MacMatrixManager () <MatrixAdapterDelegate, MatrixPluginListenerDelegate>
@@ -50,6 +50,7 @@
     blockMonitorConfig.bMainThreadHandle = YES;
     blockMonitorConfig.bFilterSameStack = YES;
     blockMonitorConfig.triggerToBeFilteredCount = 10;
+    blockMonitorConfig.bGetPowerConsumeStack = YES;
     cbConfig.blockMonitorConfiguration = blockMonitorConfig;
 
     WCCrashBlockMonitorPlugin *cbPlugin = [[WCCrashBlockMonitorPlugin alloc] init];
@@ -98,7 +99,7 @@
                         dumpTypeDes = @"CPU Too High";
                         break;
                     case EDumpType_PowerConsume:
-                        dumpTypeDes = @"Power Consume";
+                        dumpTypeDes = @"Power Consume Calltree";
                         break;
                     case EDumpType_LaunchBlock:
                         dumpTypeDes = @"Launching Main Thread Block";

@@ -27,7 +27,7 @@
 
 // Define this marco to enable VM Logger, but APP will be REJECTED by Appstore for PRIVATE API usage
 #ifdef DEBUG
-#define USE_PRIVATE_API
+//#define USE_PRIVATE_API
 #endif
 
 #define memory_logging_type_free 0
@@ -121,17 +121,25 @@ typedef union {
 
 bool logger_internal_init(void);
 
-uint64_t current_thread_info_for_logging();
+uint64_t current_thread_info_for_logging(void);
 
-thread_id current_thread_id();
+#ifdef __cplusplus
+extern "C" {
+#endif
+thread_id current_thread_id(void);
 void set_curr_thread_ignore_logging(bool ignore);
-bool is_thread_ignoring_logging();
+bool is_thread_ignoring_logging(void);
+#ifdef __cplusplus
+}
+#endif
 
 // Allocation/Deallocation Function without Logging
 void *inter_malloc(size_t size);
 void *inter_calloc(size_t num_items, size_t size);
 void *inter_realloc(void *oldMem, size_t newSize);
 void inter_free(void *ptr);
+
+size_t inter_malloc_zone_statistics(void);
 
 void *inter_mmap(void *start, size_t length, int prot, int flags, int fd, off_t offset);
 int inter_munmap(void *start, size_t length);

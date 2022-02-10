@@ -12,15 +12,32 @@
 		114E671920A995F70045083D /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 114E671820A995F70045083D /* AppDelegate.m */; };
 		114E672120A995F90045083D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 114E672020A995F90045083D /* Assets.xcassets */; };
 		114E672420A995F90045083D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 114E672220A995F90045083D /* LaunchScreen.storyboard */; };
-		114E672720A995F90045083D /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 114E672620A995F90045083D /* main.m */; };
+		114E672720A995F90045083D /* main.mm in Sources */ = {isa = PBXBuildFile; fileRef = 114E672620A995F90045083D /* main.mm */; };
 		114E673620A996830045083D /* SlowTestViewController.mm in Sources */ = {isa = PBXBuildFile; fileRef = 114E673120A996820045083D /* SlowTestViewController.mm */; };
 		114E673720A996830045083D /* ViewController.mm in Sources */ = {isa = PBXBuildFile; fileRef = 114E673320A996830045083D /* ViewController.mm */; };
 		11B439BA21F1DA2B00A0A8C3 /* TextViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 11B439B921F1DA2B00A0A8C3 /* TextViewController.m */; };
 		11C95C40221BA16E00640795 /* TestCrashViewController.mm in Sources */ = {isa = PBXBuildFile; fileRef = 11C95C3F221BA16E00640795 /* TestCrashViewController.mm */; };
 		11C95CA2221BB0E200640795 /* Utility.mm in Sources */ = {isa = PBXBuildFile; fileRef = 11C95CA1221BB0E200640795 /* Utility.mm */; };
 		11F0D76B21E43B5D0053FAC5 /* MatrixHandler.mm in Sources */ = {isa = PBXBuildFile; fileRef = 11F0D76A21E43B5D0053FAC5 /* MatrixHandler.mm */; };
-		AEB90F078E55B9483BFE8FA3 /* libPods-MatrixDemo.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B423C583E99B915EA6A83B38 /* libPods-MatrixDemo.a */; };
+		E0EC90C827BE4FC00050CF6F /* Matrix.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E0EC90C527BE4FA10050CF6F /* Matrix.framework */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		E0EC90C427BE4FA10050CF6F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E0EC90BF27BE4FA10050CF6F /* Matrix.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 116461662111AF190069B5DE;
+			remoteInfo = MatrixiOS;
+		};
+		E0EC90C627BE4FA10050CF6F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E0EC90BF27BE4FA10050CF6F /* Matrix.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 116606EF21369E1E00F4ED74;
+			remoteInfo = MatrixMac;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
 		116D91E920FCBEFA003D2654 /* Embed Frameworks */ = {
@@ -47,7 +64,7 @@
 		114E672020A995F90045083D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		114E672320A995F90045083D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		114E672520A995F90045083D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		114E672620A995F90045083D /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
+		114E672620A995F90045083D /* main.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = main.mm; sourceTree = "<group>"; };
 		114E673120A996820045083D /* SlowTestViewController.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = SlowTestViewController.mm; sourceTree = "<group>"; };
 		114E673320A996830045083D /* ViewController.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ViewController.mm; sourceTree = "<group>"; };
 		114E673420A996830045083D /* SlowTestViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SlowTestViewController.h; sourceTree = "<group>"; };
@@ -59,9 +76,7 @@
 		11C95CA1221BB0E200640795 /* Utility.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = Utility.mm; sourceTree = "<group>"; };
 		11F0D76921E43B5D0053FAC5 /* MatrixHandler.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MatrixHandler.h; sourceTree = "<group>"; };
 		11F0D76A21E43B5D0053FAC5 /* MatrixHandler.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = MatrixHandler.mm; sourceTree = "<group>"; };
-		516B3F0859D2A239C86E9DAD /* Pods-MatrixDemo.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-MatrixDemo.release.xcconfig"; path = "Target Support Files/Pods-MatrixDemo/Pods-MatrixDemo.release.xcconfig"; sourceTree = "<group>"; };
-		63BCE04FBD2471B8616726E9 /* Pods-MatrixDemo.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-MatrixDemo.debug.xcconfig"; path = "Target Support Files/Pods-MatrixDemo/Pods-MatrixDemo.debug.xcconfig"; sourceTree = "<group>"; };
-		B423C583E99B915EA6A83B38 /* libPods-MatrixDemo.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-MatrixDemo.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		E0EC90BF27BE4FA10050CF6F /* Matrix.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = Matrix.xcodeproj; path = "../../../matrix/matrix-iOS/Matrix/Matrix.xcodeproj"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -69,7 +84,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AEB90F078E55B9483BFE8FA3 /* libPods-MatrixDemo.a in Frameworks */,
+				E0EC90C827BE4FC00050CF6F /* Matrix.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -79,10 +94,10 @@
 		114E670B20A995F70045083D = {
 			isa = PBXGroup;
 			children = (
+				E0EC90BF27BE4FA10050CF6F /* Matrix.xcodeproj */,
 				114E671620A995F70045083D /* MatrixDemo */,
 				114E671520A995F70045083D /* Products */,
 				114E672D20A9963C0045083D /* Frameworks */,
-				1EF9D721E78F2241F9D30700 /* Pods */,
 			);
 			sourceTree = "<group>";
 		};
@@ -112,7 +127,7 @@
 				114E672020A995F90045083D /* Assets.xcassets */,
 				114E672220A995F90045083D /* LaunchScreen.storyboard */,
 				114E672520A995F90045083D /* Info.plist */,
-				114E672620A995F90045083D /* main.m */,
+				114E672620A995F90045083D /* main.mm */,
 			);
 			path = MatrixDemo;
 			sourceTree = "<group>";
@@ -120,7 +135,6 @@
 		114E672D20A9963C0045083D /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				B423C583E99B915EA6A83B38 /* libPods-MatrixDemo.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -147,13 +161,13 @@
 			path = Matrix;
 			sourceTree = "<group>";
 		};
-		1EF9D721E78F2241F9D30700 /* Pods */ = {
+		E0EC90C027BE4FA10050CF6F /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				63BCE04FBD2471B8616726E9 /* Pods-MatrixDemo.debug.xcconfig */,
-				516B3F0859D2A239C86E9DAD /* Pods-MatrixDemo.release.xcconfig */,
+				E0EC90C527BE4FA10050CF6F /* Matrix.framework */,
+				E0EC90C727BE4FA10050CF6F /* Matrix.framework */,
 			);
-			path = Pods;
+			name = Products;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -163,7 +177,6 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 114E672A20A995F90045083D /* Build configuration list for PBXNativeTarget "MatrixDemo" */;
 			buildPhases = (
-				FC75C5C25C10B419ACF4E2C3 /* [CP] Check Pods Manifest.lock */,
 				114E671020A995F70045083D /* Sources */,
 				114E671120A995F70045083D /* Frameworks */,
 				114E671220A995F70045083D /* Resources */,
@@ -203,12 +216,35 @@
 			mainGroup = 114E670B20A995F70045083D;
 			productRefGroup = 114E671520A995F70045083D /* Products */;
 			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = E0EC90C027BE4FA10050CF6F /* Products */;
+					ProjectRef = E0EC90BF27BE4FA10050CF6F /* Matrix.xcodeproj */;
+				},
+			);
 			projectRoot = "";
 			targets = (
 				114E671320A995F70045083D /* MatrixDemo */,
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXReferenceProxy section */
+		E0EC90C527BE4FA10050CF6F /* Matrix.framework */ = {
+			isa = PBXReferenceProxy;
+			fileType = wrapper.framework;
+			path = Matrix.framework;
+			remoteRef = E0EC90C427BE4FA10050CF6F /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		E0EC90C727BE4FA10050CF6F /* Matrix.framework */ = {
+			isa = PBXReferenceProxy;
+			fileType = wrapper.framework;
+			path = Matrix.framework;
+			remoteRef = E0EC90C627BE4FA10050CF6F /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+/* End PBXReferenceProxy section */
 
 /* Begin PBXResourcesBuildPhase section */
 		114E671220A995F70045083D /* Resources */ = {
@@ -222,31 +258,6 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
-/* Begin PBXShellScriptBuildPhase section */
-		FC75C5C25C10B419ACF4E2C3 /* [CP] Check Pods Manifest.lock */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
-				"${PODS_ROOT}/Manifest.lock",
-			);
-			name = "[CP] Check Pods Manifest.lock";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-MatrixDemo-checkManifestLockResult.txt",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
-			showEnvVarsInLog = 0;
-		};
-/* End PBXShellScriptBuildPhase section */
-
 /* Begin PBXSourcesBuildPhase section */
 		114E671020A995F70045083D /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -259,7 +270,7 @@
 				11F0D76B21E43B5D0053FAC5 /* MatrixHandler.mm in Sources */,
 				114E673720A996830045083D /* ViewController.mm in Sources */,
 				11B439BA21F1DA2B00A0A8C3 /* TextViewController.m in Sources */,
-				114E672720A995F90045083D /* main.m in Sources */,
+				114E672720A995F90045083D /* main.mm in Sources */,
 				1144F565221E4F96007A6410 /* TestLagViewController.mm in Sources */,
 				114E671920A995F70045083D /* AppDelegate.m in Sources */,
 			);
@@ -391,42 +402,44 @@
 		};
 		114E672B20A995F90045083D /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 63BCE04FBD2471B8616726E9 /* Pods-MatrixDemo.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = XMVVGSCY2Q;
 				ENABLE_BITCODE = NO;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/MatrixDemo/Matrix/3rd",
+				);
 				INFOPLIST_FILE = MatrixDemo/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.tencent.MatrixDemo1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tencent.MatrixDemo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				PROVISIONING_PROFILE_SPECIFIER = "";
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
 		114E672C20A995F90045083D /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 516B3F0859D2A239C86E9DAD /* Pods-MatrixDemo.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = XMVVGSCY2Q;
 				ENABLE_BITCODE = NO;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/MatrixDemo/Matrix/3rd",
+				);
 				INFOPLIST_FILE = MatrixDemo/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.tencent.MatrixDemo1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tencent.MatrixDemo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				PROVISIONING_PROFILE_SPECIFIER = "";
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;

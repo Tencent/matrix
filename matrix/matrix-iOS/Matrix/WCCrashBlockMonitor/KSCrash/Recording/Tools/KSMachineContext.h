@@ -134,6 +134,12 @@ bool ksmc_hasValidExceptionRegisters(const struct KSMachineContext *const contex
  */
 void ksmc_addReservedThread(KSThread thread);
 
+void ksmc_getCpuUsage(struct KSMachineContext *destinationContext);
+
+void ksmc_setCpuUsage(struct KSMachineContext *destinationContext, struct KSMachineContext *fromContext);
+
+float ksmc_getThreadCpuUsageByIndex(const struct KSMachineContext *const context, int index);
+
 #ifdef __cplusplus
 }
 #endif

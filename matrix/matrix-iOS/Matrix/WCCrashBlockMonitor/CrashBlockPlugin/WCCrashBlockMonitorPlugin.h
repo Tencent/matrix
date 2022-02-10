@@ -18,6 +18,7 @@
 #import <TargetConditionals.h>
 #import "MatrixPlugin.h"
 
+#import "WCReportStrategyDelegate.h"
 #import "WCCrashBlockMonitorConfig.h"
 #import "WCBlockTypeDef.h"
 
@@ -31,22 +32,11 @@ typedef NS_ENUM(NSUInteger, EMCrashBlockReportType) {
 #define g_crash_block_monitor_custom_dump_type "dumptype"
 #define g_crash_block_monitor_custom_report_id "reportID"
 
-@class WCCrashBlockMonitorPlugin;
-
-@protocol WCCrashBlockMonitorPluginReportDelegate <NSObject>
-
-- (BOOL)isReportCrashLimit:(WCCrashBlockMonitorPlugin *)plugin;
-- (BOOL)isReportLagLimit:(WCCrashBlockMonitorPlugin *)plugin;
-- (BOOL)isCanAutoReportLag:(WCCrashBlockMonitorPlugin *)plugin;
-- (BOOL)isNetworkAllowAutoReportLag:(WCCrashBlockMonitorPlugin *)plugin;
-
-@end
-
 @interface WCCrashBlockMonitorPlugin : MatrixPlugin
 
 @property (nonatomic, strong) WCCrashBlockMonitorConfig *pluginConfig;
 
-@property (nonatomic, weak) id<WCCrashBlockMonitorPluginReportDelegate> reportDelegate;
+@property (nonatomic, weak) id<WCReportStrategyDelegate> reportDelegate;
 
 // ============================================================================
 #pragma mark - Utility
@@ -79,10 +69,26 @@ typedef NS_ENUM(NSUInteger, EMCrashBlockReportType) {
 - (BOOL)isBackgroundCPUTooSmall;
 
 // ============================================================================
+#pragma mark - Hangs Detection
+// ============================================================================
+
+// changes the threshold of runloop hangs detection. Requirements: [400ms, 2000ms], multiple of 100ms.
+- (BOOL)setRunloopThreshold:(useconds_t)threshold;
+
+// lowers the threshold to detect more runloop hangs.
+- (BOOL)lowerRunloopThreshold;
+
+// recovers the runloop threshold to the default value.
+- (BOOL)recoverRunloopThreshold;
+
+// whether to suspend all threads when saving dump
+- (void)setShouldSuspendAllThreads:(BOOL)shouldSuspendAllThreads;
+
+// ============================================================================
 #pragma mark - Custom Dump
 // ============================================================================
 
-/// generate a lag file immediately.
+// generate a dump file immediately.
 - (void)generateLiveReportWithDumpType:(EDumpType)dumpType withReason:(NSString *)reason selfDefinedPath:(BOOL)bSelfDefined;
 
 @end

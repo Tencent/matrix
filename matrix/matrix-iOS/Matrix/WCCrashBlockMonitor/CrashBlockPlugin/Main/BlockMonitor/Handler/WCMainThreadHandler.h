@@ -37,4 +37,6 @@
 
 - (size_t)getStackMaxCount;
 
+- (char *)getStackProfile;
+
 @end

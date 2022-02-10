@@ -31,6 +31,7 @@
 #include "KSCPU_Apple.h"
 #include "KSStackCursor_MachineContext.h"
 
+#include <pthread.h>
 #include <mach/mach.h>
 #include <sys/ucontext.h>
 #include <sys/_types/_ucontext64.h>
@@ -51,6 +52,7 @@ static int g_reservedThreadsMaxIndex = sizeof(g_reservedThreads) / sizeof(g_rese
 static int g_reservedThreadsCount = 0;
 static thread_act_array_t g_suspendedThreads = NULL;
 static mach_msg_type_number_t g_suspendedThreadsCount = 0;
+static pthread_mutex_t g_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static inline bool isStackOverflow(const KSMachineContext *const context) {
     KSStackCursor stackCursor;
@@ -157,8 +159,15 @@ void ksmc_suspendEnvironment() {
     const task_t thisTask = mach_task_self();
     const thread_t thisThread = (thread_t)ksthread_self();
 
+    if (g_suspendedThreads != NULL) {
+        return;
+    }
+
+    pthread_mutex_lock(&g_mutex);
+
     if ((kr = task_threads(thisTask, &g_suspendedThreads, &g_suspendedThreadsCount)) != KERN_SUCCESS) {
         KSLOG_ERROR("task_threads: %s", mach_error_string(kr));
+        pthread_mutex_unlock(&g_mutex);
         return;
     }
 
@@ -171,6 +180,8 @@ void ksmc_suspendEnvironment() {
             }
         }
     }
+
+    pthread_mutex_unlock(&g_mutex);
 
     KSLOG_DEBUG("Suspend complete.");
 #endif
@@ -188,6 +199,8 @@ void ksmc_resumeEnvironment() {
         return;
     }
 
+    pthread_mutex_lock(&g_mutex);
+
     for (mach_msg_type_number_t i = 0; i < g_suspendedThreadsCount; i++) {
         thread_t thread = g_suspendedThreads[i];
         if (thread != thisThread && !isThreadInList(thread, g_reservedThreads, g_reservedThreadsCount)) {
@@ -204,6 +217,8 @@ void ksmc_resumeEnvironment() {
     vm_deallocate(thisTask, (vm_address_t)g_suspendedThreads, sizeof(thread_t) * g_suspendedThreadsCount);
     g_suspendedThreads = NULL;
     g_suspendedThreadsCount = 0;
+
+    pthread_mutex_unlock(&g_mutex);
 
     KSLOG_DEBUG("Resume complete.");
 #endif
@@ -246,4 +261,70 @@ bool ksmc_canHaveCPUState(const KSMachineContext *const context) {
 
 bool ksmc_hasValidExceptionRegisters(const KSMachineContext *const context) {
     return ksmc_canHaveCPUState(context) && ksmc_isCrashedContext(context);
+}
+
+void ksmc_getCpuUsage(struct KSMachineContext *destinationContext) {
+    const task_t thisTask = mach_task_self();
+    kern_return_t kr;
+    thread_act_array_t threads;
+    mach_msg_type_number_t actualThreadCount;
+
+    if ((kr = task_threads(thisTask, &threads, &actualThreadCount)) != KERN_SUCCESS) {
+        KSLOG_ERROR("task_threads: %s", mach_error_string(kr));
+        return;
+    }
+    KSLOG_TRACE("Got %d threads", context->threadCount);
+    int threadCount = (int)actualThreadCount;
+    int maxThreadCount = sizeof(destinationContext->allThreads) / sizeof(destinationContext->allThreads[0]);
+    if (threadCount > maxThreadCount) {
+        KSLOG_ERROR("Thread count %d is higher than maximum of %d", threadCount, maxThreadCount);
+        threadCount = maxThreadCount;
+    }
+    for (int i = 0; i < threadCount; i++) {
+        destinationContext->allThreads[i] = threads[i];
+
+        thread_info_data_t thinfo;
+        mach_msg_type_number_t thread_info_count = THREAD_INFO_MAX;
+        kr = thread_info(threads[i], THREAD_BASIC_INFO, (thread_info_t)thinfo, &thread_info_count);
+        if (kr != KERN_SUCCESS) {
+            destinationContext->cpuUsage[i] = 0;
+            continue;
+        }
+
+        thread_basic_info_t basic_info_th = (thread_basic_info_t)thinfo;
+        if (!(basic_info_th->flags & TH_FLAGS_IDLE)) {
+            destinationContext->cpuUsage[i] = basic_info_th->cpu_usage / (float)TH_USAGE_SCALE * 100.0;
+        } else {
+            destinationContext->cpuUsage[i] = 0;
+        }
+    }
+    destinationContext->threadCount = threadCount;
+
+    for (mach_msg_type_number_t i = 0; i < actualThreadCount; i++) {
+        mach_port_deallocate(thisTask, destinationContext->allThreads[i]);
+    }
+    vm_deallocate(thisTask, (vm_address_t)threads, sizeof(thread_t) * actualThreadCount);
+}
+
+void ksmc_setCpuUsage(struct KSMachineContext *destinationContext, struct KSMachineContext *fromContext) {
+    int count = destinationContext->threadCount;
+    int count_cpu = fromContext->threadCount;
+
+    for (int i = 0; i < count; ++i) {
+        KSThread thread0 = destinationContext->allThreads[i];
+        destinationContext->cpuUsage[i] = 0;
+
+        for (int j = 0; j < count_cpu; ++j) {
+            KSThread thread1 = fromContext->allThreads[j];
+
+            if (thread0 == thread1) {
+                destinationContext->cpuUsage[i] = fromContext->cpuUsage[j];
+                break;
+            }
+        }
+    }
+}
+
+float ksmc_getThreadCpuUsageByIndex(const struct KSMachineContext *const context, int index) {
+    return context->cpuUsage[index];
 }

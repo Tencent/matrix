@@ -30,10 +30,10 @@
 
 static float kOverCPULimit = 80.;
 static float kOverCPULimitSecLimit = 60.;
-static int TICK_TOCK_COUNT = 60;
+static float TICK_TOCK_COUNT = 60.; // 60 seconds
 
 @interface WCCPUHandler () {
-    NSUInteger m_tickTok;
+    float m_tickTok;
 
     float m_totalCPUCost;
     float m_totalTrackingTime;
@@ -116,8 +116,8 @@ static int TICK_TOCK_COUNT = 60;
     }
 
     if (m_tickTok > 0) {
-        m_tickTok -= 1; // Annealing algorithm
-        if (m_tickTok == 0) {
+        m_tickTok -= periodSec; // Annealing algorithm
+        if (m_tickTok <= 0) {
             MatrixInfo(@"tick tok over");
         }
         return NO;

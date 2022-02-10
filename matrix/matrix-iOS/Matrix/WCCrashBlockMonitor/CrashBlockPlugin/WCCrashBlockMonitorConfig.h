@@ -63,4 +63,7 @@ typedef NS_ENUM(NSUInteger, EWCCrashBlockReportStrategy) {
 
 @property (nonatomic, assign) EWCCrashBlockReportStrategy reportStrategy;
 
+/// custom strategy
+@property (nonatomic, strong) NSArray<NSString *> *customStrategy;
+
 @end

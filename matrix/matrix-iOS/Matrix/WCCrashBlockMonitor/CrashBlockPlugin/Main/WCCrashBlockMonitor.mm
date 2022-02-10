@@ -75,6 +75,7 @@ void kscrash_innerHandleSignalCallback(siginfo_t *info) {
     handler.onInnerHandleSignalCallBack = kscrash_innerHandleSignalCallback;
     handler.onWritePointThread = kscrash_pointThreadCallback;
     handler.onWritePointThreadRepeatNumber = kscrash_pointThreadRepeatNumberCallback;
+    handler.onWriteProfileCallBack = kscrash_pointThreadProfileCallback;
     handler.onWritePointCpuHighThread = kscrash_pointCPUHighThreadCallback;
     handler.onWritePointCpuHighThreadCount = kscrash_pointCpuHighThreadCountCallback;
     handler.onWritePointCpuHighThreadValue = kscrash_pointCpuHighThreadArrayCallBack;
@@ -108,14 +109,14 @@ void kscrash_innerHandleSignalCallback(siginfo_t *info) {
 }
 
 - (void)startBlockMonitor {
-    assert([NSThread mainThread]);
+    assert([NSThread isMainThread]);
     if (_blockMonitor) {
         [_blockMonitor start];
     }
 }
 
 - (void)stopBlockMonitor {
-    assert([NSThread mainThread]);
+    assert([NSThread isMainThread]);
     if (_blockMonitor) {
         [_blockMonitor stop];
     }
@@ -159,8 +160,24 @@ void kscrash_innerHandleSignalCallback(siginfo_t *info) {
     return [_blockMonitor isBackgroundCPUTooSmall];
 }
 
+- (BOOL)setRunloopThreshold:(useconds_t)threshold {
+    return [_blockMonitor setRunloopThreshold:threshold];
+}
+
+- (BOOL)lowerRunloopThreshold {
+    return [_blockMonitor lowerRunloopThreshold];
+}
+
+- (BOOL)recoverRunloopThreshold {
+    return [_blockMonitor recoverRunloopThreshold];
+}
+
+- (void)setShouldSuspendAllThreads:(BOOL)shouldSuspendAllThreads {
+    [_blockMonitor setShouldSuspendAllThreads:shouldSuspendAllThreads];
+}
+
 - (void)generateLiveReportWithDumpType:(EDumpType)dumpType withReason:(NSString *)reason selfDefinedPath:(BOOL)bSelfDefined {
-    [WCDumpInterface dumpReportWithReportType:dumpType withBlockTime:0 withExceptionReason:reason selfDefinedPath:bSelfDefined];
+    [_blockMonitor generateLiveReportWithDumpType:dumpType withReason:reason selfDefinedPath:bSelfDefined];
 }
 
 // ============================================================================
@@ -171,9 +188,16 @@ void kscrash_innerHandleSignalCallback(siginfo_t *info) {
     return dumType == EDumpType_MainThreadBlock || dumType == EDumpType_CPUBlock;
 }
 
-- (void)onBlockMonitor:(WCBlockMonitorMgr *)bmMgr beginDump:(EDumpType)dumpType blockTime:(uint64_t)blockTime {
-    if (_delegate != nil && [_delegate respondsToSelector:@selector(onCrashBlockMonitorBeginDump:blockTime:)]) {
-        [_delegate onCrashBlockMonitorBeginDump:dumpType blockTime:blockTime];
+- (void)onBlockMonitor:(WCBlockMonitorMgr *)bmMgr
+             beginDump:(EDumpType)dumpType
+             blockTime:(uint64_t)blockTime
+      runloopThreshold:(useconds_t)runloopThreshold {
+    if (_delegate != nil) {
+        if ([_delegate respondsToSelector:@selector(onCrashBlockMonitorBeginDump:blockTime:runloopThreshold:)]) {
+            [_delegate onCrashBlockMonitorBeginDump:dumpType blockTime:blockTime runloopThreshold:runloopThreshold];
+        } else if ([_delegate respondsToSelector:@selector(onCrashBlockMonitorBeginDump:blockTime:)]) {
+            [_delegate onCrashBlockMonitorBeginDump:dumpType blockTime:blockTime];
+        }
     }
 }
 
@@ -217,6 +241,30 @@ void kscrash_innerHandleSignalCallback(siginfo_t *info) {
 - (void)onBlockMonitorIntervalCPUTooHigh:(WCBlockMonitorMgr *)bmMgr {
     if (_delegate != nil && [_delegate respondsToSelector:@selector(onCrashBlockMonitorIntervalCPUTooHigh)]) {
         [_delegate onCrashBlockMonitorIntervalCPUTooHigh];
+    }
+}
+
+- (void)onBlockMonitorThermalStateElevated:(WCBlockMonitorMgr *)bmMgr {
+    if (_delegate != nil && [_delegate respondsToSelector:@selector(onCrashBlockMonitorThermalStateElevated)]) {
+        [_delegate onCrashBlockMonitorThermalStateElevated];
+    }
+}
+
+- (void)onBlockMonitorMainThreadBlock:(WCBlockMonitorMgr *)bmMgr {
+    if (_delegate != nil && [_delegate respondsToSelector:@selector(onCrashBlockMonitorMainThreadBlock)]) {
+        [_delegate onCrashBlockMonitorMainThreadBlock];
+    }
+}
+
+- (void)onBlockMonitorMemoryExcessive:(WCBlockMonitorMgr *)bmMgr {
+    if (_delegate != nil && [_delegate respondsToSelector:@selector(onCrashBlockMonitorMemoryExcessive)]) {
+        [_delegate onCrashBlockMonitorMemoryExcessive];
+    }
+}
+
+- (void)onBlockMonitor:(WCBlockMonitorMgr *)bmMgr runloopHangDetected:(uint64_t)duration {
+    if (_delegate != nil && [_delegate respondsToSelector:@selector(onCrashBlockMonitorRunloopHangDetected:)]) {
+        [_delegate onCrashBlockMonitorRunloopHangDetected:duration];
     }
 }
 

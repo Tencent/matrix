@@ -66,6 +66,7 @@
 #define KSCrashField_UUID "uuid"
 #define KSCrashField_Value "value"
 #define KSCrashFiled_CPUUsage "cpu_usage"
+#define KSCrashField_Profile "profile"
 
 #define KSCrashField_Error "error"
 #define KSCrashField_JSONData "json_data"
@@ -135,6 +136,8 @@
 #define KSCrashField_Subcode "subcode"
 #define KSCrashField_DumpType "dump_type"
 #define KSCrashField_UserReported "user_reported"
+#define KSCrashField_SuspendAllThreads "suspend_all_threads"
+#define KSCrashField_SnapshotStatus "snapshot_status"
 
 #pragma mark - Process State -
 
@@ -176,6 +179,7 @@
 #define KSCrashField_Threads "threads"
 #define KSCrashField_User "user"
 #define KSCrashField_ConsoleLog "console_log"
+#define KSCrashField_ThreadsProfile "threads_profile"
 
 #pragma mark Incomplete
 #define KSCrashField_Incomplete "incomplete"

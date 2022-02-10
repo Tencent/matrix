@@ -27,9 +27,11 @@
 + (NSString *)platform;
 + (int)cpuCount;
 + (int)cpuFrequency;
++ (float)cpuUsage;
++ (float)appCpuUsage;
 + (int)busFrequency;
-+ (int)totalMemory;
-+ (int)userMemory;
++ (int)totalMemory __deprecated;
++ (int)userMemory __deprecated;
 + (int)cacheLine;
 + (int)L1ICacheSize;
 + (int)L1DCacheSize;
@@ -39,3 +41,15 @@
 + (BOOL)isBeingDebugged;
 
 @end
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+uint64_t matrix_physicalMemory(); // 设备的物理内存总量（bytes），来源：sysctlbyname("hw.memsize")
+uint64_t matrix_footprintMemory(); // 进程已经使用的内存量（bytes），来源：task_vm_info.phys_footprint
+uint64_t matrix_availableMemory(); // 进程剩余可用的内存量（bytes），来源：os_proc_available_memory
+
+#ifdef __cplusplus
+} // extern "C"
+#endif
