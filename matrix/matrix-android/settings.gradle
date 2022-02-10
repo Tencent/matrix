@@ -39,3 +39,4 @@ if (gradle.staticLinkCXX()) {
     include ':matrix-opengl-leak:cxx-static'
     include ':matrix-backtrace:cxx-static'
 }
+include ':test:test-openglhook'
