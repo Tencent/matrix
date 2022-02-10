@@ -44,7 +44,9 @@ public class IDoFrameListener {
         public long intendedFrameTimeNs;
         public long inputCostNs;
         public long animationCostNs;
+        public long insetsAnimationCostNs;
         public long traversalCostNs;
+        public long commitCostNs;
 
         public void recycle() {
             if (sPool.size() <= 1000) {
@@ -56,7 +58,9 @@ public class IDoFrameListener {
                 this.intendedFrameTimeNs = 0;
                 this.inputCostNs = 0;
                 this.animationCostNs = 0;
+                this.insetsAnimationCostNs = 0;
                 this.traversalCostNs = 0;
+                this.commitCostNs = 0;
                 synchronized (sPool) {
                     sPool.add(this);
                 }
@@ -86,8 +90,8 @@ public class IDoFrameListener {
     }
 
     @CallSuper
-    public void collect(String focusedActivity, long startNs, long endNs, int dropFrame, boolean isVsyncFrame,
-                        long intendedFrameTimeNs, long inputCostNs, long animationCostNs, long traversalCostNs) {
+    public void collect(String focusedActivity, long startNs, long endNs, int dropFrame, boolean isVsyncFrame, long intendedFrameTimeNs,
+                        long inputCostNs, long animationCostNs, long insetsAnimationCostNs, long traversalCostNs, long commitCostNs) {
         FrameReplay replay = FrameReplay.create();
         replay.focusedActivity = focusedActivity;
         replay.startNs = startNs;
@@ -97,7 +101,9 @@ public class IDoFrameListener {
         replay.intendedFrameTimeNs = intendedFrameTimeNs;
         replay.inputCostNs = inputCostNs;
         replay.animationCostNs = animationCostNs;
+        replay.insetsAnimationCostNs = insetsAnimationCostNs;
         replay.traversalCostNs = traversalCostNs;
+        replay.commitCostNs = commitCostNs;
         list.add(replay);
         if (list.size() >= intervalFrame && getExecutor() != null) {
             final List<FrameReplay> copy = new LinkedList<>(list);
@@ -126,14 +132,14 @@ public class IDoFrameListener {
 
     @CallSuper
     public void doFrameAsync(String focusedActivity, long startNs, long endNs, int dropFrame, boolean isVsyncFrame,
-                             long intendedFrameTimeNs, long inputCostNs, long animationCostNs, long traversalCostNs) {
+                             long intendedFrameTimeNs, long inputCostNs, long animationCostNs, long insetsAnimationCostNs, long traversalCostNs, long commitCostNs) {
         long cost = (endNs - intendedFrameTimeNs) / Constants.TIME_MILLIS_TO_NANO;
         doFrameAsync(focusedActivity, cost, cost, dropFrame, isVsyncFrame);
     }
 
     @CallSuper
     public void doFrameSync(String focusedActivity, long startNs, long endNs, int dropFrame, boolean isVsyncFrame,
-                            long intendedFrameTimeNs, long inputCostNs, long animationCostNs, long traversalCostNs) {
+                            long intendedFrameTimeNs, long inputCostNs, long animationCostNs, long insetsAnimationCostNs, long traversalCostNs, long commitCostNs) {
         long cost = (endNs - intendedFrameTimeNs) / Constants.TIME_MILLIS_TO_NANO;
         doFrameSync(focusedActivity, cost, cost, dropFrame, isVsyncFrame);
     }

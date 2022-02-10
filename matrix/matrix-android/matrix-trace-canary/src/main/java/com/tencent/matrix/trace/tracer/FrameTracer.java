@@ -123,9 +123,11 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
     }
 
     @Override
-    public void doFrame(String focusedActivity, long startNs, long endNs, boolean isVsyncFrame, long intendedFrameTimeNs, long inputCostNs, long animationCostNs, long traversalCostNs) {
+    public void doFrame(String focusedActivity, long startNs, long endNs, boolean isVsyncFrame, long intendedFrameTimeNs,
+                        long inputCostNs, long animationCostNs, long insetsAnimationCostNs, long traversalCostNs, long commitCostNs) {
         if (isForeground()) {
-            notifyListener(focusedActivity, startNs, endNs, isVsyncFrame, intendedFrameTimeNs, inputCostNs, animationCostNs, traversalCostNs);
+            notifyListener(focusedActivity, startNs, endNs, isVsyncFrame, intendedFrameTimeNs,
+                    inputCostNs, animationCostNs, insetsAnimationCostNs, traversalCostNs, commitCostNs);
         }
     }
 
@@ -137,8 +139,8 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
         return durationSum;
     }
 
-    private void notifyListener(final String focusedActivity, final long startNs, final long endNs, final boolean isVsyncFrame,
-                                final long intendedFrameTimeNs, final long inputCostNs, final long animationCostNs, final long traversalCostNs) {
+    private void notifyListener(final String focusedActivity, final long startNs, final long endNs, final boolean isVsyncFrame, final long intendedFrameTimeNs,
+                                final long inputCostNs, final long animationCostNs, final long insetsAnimationCostNs, final long traversalCostNs, final long commitCostNs) {
         long traceBegin = System.currentTimeMillis();
         try {
             final long jitter = endNs - intendedFrameTimeNs;
@@ -167,19 +169,19 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
                     if (null != listener.getExecutor()) {
                         if (listener.getIntervalFrameReplay() > 0) {
                             listener.collect(focusedActivity, startNs, endNs, dropFrame, isVsyncFrame,
-                                    intendedFrameTimeNs, inputCostNs, animationCostNs, traversalCostNs);
+                                    intendedFrameTimeNs, inputCostNs, animationCostNs, insetsAnimationCostNs, traversalCostNs, commitCostNs);
                         } else {
                             listener.getExecutor().execute(new Runnable() {
                                 @Override
                                 public void run() {
                                     listener.doFrameAsync(focusedActivity, startNs, endNs, dropFrame, isVsyncFrame,
-                                            intendedFrameTimeNs, inputCostNs, animationCostNs, traversalCostNs);
+                                            intendedFrameTimeNs, inputCostNs, animationCostNs, insetsAnimationCostNs, traversalCostNs, commitCostNs);
                                 }
                             });
                         }
                     } else {
                         listener.doFrameSync(focusedActivity, startNs, endNs, dropFrame, isVsyncFrame,
-                                intendedFrameTimeNs, inputCostNs, animationCostNs, traversalCostNs);
+                                intendedFrameTimeNs, inputCostNs, animationCostNs, insetsAnimationCostNs, traversalCostNs, commitCostNs);
                     }
 
                     if (config.isDevEnv()) {
@@ -379,7 +381,7 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
                     long vsynTime = frameMetricsCopy.getMetric(FrameMetrics.VSYNC_TIMESTAMP);
                     long intendedVsyncTime = frameMetricsCopy.getMetric(FrameMetrics.INTENDED_VSYNC_TIMESTAMP);
                     frameMetricsCopy.getMetric(FrameMetrics.DRAW_DURATION);
-                    notifyListener(AppActiveMatrixDelegate.INSTANCE.getVisibleScene(), intendedVsyncTime, vsynTime, true, intendedVsyncTime, 0, 0, 0);
+                    notifyListener(AppActiveMatrixDelegate.INSTANCE.getVisibleScene(), intendedVsyncTime, vsynTime, true, intendedVsyncTime, 0, 0, 0, 0, 0);
                 }
             };
             this.frameListenerMap.put(activity.hashCode(), onFrameMetricsAvailableListener);

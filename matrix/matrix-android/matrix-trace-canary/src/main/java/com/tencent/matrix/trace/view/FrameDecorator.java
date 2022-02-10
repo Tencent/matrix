@@ -204,8 +204,10 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
 
 
     @Override
-    public void doFrameAsync(String focusedActivity, long startNs, long endNs, int dropFrame, boolean isVsyncFrame, long intendedFrameTimeNs, long inputCostNs, long animationCostNs, long traversalCostNs) {
-        super.doFrameAsync(focusedActivity, startNs, endNs, dropFrame, isVsyncFrame, intendedFrameTimeNs, inputCostNs, animationCostNs, traversalCostNs);
+    public void doFrameAsync(String focusedActivity, long startNs, long endNs, int dropFrame, boolean isVsyncFrame, long intendedFrameTimeNs,
+                             long inputCostNs, long animationCostNs, long insetsAnimationCostNs, long traversalCostNs, long commitCostNs) {
+        super.doFrameAsync(focusedActivity, startNs, endNs, dropFrame, isVsyncFrame, intendedFrameTimeNs,
+                inputCostNs, animationCostNs, insetsAnimationCostNs, traversalCostNs, commitCostNs);
 
         if (!Objects.equals(focusedActivity, lastVisibleScene)) {
             dropLevel = new int[FrameTracer.DropStatus.values().length];
