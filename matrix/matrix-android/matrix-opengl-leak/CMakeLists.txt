@@ -23,6 +23,8 @@ set(
         SOURCE_FILES
         ${SOURCE_DIR}/com_tencent_matrix_openglleak_detector_FuncSeeker.cpp
         ${SOURCE_DIR}/com_tencent_matrix_openglleak_hook_OpenGLHook.cpp
+        ${SOURCE_DIR}/BufferQueue.cpp
+        ${SOURCE_DIR}/StackMeta.cpp
         ${SOURCE_DIR}/type.cpp
         ${SOURCE_DIR}/get_tls.cpp
 )
