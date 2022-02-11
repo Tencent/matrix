@@ -115,7 +115,7 @@ Java_com_example_openglhook_OpenglHookTestActivity_openglNativeProfiler(JNIEnv *
 
     for (int i = 0; i < thread_count; ++i) {
         std::thread test_thread = std::thread([i, resource_count]() {
-            std::string thread_name = "opengl_test_thread - " + std::to_string(i);
+            std::string thread_name = "opengl_test_thread_" + std::to_string(i);
             native_gl_profiler(thread_name, resource_count, i);
         });
         test_thread.detach();

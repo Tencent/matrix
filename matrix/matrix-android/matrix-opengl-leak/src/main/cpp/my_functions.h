@@ -189,7 +189,7 @@ int get_java_throwable() {
     return throwable;
 }
 
-void gen_jni_callback(int alloc_count, GLuint *copy_resource, int throwable, char *thread_id,
+void gen_jni_callback(int alloc_count, GLuint *copy_resource, int throwable, const char *thread_id,
                       wechat_backtrace::Backtrace *backtracePtr, EGLContext egl_context,
                       jmethodID jmethodId) {
     JNIEnv *env = GET_ENV();
@@ -224,7 +224,7 @@ void gen_jni_callback(int alloc_count, GLuint *copy_resource, int throwable, cha
     }
 }
 
-void delete_jni_callback(int delete_count, GLuint *copy_resource, char *thread_id,
+void delete_jni_callback(int delete_count, GLuint *copy_resource, const char *thread_id,
                          EGLContext egl_context, jmethodID jmethodId) {
     JNIEnv *env = GET_ENV();
 

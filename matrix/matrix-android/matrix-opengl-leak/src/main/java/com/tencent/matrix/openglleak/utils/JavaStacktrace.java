@@ -27,7 +27,6 @@ public class JavaStacktrace {
     public static String getBacktraceValue(int key) {
         Throwable throwable = sThrowableMap.get(key);
         if (throwable == null) {
-            MatrixLog.e("Backtrace", "getBacktraceValue key = " + key);
             return "";
         }
         return stackTraceToString(throwable.getStackTrace());

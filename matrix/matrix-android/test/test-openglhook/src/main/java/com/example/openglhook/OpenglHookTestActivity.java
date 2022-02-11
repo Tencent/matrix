@@ -54,7 +54,7 @@ public class OpenglHookTestActivity extends AppCompatActivity {
         System.loadLibrary("test-openglhook");
 
         for (int i = 0; i < JAVA_THREAD_COUNT; i++) {
-            HandlerThread handlerThread = new HandlerThread("Java thread - " + i);
+            HandlerThread handlerThread = new HandlerThread("Java_thread_" + i);
             handlerThread.start();
             Handler handler = new Handler(handlerThread.getLooper());
             mHandlers[i] = handler;
@@ -108,12 +108,12 @@ public class OpenglHookTestActivity extends AppCompatActivity {
         findViewById(R.id.dump_to_file).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
+//                new Thread(new Runnable() {
+//                    @Override
+//                    public void run() {
                         openglDump();
-                    }
-                }).start();
+//                    }
+//                }).start();
             }
         });
 
