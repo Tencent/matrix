@@ -425,6 +425,7 @@ data class MemInfo(
                 for (i in memInfoArray.indices) {
                     if (pidMemInfoArray[i] == null) {
                         memInfoArray[i].amsPssInfo = PssInfo(0, 0, 0, 0, 0, 0, 0, 0, 0)
+                        continue
                     }
                     memInfoArray[i].amsPssInfo = PssInfo.get(pidMemInfoArray[i])
                 }
