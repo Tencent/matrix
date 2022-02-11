@@ -135,6 +135,8 @@ public class OpenGLHook {
 
     public static native void releaseNative(long nativeStackPtr);
 
+    public static native boolean isEglContextAlive(long eglContext);
+
     public static void onGlGenTextures(int[] ids, final String threadId, final int throwable, final long nativeStackPtr, final long eglContext) {
         if (ids.length > 0) {
             final AtomicInteger counter = new AtomicInteger(ids.length);

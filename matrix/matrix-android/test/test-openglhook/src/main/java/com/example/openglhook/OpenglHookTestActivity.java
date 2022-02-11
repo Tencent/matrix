@@ -1,4 +1,4 @@
-package com.example.test_openglleak;
+package com.example.openglhook;
 
 import static android.opengl.GLES20.GL_RENDERBUFFER;
 import static android.opengl.GLES30.GL_DEPTH24_STENCIL8;
@@ -18,8 +18,10 @@ import android.os.Process;
 import android.util.Log;
 import android.view.View;
 
+import com.example.test_openglleak.R;
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.openglleak.OpenglLeakPlugin;
+import com.tencent.matrix.openglleak.hook.OpenGLHook;
 import com.tencent.matrix.openglleak.statistics.LeakMonitorForBackstage;
 import com.tencent.matrix.openglleak.statistics.resource.OpenGLInfo;
 import com.tencent.matrix.openglleak.statistics.resource.ResRecordManager;
@@ -49,6 +51,8 @@ public class OpenglHookTestActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_opengl_leak_test);
 
+        System.loadLibrary("test-openglhook");
+
         for (int i = 0; i < JAVA_THREAD_COUNT; i++) {
             HandlerThread handlerThread = new HandlerThread("Java thread - " + i);
             handlerThread.start();
@@ -60,7 +64,7 @@ public class OpenglHookTestActivity extends AppCompatActivity {
         findViewById(R.id.install_opengl_plugin).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Log.e(TAG, "current threadId = " + Thread.currentThread().getId());
+                Log.e(TAG, "current threadId = " + Thread.currentThread().getName());
                 installOpenGLPlugin();
             }
         });
@@ -104,7 +108,12 @@ public class OpenglHookTestActivity extends AppCompatActivity {
         findViewById(R.id.dump_to_file).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                openglDump();
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        openglDump();
+                    }
+                }).start();
             }
         });
 
@@ -128,6 +137,7 @@ public class OpenglHookTestActivity extends AppCompatActivity {
             mHandlers[i].post(new Runnable() {
                 @Override
                 public void run() {
+                    initEGLContext();
                     long start = System.currentTimeMillis();
                     for (int j = 0; j < OPENGL_PROFILE_RESOURCE_COUNT; j++) {
 
@@ -183,19 +193,17 @@ public class OpenglHookTestActivity extends AppCompatActivity {
     }
 
     private void useBuffers() {
-        int bufferCount = 1;
-        int[] buffers = new int[bufferCount];
+        int[] buffers = new int[1];
 
-        ByteBuffer vertexBuffer = ByteBuffer.allocateDirect(40000000 * 15);
+        ByteBuffer vertexBuffer = ByteBuffer.allocateDirect(40 * 15);
         vertexBuffer.putInt(1);
         vertexBuffer.putInt(2);
-
         vertexBuffer.putInt(3);
         vertexBuffer.putInt(4);
 
-        GLES20.glGenBuffers(bufferCount, IntBuffer.wrap(buffers));
+        GLES20.glGenBuffers(1, IntBuffer.wrap(buffers));
         GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, buffers[0]);
-        GLES20.glBufferData(GLES20.GL_ARRAY_BUFFER, 4000000, vertexBuffer, GLES20.GL_STATIC_DRAW);
+        GLES20.glBufferData(GLES20.GL_ARRAY_BUFFER, 40 , vertexBuffer, GLES20.GL_STATIC_DRAW);
     }
 
     private void useTextures() {

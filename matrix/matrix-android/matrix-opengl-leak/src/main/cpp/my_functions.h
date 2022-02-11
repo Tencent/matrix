@@ -48,7 +48,6 @@ static JavaVM *m_java_vm;
 
 static jclass class_OpenGLHook;
 static jmethodID method_onGlGenTextures;
-static jmethodID method_onSaveMemory;
 static jmethodID method_onGlDeleteTextures;
 static jmethodID method_onGlGenBuffers;
 static jmethodID method_onGlDeleteBuffers;

@@ -1,7 +1,5 @@
 package com.tencent.matrix.openglleak.statistics.resource;
 
-import android.opengl.EGLContext;
-import android.os.Build;
 import com.tencent.matrix.openglleak.utils.ActivityRecorder;
 import com.tencent.matrix.openglleak.utils.JavaStacktrace;
 

@@ -62,6 +62,9 @@ TARGET_LINK_LIBRARIES( # Specifies the target library.
         # Links the target library to the log library
         # included in the NDK.
         PRIVATE ${log-lib}
+        GLESv2
+        GLESv3
+        EGL
         PRIVATE -Wl,--gc-sections
         PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/libwechatbacktrace.so
         PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/libmatrix-hookcommon.so

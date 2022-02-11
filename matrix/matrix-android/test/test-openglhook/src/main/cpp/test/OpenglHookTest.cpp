@@ -29,6 +29,9 @@ int egl_init() {
             EGL_RED_SIZE, 8,
             EGL_GREEN_SIZE, 8,
             EGL_BLUE_SIZE, 8,
+            EGL_ALPHA_SIZE, 8,
+            EGL_DEPTH_SIZE, 8,
+            EGL_STENCIL_SIZE, 8,
             EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
             EGL_NONE
     };
@@ -74,6 +77,9 @@ int egl_init() {
 void native_gl_profiler(std::string thread_name, int resource_count, int currPos) {
     egl_init();
 
+    struct timeval tv;
+    gettimeofday(&tv, nullptr);
+    long start = tv.tv_sec * 1000 + tv.tv_usec / 1000;
     for (int i = 0; i < resource_count; i++) {
         glGenRenderbuffers(1, renderbuffers + (currPos * resource_count + i));
         glGenTextures(1, textures + (currPos * resource_count + i));
@@ -88,11 +94,18 @@ void native_gl_profiler(std::string thread_name, int resource_count, int currPos
         glBindRenderbuffer(GL_RENDERBUFFER, renderbuffers[currPos * resource_count + i]);
         glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, 0, 0);
     }
+
+    gettimeofday(&tv, nullptr);
+    long end = tv.tv_sec * 1000 + tv.tv_usec / 1000;
+
+    long cost = end - start;
+
+    __android_log_print(ANDROID_LOG_ERROR, TAG, "native_gl_profiler thread = %s finish, cost = %ld, start = %ld, end = %ld", thread_name.c_str(), cost, start, end);
 }
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_example_test_1openglleak_OpenglHookTestActivity_openglNativeProfiler(JNIEnv *env,
-                                                                              jobject thiz,
+Java_com_example_openglhook_OpenglHookTestActivity_openglNativeProfiler(JNIEnv *env,
+                                                                        jobject thiz,
                                                                               jint thread_count,
                                                                               jint resource_count) {
 
@@ -102,7 +115,7 @@ Java_com_example_test_1openglleak_OpenglHookTestActivity_openglNativeProfiler(JN
 
     for (int i = 0; i < thread_count; ++i) {
         std::thread test_thread = std::thread([i, resource_count]() {
-            std::string thread_name = "opengl_test_thread" + std::to_string(i);
+            std::string thread_name = "opengl_test_thread - " + std::to_string(i);
             native_gl_profiler(thread_name, resource_count, i);
         });
         test_thread.detach();

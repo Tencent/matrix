@@ -75,6 +75,7 @@ target_link_libraries( # Specifies the target library.
         PRIVATE ${log-lib}
         GLESv2
         GLESv3
+        EGL
         PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/libwechatbacktrace.so
 )
 

@@ -4,7 +4,6 @@ import android.annotation.SuppressLint;
 
 import com.tencent.matrix.openglleak.hook.OpenGLHook;
 import com.tencent.matrix.openglleak.utils.AutoWrapBuilder;
-import com.tencent.matrix.openglleak.utils.EGLHelper;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -188,7 +187,7 @@ public class ResRecordManager {
                 }
             }
 
-            boolean alive = EGLHelper.isEglContextAlive(info.getEglContext());
+            boolean alive = OpenGLHook.isEglContextAlive(info.getEglContextNativeHandle());
             if (!alive) {
                 mReleaseContext.add(info.getEglContextNativeHandle());
             }
@@ -267,7 +266,8 @@ public class ResRecordManager {
             int memoryJavaHash = memoryInfo == null ? 0 : memoryInfo.getJavaStack().hashCode();
             int memoryNativeHash = memoryInfo == null ? 0 : memoryInfo.getNativeStack().hashCode();
 
-            long infoHash = javaHash + nativeHash + memoryNativeHash + memoryJavaHash;
+            long infoHash = javaHash + nativeHash + memoryNativeHash + memoryJavaHash
+                    + info.getEglContextNativeHandle() + info.getActivityInfo().hashCode() + info.getThreadId().hashCode();
 
             OpenGLDumpInfo oldInfo = infoMap.get(infoHash);
             if (oldInfo == null) {

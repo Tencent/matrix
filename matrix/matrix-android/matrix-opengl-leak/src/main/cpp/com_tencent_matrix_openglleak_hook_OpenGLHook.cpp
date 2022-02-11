@@ -512,8 +512,41 @@ extern "C"
 JNIEXPORT void JNICALL
 Java_com_tencent_matrix_openglleak_hook_OpenGLHook_releaseNative(JNIEnv *env, jclass clazz,
                                                                  jlong native_stack_ptr) {
-    int64_t addr = native_stack_ptr;
+    const uintptr_t releaseNativeKey = 0x001;
+    messages_containers->enqueue_message(releaseNativeKey, [native_stack_ptr] {
+        int64_t addr = native_stack_ptr;
+        auto *ptr = (wechat_backtrace::Backtrace *) addr;
+        delete_backtrace(ptr);
+    });
+}
 
-    wechat_backtrace::Backtrace *ptr = (wechat_backtrace::Backtrace *) addr;
-    delete ptr;
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_tencent_matrix_openglleak_hook_OpenGLHook_isEglContextAlive(
+        JNIEnv *env, jclass clazz, jlong egl_context) {
+    EGLDisplay display = eglGetCurrentDisplay();
+
+    const EGLint attrib_config_list[] = {
+            EGL_RED_SIZE, 8,
+            EGL_GREEN_SIZE, 8,
+            EGL_BLUE_SIZE, 8,
+            EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+            EGL_NONE
+    };
+    EGLint num_config = 0;
+    EGLConfig eglConfig;
+    if (!eglChooseConfig(display, attrib_config_list, &eglConfig, num_config, &num_config)) {
+        return false;
+    }
+    const EGLint attrib_ctx_list[] = {
+            EGL_CONTEXT_CLIENT_VERSION, 2,
+            EGL_NONE
+    };
+    auto origin_context = EGLContext(egl_context);
+    EGLContext test_context = eglCreateContext(display, eglConfig, origin_context, attrib_ctx_list);
+
+    if (test_context == EGL_NO_CONTEXT) {
+        return false;
+    }
+
+    return true;
 }
