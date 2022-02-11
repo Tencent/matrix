@@ -1,7 +1,5 @@
 package com.tencent.matrix.openglleak.utils;
 
-import com.tencent.matrix.util.MatrixLog;
-
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
