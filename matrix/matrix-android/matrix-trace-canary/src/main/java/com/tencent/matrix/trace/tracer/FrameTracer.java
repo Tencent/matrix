@@ -49,6 +49,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 
 public class FrameTracer extends Tracer implements Application.ActivityLifecycleCallbacks {
@@ -70,7 +71,7 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
     private int droppedSum = 0;
     private long durationSum = 0;
     private Map<String, Long> lastResumeTimeMap = new HashMap<>();
-    private Map<Integer, Window.OnFrameMetricsAvailableListener> frameListenerMap = new HashMap<>();
+    private Map<Integer, Window.OnFrameMetricsAvailableListener> frameListenerMap = new ConcurrentHashMap<>();
 
     public FrameTracer(TraceConfig config, boolean supportFrameMetrics) {
         useFrameMetrics = supportFrameMetrics;
@@ -110,6 +111,22 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
             }
             Matrix.with().getApplication().registerActivityLifecycleCallbacks(this);
         }
+    }
+
+    public void forceEnable() {
+        MatrixLog.i(TAG, "forceEnable");
+        if (!useFrameMetrics) {
+            UIThreadMonitor.getMonitor().addObserver(this);
+        }
+        Matrix.with().getApplication().registerActivityLifecycleCallbacks(this);
+    }
+
+    public void forceDisable() {
+        MatrixLog.i(TAG, "forceDisable");
+        removeDropFrameListener();
+        UIThreadMonitor.getMonitor().removeObserver(this);
+        Matrix.with().getApplication().unregisterActivityLifecycleCallbacks(this);
+        frameListenerMap.clear();
     }
 
     @Override
@@ -365,10 +382,26 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
         void dropFrame(int droppedFrame, long jitter, String scene, long lastResumeTime);
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.N)
+
     @Override
     public void onActivityCreated(final Activity activity, Bundle savedInstanceState) {
+
+    }
+
+    @Override
+    public void onActivityStarted(Activity activity) {
+
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.N)
+    @Override
+    public void onActivityResumed(Activity activity) {
+        lastResumeTimeMap.put(activity.getClass().getName(), System.currentTimeMillis());
+
         if (useFrameMetrics) {
+            if (frameListenerMap.containsKey(activity.hashCode())) {
+                return;
+            }
             this.refreshRate = (int) activity.getWindowManager().getDefaultDisplay().getRefreshRate();
             this.frameIntervalNs = Constants.TIME_SECOND_TO_NANO / (long) refreshRate;
             Window.OnFrameMetricsAvailableListener onFrameMetricsAvailableListener = new Window.OnFrameMetricsAvailableListener() {
@@ -384,18 +417,8 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
             };
             this.frameListenerMap.put(activity.hashCode(), onFrameMetricsAvailableListener);
             activity.getWindow().addOnFrameMetricsAvailableListener(onFrameMetricsAvailableListener, new Handler());
-            MatrixLog.i(TAG, "onActivityCreated addOnFrameMetricsAvailableListener");
+            MatrixLog.i(TAG, "onActivityResumed addOnFrameMetricsAvailableListener");
         }
-    }
-
-    @Override
-    public void onActivityStarted(Activity activity) {
-
-    }
-
-    @Override
-    public void onActivityResumed(Activity activity) {
-        lastResumeTimeMap.put(activity.getClass().getName(), System.currentTimeMillis());
     }
 
     @Override
