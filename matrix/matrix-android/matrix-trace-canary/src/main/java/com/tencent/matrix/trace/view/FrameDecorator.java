@@ -53,6 +53,7 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
     private WindowManager windowManager;
     private WindowManager.LayoutParams layoutParam;
     private boolean isShowing;
+    private boolean isBeforeDismissShowing;
     private FloatFrameView view;
     private static Handler mainHandler = new Handler(Looper.getMainLooper());
     private Handler handler;
@@ -463,8 +464,12 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
                 @Override
                 public void run() {
                     if (isForeground) {
-                        show();
+                        if (isBeforeDismissShowing) {
+                            isBeforeDismissShowing = false;
+                            show();
+                        }
                     } else {
+                        isBeforeDismissShowing = isShowing;
                         dismiss();
                     }
                 }
