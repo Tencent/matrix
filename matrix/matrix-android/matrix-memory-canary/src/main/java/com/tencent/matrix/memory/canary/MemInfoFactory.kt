@@ -388,16 +388,16 @@ data class MemInfo(
     var cost = 0L
     override fun toString(): String {
         return "\n" + """
-                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> MemInfo <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-                | Process   : $processInfo
-                | Status    : $statusInfo
-                | SystemInfo: $systemInfo
-                | Java      : $javaMemInfo
-                | Native    : $nativeMemInfo
-                | Dbg-Pss   : $debugPssInfo
-                | AMS-Pss   : $amsPssInfo
-                | FgService : $fgServiceInfo
-                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+                |>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> MemInfo <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+                |> Process   : $processInfo
+                |> Status    : $statusInfo
+                |> SystemInfo: $systemInfo
+                |> Java      : $javaMemInfo
+                |> Native    : $nativeMemInfo
+                |> Dbg-Pss   : $debugPssInfo
+                |> AMS-Pss   : $amsPssInfo
+                |> FgService : $fgServiceInfo
+                |>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
             """.trimIndent() + "\n".run { if (cost <= 0) this else "$this| cost : $cost" }
     }
 
