@@ -176,6 +176,7 @@ namespace matrix {
             for (size_t i = 0; i < messages_->idx_; i++) {
                 message_t *message = reinterpret_cast<message_t *>(&messages_->queue_[i]);
                 callback(message);
+//                __android_log_print(ANDROID_LOG_ERROR, "cclover_test", "messages_->idx_ = %zu, i = %zu", messages_->idx_, i);
             }
         }
 
@@ -232,7 +233,11 @@ namespace matrix {
 
         void start_process();
 
+        int get_queue_size();
+
     private:
+
+        float busy_ratio;
 
         std::vector<BufferQueueContainer *> containers_;
 
@@ -241,6 +246,7 @@ namespace matrix {
         BufferQueue *queue_swapped_ = nullptr;
 
         bool processing_ = false;
+
         pthread_t thread_{};
     };
 

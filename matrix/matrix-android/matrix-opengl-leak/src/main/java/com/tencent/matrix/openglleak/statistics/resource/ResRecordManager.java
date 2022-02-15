@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 
 import com.tencent.matrix.openglleak.hook.OpenGLHook;
 import com.tencent.matrix.openglleak.utils.AutoWrapBuilder;
+import com.tencent.matrix.openglleak.utils.JavaStacktrace;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -74,6 +75,7 @@ public class ResRecordManager {
             counter.set(counter.get() - 1);
             if (counter.get() == 0) {
                 OpenGLHook.releaseNative(info.getNativeStackPtr());
+                JavaStacktrace.removeBacktraceKey(info.getJavaStacktraceKey());
             }
 
             // 释放 memory info
@@ -83,6 +85,7 @@ public class ResRecordManager {
                 if (memNativePtr != 0) {
                     OpenGLHook.releaseNative(memNativePtr);
                     memoryInfo.releaseNativeStackPtr();
+                    JavaStacktrace.removeBacktraceKey(memoryInfo.getJavaStacktraceKey());
                 }
             }
 

@@ -8,10 +8,6 @@
 
 #define TAG "matrix.openglHook"
 
-GLuint *buffers = nullptr;
-GLuint *textures = nullptr;
-GLuint *renderbuffers = nullptr;
-
 int egl_init() {
     EGLDisplay eglDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
     if (eglDisplay == EGL_NO_DISPLAY) {
@@ -74,24 +70,24 @@ int egl_init() {
     return 0;
 }
 
-void native_gl_profiler(std::string thread_name, int resource_count, int currPos) {
+void native_gl_profiler(const std::string& thread_name, GLuint *textures, GLuint *buffers, GLuint *renderbuffers, int total_count) {
     egl_init();
 
-    struct timeval tv;
+    struct timeval tv{};
     gettimeofday(&tv, nullptr);
     long start = tv.tv_sec * 1000 + tv.tv_usec / 1000;
-    for (int i = 0; i < resource_count; i++) {
-        glGenRenderbuffers(1, renderbuffers + (currPos * resource_count + i));
-        glGenTextures(1, textures + (currPos * resource_count + i));
-        glGenBuffers(1, buffers + (currPos * resource_count + i));
+    for (int i = 0; i < total_count; i++) {
+        glGenRenderbuffers(1, renderbuffers + i);
+        glGenTextures(1, textures + i);
+        glGenBuffers(1, buffers + i);
 
-        glBindBuffer(GL_ARRAY_BUFFER, buffers[currPos * resource_count + i]);
+        glBindBuffer(GL_ARRAY_BUFFER, buffers[i]);
         glBufferData(GL_ARRAY_BUFFER, 1, nullptr, GL_STATIC_DRAW);
 
-        glBindTexture(GL_TEXTURE_2D, textures[currPos * resource_count + i]);
+        glBindTexture(GL_TEXTURE_2D, textures[i]);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
 
-        glBindRenderbuffer(GL_RENDERBUFFER, renderbuffers[currPos * resource_count + i]);
+        glBindRenderbuffer(GL_RENDERBUFFER, renderbuffers[i]);
         glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, 0, 0);
     }
 
@@ -106,17 +102,17 @@ extern "C"
 JNIEXPORT void JNICALL
 Java_com_example_openglhook_OpenglHookTestActivity_openglNativeProfiler(JNIEnv *env,
                                                                         jobject thiz,
-                                                                              jint thread_count,
-                                                                              jint resource_count) {
-
-    textures = new GLuint[thread_count * resource_count];
-    buffers = new GLuint[thread_count * resource_count];
-    renderbuffers = new GLuint[thread_count * resource_count];
+                                                                              jint thread_count) {
 
     for (int i = 0; i < thread_count; ++i) {
-        std::thread test_thread = std::thread([i, resource_count]() {
+        int total_count = 1000;
+        auto *textures = new GLuint[total_count];
+        auto *buffers = new GLuint[total_count];
+        auto *renderbuffers = new GLuint[total_count];
+
+        std::thread test_thread = std::thread([i, textures, buffers, renderbuffers, total_count]() {
             std::string thread_name = "opengl_test_thread_" + std::to_string(i);
-            native_gl_profiler(thread_name, resource_count, i);
+            native_gl_profiler(thread_name, textures, buffers, renderbuffers, total_count);
         });
         test_thread.detach();
     }

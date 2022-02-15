@@ -550,3 +550,9 @@ Java_com_tencent_matrix_openglleak_hook_OpenGLHook_isEglContextAlive(
 
     return true;
 }
+
+extern "C"
+JNIEXPORT jint JNICALL
+Java_com_tencent_matrix_openglleak_hook_OpenGLHook_getResidualQueueSize(JNIEnv *env, jobject clazz) {
+    return messages_containers->get_queue_size();
+}

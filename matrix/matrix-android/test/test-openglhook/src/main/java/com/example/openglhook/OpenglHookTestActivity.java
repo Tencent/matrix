@@ -36,13 +36,8 @@ public class OpenglHookTestActivity extends AppCompatActivity {
 
     private static final int JAVA_THREAD_COUNT = 4;
     private static final int NATIVE_THREAD_COUNT = 4;
-    private static final int OPENGL_PROFILE_RESOURCE_COUNT = 5000;
 
     private static final String TAG = "matrix.openglHook";
-
-    private final int[] textures = new int[JAVA_THREAD_COUNT * OPENGL_PROFILE_RESOURCE_COUNT];
-    private final int[] buffers = new int[JAVA_THREAD_COUNT * OPENGL_PROFILE_RESOURCE_COUNT];
-    private final int[] renderbuffers = new int[JAVA_THREAD_COUNT * OPENGL_PROFILE_RESOURCE_COUNT];
 
     private final Handler[] mHandlers = new Handler[JAVA_THREAD_COUNT];
 
@@ -100,6 +95,13 @@ public class OpenglHookTestActivity extends AppCompatActivity {
         findViewById(R.id.dump_to_string).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                int queueSize = OpenGLHook.getInstance().getResidualQueueSize();
+                Log.e(TAG, "queueSize = " + queueSize);
+
+                if (queueSize != 0) {
+                    return;
+                }
+
                 String content = ResRecordManager.getInstance().dumpGLToString();
                 Log.e(TAG, "dump content = " + content);
             }
@@ -108,51 +110,55 @@ public class OpenglHookTestActivity extends AppCompatActivity {
         findViewById(R.id.dump_to_file).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-//                new Thread(new Runnable() {
-//                    @Override
-//                    public void run() {
-                        openglDump();
-//                    }
-//                }).start();
+                int queueSize = OpenGLHook.getInstance().getResidualQueueSize();
+                Log.e(TAG, "queueSize = " + queueSize);
+
+                if (queueSize != 0) {
+                    return;
+                }
+
+                openglDump();
             }
         });
 
         findViewById(R.id.gl_profiler).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                openglNativeProfiler(NATIVE_THREAD_COUNT, OPENGL_PROFILE_RESOURCE_COUNT);
+                openglNativeProfiler(NATIVE_THREAD_COUNT);
                 openglJavaProfiler();
             }
         });
 
     }
 
-    private native void openglNativeProfiler(int threadCnt, int profilerResCnt);
+    private native void openglNativeProfiler(int threadCnt);
 
     private void openglJavaProfiler() {
         for (int i = 0; i < JAVA_THREAD_COUNT; i++) {
 
-            final int finalI = i;
-
             mHandlers[i].post(new Runnable() {
                 @Override
                 public void run() {
-                    initEGLContext();
+                    EGLHelper.initOpenGL();
                     long start = System.currentTimeMillis();
-                    for (int j = 0; j < OPENGL_PROFILE_RESOURCE_COUNT; j++) {
 
-                        int currPos = finalI * OPENGL_PROFILE_RESOURCE_COUNT + j;
+                    int totalCount = 1000;
+                    int[] textures = new int[totalCount];
+                    int[] buffers = new int[totalCount];
+                    int[] renderbuffers = new int[totalCount];
 
-                        GLES20.glGenTextures(1, textures, currPos);
-                        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textures[currPos]);
-                        GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, 1, 1, 0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, null);
+                    for (int i = 0; i < totalCount; i++) {
 
-                        GLES20.glGenBuffers(1, buffers, currPos);
-                        GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, buffers[currPos]);
+                        GLES20.glGenRenderbuffers(1, renderbuffers, i);
+                        GLES20.glGenTextures(1, textures, i);
+                        GLES20.glGenBuffers(1, buffers, i);
+
+                        GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, buffers[i]);
                         GLES20.glBufferData(GLES20.GL_ARRAY_BUFFER, 1, null, GLES20.GL_STATIC_DRAW);
+                        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textures[i]);
 
-                        GLES20.glGenRenderbuffers(1, renderbuffers, currPos);
-                        GLES20.glBindRenderbuffer(GL_RENDERBUFFER, renderbuffers[currPos]);
+                        GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGBA, 1, 1, 0, GLES20.GL_RGBA, GLES20.GL_UNSIGNED_BYTE, null);
+                        GLES20.glBindRenderbuffer(GL_RENDERBUFFER, renderbuffers[i]);
                         GLES20.glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, 0, 0);
                     }
                     long end = System.currentTimeMillis();
@@ -203,7 +209,7 @@ public class OpenglHookTestActivity extends AppCompatActivity {
 
         GLES20.glGenBuffers(1, IntBuffer.wrap(buffers));
         GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, buffers[0]);
-        GLES20.glBufferData(GLES20.GL_ARRAY_BUFFER, 40 , vertexBuffer, GLES20.GL_STATIC_DRAW);
+        GLES20.glBufferData(GLES20.GL_ARRAY_BUFFER, 40, vertexBuffer, GLES20.GL_STATIC_DRAW);
     }
 
     private void useTextures() {

@@ -84,20 +84,34 @@ namespace matrix {
                     this_->queue_swapped_ = swapped;
                 }
             }
-            float busy_ratio = ((float) busy_queue) / this_->containers_.size();
+            this_->busy_ratio = ((float) busy_queue) / this_->containers_.size();
 
-            if (busy_ratio > 0.9f) { // Super busy
+            if (this_->busy_ratio > 0.9f) { // Super busy
                 continue;
-            } else if (busy_ratio > 0.6f) { // Busy
+            } else if (this_->busy_ratio > 0.6f) { // Busy
                 usleep(PROCESS_BUSY_INTERVAL);
-            } else if (busy_ratio > 0.3f) {
+            } else if (this_->busy_ratio > 0.3f) {
                 usleep(PROCESS_NORMAL_INTERVAL);
-            } else if (busy_ratio > 0.1f) {
+            } else if (this_->busy_ratio > 0.1f) {
                 usleep(PROCESS_LESS_NORMAL_INTERVAL);
             } else {
                 usleep(PROCESS_IDLE_INTERVAL);
             }
         }
+    }
+
+    int BufferManagement::get_queue_size() {
+
+        int queue_size = 0;
+        for (auto container : containers_) {
+            {
+                std::lock_guard<std::mutex> lock(container->mutex_);
+                if (container->queue_ && !container->queue_->empty()) {
+                    queue_size += container->queue_->size();
+                }
+            }
+        }
+        return queue_size;
     }
 
     void BufferManagement::start_process() {
