@@ -552,7 +552,7 @@ data class MergedSmapsInfo(
                 "PERM",
                 "NAME"
             )
-        )
+        ).append("\n")
         sb.append(
             String.format(
                 FORMAT,
@@ -568,36 +568,40 @@ data class MergedSmapsInfo(
                 "----",
                 "----"
             )
-        )
+        ).append("\n")
         for ((name, permission, count, vmSize, rss, pss, sharedClean, sharedDirty, privateClean, privateDirty, swapPss) in list!!) {
             sb.append(
-                FORMAT,
-                pss,
-                rss,
-                vmSize,
-                swapPss,
-                sharedClean,
-                sharedDirty,
-                privateClean,
-                privateDirty,
-                count,
-                permission,
-                name
-            )
+                String.format(
+                    FORMAT,
+                    pss,
+                    rss,
+                    vmSize,
+                    swapPss,
+                    sharedClean,
+                    sharedDirty,
+                    privateClean,
+                    privateDirty,
+                    count,
+                    permission,
+                    name
+                )
+            ).append("\n")
         }
         sb.append(
-            FORMAT,
-            "----",
-            "----",
-            "----",
-            "----",
-            "----",
-            "----",
-            "----",
-            "----",
-            "----",
-            "----",
-            "----"
+            String.format(
+                FORMAT,
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----"
+            )
         )
         sb.append("\n")
 
