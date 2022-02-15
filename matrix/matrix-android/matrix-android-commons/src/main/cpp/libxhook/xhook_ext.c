@@ -186,5 +186,8 @@ int xhook_export_symtable_hook(const char* owner_lib_name, const char* symbol_na
         case XH_ERRNO_NOMEM: {
             return XH_ERRNO_NOMEM;
         }
+        default: {
+            return XH_ERRNO_UNKNOWN;
+        }
     }
 }

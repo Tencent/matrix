@@ -504,6 +504,34 @@ static void HandleDeleteArrSizeAligned(void* ptr, unsigned int size, size_t alig
     }
 }
 
+static void* HandleGlobalReAlloc(void* ptr, size_t size) {
+    if (ptr == nullptr) {
+        return ORIGINAL_FUNCTION(malloc)(size);
+    }
+    if (size == 0) {
+        HandleFree(ptr);
+        return ptr;
+    }
+    if (LIKELY(!allocation::IsAllocatedByThisAllocator(ptr))) {
+        void* res = ORIGINAL_FUNCTION(realloc)(ptr, size);
+        LOGD(LOG_TAG, "HandleGlobalReAlloc(%p,%" PRIu32 ") = %p, skipped.", ptr, size, res);
+        return res;
+    }
+
+    void* newPtr = ORIGINAL_FUNCTION(malloc)(size);
+    if (newPtr == nullptr) {
+        LOGD(LOG_TAG, "HandleGlobalReAlloc(%p,%" PRIu32 ") = %p, failure.", ptr, size, newPtr);
+        errno = ENOMEM;
+        return nullptr;
+    }
+    size_t oldSize = allocation::GetAllocatedSize(ptr);
+    memcpy(newPtr, ptr, (oldSize <= size ? oldSize : size));
+    allocation::Free(ptr);
+    LOGD(LOG_TAG, "HandleGlobalReAlloc(%p,%" PRIu32 ") = %p, moved, guarded.", ptr, size, newPtr);
+    return newPtr;
+}
+
+
 static bool InitializeOriginalFunctions() {
   sLibCHandle = ::dlopen("libc.so", RTLD_NOW);
   if (sLibCHandle == nullptr) {
@@ -583,7 +611,7 @@ bool memguard::interception::Install() {
     }
 
   #define X(pattern, ret_type, sym, args, handler, def_lib_handle) \
-    if (!DoHook(pattern, #sym, (void*) handler, nullptr)) { \
+    if (!DoHook(HOOK_REQUEST_GROUPID_MEMGUARD, pattern, #sym, (void*) handler, nullptr)) { \
       return false; \
     }
 
@@ -596,8 +624,20 @@ bool memguard::interception::Install() {
     ENUM_CPP_DEALLOC_FUNCTIONS(".*\\.so$")
   #undef X
 
-    if (xhook_export_symtable_hook("libc.so", "free", reinterpret_cast<void*>(HandleFree), nullptr) != 0) {
+    if (!DoHook(HOOK_REQUEST_GROUPID_MEMGUARD_2, ".*\\.so$", "realloc",
+            reinterpret_cast<void*>(HandleGlobalReAlloc), nullptr)) {
+        return false;
+    }
+
+    if (xhook_export_symtable_hook("libc.so", "free",
+            reinterpret_cast<void*>(HandleFree), nullptr) != 0) {
         LOGE(LOG_TAG, "Fail to do export symtab hook for 'free'.");
+        return false;
+    }
+
+    if (xhook_export_symtable_hook("libc.so", "realloc",
+            reinterpret_cast<void*>(HandleReAlloc), nullptr) != 0) {
+        LOGE(LOG_TAG, "Fail to do export symtab hook for 'realloc'.");
         return false;
     }
 
@@ -610,12 +650,5 @@ bool memguard::interception::Install() {
     // INTERCEPT_DLOPEN(".*/libjavacore\\.so$", false);
     // INTERCEPT_DLOPEN(".*/libnativehelper\\.so$", false);
 
-    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_MEMGUARD, ".*/libwechatcrash\\.so$", NULL);
-    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_MEMGUARD, ".*/liblog\\.so$", NULL);
-    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_MEMGUARD, ".*/libc\\.so$", NULL);
-    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_MEMGUARD, ".*/libmatrix-hookcommon\\.so$", NULL);
-    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_MEMGUARD, ".*/libmatrix-memguard\\.so$", NULL);
-    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_MEMGUARD, ".*/libwechatbacktrace\\.so$", NULL);
-
-    return EndHook(gOpts.ignoredSOPatterns);
+    return EndHook(HOOK_REQUEST_GROUPID_MEMGUARD, gOpts.ignoredSOPatterns);
 }

@@ -33,6 +33,7 @@
 #define HOOK_REQUEST_GROUPID_MEMORY 0x03
 #define HOOK_REQUEST_GROUPID_PTHREAD 0x04
 #define HOOK_REQUEST_GROUPID_MEMGUARD 0x05
+#define HOOK_REQUEST_GROUPID_MEMGUARD_2 0x06
 
 #define GET_CALLER_ADDR(__caller_addr) \
     void * __caller_addr = __builtin_return_address(0)
