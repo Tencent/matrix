@@ -39,6 +39,9 @@ typedef struct {
 
     ElfW(Sym)* syms;
     ElfW(Word) sym_count;
+
+    ElfW(Sym)* dynsyms;
+    ElfW(Word) dynsym_count;
 } semi_dlinfo_t;
 
 // Copy from xhook.
@@ -297,7 +300,7 @@ int semi_dl_iterate_phdr(iterate_callback cb, void* data) {
             pthread_mutex_unlock(dl_mutex);
         }
         return ret;
-    } else if (sdk >= 23 && sdk <= 26) {
+    } else if (sdk >= 23) {
         ElfW(Addr) linker_base = get_linker_base_address();
         int ret = 0;
         if (linker_base != 0) {
@@ -319,8 +322,6 @@ int semi_dl_iterate_phdr(iterate_callback cb, void* data) {
 
         bail_sdk_23_26:
         return ret;
-    } else {
-        return dl_iterate_phdr(cb, data);
     }
 }
 
@@ -427,6 +428,7 @@ static bool fill_rest_neccessary_data(semi_dlinfo_t* semi_dlinfo) {
 
     bool strtbl_ok = false;
     bool symtbl_ok = false;
+    bool dynsym_ok = false;
     for (int shdr_idx = ehdr->e_shnum - 1; shdr_idx >= 0; --shdr_idx) {
         ElfW(Shdr)* shdr = shdrs + shdr_idx;
         if (shdr->sh_type == SHT_STRTAB && shdr_idx != ehdr->e_shstrndx) {
@@ -452,8 +454,20 @@ static bool fill_rest_neccessary_data(semi_dlinfo_t* semi_dlinfo) {
                 semi_dlinfo->sym_count = 0;
                 symtbl_ok = false;
             }
+        } else if (shdr->sh_type == SHT_DYNSYM) {
+            LOGD(LOG_TAG, "load dynsym, sh_off: %" PRIxPTR ", sh_size: %" PRIuPTR,
+                 (uintptr_t) shdr->sh_offset, (uintptr_t) shdr->sh_size);
+            if (LIKELY(load_section(fd, shdr->sh_offset, shdr->sh_size, (void **) &semi_dlinfo->dynsyms))) {
+                semi_dlinfo->dynsym_count = shdr->sh_size / shdr->sh_entsize;
+                dynsym_ok = true;
+            } else {
+                LOGE(LOG_TAG, "Fail to map dynamic symbol table of \"%s\"", semi_dlinfo->pathname);
+                semi_dlinfo->dynsyms = NULL;
+                semi_dlinfo->dynsym_count = 0;
+                dynsym_ok = false;
+            }
         }
-        if (strtbl_ok && symtbl_ok) {
+        if (strtbl_ok && (symtbl_ok || dynsym_ok)) {
             break;
         }
     }
@@ -463,7 +477,7 @@ static bool fill_rest_neccessary_data(semi_dlinfo_t* semi_dlinfo) {
         free(shdrs);
     }
 
-    if (LIKELY(strtbl_ok && symtbl_ok)) {
+    if (LIKELY(strtbl_ok && (symtbl_ok || dynsym_ok))) {
         return true;
     } else {
         LOGE(LOG_TAG, "Failure in fill_rest_neccessary_data.");
@@ -474,6 +488,12 @@ static bool fill_rest_neccessary_data(semi_dlinfo_t* semi_dlinfo) {
         if (semi_dlinfo->syms != NULL) {
             free(semi_dlinfo->syms);
             semi_dlinfo->syms = NULL;
+            semi_dlinfo->sym_count = 0;
+        }
+        if (semi_dlinfo->dynsyms != NULL) {
+            free(semi_dlinfo->dynsyms);
+            semi_dlinfo->dynsyms = NULL;
+            semi_dlinfo->dynsym_count = 0;
         }
         return false;
     }
@@ -560,6 +580,15 @@ void* semi_dlsym(const void* semi_hlib, const char* sym_name) {
         }
     }
 
+    for (int i = 0; i < semi_dlinfo->dynsym_count; ++i) {
+        ElfW(Sym) *curr_sym = semi_dlinfo->dynsyms + i;
+        int sym_type = ELF_ST_TYPE(curr_sym->st_info);
+        const char *curr_sym_name = semi_dlinfo->strs + curr_sym->st_name;
+        if ((sym_type == STT_FUNC || sym_type == STT_OBJECT) && strcmp(curr_sym_name, sym_name) == 0) {
+            return (void *) semi_dlinfo->load_bias + curr_sym->st_value;
+        }
+    }
+
     LOGE(LOG_TAG, "Cannot find symbol \"%s\" in \"%s\"", sym_name, semi_dlinfo->pathname);
     return NULL;
 }
@@ -581,6 +610,12 @@ void semi_dlclose(void* semi_hlib) {
     if (semi_dlinfo->syms != NULL) {
         free(semi_dlinfo->syms);
         semi_dlinfo->syms = NULL;
+        semi_dlinfo->sym_count = 0;
+    }
+    if (semi_dlinfo->dynsyms != NULL) {
+        free(semi_dlinfo->dynsyms);
+        semi_dlinfo->dynsyms = NULL;
+        semi_dlinfo->dynsym_count = 0;
     }
     free(semi_hlib);
 }
