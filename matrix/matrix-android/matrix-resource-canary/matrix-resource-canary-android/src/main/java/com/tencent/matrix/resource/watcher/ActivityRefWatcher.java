@@ -21,6 +21,7 @@ import android.os.Debug;
 import android.os.Handler;
 import android.os.HandlerThread;
 
+import com.tencent.matrix.lifecycle.EmptyActivityLifecycleCallbacks;
 import com.tencent.matrix.report.FilePublisher;
 import com.tencent.matrix.resource.ResourcePlugin;
 import com.tencent.matrix.resource.analyzer.model.DestroyedActivityInfo;
@@ -143,7 +144,7 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher {
         }
     }
 
-    private final Application.ActivityLifecycleCallbacks mRemovedActivityMonitor = new ActivityLifeCycleCallbacksAdapter() {
+    private final Application.ActivityLifecycleCallbacks mRemovedActivityMonitor = new EmptyActivityLifecycleCallbacks() {
 
         @Override
         public void onActivityDestroyed(Activity activity) {

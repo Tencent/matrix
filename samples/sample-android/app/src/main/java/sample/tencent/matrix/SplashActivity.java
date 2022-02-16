@@ -24,9 +24,14 @@ import android.os.Looper;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.tencent.matrix.memory.canary.MemInfo;
+import com.tencent.matrix.util.MatrixLog;
+
+import sample.tencent.matrix.lifecycle.LifecycleTest;
+
 
 public class SplashActivity extends AppCompatActivity {
-    private static String TAG = "Matrix.SplashActivity";
+    private static String TAG = "Matrix.sample.SplashActivity";
     private static HandlerThread sHandlerThread;
 
     @Override
@@ -45,6 +50,12 @@ public class SplashActivity extends AppCompatActivity {
         sHandlerThread = new HandlerThread("SplashActivity");
         sHandlerThread.start();
 
+        long begin = System.currentTimeMillis();
+        MemInfo info = MemInfo.getCurrentProcessFullMemInfo();
+        MatrixLog.d(TAG, "mem cost %s", System.currentTimeMillis() - begin);
+        MatrixLog.d(TAG, "%s", info);
+
+        LifecycleTest.test2(this);
     }
 
 }
