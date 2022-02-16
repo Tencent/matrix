@@ -41,7 +41,7 @@ public class ForkDumpProcessor extends BaseLeakProcessor {
             return true;
         }
 
-        if (!MemoryUtil.dumpBlock(hprof.getPath())) {
+        if (!MemoryUtil.dump(hprof.getPath())) {
             MatrixLog.e(TAG, String.format("heap dump for further analyzing activity with key [%s] was failed, just ignore.",
                     destroyedActivityInfo.mKey));
             return true;

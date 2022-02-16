@@ -16,13 +16,13 @@
 
 extern "C"
 JNIEXPORT jboolean JNICALL
-Java_com_tencent_matrix_resource_MemoryUtil_initialize(JNIEnv *env, jobject thiz) {
+Java_com_tencent_matrix_resource_MemoryUtil_initialize(JNIEnv *, jobject) {
     return initialize_symbols();
 }
 
 using namespace matrix::hprof;
 
-#define unwrap_optional(optional, nullopt_action)            \
+#define unwrap_optional(optional, nullopt_action)   \
     ({                                              \
         const auto &result = optional;              \
         if (!result.has_value()) nullopt_action;    \
@@ -53,10 +53,10 @@ static int32_t serialize_object_type(LeakChain::Node::ObjectType type) {
 
 extern "C"
 JNIEXPORT jboolean JNICALL
-Java_com_tencent_matrix_resource_MemoryUtil_analyze(JNIEnv *env, jobject,
-                                                    jstring java_hprof_path,
-                                                    jstring java_result_path,
-                                                    jstring java_reference_key) {
+Java_com_tencent_matrix_resource_MemoryUtil_analyzeInternal(JNIEnv *env, jobject,
+                                                            jstring java_hprof_path,
+                                                            jstring java_result_path,
+                                                            jstring java_reference_key) {
     const char *hprof_path = env->GetStringUTFChars(java_hprof_path, nullptr);
     const int hprof_fd = open(hprof_path, O_RDONLY);
     env->ReleaseStringUTFChars(java_hprof_path, hprof_path);
@@ -103,7 +103,7 @@ Java_com_tencent_matrix_resource_MemoryUtil_analyze(JNIEnv *env, jobject,
             _error_log(LOG_TAG, "Failed to write leak chains to result path, errno: %d.", errno);
             return false;
         }
-#define _write(content, size)                                                           \
+#define write_data(content, size)                                                           \
         if (write(result_fd, content, size) == -1) {                                    \
             _error_log(LOG_TAG, "Failed to write content to result path, errno: %d.",   \
                        errno);                                                          \
@@ -111,10 +111,10 @@ Java_com_tencent_matrix_resource_MemoryUtil_analyze(JNIEnv *env, jobject,
         }
 
         const uint32_t leak_chain_count = leak_chains.size();
-        _write(&leak_chain_count, sizeof(uint32_t))
+        write_data(&leak_chain_count, sizeof(uint32_t))
         for (const auto &leak_chain : leak_chains) {
             const uint32_t leak_chain_length = leak_chain.GetDepth() + 1;
-            _write(&leak_chain_length, sizeof(uint32_t))
+            write_data(&leak_chain_length, sizeof(uint32_t))
 
             int32_t gc_root_type;
             if (leak_chain_length == 1) {
@@ -135,29 +135,29 @@ Java_com_tencent_matrix_resource_MemoryUtil_analyze(JNIEnv *env, jobject,
                         break;
                 }
             }
-            _write(&gc_root_type, sizeof(int32_t))
+            write_data(&gc_root_type, sizeof(int32_t))
             const uint32_t gc_root_name_length = leak_chain.GetGcRoot().GetName().length();
-            _write(&gc_root_name_length, sizeof(uint32_t))
-            _write(leak_chain.GetGcRoot().GetName().c_str(), gc_root_name_length)
+            write_data(&gc_root_name_length, sizeof(uint32_t))
+            write_data(leak_chain.GetGcRoot().GetName().c_str(), gc_root_name_length)
 
             for (const auto &node : leak_chain.GetNodes()) {
                 const int32_t serialized_reference_type =
                         serialize_reference_type(node.GetReferenceType());
-                _write(&serialized_reference_type, sizeof(int32_t));
+                write_data(&serialized_reference_type, sizeof(int32_t));
                 const uint32_t reference_name_length = node.GetReference().length();
-                _write(&reference_name_length, sizeof(uint32_t))
-                _write(node.GetReference().c_str(), reference_name_length)
+                write_data(&reference_name_length, sizeof(uint32_t))
+                write_data(node.GetReference().c_str(), reference_name_length)
 
                 const int32_t serialized_object_type =
                         serialize_object_type(node.GetObjectType());
-                _write(&serialized_object_type, sizeof(int32_t));
+                write_data(&serialized_object_type, sizeof(int32_t));
                 const uint32_t object_name_length = node.GetObject().length();
-                _write(&object_name_length, sizeof(uint32_t));
-                _write(node.GetObject().c_str(), object_name_length);
+                write_data(&object_name_length, sizeof(uint32_t));
+                write_data(node.GetObject().c_str(), object_name_length);
             }
 
             const uint32_t end_tag = 0;
-            _write(&end_tag, sizeof(uint32_t))
+            write_data(&end_tag, sizeof(uint32_t))
         }
         result = true;
         write_leak_chain_done:

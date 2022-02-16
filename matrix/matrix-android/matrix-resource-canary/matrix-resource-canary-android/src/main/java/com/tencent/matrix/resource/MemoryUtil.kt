@@ -19,8 +19,8 @@ import java.util.concurrent.FutureTask
  * Memory non-suspending dump / analyze util.
  *
  * The util is used to dump / analyze heap memory into a HPROF file, like [Debug.dumpHprofData] and
- * LeakCanary. However, all API of the util can dump / analyze memory without suspending runtime.
- * The util will fork a new process for dumping / analyzing
+ * LeakCanary. However, all dump API of the util can dump memory without suspending runtime because
+ * the util will fork a new process for dumping
  * (See [Copy-on-Write](https://en.wikipedia.org/wiki/Copy-on-write)).
  *
  * The idea is from [KOOM](https://github.com/KwaiAppTeam/KOOM).
@@ -72,7 +72,7 @@ object MemoryUtil {
      */
     @JvmStatic
     @JvmOverloads
-    fun dumpBlock(
+    fun dump(
         hprofPath: String,
         timeout: Long = DEFAULT_TASK_TIMEOUT
     ): Boolean = initSafe(false) {
@@ -97,57 +97,171 @@ object MemoryUtil {
         }
     }
 
-    /**
-     * Dumps HPROF to specific file on [hprofPath]. The function will dump memory as an asynchronous
-     * computation.
-     *
-     * The task will be cancelled in [timeout] seconds. If [timeout] is zero, the task will be
-     * executed without time limitation.
-     *
-     * The function may cause jank and garbage collection, and will not throw exceptions but return
-     * false and print stack trace if error happened.
-     */
-    @JvmStatic
-    @JvmOverloads
-    fun dumpAsync(
-        hprofPath: String,
-        timeout: Long = DEFAULT_TASK_TIMEOUT,
-        callback: (Boolean) -> Unit
-    ) {
-        MatrixHandlerThread.getDefaultHandler().post {
-            callback.invoke(dumpBlock(hprofPath, timeout))
-        }
-    }
-
-    /**
-     * Dumps HPROF to specific file on [hprofPath]. The function will dump memory as an asynchronous
-     * computation.
-     *
-     * The task will be cancelled in [timeout] seconds. If [timeout] is zero, the task will be
-     * executed without time limitation.
-     *
-     * The function may cause jank and garbage collection, and will not throw exceptions but return
-     * false and print stack trace if error happened.
-     */
-    @JvmStatic
-    @JvmOverloads
-    fun dumpAsync(
-        hprofPath: String,
-        timeout: Long = DEFAULT_TASK_TIMEOUT
-    ): Future<Boolean> {
-        return FutureTask<Boolean> {
-            dumpBlock(hprofPath, timeout)
-        }
-    }
-
-    private fun createAnalyzeFile(): File =
-        File.createTempFile("matrix_mem_analyze-", null)
-
-    private external fun analyze(
+    private external fun analyzeInternal(
         hprofPath: String,
         resultPath: String,
         referenceKey: String
     ): Boolean
+
+    private val initializeFailedResult
+        get() = ActivityLeakResult.failure(RuntimeException("Initialize failed."), 0)
+
+    /**
+     * Analyze existing HPROF file [hprofPath]. This function will suspend current thread.
+     *
+     * Object referring from [DestroyedActivityInfo] instance with key [referenceKey] will be marked
+     * as leak object while analyzing.
+     *
+     * Unlike other APIs in [MemoryUtil], this function will not fork a new process but execute task
+     * on current process. Memory usage of current process will increase while analyzing.
+     *
+     * The function creates a binary file containing analyze result, the result file will be saved
+     * if [keepResult] is true, and it can be deserialized by function [deserializeAnalyzeResult].
+     *
+     * The function may cause jank and garbage collection, and will not throw exceptions but return
+     * a failure result if error happened, see [ActivityLeakResult.failure].
+     */
+    @JvmStatic
+    @JvmOverloads
+    fun analyze(
+        hprofPath: String,
+        referenceKey: String,
+        keepResult: Boolean = false
+    ): ActivityLeakResult = initSafe(initializeFailedResult) {
+        val analyzeStart = System.currentTimeMillis()
+        val resultFile = try {
+            createAnalyzeFile()
+        } catch (exception: IOException) {
+            return ActivityLeakResult.failure(
+                RuntimeException("Failed to create temporary analyze file", exception), 0
+            )
+        }
+        val resultPath = resultFile.absolutePath
+        return try {
+            if (analyzeInternal(hprofPath, resultPath, referenceKey)) {
+                val chains = deserialize(resultFile)
+                if (chains.isEmpty()) {
+                    ActivityLeakResult.noLeak(System.currentTimeMillis() - analyzeStart)
+                } else {
+                    // TODO: support reporting multiple leak chain.
+                    chains.first().run {
+                        ActivityLeakResult.leakDetected(
+                            false,
+                            nodes.last().objectName,
+                            convertToReferenceChain(),
+                            System.currentTimeMillis() - analyzeStart
+                        )
+                    }
+                }
+            } else {
+                ActivityLeakResult.failure(
+                    RuntimeException("Analyze failed."),
+                    System.currentTimeMillis() - analyzeStart
+                )
+            }
+        } catch (exception: Exception) {
+            ActivityLeakResult.failure(
+                exception,
+                System.currentTimeMillis() - analyzeStart
+            )
+        } finally {
+            if (!keepResult) {
+                if (resultFile.exists()) resultFile.delete()
+            }
+        }
+    }
+
+    /**
+     * Dumps HPROF to specific file on [hprofPath] and analyzes it immediately. The function will
+     * suspend current thread.
+     *
+     * Object referring from [DestroyedActivityInfo] instance with key [referenceKey] will be marked
+     * as leak object while analyzing.
+     *
+     * The task will be cancelled in [timeout] seconds. If [timeout] is zero, the task will be
+     * executed without time limitation.
+     *
+     * The function creates a binary file containing analyze result, the result file will be saved
+     * if [keepResult] is true, and it can be deserialized by function [deserializeAnalyzeResult].
+     *
+     * The function may cause jank and garbage collection, and will not throw exceptions but return
+     * a failure result if error happened, see [ActivityLeakResult.failure].
+     */
+    @JvmStatic
+    @JvmOverloads
+    fun dumpAndAnalyze(
+        hprofPath: String,
+        referenceKey: String,
+        timeout: Long = DEFAULT_TASK_TIMEOUT,
+        keepResult: Boolean = false
+    ): ActivityLeakResult =
+        initSafe(initializeFailedResult) {
+            val analyzeStart = System.currentTimeMillis()
+            val resultFile = try {
+                createAnalyzeFile()
+            } catch (exception: IOException) {
+                return ActivityLeakResult.failure(
+                    RuntimeException("Failed to create temporary analyze file", exception),
+                    0
+                )
+            }
+            val resultPath = resultFile.absolutePath
+            return when (val pid = fork(timeout)) {
+                -1 -> run {
+                    ActivityLeakResult.failure(
+                        RuntimeException("Failed to fork task executing process."),
+                        0
+                    )
+                }
+                0 -> run { // task process
+                    // Unnecessary to catch exception because new exception instance cannot be created
+                    // in forked process. The process just exits with non-zero code.
+                    Debug.dumpHprofData(hprofPath)
+                    val code = if (analyzeInternal(hprofPath, resultPath, referenceKey)) 0 else -1
+                    exit(code)
+                    ActivityLeakResult.noLeak(0) // Unreachable.
+                }
+                else -> run { // current process
+                    info("Start analyzing memory. Wait for task process [${pid}] complete executing.")
+                    val code = wait(pid)
+                    info("Complete analyzing memory with code ${code}.")
+                    if (code != 0) {
+                        return ActivityLeakResult.failure(
+                            RuntimeException("Analyze failed."),
+                            System.currentTimeMillis() - analyzeStart
+                        )
+                    }
+                    return try {
+                        val chains = deserialize(resultFile)
+                        if (chains.isEmpty()) {
+                            ActivityLeakResult.noLeak(System.currentTimeMillis() - analyzeStart)
+                        } else {
+                            // TODO: support reporting multiple leak chain.
+                            chains.first().run {
+                                ActivityLeakResult.leakDetected(
+                                    false,
+                                    nodes.last().objectName,
+                                    convertToReferenceChain(),
+                                    System.currentTimeMillis() - analyzeStart
+                                )
+                            }
+                        }
+                    } catch (exception: Exception) {
+                        ActivityLeakResult.failure(
+                            exception,
+                            System.currentTimeMillis() - analyzeStart
+                        )
+                    } finally {
+                        if (!keepResult) {
+                            if (resultFile.exists()) resultFile.delete()
+                        }
+                    }
+                }
+            }
+        }
+
+    private fun createAnalyzeFile(): File =
+        File.createTempFile("matrix_mem_analyze-", null)
 
     private fun convertReferenceType(value: Int): ReferenceTraceElement.Type =
         when (value) {
@@ -226,117 +340,6 @@ object MemoryUtil {
     @Throws(IOException::class)
     fun deserializeAnalyzeResult(file: File): List<ReferenceChain> =
         deserialize(file).map { it.convertToReferenceChain() }
-
-    /**
-     * Dumps HPROF to specific file on [hprofPath] and analyzes it immediately. The function will
-     * suspend current thread.
-     *
-     * Object referring from [DestroyedActivityInfo] instance with key [referenceKey] will be marked
-     * as leak object while analyzing.
-     *
-     * The task will be cancelled in [timeout] seconds. If [timeout] is zero, the task will be
-     * executed without time limitation.
-     *
-     * The function creates a binary file containing analyze result, the result file will be saved
-     * if [keepResult] is true, and it can be deserialized by function [deserializeAnalyzeResult].
-     *
-     * The function may cause jank and garbage collection, and will not throw exceptions but return
-     * false and print stack trace if error happened.
-     */
-    @JvmStatic
-    @JvmOverloads
-    fun analyzeBlock(
-        hprofPath: String,
-        referenceKey: String,
-        timeout: Long = DEFAULT_TASK_TIMEOUT,
-        keepResult: Boolean = false
-    ): ActivityLeakResult =
-        initSafe(ActivityLeakResult.failure(RuntimeException("Initialize failed."), 0)) {
-            val analyzeStart = System.currentTimeMillis()
-            val resultFile = try {
-                createAnalyzeFile()
-            } catch (exception: IOException) {
-                return ActivityLeakResult.failure(
-                    RuntimeException("Failed to create temporary analyze file", exception),
-                    0
-                )
-            }
-            val resultPath = resultFile.absolutePath
-            return when (val pid = fork(timeout)) {
-                -1 -> run {
-                    ActivityLeakResult.failure(
-                        RuntimeException("Failed to fork task executing process."),
-                        0
-                    )
-                }
-                0 -> run { // task process
-                    // Unnecessary to catch exception because new exception instance cannot be created
-                    // in forked process. The process just exits with non-zero code.
-                    Debug.dumpHprofData(hprofPath)
-                    val code = if (analyze(hprofPath, resultPath, referenceKey)) 0 else -1
-                    exit(code)
-                    ActivityLeakResult.noLeak(0) // Unreachable.
-                }
-                else -> run { // current process
-                    info("Start analyzing memory. Wait for task process [${pid}] complete executing.")
-                    val code = wait(pid)
-                    info("Complete analyzing memory with code ${code}.")
-                    return try {
-                        val chains = deserialize(resultFile)
-                        if (chains.isEmpty()) {
-                            ActivityLeakResult.noLeak(System.currentTimeMillis() - analyzeStart)
-                        } else {
-                            // TODO: support reporting multiple leak chain.
-                            chains.first().run {
-                                ActivityLeakResult.leakDetected(
-                                    false,
-                                    nodes.last().objectName,
-                                    convertToReferenceChain(),
-                                    System.currentTimeMillis() - analyzeStart
-                                )
-                            }
-                        }
-                    } catch (exception: Exception) {
-                        ActivityLeakResult.failure(
-                            exception,
-                            System.currentTimeMillis() - analyzeStart
-                        )
-                    } finally {
-                        if (!keepResult) {
-                            if (resultFile.exists()) resultFile.delete()
-                        }
-                    }
-                }
-            }
-        }
-
-    /**
-     * Dumps HPROF to specific file on [hprofPath] and analyzes it immediately. The function will
-     * dump memory as an asynchronous computation.
-     *
-     * Object referring from [DestroyedActivityInfo] instance with key [referenceKey] will be marked
-     * as leak object while analyzing.
-     *
-     * The task will be cancelled in [timeout] seconds. If [timeout] is zero, the task will be
-     * executed without time limitation.
-     *
-     * The function creates a binary file containing analyze result, the result file will be saved
-     * if [keepResult] is true, and it can be deserialized by function [deserializeAnalyzeResult].
-     *
-     * The function may cause jank and garbage collection, and will not throw exceptions but return
-     * false and print stack trace if error happened.
-     */
-    @JvmStatic
-    @JvmOverloads
-    fun analyzeAsync(
-        hprofPath: String,
-        referenceKey: String,
-        timeout: Long = DEFAULT_TASK_TIMEOUT,
-        keepResult: Boolean = false
-    ): Future<ActivityLeakResult> =
-        FutureTask<ActivityLeakResult> {
-            analyzeBlock(hprofPath, referenceKey, timeout, keepResult)
-        }
 }
 
 /**
