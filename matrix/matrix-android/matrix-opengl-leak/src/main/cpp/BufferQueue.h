@@ -176,7 +176,6 @@ namespace matrix {
             for (size_t i = 0; i < messages_->idx_; i++) {
                 message_t *message = reinterpret_cast<message_t *>(&messages_->queue_[i]);
                 callback(message);
-//                __android_log_print(ANDROID_LOG_ERROR, "cclover_test", "messages_->idx_ = %zu, i = %zu", messages_->idx_, i);
             }
         }
 

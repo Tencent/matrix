@@ -71,7 +71,6 @@ const size_t BUF_SIZE = 1024;
 static pthread_once_t g_onceInitTls = PTHREAD_ONCE_INIT;
 static pthread_key_t g_tlsJavaEnv;
 static pthread_key_t g_thread_name_key;
-static pthread_key_t g_thread_id_key;
 static bool is_stacktrace_enabled = true;
 static bool is_javastack_enabled = true;
 
@@ -152,17 +151,6 @@ bool is_need_get_java_stack() {
     return ret == JNI_OK;
 }
 
-inline void get_thread_id_string(char *&result) {
-    char *local_id = static_cast<char *>(pthread_getspecific(g_thread_id_key));
-    if (local_id == nullptr) {
-        thread::id thread_id = this_thread::get_id();
-        thread_id_to_string(thread_id, result);
-        pthread_setspecific(g_thread_id_key, result);
-    } else {
-        result = local_id;
-    }
-}
-
 wechat_backtrace::Backtrace *get_native_backtrace() {
     wechat_backtrace::Backtrace *backtracePrt = nullptr;
     if (is_stacktrace_enabled) {
@@ -189,9 +177,10 @@ int get_java_throwable() {
     return throwable;
 }
 
-void gen_jni_callback(int alloc_count, GLuint *copy_resource, int throwable, const char *thread_id,
-                      wechat_backtrace::Backtrace *backtracePtr, EGLContext egl_context,
-                      jmethodID jmethodId) {
+void
+gen_jni_callback(int alloc_count, GLuint *copy_resource, int throwable, const thread::id thread_id,
+                 wechat_backtrace::Backtrace *backtracePtr, EGLContext egl_context,
+                 jmethodID jmethodId) {
     JNIEnv *env = GET_ENV();
 
     int *result = new int[alloc_count];
@@ -202,7 +191,9 @@ void gen_jni_callback(int alloc_count, GLuint *copy_resource, int throwable, con
 
     env->SetIntArrayRegion(newArr, 0, alloc_count, result);
 
-    jstring j_thread_id = env->NewStringUTF(thread_id);
+    char *thread_id_c_str;
+    thread_id_to_string(thread_id, thread_id_c_str);
+    jstring j_thread_id = env->NewStringUTF(thread_id_c_str);
 
     wechat_backtrace::Backtrace *backtrace = deduplicate_backtrace(backtracePtr);
 
@@ -222,9 +213,13 @@ void gen_jni_callback(int alloc_count, GLuint *copy_resource, int throwable, con
     if (copy_resource != nullptr) {
         free(copy_resource);
     }
+
+    if (thread_id_c_str != nullptr) {
+        free(thread_id_c_str);
+    }
 }
 
-void delete_jni_callback(int delete_count, GLuint *copy_resource, const char *thread_id,
+void delete_jni_callback(int delete_count, GLuint *copy_resource, const thread::id thread_id,
                          EGLContext egl_context, jmethodID jmethodId) {
     JNIEnv *env = GET_ENV();
 
@@ -235,7 +230,9 @@ void delete_jni_callback(int delete_count, GLuint *copy_resource, const char *th
     jintArray newArr = env->NewIntArray(delete_count);
     env->SetIntArrayRegion(newArr, 0, delete_count, result);
 
-    jstring j_thread_id = env->NewStringUTF(thread_id);
+    char *thread_id_c_str;
+    thread_id_to_string(thread_id, thread_id_c_str);
+    jstring j_thread_id = env->NewStringUTF(thread_id_c_str);
 
     env->CallStaticVoidMethod(class_OpenGLHook,
                               jmethodId,
@@ -249,6 +246,10 @@ void delete_jni_callback(int delete_count, GLuint *copy_resource, const char *th
 
     if (copy_resource != nullptr) {
         free(copy_resource);
+    }
+
+    if (thread_id_c_str != nullptr) {
+        free(thread_id_c_str);
     }
 }
 
@@ -267,8 +268,7 @@ GL_APICALL void GL_APIENTRY my_glGenTextures(GLsizei n, GLuint *textures) {
 
         int throwable = get_java_throwable();
 
-        char *thread_id = nullptr;
-        get_thread_id_string(thread_id);
+        thread::id thread_id = this_thread::get_id();
 
         EGLContext egl_context = eglGetCurrentContext();
 
@@ -295,8 +295,7 @@ GL_APICALL void GL_APIENTRY my_glDeleteTextures(GLsizei n, GLuint *textures) {
         GLuint *copy_textures = new GLuint[n];
         memcpy(copy_textures, textures, n * sizeof(GLuint));
 
-        char *thread_id = nullptr;
-        get_thread_id_string(thread_id);
+        thread::id thread_id = this_thread::get_id();
 
         EGLContext egl_context = eglGetCurrentContext();
 
@@ -326,8 +325,7 @@ GL_APICALL void GL_APIENTRY my_glGenBuffers(GLsizei n, GLuint *buffers) {
 
         int throwable = get_java_throwable();
 
-        char *thread_id = nullptr;
-        get_thread_id_string(thread_id);
+        thread::id thread_id = this_thread::get_id();
 
         EGLContext egl_context = eglGetCurrentContext();
 
@@ -355,8 +353,7 @@ GL_APICALL void GL_APIENTRY my_glDeleteBuffers(GLsizei n, GLuint *buffers) {
         GLuint *copy_buffers = new GLuint[n];
         memcpy(copy_buffers, buffers, n * sizeof(GLuint));
 
-        char *thread_id = nullptr;
-        get_thread_id_string(thread_id);
+        thread::id thread_id = this_thread::get_id();
 
         EGLContext egl_context = eglGetCurrentContext();
 
@@ -385,8 +382,7 @@ GL_APICALL void GL_APIENTRY my_glGenFramebuffers(GLsizei n, GLuint *buffers) {
 
         int throwable = get_java_throwable();
 
-        char *thread_id = nullptr;
-        get_thread_id_string(thread_id);
+        thread::id thread_id = this_thread::get_id();
 
         EGLContext egl_context = eglGetCurrentContext();
 
@@ -414,8 +410,7 @@ GL_APICALL void GL_APIENTRY my_glDeleteFramebuffers(GLsizei n, GLuint *buffers) 
         GLuint *copy_buffers = new GLuint[n];
         memcpy(copy_buffers, buffers, n * sizeof(GLuint));
 
-        char *thread_id = nullptr;
-        get_thread_id_string(thread_id);
+        thread::id thread_id = this_thread::get_id();
 
         EGLContext egl_context = eglGetCurrentContext();
 
@@ -444,8 +439,7 @@ GL_APICALL void GL_APIENTRY my_glGenRenderbuffers(GLsizei n, GLuint *buffers) {
 
         int throwable = get_java_throwable();
 
-        char *thread_id = nullptr;
-        get_thread_id_string(thread_id);
+        thread::id thread_id = this_thread::get_id();
 
         EGLContext egl_context = eglGetCurrentContext();
 
@@ -472,8 +466,7 @@ GL_APICALL void GL_APIENTRY my_glDeleteRenderbuffers(GLsizei n, GLuint *buffers)
         GLuint *copy_buffers = new GLuint[n];
         memcpy(copy_buffers, buffers, n * sizeof(GLuint));
 
-        char *thread_id = nullptr;
-        get_thread_id_string(thread_id);
+        thread::id thread_id = this_thread::get_id();
 
         EGLContext egl_context = eglGetCurrentContext();
 
@@ -528,7 +521,8 @@ my_glTexImage2D(GLenum target, GLint level, GLint internalformat, GLsizei width,
                                                                            type);
                                       long size = width * height * pixel;
 
-                                      wechat_backtrace::Backtrace *backtrace = deduplicate_backtrace(backtracePrt);
+                                      wechat_backtrace::Backtrace *backtrace = deduplicate_backtrace(
+                                              backtracePrt);
 
                                       env->CallStaticVoidMethod(class_OpenGLHook,
                                                                 method_onGlTexImage2D,
@@ -575,7 +569,8 @@ my_glTexImage3D(GLenum target, GLint level, GLint internalformat, GLsizei width,
 
                                       long size = width * height * depth * pixel;
 
-                                      wechat_backtrace::Backtrace *backtrace = deduplicate_backtrace(backtracePrt);
+                                      wechat_backtrace::Backtrace *backtrace = deduplicate_backtrace(
+                                              backtracePrt);
 
                                       env->CallStaticVoidMethod(class_OpenGLHook,
                                                                 method_onGlTexImage3D,
@@ -699,7 +694,8 @@ my_glBufferData(GLenum target, GLsizeiptr size, const GLvoid *data, GLenum usage
 
                                       JNIEnv *env = GET_ENV();
 
-                                      wechat_backtrace::Backtrace *backtrace = deduplicate_backtrace(backtracePrt);
+                                      wechat_backtrace::Backtrace *backtrace = deduplicate_backtrace(
+                                              backtracePrt);
 
                                       env->CallStaticVoidMethod(class_OpenGLHook,
                                                                 method_onGlBufferData,
@@ -737,7 +733,8 @@ my_glRenderbufferStorage(GLenum target, GLenum internalformat, GLsizei width, GL
                                       long size = Utils::getRenderbufferSizeByFormula(
                                               internalformat, width, height);
 
-                                      wechat_backtrace::Backtrace *backtrace = deduplicate_backtrace(backtracePrt);
+                                      wechat_backtrace::Backtrace *backtrace = deduplicate_backtrace(
+                                              backtracePrt);
 
                                       env->CallStaticVoidMethod(class_OpenGLHook,
                                                                 method_onGlRenderbufferStorage,

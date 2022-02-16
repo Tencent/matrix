@@ -69,11 +69,6 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_tencent_matrix_openglleak_hook_Op
                 free(thread_name);
             }
         });
-        pthread_key_create(&g_thread_id_key, [](void *thread_id) {
-            if (thread_id != nullptr) {
-                free(thread_id);
-            }
-        });
 
         return true;
     }
