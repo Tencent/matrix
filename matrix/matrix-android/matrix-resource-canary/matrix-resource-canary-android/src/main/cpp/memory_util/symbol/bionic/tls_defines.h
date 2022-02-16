@@ -48,7 +48,7 @@
 //     - OpenGL and compiler-rt
 //     - Accesses of x86 ELF TLS variables
 //
-//  - TLS_SLOT_OPENGL and TLS_SLOT_OPENGL_API: These two aren't used by bionic
+//  - TLS_SLOT_OPENGL and TLS_SLOT_OPENGL_API: These two aren't used by symbol.bionic
 //    itself, but allow the graphics code to access TLS directly rather than
 //    using the pthread API.
 //
