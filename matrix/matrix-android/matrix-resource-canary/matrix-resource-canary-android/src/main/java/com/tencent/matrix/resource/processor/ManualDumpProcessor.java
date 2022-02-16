@@ -174,7 +174,7 @@ public class ManualDumpProcessor extends BaseLeakProcessor {
         getWatcher().triggerGc();
 
         File file = getDumpStorageManager().newHprofFile();
-        final ActivityLeakResult result = MemoryUtil.analyzeBlock(file.getAbsolutePath(), key);
+        final ActivityLeakResult result = MemoryUtil.dumpAndAnalyze(file.getAbsolutePath(), key);
         if (result.mLeakFound) {
             final String leakChain = result.toString();
             publishIssue(

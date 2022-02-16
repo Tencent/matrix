@@ -14,7 +14,7 @@ class NativeForkAnalyzeProcessor(watcher: ActivityRefWatcher) : BaseLeakProcesso
         val activity = destroyedActivityInfo.mActivityName
         val key = destroyedActivityInfo.mKey
 
-        val result = MemoryUtil.analyzeBlock(hprof.absolutePath, key)
+        val result = MemoryUtil.dumpAndAnalyze(hprof.absolutePath, key)
         if (result.mLeakFound) {
             publishIssue(
                 SharePluginInfo.IssueType.LEAK_FOUND,

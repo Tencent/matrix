@@ -141,7 +141,7 @@ public class LazyForkAnalyzeProcessor extends BaseLeakProcessor {
         final File hprof = getDumpStorageManager().newHprofFile();
 
         if (hprof != null) {
-            if (!MemoryUtil.dumpBlock(hprof.getPath())) {
+            if (!MemoryUtil.dump(hprof.getPath())) {
                 MatrixLog.e(TAG, String.format("heap dump for further analyzing activity with key [%s] was failed, just ignore.",
                         key));
                 return false;

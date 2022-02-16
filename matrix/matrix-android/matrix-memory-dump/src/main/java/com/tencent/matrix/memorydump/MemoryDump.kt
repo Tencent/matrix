@@ -1,17 +1,12 @@
 package com.tencent.matrix.memorydump
 
-import android.os.Build
 import android.os.Debug
-import android.os.Process
 import com.tencent.matrix.resource.MemoryUtil
+import com.tencent.matrix.util.MatrixHandlerThread
 import java.util.concurrent.Future
 import java.util.concurrent.FutureTask
 import com.tencent.matrix.util.MatrixLog
-import java.io.BufferedInputStream
-import java.io.FileInputStream
 import java.io.InputStream
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.Executors
 
 private const val TAG = "Matrix.MemoryDump"
 
@@ -71,14 +66,14 @@ object MemoryDumpManager {
     @JvmStatic
     @JvmOverloads
     @Deprecated(
-        "Use MemoryUtil.dumpBlock() instead.",
+        "Use MemoryUtil.dump() instead.",
         ReplaceWith(
-            "MemoryUtil.dumpBlock(path, timeout)",
+            "MemoryUtil.dump(path, timeout)",
             "com.tencent.matrix.resource.MemoryUtil"
         )
     )
     fun dumpBlock(path: String, timeout: Long = DEFAULT_DUMP_TIMEOUT): Boolean =
-        MemoryUtil.dumpBlock(path, timeout)
+        MemoryUtil.dump(path, timeout)
 
     /**
      * Dump HPROF to specific file on [path]. It will dump memory as an asynchronous computation.
@@ -88,14 +83,16 @@ object MemoryDumpManager {
      */
     @JvmStatic
     @Deprecated(
-        "Use MemoryUtil.dumpAsync() instead.",
-        ReplaceWith(
-            "MemoryUtil.dumpAsync(path)",
+        "Use MemoryUtil.dump() with custom task-scheduling instead.", ReplaceWith(
+            "FutureTask { MemoryUtil.dump(path) }",
+            "java.util.concurrent.FutureTask",
             "com.tencent.matrix.resource.MemoryUtil"
         )
     )
     fun dumpAsync(path: String): Future<Boolean> =
-        MemoryUtil.dumpAsync(path)
+        FutureTask {
+            MemoryUtil.dump(path)
+        }
 
     /**
      * Dump HPROF to specific file on [path]. It will dump memory as an asynchronous computation.
@@ -105,15 +102,15 @@ object MemoryDumpManager {
      */
     @JvmStatic
     @Deprecated(
-        "Use MemoryUtil.dumpAsync() instead.",
+        "Use MemoryUtil.dump() with custom task-scheduling instead.",
         ReplaceWith(
-            "MemoryUtil.dumpAsync(path) { callback.onDumpComplete(it) }",
+            "Thread { callback.onDumpComplete(MemoryUtil.dump(path)) }.start()",
             "com.tencent.matrix.resource.MemoryUtil"
-        )
+        ),
     )
     fun dumpAsync(path: String, callback: DumpCallback) =
-        MemoryUtil.dumpAsync(path) {
-            callback.onDumpComplete(it)
+        MatrixHandlerThread.getDefaultHandler().post {
+            callback.onDumpComplete(MemoryUtil.dump(path))
         }
 }
 
