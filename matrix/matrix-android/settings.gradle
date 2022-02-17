@@ -33,10 +33,10 @@ include ':test:matrix-backtrace-benchmark'
 // TEST
 include ':test:test-backtrace'
 include ':test:test-memoryhook'
+include ':test:test-openglhook'
 
 if (gradle.staticLinkCXX()) {
     include ':matrix-hooks:cxx-static'
     include ':matrix-opengl-leak:cxx-static'
     include ':matrix-backtrace:cxx-static'
 }
-include ':test:test-openglhook'
