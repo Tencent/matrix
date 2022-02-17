@@ -2,8 +2,9 @@ package com.tencent.matrix.openglleak.statistics.resource;
 
 import android.annotation.SuppressLint;
 
+import com.tencent.matrix.openglleak.hook.OpenGLHook;
 import com.tencent.matrix.openglleak.utils.AutoWrapBuilder;
-import com.tencent.matrix.openglleak.utils.EGLHelper;
+import com.tencent.matrix.openglleak.utils.JavaStacktrace;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -73,7 +74,8 @@ public class ResRecordManager {
             AtomicInteger counter = info.getCounter();
             counter.set(counter.get() - 1);
             if (counter.get() == 0) {
-                releaseNative(info.getNativeStackPtr());
+                OpenGLHook.releaseNative(info.getNativeStackPtr());
+                JavaStacktrace.removeBacktraceKey(info.getJavaStacktraceKey());
             }
 
             // 释放 memory info
@@ -81,8 +83,9 @@ public class ResRecordManager {
             if (null != memoryInfo) {
                 long memNativePtr = memoryInfo.getNativeStackPtr();
                 if (memNativePtr != 0) {
-                    releaseNative(memNativePtr);
+                    OpenGLHook.releaseNative(memNativePtr);
                     memoryInfo.releaseNativeStackPtr();
+                    JavaStacktrace.removeBacktraceKey(memoryInfo.getJavaStacktraceKey());
                 }
             }
 
@@ -129,16 +132,12 @@ public class ResRecordManager {
             }
             long nativeStackPtr = info.getNativeStackPtr();
             if (nativeStackPtr != 0L) {
-                ret = dumpNativeStack(nativeStackPtr);
+                ret = OpenGLHook.dumpNativeStack(nativeStackPtr);
             }
 
             return ret;
         }
     }
-
-    public static native String dumpNativeStack(long nativeStackPtr);
-
-    public static native void releaseNative(long nativeStackPtr);
 
     protected void registerCallback(Callback callback) {
         if (null == callback) {
@@ -191,7 +190,7 @@ public class ResRecordManager {
                 }
             }
 
-            boolean alive = EGLHelper.isEglContextAlive(info.getEglContext());
+            boolean alive = OpenGLHook.isEglContextAlive(info.getEglContextNativeHandle());
             if (!alive) {
                 mReleaseContext.add(info.getEglContextNativeHandle());
             }
@@ -270,7 +269,8 @@ public class ResRecordManager {
             int memoryJavaHash = memoryInfo == null ? 0 : memoryInfo.getJavaStack().hashCode();
             int memoryNativeHash = memoryInfo == null ? 0 : memoryInfo.getNativeStack().hashCode();
 
-            long infoHash = javaHash + nativeHash + memoryNativeHash + memoryJavaHash;
+            long infoHash = javaHash + nativeHash + memoryNativeHash + memoryJavaHash
+                    + info.getEglContextNativeHandle() + info.getActivityInfo().hashCode() + info.getThreadId().hashCode();
 
             OpenGLDumpInfo oldInfo = infoMap.get(infoHash);
             if (oldInfo == null) {
