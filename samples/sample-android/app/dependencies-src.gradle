@@ -16,6 +16,7 @@ dependencies {
             "matrix-jectl",
             "matrix-backtrace",
             "matrix-traffic",
+            "matrix-memory-canary",
     ]
 
     matrixModules.each { moduleName ->
