@@ -2,7 +2,20 @@
           xmlns:android="http://schemas.android.com/apk/res/android"
     >
 
+    <uses-permission android:name="${applicationId}.manual.dump" />
+
+    <permission
+        android:name="${applicationId}.matrix.permission.PROCESS_SUPERVISOR"
+        android:protectionLevel="signature" />
+
+    <uses-permission android:name="${applicationId}.matrix.permission.PROCESS_SUPERVISOR" />
+
     <application>
+<!--        <provider-->
+<!--            android:name=".lifecycle.MultiProcessLifecycleInitializer"-->
+<!--            android:authorities="${applicationId}.matrix-process"-->
+<!--            android:exported="false"-->
+<!--            android:multiprocess="true" />-->
     </application>
 
 </manifest>

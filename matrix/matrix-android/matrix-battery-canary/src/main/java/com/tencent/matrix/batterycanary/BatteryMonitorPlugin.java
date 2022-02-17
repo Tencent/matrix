@@ -2,10 +2,10 @@ package com.tencent.matrix.batterycanary;
 
 import android.app.Application;
 
-import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
+import com.tencent.matrix.lifecycle.owners.ProcessUILifecycleOwner;
 import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.plugin.PluginListener;
 import com.tencent.matrix.util.MatrixLog;
@@ -31,7 +31,7 @@ public class BatteryMonitorPlugin extends Plugin {
     public void init(Application app, PluginListener listener) {
         super.init(app, listener);
         if (!mDelegate.getConfig().isBuiltinForegroundNotifyEnabled) {
-            AppActiveMatrixDelegate.INSTANCE.removeListener(this);
+            ProcessUILifecycleOwner.INSTANCE.removeListener(this);
         }
     }
 

@@ -139,7 +139,7 @@ matrix {
     logLevel "D"
 
     trace {
-        enable = true
+        enable = false
         baseMethodMapFile = "${project.projectDir}/matrixTrace/methodMapping.txt"
         blackListFile = "${project.projectDir}/matrixTrace/blackMethodList.txt"
     }

@@ -25,19 +25,12 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
-
-    externalNativeBuild {
-        cmake {
-            path "CMakeLists.txt"
-        }
-    }
 }
 
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$gradle.KOTLIN_VERSION"
     implementation project(':matrix-android-lib')
-    implementation project(':matrix-android-commons')
-    implementation project(':matrix-backtrace')
+    implementation project(':matrix-resource-canary:matrix-resource-canary-android')
 
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.3'

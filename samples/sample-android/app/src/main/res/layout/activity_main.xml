@@ -91,6 +91,39 @@
                 android:layout_weight="1"
                 android:text="Network Traffic" />
 
+            <Button
+                android:id="@+id/test_supervisor"
+                style="@style/EntryButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textAllCaps="false"
+                android:onClick="testSupervisor"
+                android:text="Start Supervisor"
+                tools:ignore="UsingOnClickInXml" />
+
+            <Button
+                android:id="@+id/test_fg_service"
+                style="@style/EntryButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textAllCaps="false"
+                android:onClick="testFgService"
+                android:text="test FgService"
+                tools:ignore="UsingOnClickInXml" />
+
+            <Button
+                android:id="@+id/test_overlay_window"
+                style="@style/EntryButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textAllCaps="false"
+                android:onClick="testOverlayWindow"
+                android:text="test Overlay Window"
+                tools:ignore="UsingOnClickInXml" />
+
         </LinearLayout>
     </ScrollView>
 </LinearLayout>

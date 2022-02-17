@@ -34,6 +34,7 @@ include ':test:matrix-backtrace-benchmark'
 include ':test:test-backtrace'
 include ':test:test-memoryhook'
 include ':test:test-openglhook'
+include ':matrix-memory-canary'
 
 if (gradle.staticLinkCXX()) {
     include ':matrix-hooks:cxx-static'
