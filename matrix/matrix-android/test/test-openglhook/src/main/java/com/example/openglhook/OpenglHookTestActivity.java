@@ -142,7 +142,7 @@ public class OpenglHookTestActivity extends AppCompatActivity {
                     EGLHelper.initOpenGL();
                     long start = System.currentTimeMillis();
 
-                    int totalCount = 1000;
+                    int totalCount = 5000;
                     int[] textures = new int[totalCount];
                     int[] buffers = new int[totalCount];
                     int[] renderbuffers = new int[totalCount];

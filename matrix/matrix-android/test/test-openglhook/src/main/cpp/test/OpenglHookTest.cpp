@@ -105,7 +105,7 @@ Java_com_example_openglhook_OpenglHookTestActivity_openglNativeProfiler(JNIEnv *
                                                                               jint thread_count) {
 
     for (int i = 0; i < thread_count; ++i) {
-        int total_count = 1000;
+        int total_count = 5000;
         auto *textures = new GLuint[total_count];
         auto *buffers = new GLuint[total_count];
         auto *renderbuffers = new GLuint[total_count];
