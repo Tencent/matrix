@@ -305,32 +305,37 @@ object MemoryUtil {
 
     private fun deserialize(file: File): List<LeakChain> {
         val stream = file.inputStream()
-        val chainCount = stream.readOrderedInt()
-        if (chainCount == 0) {
-            stream.close()
-            return emptyList()
-        }
-        val result = mutableListOf<LeakChain>()
-        for (chainIndex in 0 until chainCount) {
-            val nodes = mutableListOf<LeakChain.Node>()
-            val chainLength = stream.readOrderedInt()
-            for (nodeIndex in 0 until chainLength) {
-                // node
-                val objectType = stream.readOrderedInt()
-                val objectName = stream.readString(stream.readOrderedInt())
-
-                // reference
-                val referenceType = stream.readOrderedInt()
-                val referenceName =
-                    if (referenceType == 0) ""  // reached end tag
-                    else stream.readString(stream.readOrderedInt())
-
-                nodes += LeakChain.Node(objectName, objectType, referenceName, referenceType)
+        try {
+            val chainCount = stream.readOrderedInt()
+            if (chainCount == 0) {
+                stream.close()
+                return emptyList()
             }
-            result += LeakChain(nodes)
+            val result = mutableListOf<LeakChain>()
+            for (chainIndex in 0 until chainCount) {
+                val nodes = mutableListOf<LeakChain.Node>()
+                val chainLength = stream.readOrderedInt()
+                for (nodeIndex in 0 until chainLength) {
+                    // node
+                    val objectType = stream.readOrderedInt()
+                    val objectName = stream.readString(stream.readOrderedInt())
+
+                    // reference
+                    val referenceType = stream.readOrderedInt()
+                    val referenceName =
+                        if (referenceType == 0) ""  // reached end tag
+                        else stream.readString(stream.readOrderedInt())
+
+                    nodes += LeakChain.Node(objectName, objectType, referenceName, referenceType)
+                }
+                result += LeakChain(nodes)
+            }
+            return result
+        } catch (exception: IOException) {
+            return emptyList()
+        } finally {
+            stream.close()
         }
-        stream.close()
-        return result
     }
 
     /**
