@@ -25,8 +25,6 @@ import android.os.SystemClock;
 import android.view.FrameMetrics;
 import android.view.Window;
 
-import androidx.annotation.RequiresApi;
-
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.lifecycle.owners.ProcessUILifecycleOwner;
 import com.tencent.matrix.report.Issue;
@@ -52,6 +50,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
+
+import androidx.annotation.RequiresApi;
 
 public class FrameTracer extends Tracer implements Application.ActivityLifecycleCallbacks {
 
