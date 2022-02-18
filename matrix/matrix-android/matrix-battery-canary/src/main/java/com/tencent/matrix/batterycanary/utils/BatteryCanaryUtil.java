@@ -53,8 +53,12 @@ import static com.tencent.matrix.batterycanary.monitor.AppStats.APP_STAT_FLOAT_W
 import static com.tencent.matrix.batterycanary.monitor.AppStats.APP_STAT_FOREGROUND;
 import static com.tencent.matrix.batterycanary.monitor.AppStats.APP_STAT_FOREGROUND_SERVICE;
 import static com.tencent.matrix.batterycanary.monitor.AppStats.DEV_STAT_CHARGING;
-import static com.tencent.matrix.batterycanary.monitor.AppStats.DEV_STAT_SAVE_POWER_MODE;
+import static com.tencent.matrix.batterycanary.monitor.AppStats.DEV_STAT_DOZE_MODE_OFF;
+import static com.tencent.matrix.batterycanary.monitor.AppStats.DEV_STAT_DOZE_MODE_ON;
+import static com.tencent.matrix.batterycanary.monitor.AppStats.DEV_STAT_SAVE_POWER_MODE_OFF;
+import static com.tencent.matrix.batterycanary.monitor.AppStats.DEV_STAT_SAVE_POWER_MODE_ON;
 import static com.tencent.matrix.batterycanary.monitor.AppStats.DEV_STAT_SCREEN_OFF;
+import static com.tencent.matrix.batterycanary.monitor.AppStats.DEV_STAT_SCREEN_ON;
 import static com.tencent.matrix.batterycanary.monitor.AppStats.DEV_STAT_UN_CHARGING;
 
 /**
@@ -360,7 +364,7 @@ public final class BatteryCanaryUtil {
             return DEV_STAT_SCREEN_OFF; // 息屏
         }
         if (isDeviceOnPowerSave(context)) {
-            return DEV_STAT_SAVE_POWER_MODE; // 省电模式开启
+            return DEV_STAT_SAVE_POWER_MODE_ON; // 省电模式开启
         }
         return DEV_STAT_UN_CHARGING;
     }
@@ -386,10 +390,18 @@ public final class BatteryCanaryUtil {
                 return "charging";
             case DEV_STAT_UN_CHARGING:
                 return "non_charge";
+            case DEV_STAT_SCREEN_ON:
+                return "screen_on";
             case DEV_STAT_SCREEN_OFF:
                 return "screen_off";
-            case DEV_STAT_SAVE_POWER_MODE:
-                return "doze";
+            case DEV_STAT_DOZE_MODE_ON:
+                return "doze_on";
+            case DEV_STAT_DOZE_MODE_OFF:
+                return "doze_off";
+            case DEV_STAT_SAVE_POWER_MODE_ON:
+                return "standby_on";
+            case DEV_STAT_SAVE_POWER_MODE_OFF:
+                return "standby_off";
             default:
                 return "unknown";
         }
@@ -434,6 +446,25 @@ public final class BatteryCanaryUtil {
         return false;
     }
 
+    /**
+     * System Doze Mode
+     */
+    public static boolean isDeviceOnIdleMode(Context context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            try {
+                PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+                if (pm != null) {
+                    return pm.isDeviceIdleMode();
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        return false;
+    }
+
+    /**
+     * App Standby Mode
+     */
     public static boolean isDeviceOnPowerSave(Context context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             try {
