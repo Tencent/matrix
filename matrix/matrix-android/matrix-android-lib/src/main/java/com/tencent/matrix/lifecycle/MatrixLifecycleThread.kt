@@ -59,10 +59,10 @@ internal object MatrixLifecycleThread {
                     r.run()
                     Thread.currentThread().name.let {
                         workerNamePool.add(it)
-                        MatrixLog.i(TAG, "thread $it finished")
+                        MatrixLog.i(TAG, "thread $it finished, now pool size = ${MAX_POOL_SIZE - workerNamePool.size}")
                     }
                 }, workerNamePool.removeFirstOrNull() ?: "matrix_x_x", 0).also {
-                    MatrixLog.i(TAG, "new Thread : ${it.name}")
+                    MatrixLog.i(TAG, "new Thread : ${it.name}, now pool size = ${MAX_POOL_SIZE - workerNamePool.size}")
                 }
             },
             { r, _ -> // full now
