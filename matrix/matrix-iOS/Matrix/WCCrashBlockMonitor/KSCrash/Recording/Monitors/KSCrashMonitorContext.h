@@ -29,6 +29,7 @@
 
 #include "KSCrashMonitorType.h"
 #include "KSMachineContext.h"
+#include "KSSnapshot.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -126,6 +127,13 @@ typedef struct KSCrash_MonitorContext {
 
         /** The dump type used to determine the type of log*/
         int userDumpType;
+
+        bool writeCpuUsage;
+
+        bool suspendAllThreads;
+
+        KSSnapshotStatus snapshotStatus;
+        KSSnapshot *snapshot;
     } userException;
 
     struct {

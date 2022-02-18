@@ -51,48 +51,25 @@ extern "C" {
  * @param logAllThreads If true, suspend all threads and log their state. Note that this incurs a
  *                      performance penalty, so it's best to use only on fatal errors.
  *
- * @param terminateProgram If true, do not return from this function call. Terminate the program instead.
- */
-void kscm_reportUserException(const char *name,
-                              const char *reason,
-                              const char *language,
-                              const char *lineOfCode,
-                              const char *stackTrace,
-                              bool logAllThreads,
-                              bool terminateProgram);
-
-/** Report a custom, user defined exception.
- * If terminateProgram is true, all sentries will be uninstalled and the application will
- * terminate with an abort().
- *
- * @param name The exception name (for namespacing exception types).
- *
- * @param reason A description of why the exception occurred.
- *
- * @param language A unique language identifier.
- *
- * @param lineOfCode A copy of the offending line of code (NULL = ignore).
- *
- * @param stackTrace JSON encoded array containing stack trace information (one frame per array entry).
- *                   The frame structure can be anything you want, including bare strings.
- *
- * @param logAllThreads If true, suspend all threads and log their state. Note that this incurs a
- *                      performance penalty, so it's best to use only on fatal errors.
+ * @param enableSnapshot This option is valid only when `logAllThreads` is enabled.
+ * If ture, take a snapshot of callstack and registers of all other suspended threads, and resume them as early as possible.
  *
  * @param terminateProgram If true, do not return from this function call. Terminate the program instead.
  *
  * @param dumpFilePath The self defined path where the user when the dump saved
  */
 
-void kscm_reportUserExceptionSelfDefinePath(const char *name,
-                                            const char *reason,
-                                            const char *language,
-                                            const char *lineOfCode,
-                                            const char *stackTrace,
-                                            bool logAllThreads,
-                                            bool terminateProgram,
-                                            const char *dumpFilePath,
-                                            int dumpType);
+void kscm_reportUserException(const char *name,
+                              const char *reason,
+                              const char *language,
+                              const char *lineOfCode,
+                              const char *stackTrace,
+                              bool logAllThreads,
+                              bool enableSnapshot,
+                              bool terminateProgram,
+                              bool writeCpuUsage,
+                              const char *dumpFilePath,
+                              int dumpType);
 
 /** Access the Monitor API.
  */

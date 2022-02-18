@@ -39,26 +39,42 @@
 
 static const char *g_registerNames[] = { "x0",  "x1",  "x2",  "x3",  "x4",  "x5",  "x6",  "x7",  "x8",  "x9",  "x10", "x11",
                                          "x12", "x13", "x14", "x15", "x16", "x17", "x18", "x19", "x20", "x21", "x22", "x23",
-                                         "x24", "x25", "x26", "x27", "x28", "x29", "fp",  "lr",  "sp",  "pc",  "cpsr" };
+                                         "x24", "x25", "x26", "x27", "x28", "fp",  "lr",  "sp",  "pc",  "cpsr" };
 static const int g_registerNamesCount = sizeof(g_registerNames) / sizeof(*g_registerNames);
 
 static const char *g_exceptionRegisterNames[] = { "exception", "esr", "far" };
 static const int g_exceptionRegisterNamesCount = sizeof(g_exceptionRegisterNames) / sizeof(*g_exceptionRegisterNames);
 
 uintptr_t kscpu_framePointer(const KSMachineContext *const context) {
+#if __has_feature(ptrauth_calls)
+    return (uintptr_t)context->machineContext.__ss.__opaque_fp;
+#else
     return context->machineContext.__ss.__fp;
+#endif
 }
 
 uintptr_t kscpu_stackPointer(const KSMachineContext *const context) {
+#if __has_feature(ptrauth_calls)
+    return (uintptr_t)context->machineContext.__ss.__opaque_sp;
+#else
     return context->machineContext.__ss.__sp;
+#endif
 }
 
 uintptr_t kscpu_instructionAddress(const KSMachineContext *const context) {
+#if __has_feature(ptrauth_calls)
+    return (uintptr_t)context->machineContext.__ss.__opaque_pc;
+#else
     return context->machineContext.__ss.__pc;
+#endif
 }
 
 uintptr_t kscpu_linkRegister(const KSMachineContext *const context) {
+#if __has_feature(ptrauth_calls)
+    return (uintptr_t)context->machineContext.__ss.__opaque_lr;
+#else
     return context->machineContext.__ss.__lr;
+#endif
 }
 
 void kscpu_getState(KSMachineContext *context) {
@@ -81,21 +97,34 @@ const char *kscpu_registerName(const int regNumber) {
 }
 
 uint64_t kscpu_registerValue(const KSMachineContext *const context, const int regNumber) {
-    if (regNumber <= 29) {
+    if (regNumber <= 28) {
         return context->machineContext.__ss.__x[regNumber];
     }
 
     switch (regNumber) {
+#if __has_feature(ptrauth_calls)
+        case 29:
+            return (uint64_t)context->machineContext.__ss.__opaque_fp;
         case 30:
-            return context->machineContext.__ss.__fp;
+            return (uint64_t)context->machineContext.__ss.__opaque_lr;
         case 31:
-            return context->machineContext.__ss.__lr;
+            return (uint64_t)context->machineContext.__ss.__opaque_sp;
         case 32:
-            return context->machineContext.__ss.__sp;
+            return (uint64_t)context->machineContext.__ss.__opaque_pc;
         case 33:
+            return (uint64_t)context->machineContext.__ss.__cpsr;
+#else
+        case 29:
+            return context->machineContext.__ss.__fp;
+        case 30:
+            return context->machineContext.__ss.__lr;
+        case 31:
+            return context->machineContext.__ss.__sp;
+        case 32:
             return context->machineContext.__ss.__pc;
-        case 34:
+        case 33:
             return context->machineContext.__ss.__cpsr;
+#endif
     }
 
     KSLOG_ERROR("Invalid register number: %d", regNumber);

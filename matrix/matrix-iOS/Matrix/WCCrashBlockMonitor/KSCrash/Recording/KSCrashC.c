@@ -87,7 +87,6 @@ static void printPreviousLog(const char *filePath) {
         free(data);
         printf("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\n");
         fflush(stdout);
-        free(data);
     }
 }
 
@@ -252,6 +251,10 @@ void kscrash_setPointThreadRepeatNumberCallback(const KSReportWritePointThreadRe
     kscrashreport_setPointThreadRepeatNumberWriteCallback(onWritePointThreadRepeatNumber);
 }
 
+void kscrash_setPointThreadProfileCallback(const KSReportWritePointThreadProfileCallback onWritePointProfileThread) {
+    kscrashreport_setPointThreadWriteProfileCallback(onWritePointProfileThread);
+}
+
 void kscrash_setPointCpuHighThreadCallback(const KSReportWritePointCpuHighThreadCallback onWritePointCpuHighThread) {
     kscrashreport_setPointCpuHighThreadWriteCallback(onWritePointCpuHighThread);
 }
@@ -290,23 +293,22 @@ void kscrash_reportUserException(const char *name,
                                  const char *lineOfCode,
                                  const char *stackTrace,
                                  bool logAllThreads,
-                                 bool terminateProgram) {
-    kscm_reportUserException(name, reason, language, lineOfCode, stackTrace, logAllThreads, terminateProgram);
-    if (g_shouldAddConsoleLogToReport) {
-        kslog_clearLogFile();
-    }
-}
-
-void kscrash_reportUserExceptionWithSelfDefinedPath(const char *name,
-                                                    const char *reason,
-                                                    const char *language,
-                                                    const char *lineOfCode,
-                                                    const char *stackTrace,
-                                                    bool logAllThreads,
-                                                    bool terminateProgram,
-                                                    const char *dumpFilePath,
-                                                    int dumpType) {
-    kscm_reportUserExceptionSelfDefinePath(name, reason, language, lineOfCode, stackTrace, logAllThreads, terminateProgram, dumpFilePath, dumpType);
+                                 bool enableSnapshot,
+                                 bool terminateProgram,
+                                 bool writeCpuUsage,
+                                 const char *dumpFilePath,
+                                 int dumpType) {
+    kscm_reportUserException(name,
+                             reason,
+                             language,
+                             lineOfCode,
+                             stackTrace,
+                             logAllThreads,
+                             enableSnapshot,
+                             terminateProgram,
+                             writeCpuUsage,
+                             dumpFilePath,
+                             dumpType);
     if (g_shouldAddConsoleLogToReport) {
         kslog_clearLogFile();
     }

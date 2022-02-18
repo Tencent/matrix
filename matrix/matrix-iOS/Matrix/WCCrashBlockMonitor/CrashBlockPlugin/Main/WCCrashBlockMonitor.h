@@ -69,7 +69,19 @@
 // get the CPU cost in background
 - (BOOL)isBackgroundCPUTooSmall;
 
-// generate stack snapshot
+// changes the threshold of runloop hangs detection.
+- (BOOL)setRunloopThreshold:(useconds_t)threshold;
+
+// lowers the threshold to detect more runloop hangs.
+- (BOOL)lowerRunloopThreshold;
+
+// recovers the runloop threshold to the default value.
+- (BOOL)recoverRunloopThreshold;
+
+// whether to suspend all threads when saving dump
+- (void)setShouldSuspendAllThreads:(BOOL)shouldSuspendAllThreads;
+
+// generate a dump file immediately.
 - (void)generateLiveReportWithDumpType:(EDumpType)dumpType withReason:(NSString *)reason selfDefinedPath:(BOOL)bSelfDefined;
 
 @end

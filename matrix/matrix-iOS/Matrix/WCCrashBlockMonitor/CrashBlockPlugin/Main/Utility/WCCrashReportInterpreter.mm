@@ -97,14 +97,13 @@
                 NSMutableDictionary *addrInfoDict = [[NSMutableDictionary alloc] init];
                 if (stackCursor->symbolicate(stackCursor)) {
                     if (stackCursor->stackEntry.imageName != NULL) {
-                        [addrInfoDict setObject:[NSString stringWithUTF8String:wxg_lastPathEntry(stackCursor->stackEntry.imageName)]
-                                         forKey:@"imageName"];
+                        [addrInfoDict setObject:[NSString stringWithUTF8String:wxg_lastPathEntry(stackCursor->stackEntry.imageName)] forKey:@"imageName"];
                     }
-                    [addrInfoDict setValue:[NSNumber numberWithUnsignedInteger:stackCursor->stackEntry.imageAddress] forKey:@"imageAddress"];
+                    [addrInfoDict setObject:[NSNumber numberWithUnsignedInteger:stackCursor->stackEntry.imageAddress] forKey:@"imageAddress"];
                     if (stackCursor->stackEntry.symbolName != NULL) {
                         [addrInfoDict setObject:[NSString stringWithUTF8String:stackCursor->stackEntry.symbolName] forKey:@"symbolName"];
                     }
-                    [addrInfoDict setValue:[NSNumber numberWithUnsignedInteger:stackCursor->stackEntry.symbolAddress] forKey:@"symbolAddress"];
+                    [addrInfoDict setObject:[NSNumber numberWithUnsignedInteger:stackCursor->stackEntry.symbolAddress] forKey:@"symbolAddress"];
                 }
                 NSNumber *stackAddress = [NSNumber numberWithUnsignedInteger:stackCursor->stackEntry.address];
                 [addrInfoDict setValue:stackAddress forKey:@"instructionAddress"];

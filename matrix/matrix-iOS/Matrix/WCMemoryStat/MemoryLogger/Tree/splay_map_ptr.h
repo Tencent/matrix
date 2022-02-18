@@ -31,7 +31,8 @@ private:
     struct node {
         TKey key;
         TVal val;
-        node_ptr left, right;
+        node_ptr left;
+        node_ptr right;
     };
 
     node_ptr root_ptr = NULL;
@@ -131,7 +132,7 @@ private:
                 return NULL;
             }
 
-            for (int i = 1; i < new_count; ++i) {
+            for (int i = 2; i < new_count; ++i) {
                 new_buffer[i - 1].left = &new_buffer[i];
             }
             new_buffer[new_count - 1].left = NULL;

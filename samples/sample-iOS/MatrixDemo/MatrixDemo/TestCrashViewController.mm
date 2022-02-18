@@ -15,7 +15,7 @@
  */
 
 #import "TestCrashViewController.h"
-#import <matrix-wechat/MatrixTester.h>
+#import <Matrix/MatrixTester.h>
 #import "Utility.h"
 
 @interface TestCrashViewController ()

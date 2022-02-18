@@ -28,12 +28,16 @@
 @required
 
 - (void)onBlockMonitor:(WCBlockMonitorMgr *)bmMgr enterNextCheckWithDumpType:(EDumpType)dumpType;
-- (void)onBlockMonitor:(WCBlockMonitorMgr *)bmMgr beginDump:(EDumpType)dumpType blockTime:(uint64_t)blockTime;
+- (void)onBlockMonitor:(WCBlockMonitorMgr *)bmMgr beginDump:(EDumpType)dumpType blockTime:(uint64_t)blockTime runloopThreshold:(useconds_t)runloopThreshold;
 - (void)onBlockMonitor:(WCBlockMonitorMgr *)bmMgr dumpType:(EDumpType)dumpType filter:(EFilterType)filterType;
 - (void)onBlockMonitor:(WCBlockMonitorMgr *)bmMgr getDumpFile:(NSString *)dumpFile withDumpType:(EDumpType)dumpType;
 - (NSDictionary *)onBlockMonitor:(WCBlockMonitorMgr *)bmMgr getCustomUserInfoForDumpType:(EDumpType)dumpType;
 - (void)onBlockMonitorCurrentCPUTooHigh:(WCBlockMonitorMgr *)bmMgr;
 - (void)onBlockMonitorIntervalCPUTooHigh:(WCBlockMonitorMgr *)bmMgr;
+- (void)onBlockMonitorThermalStateElevated:(WCBlockMonitorMgr *)bmMgr;
+- (void)onBlockMonitorMainThreadBlock:(WCBlockMonitorMgr *)bmMgr;
+- (void)onBlockMonitorMemoryExcessive:(WCBlockMonitorMgr *)bmMgr;
+- (void)onBlockMonitor:(WCBlockMonitorMgr *)bmMgr runloopHangDetected:(uint64_t)duration;
 
 @end
 
@@ -42,6 +46,9 @@ KSStackCursor *kscrash_pointThreadCallback(void);
 
 // Get the repeat number of stack
 int *kscrash_pointThreadRepeatNumberCallback(void);
+
+// Get the profile of thread
+char *kscrash_pointThreadProfileCallback(void);
 
 // Get the current stack in High CPU state
 KSStackCursor **kscrash_pointCPUHighThreadCallback(void);
@@ -82,6 +89,22 @@ float *kscrash_pointCpuHighThreadArrayCallBack(void);
 - (void)startTrackCPU;
 - (void)stopTrackCPU;
 - (BOOL)isBackgroundCPUTooSmall;
+
+// ============================================================================
+#pragma mark - Hangs Detection
+// ============================================================================
+
+- (BOOL)setRunloopThreshold:(useconds_t)threshold;
+- (BOOL)lowerRunloopThreshold;
+- (BOOL)recoverRunloopThreshold;
+
+- (void)setShouldSuspendAllThreads:(BOOL)shouldSuspendAllThreads;
+
+// ============================================================================
+#pragma mark - Custom Dump
+// ============================================================================
+
+- (void)generateLiveReportWithDumpType:(EDumpType)dumpType withReason:(NSString *)reason selfDefinedPath:(BOOL)bSelfDefined;
 
 // ============================================================================
 #pragma mark - Utility

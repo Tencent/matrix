@@ -30,7 +30,7 @@
 typedef enum {
     KSJSONEncodeOptionNone = 0,
 
-    /** Indent 4 spaces per object/array level */
+    /** Indent 1 tab per object/array level */
     KSJSONEncodeOptionPretty = 1,
 
     /** Sort object contents by key name */

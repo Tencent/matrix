@@ -45,6 +45,8 @@
 + (NSString *)diretoryOfUserDumpWithType:(EDumpType)type;
 
 + (NSArray *)getLagReportIDWithType:(EDumpType)dumpType withDate:(NSString *)limitDate;
++ (NSArray *)getLagReportIDWithType:(EDumpType)dumpType withDate:(NSString *)limitDate withLimitReportID:(NSArray<NSString *> *)limitReportIDs;
+
 + (NSData *)getLagDataWithReportID:(NSString *)reportID andReportType:(EDumpType)dumpType;
 + (NSData *)getLagDataWithReportIDArray:(NSArray *)reportIDArray andReportType:(EDumpType)dumpType;
 

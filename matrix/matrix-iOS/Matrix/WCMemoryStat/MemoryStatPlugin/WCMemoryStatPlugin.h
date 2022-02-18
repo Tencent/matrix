@@ -55,4 +55,6 @@
 - (void)deleteRecord:(MemoryRecordInfo *)record;
 - (void)deleteAllRecords;
 
+- (size_t)pluginMemoryUsed;
+
 @end

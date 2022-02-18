@@ -27,7 +27,7 @@
 #import <AppKit/AppKit.h>
 #endif
 
-#define g_matrix_crash_block_plguin_tag "MatrixCrashBlock"
+#define g_matrix_crash_block_plugin_tag "MatrixCrashBlock"
 
 #define kTodayOneTypeFilesLimit 3
 #define kReportCountLimitInOneIssue 3
@@ -131,15 +131,15 @@ typedef NS_ENUM(NSUInteger, EDumpUploadType) {
 }
 
 + (NSString *)getTag {
-    return @g_matrix_crash_block_plguin_tag;
+    return @g_matrix_crash_block_plugin_tag;
 }
 
 - (void)reportIssueCompleteWithIssue:(MatrixIssue *)issue success:(BOOL)bSuccess {
     dispatch_async(self.pluginReportQueue, ^{
         if (bSuccess) {
-            MatrixInfo(@"report issuse success: %@", issue);
+            MatrixInfo(@"report issue success: %@", issue);
         } else {
-            MatrixInfo(@"report issuse failed: %@", issue);
+            MatrixInfo(@"report issue failed: %@", issue);
         }
         if ([issue.issueTag isEqualToString:[WCCrashBlockMonitorPlugin getTag]]) {
             if (issue.reportType == EMCrashBlockReportType_Crash) {
@@ -243,6 +243,26 @@ typedef NS_ENUM(NSUInteger, EDumpUploadType) {
 
 - (BOOL)isBackgroundCPUTooSmall {
     return [_cbMonitor isBackgroundCPUTooSmall];
+}
+
+// ============================================================================
+#pragma mark - Hangs Detection
+// ============================================================================
+
+- (BOOL)setRunloopThreshold:(useconds_t)threshold {
+    return [_cbMonitor setRunloopThreshold:threshold];
+}
+
+- (BOOL)lowerRunloopThreshold {
+    return [_cbMonitor lowerRunloopThreshold];
+}
+
+- (BOOL)recoverRunloopThreshold {
+    return [_cbMonitor recoverRunloopThreshold];
+}
+
+- (void)setShouldSuspendAllThreads:(BOOL)shouldSuspendAllThreads {
+    [_cbMonitor setShouldSuspendAllThreads:shouldSuspendAllThreads];
 }
 
 // ============================================================================
@@ -431,21 +451,56 @@ typedef NS_ENUM(NSUInteger, EDumpUploadType) {
 
 - (void)autoReportLag {
     dispatch_async(self.pluginReportQueue, ^{
-        if (self.reportDelegate) {
+        if (self.reportDelegate == nil) {
+            MatrixError(@"do not set report delegate");
+            return;
+        }
+        BOOL bNormalAutoReport = NO;
+        do {
             if ([self.reportDelegate isReportLagLimit:self]) {
                 MatrixInfo(@"report lag limit");
-                return;
+                break;
             }
             if ([self.reportDelegate isCanAutoReportLag:self] == NO) {
                 MatrixInfo(@"can not auto report lag");
-                return;
+                break;
             }
             if ([self.reportDelegate isNetworkAllowAutoReportLag:self] == NO) {
                 MatrixInfo(@"report lag, network not allow");
-                return;
+                break;
+            }
+            bNormalAutoReport = YES;
+            MatrixInfo(@"normal auto report lag");
+            [self reportTodayOneTypeLag];
+            break;
+        } while (1);
+
+        if ([self.reportDelegate isReportSupportCustomLagStrategy] == NO) {
+            return;
+        }
+        if (bNormalAutoReport == NO) {
+            BOOL bHitStrategy = NO;
+            for (NSString *strategyName in self.pluginConfig.customStrategy) {
+                if (bHitStrategy) {
+                    break;
+                }
+                MatrixInfo(@"check custom lag strategy, %@", strategyName);
+                if ([self.reportDelegate isReportCustomLagLimit:self customStrategy:strategyName] == NO) {
+                    if ([self.reportDelegate isCanCustomAutoReportLag:self customStrategy:strategyName]) {
+                        NSArray *reportIDs = [self.reportDelegate tryGetMatrixReportCustomLagLimitReportIDs:strategyName];
+                        if ([reportIDs count] > 0) {
+                            bHitStrategy = YES;
+                            MatrixInfo(@"report custom strategy lag %@", strategyName);
+                            [self reportTodayOneTypeLagLimit:reportIDs];
+                        }
+                    } else {
+                        MatrixInfo(@"report %@ cannot auto report", strategyName);
+                    }
+                } else {
+                    MatrixInfo(@"report %@ lag limit", strategyName);
+                }
             }
         }
-        [self reportTodayOneTypeLag];
     });
 }
 
@@ -541,21 +596,26 @@ typedef NS_ENUM(NSUInteger, EDumpUploadType) {
 }
 
 - (void)reportTodayOneTypeLag {
-    [self reportTodayOneTypeLagWithlimitUploadConfig:@""];
+    // filter EDumpType_SelfDefinedDump EDumpType_FPS
+    [self reportTodayOneTypeLagWithlimitUploadConfig:@"2005,2014" withLimitReportCount:kTodayOneTypeFilesLimit withLimitReportIDs:nil];
 }
 
-- (void)reportTodayOneTypeLagWithlimitUploadConfig:(NSString *)limitConfigStr {
-    [self reportTodayOneTypeLagWithlimitUploadConfig:limitConfigStr withLimitReportCount:kTodayOneTypeFilesLimit];
+- (void)reportTodayOneTypeLagLimit:(NSArray<NSString *> *)issueIDArray {
+    // filter EDumpType_BackgroundMainThreadBlock EDumpType_SelfDefinedDump EDumpType_FPS
+    [self reportTodayOneTypeLagWithlimitUploadConfig:@"2002,2005,2014" withLimitReportCount:kTodayOneTypeFilesLimit withLimitReportIDs:issueIDArray];
 }
 
-- (void)reportTodayOneTypeLagWithlimitUploadConfig:(NSString *)limitConfigStr withLimitReportCount:(NSUInteger)reportCntLimit {
+- (void)reportTodayOneTypeLagWithlimitUploadConfig:(NSString *)limitConfigStr
+                              withLimitReportCount:(NSUInteger)reportCntLimit
+                                withLimitReportIDs:(NSArray<NSString *> *)issueIDArray {
     dispatch_async(self.pluginReportQueue, ^{
         if (self.dumpUploadType != EDumpUploadType_None) {
             MatrixInfo(@"uploading lag, return");
             return;
         }
 
-        WCDumpReportTaskData *reportData = [WCDumpReportDataProvider getTodayOneReportDataWithLimitType:limitConfigStr];
+        WCDumpReportTaskData *reportData = [WCDumpReportDataProvider getTodayOneReportDataWithLimitType:limitConfigStr
+                                                                                      withLimitReportID:issueIDArray];
         if (reportData == nil || [reportData.m_uploadFilesArray count] == 0) {
             MatrixInfo(@"no lag can upload");
             return;

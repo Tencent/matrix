@@ -25,7 +25,7 @@ typedef NS_ENUM(NSUInteger, EMatrixIssueDataType) {
 };
 
 /**
- * MatrixPlguin produces MatrixIssue,
+ * MatrixPlugin produces MatrixIssue,
  * the issue contains the info that plugins generate.
  */
 @interface MatrixIssue : NSObject

@@ -27,7 +27,7 @@ typedef NS_ENUM(NSUInteger, EReportPriority) {
 // important, there will be only one type of lag in WCDumpReportTaskData.
 @interface WCDumpReportTaskData : NSObject
 
-@property (nonatomic, strong) NSMutableArray *m_uploadFilesArray;
+@property (nonatomic, strong) NSArray *m_uploadFilesArray;
 @property (nonatomic, assign) EDumpType m_dumpType;
 
 @end

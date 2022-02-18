@@ -34,6 +34,7 @@
 
 //#define KSLogger_LocalLevel TRACE
 #include "KSLogger.h"
+#include "logger_internal.h"
 
 #if KSCRASH_HAS_MACH
 
@@ -131,11 +132,11 @@ static mach_port_t g_exceptionPort = MACH_PORT_NULL;
 
 /** Primary exception handler thread. */
 static pthread_t g_primaryPThread;
-static thread_t g_primaryMachThread;
+thread_t g_primaryMachThread = 0;
 
 /** Secondary exception handler thread in case crash handler crashes. */
 static pthread_t g_secondaryPThread;
-static thread_t g_secondaryMachThread;
+thread_t g_secondaryMachThread = 0;
 
 static char g_primaryEventID[37];
 static char g_secondaryEventID[37];
@@ -244,6 +245,8 @@ static void *handleExceptions(void *const userData) {
     MachExceptionMessage exceptionMessage = { { 0 } };
     MachReplyMessage replyMessage = { { 0 } };
     char *eventID = g_primaryEventID;
+
+    set_curr_thread_ignore_logging(true);
 
     const char *threadName = (const char *)userData;
     pthread_setname_np(threadName);

@@ -22,25 +22,26 @@
 /**
  *  @brief dump custom crash report (which has current thread state, etc) without abort
  *  @param dumpType the report type of this report
- *  @param blockTime the block time which defined by developer (can use to measure)
  *  @param exceptionReason the reason why the report generated
+ *  @param suspendAllThreads whether to suspend all threads when saving dump
+ *  @param enableSnapshot whether to take a snapshot of other suspended threads, and resume them asap. Only valid when `logAllThreads` is enabled.
+ *  @param writeCpuUsage whether to log CPU usage for each thread
  *  @param bSelfDefined use the self defined path or not, default is true.
  *  @return NSString * the file path of the crash report
  */
 + (NSString *)dumpReportWithReportType:(EDumpType)dumpType
-                         withBlockTime:(uint64_t)blockTime
                    withExceptionReason:(NSString *)exceptionReason
+                     suspendAllThreads:(BOOL)suspendAllThreads
+                        enableSnapshot:(BOOL)enableSnapshot
+                         writeCpuUsage:(BOOL)writeCpuUsage
                        selfDefinedPath:(BOOL)bSelfDefined;
 
-+ (NSString *)dumpReportWithReportType:(EDumpType)dumpType withBlockTime:(uint64_t)blockTime withExceptionReason:(NSString *)exceptionReason;
-
 /**
- *  @brief dump custom crash report (which has current thread state, etc) without abort
- *  @param dumpType the report type of this report
- *  @param blockTime the block time which defined by developer (can use to measure)
- *  @return NSString * the file path of the crash report
+ * a convenient method of previous one
  */
-+ (NSString *)dumpReportWithReportType:(EDumpType)dumpType withBlockTime:(uint64_t)blockTime;
++ (NSString *)dumpReportWithReportType:(EDumpType)dumpType
+                     suspendAllThreads:(BOOL)suspendAllThreads
+                        enableSnapshot:(BOOL)enableSnapshot;
 
 /**
  *  @brief save dump data to file

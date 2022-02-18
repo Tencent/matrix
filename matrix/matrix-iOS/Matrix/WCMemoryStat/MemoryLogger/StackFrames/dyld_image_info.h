@@ -18,6 +18,7 @@
 #define dyld_image_info_h
 
 #include <mach/vm_types.h>
+#include "pthread_introspection.h"
 
 /**
  * The filtering strategy of the stack
@@ -32,8 +33,10 @@ extern int skip_min_malloc_size;
 struct dyld_image_info_db;
 
 dyld_image_info_db *prepare_dyld_image_logger(const char *event_dir);
-bool is_stack_frames_should_skip(uintptr_t *frames, int32_t count, uint64_t malloc_size);
 const char *app_uuid();
+
+__attribute__((noinline, not_tail_called)) unsigned
+thread_stack_pcs(pthread_stack_info *stack_info, uintptr_t *buffer, unsigned max, int skip, bool should_check, uint64_t *out_hash);
 
 dyld_image_info_db *dyld_image_info_db_open_or_create(const char *event_dir);
 void dyld_image_info_db_close(dyld_image_info_db *db_context);

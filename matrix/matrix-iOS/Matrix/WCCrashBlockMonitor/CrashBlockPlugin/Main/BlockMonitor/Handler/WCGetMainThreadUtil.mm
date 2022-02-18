@@ -41,27 +41,28 @@
 + (int)getCurrentMainThreadStack:(void (^)(NSUInteger pc))saveResultBlock
                   withMaxEntries:(NSUInteger)maxEntries
                  withThreadCount:(NSUInteger &)retThreadCount {
+    const task_t thisTask = mach_task_self();
     thread_act_array_t threads;
     mach_msg_type_number_t thread_count;
 
-    if (task_threads(mach_task_self(), &threads, &thread_count) != KERN_SUCCESS) {
+    if (task_threads(thisTask, &threads, &thread_count) != KERN_SUCCESS) {
         return 0;
     }
 
     thread_t mainThread = threads[0];
+    int backTraceLength = 0;
+    uintptr_t backtraceBuffer[maxEntries];
 
     KSThread currentThread = ksthread_self();
     if (mainThread == currentThread) {
-        return 0;
+        goto cleanup;
     }
 
     if (thread_suspend(mainThread) != KERN_SUCCESS) {
-        return 0;
+        goto cleanup;
     }
 
-    uintptr_t backtraceBuffer[maxEntries];
-
-    int backTraceLength = kssc_backtraceCurrentThread(mainThread, backtraceBuffer, (int)maxEntries);
+    backTraceLength = kssc_backtraceCurrentThread(mainThread, backtraceBuffer, (int)maxEntries);
 
     for (int i = 0; i < backTraceLength; i++) {
         NSUInteger pc = backtraceBuffer[i];
@@ -71,10 +72,11 @@
 
     thread_resume(mainThread);
 
+cleanup:
     for (mach_msg_type_number_t i = 0; i < thread_count; i++) {
-        mach_port_deallocate(mach_task_self(), threads[i]);
+        mach_port_deallocate(thisTask, threads[i]);
     }
-    vm_deallocate(mach_task_self(), (vm_address_t)threads, sizeof(thread_t) * thread_count);
+    vm_deallocate(thisTask, (vm_address_t)threads, sizeof(thread_t) * thread_count);
 
     return backTraceLength;
 }

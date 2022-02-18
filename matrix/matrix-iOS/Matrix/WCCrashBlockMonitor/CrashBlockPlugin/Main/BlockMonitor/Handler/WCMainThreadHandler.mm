@@ -17,6 +17,8 @@
 #import "WCMainThreadHandler.h"
 #import <pthread.h>
 #import "MatrixLogDef.h"
+#import "WCLagStackTracePoolUtil.h"
+#import "WCGetCallStackReportHandler.h"
 
 #define STACK_PER_MAX_COUNT 100 // the max address count of one stack
 
@@ -61,6 +63,8 @@
         m_tailPoint = 0;
 
         pthread_mutex_init(&m_threadLock, NULL);
+
+        MatrixInfo(@"WCMainThreadHandler (cycle count %d) is initialized.", m_cycleArrayCount);
     }
     return self;
 }
@@ -70,6 +74,8 @@
 }
 
 - (void)dealloc {
+    pthread_mutex_destroy(&m_threadLock);
+
     for (uint32_t i = 0; i < m_cycleArrayCount; i++) {
         if (m_mainThreadStackCycleArray[i] != NULL) {
             free(m_mainThreadStackCycleArray[i]);
@@ -96,6 +102,8 @@
         free(m_mainThreadStackRepeatCountArray);
         m_mainThreadStackRepeatCountArray = NULL;
     }
+
+    MatrixInfo(@"WCMainThreadHandler (cycle count %d) is deallocated.", m_cycleArrayCount);
 }
 
 - (void)addThreadStack:(uintptr_t *)stackArray andStackCount:(size_t)stackCount {
@@ -142,6 +150,17 @@
     return m_mainThreadStackCycleArray[lastPoint];
 }
 
+- (char *)getStackProfile {
+    NSArray<NSDictionary *>* callTree = [WCLagStackTracePoolUtil makeCallTreeWithStackCyclePool:m_mainThreadStackCycleArray stackCount:m_mainThreadStackCount maxStackTraceCount:m_cycleArrayCount];
+    NSData *callTreeData = [WCGetCallStackReportHandler getReportJsonDataWithLagProfileStack:callTree];
+    NSUInteger len = callTreeData.length;
+    void *copyCallTreeData = malloc(len);
+    if (copyCallTreeData != NULL) {
+        [callTreeData getBytes:copyCallTreeData length:len];
+    }
+    return (char *)copyCallTreeData;
+}
+
 - (KSStackCursor *)getPointStackCursor {
     pthread_mutex_lock(&m_threadLock);
     size_t maxValue = 0;
@@ -175,6 +194,10 @@
     size_t pointThreadSize = sizeof(uintptr_t) * stackCount;
     uintptr_t *pointThreadStack = (uintptr_t *)malloc(pointThreadSize);
 
+    if (m_mainThreadStackRepeatCountArray != NULL) {
+        free(m_mainThreadStackRepeatCountArray);
+        m_mainThreadStackRepeatCountArray = NULL;
+    }
     size_t repeatCountArrayBytes = stackCount * sizeof(int);
     m_mainThreadStackRepeatCountArray = (int *)malloc(repeatCountArrayBytes);
     if (m_mainThreadStackRepeatCountArray != NULL) {

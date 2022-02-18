@@ -125,6 +125,13 @@ void inter_free(void *ptr) {
     }
 }
 
+size_t inter_malloc_zone_statistics(void) {
+    malloc_zone_pressure_relief(inter_zone, 0);
+    malloc_statistics_t stat = { 0 };
+    malloc_zone_statistics(inter_zone, &stat);
+    return stat.size_in_use;
+}
+
 void __add_mapped_mem(void *mem, size_t size) {
     __malloc_lock_lock(&shared_lock);
 
