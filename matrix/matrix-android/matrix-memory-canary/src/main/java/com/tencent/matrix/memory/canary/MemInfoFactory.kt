@@ -356,9 +356,9 @@ data class FgServiceInfo(val fgServices: List<String> = getRunningForegroundServ
         private fun getRunningForegroundServices(): List<String> {
             val fgServices = ArrayList<String>()
             val runningServiceInfoList: List<ActivityManager.RunningServiceInfo> =
-                MemInfoFactory.activityManager.getRunningServices(
-                    Int.MAX_VALUE
-                )
+                safeLet(TAG, true, defVal = emptyList()) {
+                    MemInfoFactory.activityManager.getRunningServices(Int.MAX_VALUE)
+                }
             for (serviceInfo in runningServiceInfoList) {
                 if (serviceInfo.uid != Process.myUid()) {
                     continue
