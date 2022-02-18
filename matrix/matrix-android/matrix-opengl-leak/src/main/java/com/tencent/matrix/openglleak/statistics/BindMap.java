@@ -26,7 +26,6 @@ import static javax.microedition.khronos.opengles.GL11ExtensionPack.GL_TEXTURE_C
 import static javax.microedition.khronos.opengles.GL11ExtensionPack.GL_TEXTURE_CUBE_MAP_NEGATIVE_X;
 
 import com.tencent.matrix.openglleak.statistics.resource.OpenGLInfo;
-import com.tencent.matrix.openglleak.utils.ExecuteCenter;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -136,22 +135,17 @@ public class BindMap {
         if (!isSupportTarget(type, target)) {
             return;
         }
-        ExecuteCenter.getInstance().post(new Runnable() {
-            @Override
-            public void run() {
-                switch (type) {
-                    case BUFFER:
-                        putInBindMap(bindBufferMap, target, eglContextId, info, OpenGLInfo.TYPE.BUFFER);
-                        break;
-                    case TEXTURE:
-                        putInBindMap(bindTextureMap, target, eglContextId, info, OpenGLInfo.TYPE.TEXTURE);
-                        break;
-                    case RENDER_BUFFERS:
-                        bindRenderbufferMap.put(eglContextId, info);
-                        break;
-                }
-            }
-        });
+        switch (type) {
+            case BUFFER:
+                putInBindMap(bindBufferMap, target, eglContextId, info, OpenGLInfo.TYPE.BUFFER);
+                break;
+            case TEXTURE:
+                putInBindMap(bindTextureMap, target, eglContextId, info, OpenGLInfo.TYPE.TEXTURE);
+                break;
+            case RENDER_BUFFERS:
+                bindRenderbufferMap.put(eglContextId, info);
+                break;
+        }
     }
 
 }

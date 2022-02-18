@@ -161,6 +161,7 @@ namespace matrix {
 
         int sdkVer = android_get_device_api_level();
 
+        // fixme: remove
         if (sdkVer == 24 || sdkVer == 25) {
             LOGE(LOG_TAG, "Does not support N and N_MR1 so far.");
             return false;

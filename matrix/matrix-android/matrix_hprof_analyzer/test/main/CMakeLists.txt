@@ -1,0 +1,12 @@
+cmake_minimum_required(VERSION 3.10.2)
+project(hprof_analyzer)
+
+set(CMAKE_CXX_STANDARD 17)
+
+add_executable(hprof_analyzer_test analyze.cpp chain.cpp heap.cpp)
+target_link_libraries(hprof_analyzer_test hprof_analyzer_testable)
+target_link_libraries(hprof_analyzer_test hprof_analyzer_heap hprof_analyzer_parser)
+target_link_libraries(hprof_analyzer_test gtest_main)
+target_link_libraries(hprof_analyzer_test test_tools)
+
+gtest_discover_tests(hprof_analyzer_test)

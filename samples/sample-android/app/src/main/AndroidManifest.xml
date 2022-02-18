@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+
+    xmlns:tools="http://schemas.android.com/tools"
     package="sample.tencent.matrix">
 
     <uses-permission android:name="android.permission.INTERNET" />
@@ -46,6 +48,14 @@
         <service
             android:name=".hooks.OtherProcessService"
             android:process=":other" />
+        <service android:name="com.tencent.matrix.lifecycle.supervisor.SupervisorService"
+            android:exported="false"
+            android:process=":supervisor"
+            />
+
+        <service android:name=".MainActivity$StubService"
+            android:exported="false"
+            android:process=":supervisor"/>
     </application>
 
 </manifest>
