@@ -7,7 +7,6 @@ import android.os.Build;
 import android.os.SystemClock;
 import android.text.TextUtils;
 
-import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.NotificationManagerServiceHooker;
 import com.tencent.matrix.batterycanary.utils.NotificationManagerServiceHooker.IListener;
 import com.tencent.matrix.util.MatrixLog;
@@ -115,7 +114,7 @@ public final class NotificationMonitorFeature extends AbsMonitorFeature {
     @VisibleForTesting
     void checkNotifyContent(@Nullable final String title, @Nullable final String text) {
         final long bgMillis = mLastBgStartMillis > 0 ? SystemClock.uptimeMillis() - mLastBgStartMillis : 0;
-        final String stack = mCore.getConfig().isAggressiveMode ? BatteryCanaryUtil.stackTraceToString(new Throwable().getStackTrace()) : "";
+        final String stack = mCore.getConfig().isAggressiveMode ? mCore.getConfig().callStackCollector.collectCurr() : "";
 
         mCore.getHandler().post(new Runnable() {
             @Override

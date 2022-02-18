@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    tools:ignore="RtlHardcoded">
+
+    <RelativeLayout
+        android:background="@color/BG_1"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <!-- BG TimeLine  -->
+        <RelativeLayout
+            android:layout_marginLeft="60dp"
+            android:layout_width="40dp"
+            android:layout_height="match_parent"
+            android:layout_centerVertical="true">
+
+            <View
+                android:layout_width="1px"
+                android:layout_height="match_parent"
+                android:layout_centerInParent="true"
+                android:background="@color/BW_70" />
+        </RelativeLayout>
+
+        <!--  Left  -->
+        <RelativeLayout
+            android:id="@+id/layout_left"
+            android:layout_width="wrap_content"
+            android:layout_height="45dp"
+            tools:background="#2000">
+
+            <TextView
+                android:id="@+id/tv_time"
+                android:layout_width="60dp"
+                android:layout_height="wrap_content"
+                android:layout_centerVertical="true"
+                android:gravity="right"
+                android:text="20:00"
+                android:textColor="@color/FG_2" />
+
+            <RelativeLayout
+                android:id="@+id/layout_timeline"
+                android:layout_width="40dp"
+                android:layout_height="45dp"
+                android:layout_centerVertical="true"
+                android:layout_toRightOf="@+id/tv_time">
+
+                <View
+                    android:layout_width="1px"
+                    android:layout_height="match_parent"
+                    android:layout_centerInParent="true"
+                    android:background="@color/BW_70" />
+
+                <ImageView
+                    android:id="@+id/iv_indicator"
+                    android:layout_width="10dp"
+                    android:layout_height="10dp"
+                    android:layout_centerInParent="true"
+                    android:background="@color/BG_1"
+                    android:src="@drawable/stats_icon_circle_list" />
+            </RelativeLayout>
+
+        </RelativeLayout>
+
+
+        <!--  Title  -->
+        <LinearLayout
+            android:id="@+id/layout_title"
+            android:layout_width="match_parent"
+            android:layout_height="45dp"
+            android:layout_toLeftOf="@+id/layout_right"
+            android:layout_toRightOf="@+id/layout_left"
+            android:background="?attr/selectableItemBackground"
+            android:gravity="center_vertical"
+            android:orientation="vertical"
+            tools:background="#4000">
+
+            <TextView
+                android:id="@+id/tv_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="电量事件"
+                android:textColor="@color/FG_0"
+                android:textStyle="normal" />
+        </LinearLayout>
+
+
+        <!--  Right  -->
+        <RelativeLayout
+            android:visibility="invisible"
+            android:background="?attr/selectableItemBackground"
+            android:id="@+id/layout_right"
+            android:layout_width="50dp"
+            android:layout_height="45dp"
+            android:layout_alignParentRight="true"
+            tools:background="#6000">
+
+            <TextView
+                android:id="@+id/tv_more"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerInParent="true"
+                android:textSize="12sp"
+                android:text="△" />
+        </RelativeLayout>
+    </RelativeLayout>
+
+</LinearLayout>

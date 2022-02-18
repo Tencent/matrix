@@ -4,12 +4,11 @@ import android.bluetooth.le.ScanSettings;
 import android.os.Build;
 import android.text.TextUtils;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-
-import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.BluetoothManagerServiceHooker;
 import com.tencent.matrix.util.MatrixLog;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import static com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig.AMS_HOOK_FLAG_BT;
 
@@ -36,7 +35,7 @@ public final class BlueToothMonitorFeature extends AbsMonitorFeature {
             mListener = new BluetoothManagerServiceHooker.IListener() {
                 @Override
                 public void onRegisterScanner() {
-                    String stack = shouldTracing() ? BatteryCanaryUtil.stackTraceToString(new Throwable().getStackTrace()) : "";
+                    String stack = shouldTracing() ? mCore.getConfig().callStackCollector.collectCurr() : "";
                     MatrixLog.i(TAG, "#onRegisterScanner, stack = " + stack);
                     mTracing.setStack(stack);
                     mTracing.onRegisterScanner();
@@ -44,7 +43,7 @@ public final class BlueToothMonitorFeature extends AbsMonitorFeature {
 
                 @Override
                 public void onStartDiscovery() {
-                    String stack = shouldTracing() ? BatteryCanaryUtil.stackTraceToString(new Throwable().getStackTrace()) : "";
+                    String stack = shouldTracing() ? mCore.getConfig().callStackCollector.collectCurr() : "";
                     MatrixLog.i(TAG, "#onStartDiscovery, stack = " + stack);
                     mTracing.setStack(stack);
                     mTracing.onStartDiscovery();

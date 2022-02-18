@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-
     xmlns:tools="http://schemas.android.com/tools"
     package="sample.tencent.matrix">
 
@@ -45,6 +44,18 @@
         <activity android:name=".battery.TestBatteryActivity" />
         <activity android:name=".hooks.TestHooksActivity" />
 
+        <activity
+            android:name=".battery.stats.BatteryStatsSubProcActivity"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:exported="true"
+            android:process=":sub"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
+        <activity
+            android:name="com.tencent.matrix.batterycanary.stats.ui.BatteryStatsActivity"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar"
+            tools:node="replace" />
+
         <service
             android:name=".hooks.OtherProcessService"
             android:process=":other" />
@@ -52,7 +63,6 @@
             android:exported="false"
             android:process=":supervisor"
             />
-
         <service android:name=".MainActivity$StubService"
             android:exported="false"
             android:process=":supervisor"/>

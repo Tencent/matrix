@@ -50,6 +50,7 @@ import java.io.File;
 import java.util.ArrayList;
 
 import sample.tencent.matrix.battery.BatteryCanaryInitHelper;
+import sample.tencent.matrix.battery.BatteryCanarySimpleInitHelper;
 import sample.tencent.matrix.config.DynamicConfigImplDemo;
 import sample.tencent.matrix.kt.memory.canary.MemoryCanaryBoot;
 import sample.tencent.matrix.lifecycle.LifecycleTest;
@@ -129,7 +130,7 @@ public class MatrixApplication extends Application {
         builder.plugin(sqLiteLintPlugin);
 
         // Configure battery canary.
-        BatteryMonitorPlugin batteryMonitorPlugin = configureBatteryCanary();
+        BatteryMonitorPlugin batteryMonitorPlugin = configureBatteryCanary(this);
         builder.plugin(batteryMonitorPlugin);
 
         builder.matrixLifecycleConfig(configureMatrixLifecycle());
@@ -243,13 +244,14 @@ public class MatrixApplication extends Application {
         return new SQLiteLintPlugin(sqlLiteConfig);
     }
 
-    private BatteryMonitorPlugin configureBatteryCanary() {
+    private BatteryMonitorPlugin configureBatteryCanary(Context context) {
+        if (!BatteryEventDelegate.isInit()) {
+            BatteryEventDelegate.init((Application) context.getApplicationContext());
+        }
         // Configuration of battery plugin is really complicated.
         // See it in BatteryCanaryInitHelper.
-        if (!BatteryEventDelegate.isInit()) {
-            BatteryEventDelegate.init(this);
-        }
-        return BatteryCanaryInitHelper.createMonitor();
+        // return BatteryCanarySimpleInitHelper.createMonitor(context);  // for simplified showcase
+        return BatteryCanaryInitHelper.createMonitor(context);
     }
 
     private MatrixLifecycleConfig configureMatrixLifecycle() {

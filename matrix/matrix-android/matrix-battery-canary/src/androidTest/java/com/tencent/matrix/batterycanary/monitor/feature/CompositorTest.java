@@ -18,12 +18,17 @@ package com.tencent.matrix.batterycanary.monitor.feature;
 
 import android.app.Application;
 import android.content.Context;
+import android.os.SystemClock;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.BatteryEventDelegate;
 import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
+import com.tencent.matrix.batterycanary.monitor.AppStats;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
+import com.tencent.matrix.batterycanary.monitor.feature.CpuStatFeature.CpuStateSnapshot;
+import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot;
+import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 
 import org.junit.After;
@@ -92,30 +97,30 @@ public class CompositorTest {
         monitor.start();
 
         CompositeMonitors compositeMonitor = new CompositeMonitors(monitor);
-        Assert.assertNull(compositeMonitor.mBgnSnapshots.get(JiffiesMonitorFeature.JiffiesSnapshot.class));
-        Assert.assertNull(compositeMonitor.mBgnSnapshots.get(CpuStatFeature.CpuStateSnapshot.class));
-        compositeMonitor.metric(JiffiesMonitorFeature.JiffiesSnapshot.class);
+        Assert.assertNull(compositeMonitor.mBgnSnapshots.get(JiffiesSnapshot.class));
+        Assert.assertNull(compositeMonitor.mBgnSnapshots.get(CpuStateSnapshot.class));
+        compositeMonitor.metric(JiffiesSnapshot.class);
         compositeMonitor.start();
-        Assert.assertNotNull(compositeMonitor.mBgnSnapshots.get(JiffiesMonitorFeature.JiffiesSnapshot.class));
-        Assert.assertNull(compositeMonitor.mBgnSnapshots.get(CpuStatFeature.CpuStateSnapshot.class));
-        Assert.assertNull(compositeMonitor.mDeltas.get(JiffiesMonitorFeature.JiffiesSnapshot.class));
-        Assert.assertNull(compositeMonitor.mDeltas.get(CpuStatFeature.CpuStateSnapshot.class));
+        Assert.assertNotNull(compositeMonitor.mBgnSnapshots.get(JiffiesSnapshot.class));
+        Assert.assertNull(compositeMonitor.mBgnSnapshots.get(CpuStateSnapshot.class));
+        Assert.assertNull(compositeMonitor.mDeltas.get(JiffiesSnapshot.class));
+        Assert.assertNull(compositeMonitor.mDeltas.get(CpuStateSnapshot.class));
         compositeMonitor.finish();
-        Assert.assertNotNull(compositeMonitor.mDeltas.get(JiffiesMonitorFeature.JiffiesSnapshot.class));
-        Assert.assertNull(compositeMonitor.mDeltas.get(CpuStatFeature.CpuStateSnapshot.class));
+        Assert.assertNotNull(compositeMonitor.mDeltas.get(JiffiesSnapshot.class));
+        Assert.assertNull(compositeMonitor.mDeltas.get(CpuStateSnapshot.class));
 
         compositeMonitor.clear();
         compositeMonitor
-                .metric(JiffiesMonitorFeature.JiffiesSnapshot.class)
-                .metric(CpuStatFeature.CpuStateSnapshot.class);
+                .metric(JiffiesSnapshot.class)
+                .metric(CpuStateSnapshot.class);
         compositeMonitor.start();
-        Assert.assertNotNull(compositeMonitor.mBgnSnapshots.get(JiffiesMonitorFeature.JiffiesSnapshot.class));
-        Assert.assertNotNull(compositeMonitor.mBgnSnapshots.get(CpuStatFeature.CpuStateSnapshot.class));
-        Assert.assertNull(compositeMonitor.mDeltas.get(JiffiesMonitorFeature.JiffiesSnapshot.class));
-        Assert.assertNull(compositeMonitor.mDeltas.get(CpuStatFeature.CpuStateSnapshot.class));
+        Assert.assertNotNull(compositeMonitor.mBgnSnapshots.get(JiffiesSnapshot.class));
+        Assert.assertNotNull(compositeMonitor.mBgnSnapshots.get(CpuStateSnapshot.class));
+        Assert.assertNull(compositeMonitor.mDeltas.get(JiffiesSnapshot.class));
+        Assert.assertNull(compositeMonitor.mDeltas.get(CpuStateSnapshot.class));
         compositeMonitor.finish();
-        Assert.assertNotNull(compositeMonitor.mDeltas.get(JiffiesMonitorFeature.JiffiesSnapshot.class));
-        Assert.assertNotNull(compositeMonitor.mDeltas.get(CpuStatFeature.CpuStateSnapshot.class));
+        Assert.assertNotNull(compositeMonitor.mDeltas.get(JiffiesSnapshot.class));
+        Assert.assertNotNull(compositeMonitor.mDeltas.get(CpuStateSnapshot.class));
     }
 
     @Test
@@ -156,14 +161,14 @@ public class CompositorTest {
         monitor.start();
 
         CompositeMonitors compositeMonitor = new CompositeMonitors(monitor);
-        compositeMonitor.putDelta(AbsTaskMonitorFeature.TaskJiffiesSnapshot.class, Mockito.mock(MonitorFeature.Snapshot.Delta.class));
+        compositeMonitor.putDelta(AbsTaskMonitorFeature.TaskJiffiesSnapshot.class, Mockito.mock(Delta.class));
         Assert.assertNotNull(compositeMonitor.getDelta(AbsTaskMonitorFeature.TaskJiffiesSnapshot.class));
-        compositeMonitor.putDelta(InternalMonitorFeature.InternalSnapshot.class, Mockito.mock(MonitorFeature.Snapshot.Delta.class));
+        compositeMonitor.putDelta(InternalMonitorFeature.InternalSnapshot.class, Mockito.mock(Delta.class));
         Assert.assertNotNull(compositeMonitor.getDeltaRaw(InternalMonitorFeature.InternalSnapshot.class));
     }
 
     @Test
-    public void testGetCpuLoad() {
+    public void testGetCpuLoad() throws InterruptedException {
         final BatteryMonitorCore monitor = mockMonitor();
         BatteryMonitorPlugin plugin = new BatteryMonitorPlugin(monitor.getConfig());
         Matrix.with().getPlugins().add(plugin);
@@ -172,15 +177,59 @@ public class CompositorTest {
 
         CompositeMonitors compositeMonitor = new CompositeMonitors(monitor);
         Assert.assertEquals(-1, compositeMonitor.getCpuLoad());
-        compositeMonitor.metric(JiffiesMonitorFeature.JiffiesSnapshot.class);
-        compositeMonitor.start();
-        compositeMonitor.finish();
-        Assert.assertEquals(-1, compositeMonitor.getCpuLoad());
 
-        compositeMonitor.metric(CpuStatFeature.CpuStateSnapshot.class);
+        Thread thread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (true) {
+                }
+            }
+        }, "TEST");
+        thread.start();
+
+        compositeMonitor.metric(JiffiesSnapshot.class);
         compositeMonitor.start();
+        Thread.sleep(1000L);
         compositeMonitor.finish();
-        Assert.assertTrue(compositeMonitor.getCpuLoad() >= 0 && compositeMonitor.getCpuLoad() <= BatteryCanaryUtil.getCpuCoreNum() * 100);
+        int cpuLoadR = compositeMonitor.getCpuLoad();
+        Assert.assertTrue(cpuLoadR >= 0 && cpuLoadR <= BatteryCanaryUtil.getCpuCoreNum() * 100);
+
+        compositeMonitor.metric(CpuStateSnapshot.class);
+        compositeMonitor.start();
+        Thread.sleep(1000L);
+        compositeMonitor.finish();
+        int cpuLoad = compositeMonitor.getCpuLoad();
+        Assert.assertTrue(cpuLoad >= 0 && cpuLoad <= BatteryCanaryUtil.getCpuCoreNum() * 100);
+
+        Assert.assertEquals(cpuLoad, cpuLoadR, 10);
+
+        compositeMonitor = new CompositeMonitors(monitor);
+        Assert.assertFalse(compositeMonitor.mMetrics.contains(JiffiesSnapshot.class));
+        Assert.assertFalse(compositeMonitor.mMetrics.contains(CpuStateSnapshot.class));
+        compositeMonitor.metricCpuLoad();
+        compositeMonitor.start();
+        long wallTimeBgn = System.currentTimeMillis();
+        long upTimeBgn = SystemClock.uptimeMillis();
+        Thread.sleep(10 * 1000L);
+        compositeMonitor.finish();
+        long wallTimeEnd = System.currentTimeMillis();
+        long upTimeEnd = SystemClock.uptimeMillis();
+        cpuLoad = compositeMonitor.getCpuLoad();
+        Assert.assertTrue(cpuLoad >= 0 && cpuLoad <= BatteryCanaryUtil.getCpuCoreNum() * 100);
+
+        long wallTimeDelta = wallTimeEnd - wallTimeBgn;
+        long uptimeDelta = upTimeEnd - upTimeBgn;
+        Assert.assertEquals(wallTimeDelta, uptimeDelta, 100L);
+
+        Delta<JiffiesSnapshot> appJiffies = compositeMonitor.getDelta(JiffiesSnapshot.class);
+        Assert.assertNotNull(appJiffies);
+        Delta<CpuStateSnapshot> cpuJiffies = compositeMonitor.getDelta(CpuStateSnapshot.class);
+        Assert.assertNotNull(cpuJiffies);
+        Assert.assertEquals((uptimeDelta / 10) * BatteryCanaryUtil.getCpuCoreNum(), cpuJiffies.dlt.totalCpuJiffies(), 20L);
+
+        cpuLoadR = (int) ((appJiffies.dlt.totalJiffies.get() / (uptimeDelta / 10f)) * 100);
+        Assert.assertTrue("cpuLoadR: " + cpuLoadR, cpuLoadR >= 0 && cpuLoadR <= BatteryCanaryUtil.getCpuCoreNum() * 100);
+        Assert.assertEquals(cpuLoad, cpuLoadR, 10);
     }
 
     @Test
