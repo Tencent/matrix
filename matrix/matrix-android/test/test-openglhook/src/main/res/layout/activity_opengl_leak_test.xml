@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context=".OpenglHookTestActivity">
+
+    <Button
+        android:id="@+id/install_opengl_plugin"
+        android:text="install_opengl_plugin"
+        android:layout_width="match_parent"
+        android:layout_marginBottom="10dp"
+        android:layout_height="50dp" />
+
+    <Button
+        android:id="@+id/init_egl_env"
+        android:layout_width="match_parent"
+        android:text="init_egl_env"
+        android:layout_marginBottom="10dp"
+        android:layout_height="50dp" />
+
+    <Button
+        android:id="@+id/use_textures"
+        android:layout_width="match_parent"
+        android:text="use_textures"
+        android:layout_marginBottom="10dp"
+        android:layout_height="50dp" />
+
+    <Button
+        android:id="@+id/use_buffer"
+        android:layout_width="match_parent"
+        android:text="use_buffer"
+        android:layout_marginBottom="10dp"
+        android:layout_height="50dp" />
+
+    <Button
+        android:id="@+id/use_render_buffer"
+        android:layout_width="match_parent"
+        android:text="use_render_buffer"
+        android:layout_marginBottom="10dp"
+        android:layout_height="50dp" />
+
+
+    <Button
+        android:id="@+id/dump_to_string"
+        android:text="dump_to_string"
+        android:layout_width="match_parent"
+        android:layout_marginBottom="10dp"
+        android:layout_height="50dp" />
+
+    <Button
+        android:id="@+id/dump_to_file"
+        android:text="dump_to_file"
+        android:layout_width="match_parent"
+        android:layout_marginBottom="10dp"
+        android:layout_height="50dp" />
+
+    <Button
+        android:id="@+id/gl_profiler"
+        android:text="gl_profiler"
+        android:layout_width="match_parent"
+        android:layout_marginBottom="10dp"
+        android:layout_height="50dp" />
+
+
+</LinearLayout>

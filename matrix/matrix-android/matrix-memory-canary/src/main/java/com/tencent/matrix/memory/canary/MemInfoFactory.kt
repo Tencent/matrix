@@ -388,16 +388,16 @@ data class MemInfo(
     var cost = 0L
     override fun toString(): String {
         return "\n" + """
-                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> MemInfo <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-                | Process   : $processInfo
-                | Status    : $statusInfo
-                | SystemInfo: $systemInfo
-                | Java      : $javaMemInfo
-                | Native    : $nativeMemInfo
-                | Dbg-Pss   : $debugPssInfo
-                | AMS-Pss   : $amsPssInfo
-                | FgService : $fgServiceInfo
-                >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+                |>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> MemInfo <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+                |> Process   : $processInfo
+                |> Status    : $statusInfo
+                |> SystemInfo: $systemInfo
+                |> Java      : $javaMemInfo
+                |> Native    : $nativeMemInfo
+                |> Dbg-Pss   : $debugPssInfo
+                |> AMS-Pss   : $amsPssInfo
+                |> FgService : $fgServiceInfo
+                |>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
             """.trimIndent() + "\n".run { if (cost <= 0) this else "$this| cost : $cost" }
     }
 
@@ -425,6 +425,7 @@ data class MemInfo(
                 for (i in memInfoArray.indices) {
                     if (pidMemInfoArray[i] == null) {
                         memInfoArray[i].amsPssInfo = PssInfo(0, 0, 0, 0, 0, 0, 0, 0, 0)
+                        continue
                     }
                     memInfoArray[i].amsPssInfo = PssInfo.get(pidMemInfoArray[i])
                 }
@@ -551,7 +552,7 @@ data class MergedSmapsInfo(
                 "PERM",
                 "NAME"
             )
-        )
+        ).append("\n")
         sb.append(
             String.format(
                 FORMAT,
@@ -567,36 +568,40 @@ data class MergedSmapsInfo(
                 "----",
                 "----"
             )
-        )
+        ).append("\n")
         for ((name, permission, count, vmSize, rss, pss, sharedClean, sharedDirty, privateClean, privateDirty, swapPss) in list!!) {
             sb.append(
-                FORMAT,
-                pss,
-                rss,
-                vmSize,
-                swapPss,
-                sharedClean,
-                sharedDirty,
-                privateClean,
-                privateDirty,
-                count,
-                permission,
-                name
-            )
+                String.format(
+                    FORMAT,
+                    pss,
+                    rss,
+                    vmSize,
+                    swapPss,
+                    sharedClean,
+                    sharedDirty,
+                    privateClean,
+                    privateDirty,
+                    count,
+                    permission,
+                    name
+                )
+            ).append("\n")
         }
         sb.append(
-            FORMAT,
-            "----",
-            "----",
-            "----",
-            "----",
-            "----",
-            "----",
-            "----",
-            "----",
-            "----",
-            "----",
-            "----"
+            String.format(
+                FORMAT,
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----"
+            )
         )
         sb.append("\n")
 

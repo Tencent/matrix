@@ -1,0 +1,80 @@
+apply plugin: 'com.android.application'
+
+apply from: rootProject.file('gradle/WeChatNativeDepend.gradle')
+
+android {
+    compileSdkVersion rootProject.compileSdkVersion
+    defaultConfig {
+        minSdkVersion rootProject.MIN_SDK_VERSION_FOR_HOOK
+        targetSdkVersion rootProject.targetSdkVersion
+        versionCode rootProject.VERSION_CODE
+        versionName rootProject.VERSION_NAME
+
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+        consumerProguardFiles "consumer-rules.pro"
+
+        ndk {
+            abiFilters rootProject.ABI_FILTERS as String[]
+        }
+    }
+
+    signingConfigs {
+        release {
+            keyAlias signingConfigs.debug.keyAlias
+            keyPassword signingConfigs.debug.keyPassword
+            storeFile signingConfigs.debug.storeFile
+            storePassword signingConfigs.debug.storePassword
+            v2SigningEnabled false
+        }
+    }
+
+    buildTypes {
+        debug {
+            debuggable true
+            signingConfig signingConfigs.debug
+            minifyEnabled false
+        }
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    sourceSets {
+        main {
+            jniLibs {
+                setSrcDirs (['./libs'] as Set)
+            }
+        }
+
+    }
+
+    externalNativeBuild {
+        cmake {
+            path "CMakeLists.txt"
+        }
+    }
+
+    packagingOptions {
+        pickFirst 'lib/armeabi-v7a/libc++_shared.so'
+        pickFirst 'lib/arm64-v8a/libc++_shared.so'
+        pickFirst 'lib/armeabi-v7a/libwechatbacktrace.so'
+        pickFirst 'lib/arm64-v8a/libwechatbacktrace.so'
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation 'androidx.appcompat:appcompat:1.1.0'
+    implementation 'androidx.constraintlayout:constraintlayout:1.1.0'
+    implementation project(path: ':matrix-backtrace')
+    implementation project(path: ':matrix-opengl-leak')
+    implementation project(path: ':matrix-android-lib')
+
+    testImplementation 'junit:junit:4.12'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.1'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.1.0'
+
+    implementation project(':matrix-hooks')
+}

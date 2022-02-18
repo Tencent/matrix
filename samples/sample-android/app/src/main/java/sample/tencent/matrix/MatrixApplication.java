@@ -30,6 +30,7 @@ import com.tencent.matrix.hook.HookManager;
 import com.tencent.matrix.hook.pthread.PthreadHook;
 import com.tencent.matrix.iocanary.IOCanaryPlugin;
 import com.tencent.matrix.iocanary.config.IOConfig;
+import com.tencent.matrix.lifecycle.LifecycleThreadConfig;
 import com.tencent.matrix.lifecycle.MatrixLifecycleConfig;
 import com.tencent.matrix.lifecycle.supervisor.SupervisorConfig;
 import com.tencent.matrix.memory.canary.MemoryCanaryPlugin;
@@ -254,7 +255,7 @@ public class MatrixApplication extends Application {
     }
 
     private MatrixLifecycleConfig configureMatrixLifecycle() {
-        return new MatrixLifecycleConfig(new SupervisorConfig(true, true, new ArrayList<String>()), true, true);
+        return new MatrixLifecycleConfig(new SupervisorConfig(true, true, new ArrayList<String>()), true, true, new LifecycleThreadConfig());
     }
 
     public static Context getContext() {
