@@ -332,7 +332,7 @@ object MemoryUtil {
             }
             return result
         } catch (exception: IOException) {
-            return emptyList()
+            throw exception
         } finally {
             stream.close()
         }
