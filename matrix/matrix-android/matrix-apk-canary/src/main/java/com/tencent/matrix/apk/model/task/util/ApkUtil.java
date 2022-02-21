@@ -22,6 +22,7 @@ import com.tencent.matrix.javalib.util.Util;
 
 import org.jf.baksmali.Adaptors.ClassDefinition;
 import org.jf.baksmali.BaksmaliOptions;
+import org.jf.baksmali.formatter.BaksmaliWriter;
 import org.jf.dexlib2.iface.ClassDef;
 import org.jf.util.IndentingWriter;
 
@@ -125,8 +126,8 @@ public class ApkUtil {
 
             BufferedWriter bufWriter = new BufferedWriter(new OutputStreamWriter(baos, "UTF8"));
 
-            writer = new IndentingWriter(bufWriter);
-            classDefinition.writeTo((IndentingWriter) writer);
+            writer = new BaksmaliWriter(bufWriter, classDef.getType());
+            classDefinition.writeTo((BaksmaliWriter) writer);
             writer.flush();
             return baos.toString().split("\n");
         } catch (Exception ex) {

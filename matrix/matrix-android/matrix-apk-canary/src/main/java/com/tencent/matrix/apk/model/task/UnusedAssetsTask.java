@@ -35,6 +35,8 @@ import org.jf.dexlib2.DexFileFactory;
 import org.jf.dexlib2.Opcodes;
 import org.jf.dexlib2.dexbacked.DexBackedDexFile;
 import org.jf.dexlib2.iface.ClassDef;
+import org.jf.dexlib2.iface.MultiDexContainer;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -115,15 +117,18 @@ public class UnusedAssetsTask extends ApkTask {
 
     private void decodeCode() throws IOException {
         for (String dexFileName : dexFileNameList) {
-            DexBackedDexFile dexFile = DexFileFactory.loadDexFile(new File(inputFile, dexFileName), Opcodes.forApi(15));
+            MultiDexContainer<? extends DexBackedDexFile> dexFiles = DexFileFactory.loadDexContainer(new File(inputFile, dexFileName), Opcodes.forApi(15));
 
-            BaksmaliOptions options = new BaksmaliOptions();
-            List<? extends ClassDef> classDefs = Ordering.natural().sortedCopy(dexFile.getClasses());
+            for (String dexEntryName : dexFiles.getDexEntryNames()) {
+                MultiDexContainer.DexEntry<? extends DexBackedDexFile> dexEntry = dexFiles.getEntry(dexEntryName);
+                BaksmaliOptions options = new BaksmaliOptions();
+                List<? extends ClassDef> classDefs = Ordering.natural().sortedCopy(dexEntry.getDexFile().getClasses());
 
-            for (ClassDef classDef : classDefs) {
-                String[] lines = ApkUtil.disassembleClass(classDef, options);
-                if (lines != null) {
-                    readSmaliLines(lines);
+                for (ClassDef classDef : classDefs) {
+                    String[] lines = ApkUtil.disassembleClass(classDef, options);
+                    if (lines != null) {
+                        readSmaliLines(lines);
+                    }
                 }
             }
 
