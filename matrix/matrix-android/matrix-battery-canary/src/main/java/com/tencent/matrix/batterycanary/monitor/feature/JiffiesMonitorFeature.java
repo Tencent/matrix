@@ -1,5 +1,7 @@
 package com.tencent.matrix.batterycanary.monitor.feature;
 
+import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.Process;
 import android.os.SystemClock;
 import android.text.TextUtils;
@@ -340,6 +342,7 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
     class ThreadWatchDog implements Runnable {
         private long duringMillis;
         private final List<ProcessInfo.ThreadInfo> mWatchingThreads = new ArrayList<>();
+        @Nullable private Handler mWatchHandler;
 
         @Override
         public void run() {
@@ -363,14 +366,20 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
             }
 
             // next loop
-            if (duringMillis <= 5 * 60 * 1000L) {
-                mCore.getHandler().postDelayed(this, setNext(5 * 60 * 1000L));
-            } else if (duringMillis <= 10 * 60 * 1000L) {
-                mCore.getHandler().postDelayed(this, setNext(10 * 60 * 1000L));
-            } else {
-                // done
-                synchronized (mWatchingThreads) {
-                    mWatchingThreads.clear();
+            synchronized (mWatchingThreads) {
+                if (duringMillis <= 5 * 60 * 1000L) {
+                    if (mWatchHandler != null) {
+                        mWatchHandler.postDelayed(this, setNext(5 * 60 * 1000L));
+                    }
+                } else if (duringMillis <= 10 * 60 * 1000L) {
+                    if (mWatchHandler != null) {
+                        mWatchHandler.postDelayed(this, setNext(10 * 60 * 1000L));
+                    }
+                } else {
+                    // done
+                    synchronized (mWatchingThreads) {
+                        mWatchingThreads.clear();
+                    }
                 }
             }
         }
@@ -391,13 +400,22 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
             synchronized (mWatchingThreads) {
                 MatrixLog.i(TAG, "ThreadWatchDog start watching, count = " + mWatchingThreads.size());
                 if (!mWatchingThreads.isEmpty()) {
-                    mCore.getHandler().postDelayed(this, reset());
+                    HandlerThread handlerThread = new HandlerThread("matrix_watchdog");
+                    handlerThread.start();
+                    mWatchHandler = new Handler(handlerThread.getLooper());
+                    mWatchHandler.postDelayed(this, reset());
                 }
             }
         }
 
         void stop() {
-            mCore.getHandler().removeCallbacks(this);
+            synchronized (mWatchingThreads) {
+                if (mWatchHandler != null) {
+                    mWatchHandler.removeCallbacks(this);
+                    mWatchHandler.getLooper().quit();
+                    mWatchHandler = null;
+                }
+            }
         }
 
         private long reset() {
