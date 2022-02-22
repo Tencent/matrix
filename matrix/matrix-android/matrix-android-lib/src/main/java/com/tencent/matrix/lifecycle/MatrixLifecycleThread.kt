@@ -58,12 +58,17 @@ internal object MatrixLifecycleThread {
                 Thread(Thread.currentThread().threadGroup, {
                     r.run()
                     Thread.currentThread().name.let {
-                        workerNamePool.add(it)
-                        MatrixLog.i(TAG, "thread $it finished, now pool size = ${MAX_POOL_SIZE - workerNamePool.size}")
+                        synchronized(workerNamePool) {
+                            workerNamePool.add(it)
+                            MatrixLog.i(
+                                TAG,
+                                "thread $it finished, now pool size = ${MAX_POOL_SIZE - workerNamePool.size}"
+                            )
+                        }
                     }
-                }, workerNamePool.removeFirstOrNull() ?: "matrix_x_x", 0).also {
-                    MatrixLog.i(TAG, "new Thread : ${it.name}, now pool size = ${MAX_POOL_SIZE - workerNamePool.size}")
-                }
+                }, synchronized(workerNamePool) {
+                    workerNamePool.removeFirstOrNull()
+                } ?: "matrix_x_x", 0)
             },
             { r, _ -> // full now
                 idleSynchronousQueue.idle(r)
