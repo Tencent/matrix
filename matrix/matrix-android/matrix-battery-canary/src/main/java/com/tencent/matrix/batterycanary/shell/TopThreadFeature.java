@@ -59,7 +59,6 @@ public class TopThreadFeature extends AbsMonitorFeature {
 
                 Printer printer = new Printer();
                 printer.writeTitle();
-                printer.writeTitle();
                 printer.append("| TOP Thread\tpidNum=").append(deltaList.size())
                         .append("\tcpuLoad=").append(totalLoad).append("%")
                         .append("\n");

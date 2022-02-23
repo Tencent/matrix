@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:layout_marginTop="6dp"
+    android:background="@color/BW_F_Alpha_0_8"
+    android:layout_marginBottom="6dp">
+
+    <TextView
+        android:id="@+id/tv_header_left"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:text="电池温度"
+        android:textColor="@color/FG_2"
+        android:textSize="12sp" />
+
+    <TextView
+        android:id="@+id/tv_header_right"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentRight="true"
+        android:gravity="right"
+        android:text="进程负载"
+        android:textColor="@color/FG_2"
+        android:textSize="12sp"
+        android:visibility="visible" />
+
+    <HorizontalScrollView
+        android:visibility="gone"
+        android:id="@+id/layout_content"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/tv_header_right"
+        android:layout_centerInParent="true"
+        tools:background="#5000"
+        tools:layout_height="100dp">
+
+        <TextView
+            android:id="@+id/tv_content"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:scrollHorizontally="false"
+            android:singleLine="false"
+            android:text="CONTENT"
+            android:textSize="12sp"
+            tools:visibility="visible" />
+    </HorizontalScrollView>
+
+    <LinearLayout
+        android:id="@+id/layout_entry_group"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/layout_content"
+        android:orientation="vertical"
+        tools:background="#3000">
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            tools:background="#5000">
+
+            <include layout="@layout/float_item_entry" />
+        </RelativeLayout>
+
+        <!-- More Entry Here -->
+    </LinearLayout>
+
+</RelativeLayout>

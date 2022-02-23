@@ -45,6 +45,7 @@ import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature
 import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature.CpuFreqSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot.ThreadJiffiesEntry;
+import com.tencent.matrix.batterycanary.shell.TopThreadFeature;
 import com.tencent.matrix.batterycanary.stats.BatteryStatsFeature;
 import com.tencent.matrix.batterycanary.stats.ui.BatteryStatsActivity;
 import com.tencent.matrix.batterycanary.utils.Consumer;
@@ -54,6 +55,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import sample.tencent.matrix.R;
+import sample.tencent.matrix.battery.shell.TopThreadIndicator;
 import sample.tencent.matrix.battery.stats.BatteryStatsSubProcActivity;
 
 import static com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot;
@@ -124,6 +126,9 @@ public class TestBatteryActivity extends Activity {
         // if (BatteryCanary.getMonitorFeature(NotificationMonitorFeature.class) != null) {
         //     tryNotify();
         // }
+
+        TopThreadIndicator.instance().prepare(this);
+        TopThreadIndicator.instance().start(5);
     }
 
     @Override
@@ -149,6 +154,9 @@ public class TestBatteryActivity extends Activity {
        //         Runtime.getRuntime().gc();
        //     }
        // }).start();
+
+        TopThreadIndicator.instance().stop();
+        TopThreadIndicator.instance().release();
     }
 
     private void benchmark() {

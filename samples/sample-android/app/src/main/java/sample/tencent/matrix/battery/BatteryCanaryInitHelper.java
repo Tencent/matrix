@@ -39,6 +39,7 @@ import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature.W
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature.WakeLockTrace.WakeLockRecord;
 import com.tencent.matrix.batterycanary.monitor.feature.WifiMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.WifiMonitorFeature.WifiSnapshot;
+import com.tencent.matrix.batterycanary.shell.TopThreadFeature;
 import com.tencent.matrix.batterycanary.stats.BatteryRecorder;
 import com.tencent.matrix.batterycanary.stats.BatteryStats;
 import com.tencent.matrix.batterycanary.stats.BatteryStatsFeature;
@@ -125,6 +126,7 @@ public final class BatteryCanaryInitHelper {
                 .addLooperWatchList("main")
                 .useThreadClock(false)
                 .enableAggressive(true)
+                .enable(TopThreadFeature.class)
 
                 // Monitor Callback
                 .setCallback(new BatteryStatsListener())
