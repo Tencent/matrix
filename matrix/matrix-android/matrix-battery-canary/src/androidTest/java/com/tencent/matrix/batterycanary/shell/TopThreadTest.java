@@ -95,16 +95,16 @@ public class TopThreadTest {
         monitor.start();
 
         final TopThreadFeature topFeat = monitor.getMonitorFeature(TopThreadFeature.class);
-        topFeat.schedule(1);
+        topFeat.topShell(1);
 
         if (TestUtils.isAssembleTest()) {
             new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
                 @Override
                 public void run() {
-                    topFeat.stop();
+                    topFeat.stopShell();
                 }
             }, 5000L);
-            Thread.sleep(7000L);
+            Thread.sleep(10000L);
             return;
         }
 
