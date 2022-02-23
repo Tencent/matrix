@@ -6,14 +6,8 @@ import android.os.Process;
 import android.os.SystemClock;
 import android.text.TextUtils;
 
-import androidx.annotation.AnyThread;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.annotation.RestrictTo;
-import androidx.annotation.WorkerThread;
-
 import com.tencent.matrix.Matrix;
-import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
+import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore.Callback;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.DigitEntry;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.ListEntry;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
@@ -27,6 +21,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+
+import androidx.annotation.AnyThread;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.RestrictTo;
+import androidx.annotation.WorkerThread;
 
 @SuppressWarnings("NotNullFieldNotInitialized")
 public final class JiffiesMonitorFeature extends AbsMonitorFeature {
@@ -77,8 +77,13 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
         return JiffiesSnapshot.currentJiffiesSnapshot(ProcessInfo.getProcessInfo(), mCore.getConfig().isStatPidProc);
     }
 
+    @WorkerThread
+    public JiffiesSnapshot currentJiffiesSnapshot(int pid) {
+        return JiffiesSnapshot.currentJiffiesSnapshot(ProcessInfo.getProcessInfo(pid), mCore.getConfig().isStatPidProc);
+    }
+
     @AnyThread
-    public void currentJiffiesSnapshot(@NonNull final BatteryMonitorCore.Callback<JiffiesSnapshot> callback) {
+    public void currentJiffiesSnapshot(@NonNull final Callback<JiffiesSnapshot> callback) {
         mCore.getHandler().post(new Runnable() {
             @Override
             public void run() {
@@ -87,12 +92,36 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
         });
     }
 
+    @AnyThread
+    public void currentJiffiesSnapshot(final int pid, @NonNull final Callback<JiffiesSnapshot> callback) {
+        mCore.getHandler().post(new Runnable() {
+            @Override
+            public void run() {
+                callback.onGetJiffies(currentJiffiesSnapshot(pid));
+            }
+        });
+    }
+
+
     @SuppressWarnings("SpellCheckingInspection")
     @RestrictTo(RestrictTo.Scope.LIBRARY)
     public static class ProcessInfo {
         static ProcessInfo getProcessInfo() {
             ProcessInfo processInfo = new ProcessInfo();
             processInfo.pid = Process.myPid();
+            processInfo.name = Matrix.isInstalled() ? MatrixUtil.getProcessName(Matrix.with().getApplication()) : "default";
+            processInfo.threadInfo = ThreadInfo.parseThreadsInfo(processInfo.pid);
+            processInfo.upTime = SystemClock.uptimeMillis();
+            processInfo.time = System.currentTimeMillis();
+            return processInfo;
+        }
+
+        static ProcessInfo getProcessInfo(int pid) {
+            if (pid == Process.myPid()) {
+                return getProcessInfo();
+            }
+            ProcessInfo processInfo = new ProcessInfo();
+            processInfo.pid = pid;
             processInfo.name = Matrix.isInstalled() ? MatrixUtil.getProcessName(Matrix.with().getApplication()) : "default";
             processInfo.threadInfo = ThreadInfo.parseThreadsInfo(processInfo.pid);
             processInfo.upTime = SystemClock.uptimeMillis();

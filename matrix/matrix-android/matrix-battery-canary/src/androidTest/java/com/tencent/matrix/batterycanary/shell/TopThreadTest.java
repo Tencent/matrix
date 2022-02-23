@@ -17,7 +17,9 @@
 package com.tencent.matrix.batterycanary.shell;
 
 import android.app.Application;
+import android.app.IntentService;
 import android.content.Context;
+import android.content.Intent;
 import android.os.Handler;
 import android.os.Looper;
 
@@ -34,6 +36,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import androidx.annotation.Nullable;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
@@ -70,7 +73,7 @@ public class TopThreadTest {
 
     @Test
     public void testTopShellSchedule() throws InterruptedException {
-        if (TestUtils.isAssembleTest()) return;
+        mContext.startService(new Intent(mContext, TestSubProcService.class));
 
         Thread thread = new Thread(new Runnable() {
             @Override
@@ -91,8 +94,33 @@ public class TopThreadTest {
         monitor.enableForegroundLoopCheck(true);
         monitor.start();
 
-        TopThreadFeature topFeat = monitor.getMonitorFeature(TopThreadFeature.class);
-        topFeat.schedule(5);
+        final TopThreadFeature topFeat = monitor.getMonitorFeature(TopThreadFeature.class);
+        topFeat.schedule(1);
+
+        if (TestUtils.isAssembleTest()) {
+            new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    topFeat.stop();
+                }
+            }, 5000L);
+            Thread.sleep(7000L);
+            return;
+        }
+
         Thread.sleep(5000000L);
+    }
+
+
+    public static class TestSubProcService extends IntentService {
+
+        public TestSubProcService() {
+            super("TestSubProcService");
+        }
+
+        @Override
+        protected void onHandleIntent(@Nullable @org.jetbrains.annotations.Nullable Intent intent) {
+            while (true) {}
+        }
     }
 }
