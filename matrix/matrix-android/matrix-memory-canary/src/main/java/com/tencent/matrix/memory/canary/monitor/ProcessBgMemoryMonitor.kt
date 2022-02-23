@@ -23,7 +23,7 @@ class ProcessBgMemoryMonitorConfig(
     amsPssThresholdK: Long = 1024 * 1024,
     debugPssThresholdK: Long = 1024 * 1024,
     checkTimes: Int = 3,
-    val reportCallback: (memInfo: MemInfo) -> Unit = { _ ->
+    val callback: (memInfo: MemInfo) -> Unit = { _ ->
         // do report
     },
 ) {
@@ -34,7 +34,7 @@ class ProcessBgMemoryMonitorConfig(
         amsPssThresholdK.asThreshold(checkTimes, TimeUnit.MINUTES.toMillis(5))
 
     override fun toString(): String {
-        return "ProcessBgMemoryMonitorConfig(enable=$enable, bgStatefulOwner=$bgStatefulOwner, checkInterval=$checkInterval, reportCallback=${reportCallback.javaClass.name}, javaThresholdByte=$javaThresholdByte, nativeThresholdByte=$nativeThresholdByte, debugPssThresholdK=$debugPssThresholdK, amsPssThresholdK=$amsPssThresholdK)"
+        return "ProcessBgMemoryMonitorConfig(enable=$enable, bgStatefulOwner=$bgStatefulOwner, checkInterval=$checkInterval, reportCallback=${callback.javaClass.name}, javaThresholdByte=$javaThresholdByte, nativeThresholdByte=$nativeThresholdByte, debugPssThresholdK=$debugPssThresholdK, amsPssThresholdK=$amsPssThresholdK)"
     }
 }
 
@@ -82,7 +82,7 @@ internal class ProcessBgMemoryMonitor(private val config: ProcessBgMemoryMonitor
 
         if (overThreshold && shouldCallback) {
             MatrixLog.i(TAG, "report over threshold")
-            config.reportCallback.invoke(memInfo)
+            config.callback.invoke(memInfo)
         }
     }
 
