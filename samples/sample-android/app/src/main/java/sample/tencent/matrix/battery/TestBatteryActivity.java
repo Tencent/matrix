@@ -126,13 +126,31 @@ public class TestBatteryActivity extends Activity {
         //     tryNotify();
         // }
 
-        TopThreadIndicator.instance().prepare(this);
-        TopThreadIndicator.instance().start(5);
+        showIndicator();
+    }
+
+    private void showIndicator() {
+        if (!TopThreadIndicator.instance().isShowing()) {
+            if (TopThreadIndicator.instance().checkPermission(this)) {
+                TopThreadIndicator.instance().show(this);
+                TopThreadIndicator.instance().start(5);
+            }
+        }
+    }
+
+    private void dismissIndicator() {
+        TopThreadIndicator.instance().stop();
+        TopThreadIndicator.instance().dismiss();
     }
 
     @Override
     protected void onStart() {
         super.onStart();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
     }
 
     @Override
@@ -153,9 +171,14 @@ public class TestBatteryActivity extends Activity {
        //         Runtime.getRuntime().gc();
        //     }
        // }).start();
+    }
 
-        TopThreadIndicator.instance().stop();
-        TopThreadIndicator.instance().release();
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == 2233) {
+            showIndicator();
+        }
     }
 
     private void benchmark() {
@@ -168,6 +191,20 @@ public class TestBatteryActivity extends Activity {
             }
         }, "Benchmark");
         mBenchmarkThread.start();
+    }
+
+    public void onShowIndicator(View view) {
+        if (!TopThreadIndicator.instance().isShowing()) {
+            if (TopThreadIndicator.instance().checkPermission(this)) {
+                showIndicator();
+            } else {
+                TopThreadIndicator.instance().requestPermission(this, 2233);
+            }
+        }
+    }
+
+    public void onCloseIndicator(View view) {
+        dismissIndicator();
     }
 
     public void onDumpBatteryStats(View view) {

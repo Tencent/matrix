@@ -1,14 +1,19 @@
 package com.tencent.matrix.batterycanary.shell.ui;
 
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.app.ActivityManager;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.PixelFormat;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Process;
+import android.provider.Settings;
 import android.util.DisplayMetrics;
+import android.util.SparseBooleanArray;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -38,6 +43,7 @@ import java.util.List;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.UiThread;
 import androidx.core.util.Pair;
 
 import static com.tencent.matrix.batterycanary.shell.TopThreadFeature.figureCupLoad;
@@ -57,7 +63,7 @@ final public class TopThreadIndicator {
 
     private final DisplayMetrics displayMetrics = new DisplayMetrics();
     private final Handler mUiHandler = new Handler(Looper.getMainLooper());
-    private boolean mStopped = true;
+    private final SparseBooleanArray mRunningRef = new SparseBooleanArray();
     @SuppressLint("RestrictedApi")
     private Pair<Integer, String> mCurrProc = new Pair<>(Process.myPid(), getProcSuffix(BatteryCanaryUtil.getProcessName()));
 
@@ -139,12 +145,51 @@ final public class TopThreadIndicator {
     TopThreadIndicator() {
     }
 
+    public void requestPermission(Context context, int reqCode) {
+        if (checkPermission(context)) {
+            return;
+        }
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + context.getPackageName()));
+            if (reqCode > 0 && context instanceof Activity) {
+                ((Activity) context).startActivityForResult(intent, reqCode);
+            } else {
+                context.startActivity(intent);
+            }
+        }
+    }
+
+    public boolean checkPermission(Context context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            return Settings.canDrawOverlays(context);
+        } else {
+            return true;
+        }
+    }
+
+    @UiThread
+    public boolean isShowing() {
+        return mRootView != null;
+    }
+
+    @UiThread
+    public boolean isRunning() {
+        return mRootView != null && mRunningRef.get(mRootView.hashCode(), false);
+    }
+
+
     @SuppressLint("InflateParams")
-    public void prepare(Context context) {
+    @UiThread
+    public boolean show(Context context) {
+        if (!checkPermission(context)) {
+            return false;
+        }
+
         try {
             mRootView = LayoutInflater.from(context).inflate(R.layout.float_top_thread, null);
             if (mRootView == null) {
-                return;
+                MatrixLog.w(TAG, "Can not load indicator view!");
+                return false;
             }
             WindowManager windowManager = (WindowManager) context.getApplicationContext().getSystemService(Context.WINDOW_SERVICE);
             DisplayMetrics metrics = new DisplayMetrics();
@@ -223,21 +268,26 @@ final public class TopThreadIndicator {
                     mDumpHandler.accept(mCurrDelta);
                 }
             });
+
+            return true;
         } catch (Exception e) {
             MatrixLog.w(TAG, "Create float view failed:" + e.getMessage());
+            return false;
         }
-
     }
 
     public void start(final int seconds) {
         if (mRootView == null) {
-            throw new IllegalStateException("Call prepare first!");
+            MatrixLog.w(TAG, "Call #prepare first to show the indicator");
+            return;
         }
-        if (!mStopped) {
-            throw new IllegalStateException("Already started!");
+        if (isRunning()) {
+            MatrixLog.w(TAG, "Already started!");
+            return;
         }
-
-        mStopped = false;
+        final int hashcode = mRootView.hashCode();
+        mRunningRef.clear();
+        mRunningRef.put(hashcode, true);
         BatteryCanary.getMonitorFeature(TopThreadFeature.class, new Consumer<TopThreadFeature>() {
             @Override
             public void accept(TopThreadFeature topThreadFeat) {
@@ -245,7 +295,10 @@ final public class TopThreadIndicator {
                     @Override
                     public boolean onGetDeltas(List<Delta<JiffiesSnapshot>> deltaList, long windowMillis) {
                         refresh(deltaList);
-                        return mStopped;
+                        if (mRootView == null || !mRunningRef.get(hashcode, false)) {
+                            return true;
+                        }
+                        return false;
                     }
                 });
             }
@@ -253,10 +306,13 @@ final public class TopThreadIndicator {
     }
 
     public void stop() {
-        mStopped = true;
+        if (mRootView != null) {
+            mRunningRef.put(mRootView.hashCode(), false);
+        }
     }
 
-    public void release() {
+    @UiThread
+    public void dismiss() {
         if (mRootView != null) {
             WindowManager windowManager = (WindowManager) mRootView.getContext().getApplicationContext().getSystemService(Context.WINDOW_SERVICE);
             windowManager.removeView(mRootView);
@@ -266,6 +322,10 @@ final public class TopThreadIndicator {
 
     public void setDumpHandler(@NonNull Consumer<Delta<JiffiesSnapshot>> dumpHandler) {
         mDumpHandler = dumpHandler;
+    }
+
+    public void setCollector(@NonNull CallStackCollector collector) {
+        mCollector = collector;
     }
 
     @SuppressLint({"SetTextI18n", "RestrictedApi"})
@@ -288,6 +348,7 @@ final public class TopThreadIndicator {
                 }
 
                 for (Delta<JiffiesSnapshot> delta : deltaList) {
+                    //noinspection ConstantConditions
                     if (delta.dlt.pid == mCurrProc.first) {
                         if (delta.isValid()) {
                             int pid = delta.dlt.pid;
