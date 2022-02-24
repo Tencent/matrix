@@ -328,6 +328,12 @@ final public class TopThreadIndicator {
         mCollector = collector;
     }
 
+    private void setTextAlertColor(TextView tv, int level) {
+        tv.setTextColor(tv.getResources().getColor(
+                level == 2 ? R.color.Red_80 :  level == 1 ? R.color.Orange_80 : R.color.FG_2
+        ));
+    }
+
     @SuppressLint({"SetTextI18n", "RestrictedApi"})
     private void refresh(final List<Delta<JiffiesSnapshot>> deltaList) {
         mUiHandler.post(new Runnable() {
@@ -340,6 +346,7 @@ final public class TopThreadIndicator {
                 TextView tvHeaderLeft = mRootView.findViewById(R.id.tv_header_left);
                 int battTemp = BatteryCanaryUtil.getBatteryTemperatureImmediately(mRootView.getContext());
                 tvHeaderLeft.setText((battTemp > 0 ? battTemp / 10f : "/") + "°C");
+                setTextAlertColor(tvHeaderLeft, battTemp >= 350 ? 2 :  battTemp >= 300 ? 1 : 0);
 
                 // ThreadList
                 LinearLayout entryGroup = mRootView.findViewById(R.id.layout_entry_group);
@@ -375,6 +382,12 @@ final public class TopThreadIndicator {
                                 tvTid.setText(String.valueOf(tid));
                                 tvStatus.setText(status);
                                 tvLoad.setText(threadLoad + "%");
+
+                                int alertLevel = threadLoad >= 50 ? 2 : threadLoad >= 10 ? 1 : 0;
+                                setTextAlertColor(tvName, alertLevel);
+                                setTextAlertColor(tvTid, alertLevel);
+                                setTextAlertColor(tvStatus, alertLevel);
+                                setTextAlertColor(tvLoad, alertLevel);
 
                                 idx++;
                                 if (idx >= MAX_THREAD_NUM) {
