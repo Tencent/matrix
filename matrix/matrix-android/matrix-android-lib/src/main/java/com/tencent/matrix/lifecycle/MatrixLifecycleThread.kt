@@ -5,6 +5,7 @@ import com.tencent.matrix.util.MatrixHandlerThread
 import com.tencent.matrix.util.MatrixLog
 import java.util.*
 import java.util.concurrent.*
+import kotlin.collections.ArrayList
 
 private const val TAG = "Matrix.Lifecycle.Thread"
 
@@ -38,7 +39,11 @@ internal object MatrixLifecycleThread {
         Handler(MatrixHandlerThread.getNewHandlerThread("matrix_li", Thread.NORM_PRIORITY).looper)
     }
 
-    private val workers = WeakHashMap<Thread, Any>()
+    private val workerNamePool = ArrayList<String>().also {
+        for (i in 0 until MAX_POOL_SIZE) {
+            it.add("matrix_x_$i")
+        }
+    }
 
     val executor by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
         val idleSynchronousQueue = IdleSynchronousQueue()
@@ -50,9 +55,20 @@ internal object MatrixLifecycleThread {
             TimeUnit.SECONDS,
             idleSynchronousQueue,
             { r ->
-                Thread(Thread.currentThread().threadGroup, r, "matrix_x_${workers.size}", 0).also {
-                    workers[it] = Any()
-                }
+                Thread(Thread.currentThread().threadGroup, {
+                    r.run()
+                    Thread.currentThread().name.let {
+                        synchronized(workerNamePool) {
+                            workerNamePool.add(it)
+                            MatrixLog.i(
+                                TAG,
+                                "thread $it finished, now pool size = ${MAX_POOL_SIZE - workerNamePool.size}"
+                            )
+                        }
+                    }
+                }, synchronized(workerNamePool) {
+                    workerNamePool.removeFirstOrNull()
+                } ?: "matrix_x_x", 0)
             },
             { r, _ -> // full now
                 idleSynchronousQueue.idle(r)

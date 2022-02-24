@@ -166,4 +166,28 @@ class ThreadTest {
 
         SystemClock.sleep(60 * 1000L)
     }
+
+    @Test
+    fun executorTest3() {
+        val c = MatrixLifecycleThread.executor
+        for (i in 0..10) {
+
+            SystemClock.sleep(1000L)
+
+            c.execute {
+                SystemClock.sleep(1 * 1000L)
+            }
+        }
+
+        SystemClock.sleep(30 * 1000L)
+        Log.d(TAG, "=======")
+
+        for (i in 0..10) {
+            c.execute {
+                SystemClock.sleep(10);
+            }
+        }
+
+        SystemClock.sleep(1000 * 1000L)
+    }
 }

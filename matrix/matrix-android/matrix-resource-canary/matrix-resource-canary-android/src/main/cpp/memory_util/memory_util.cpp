@@ -96,14 +96,14 @@ Java_com_tencent_matrix_resource_MemoryUtil_analyzeInternal(JNIEnv *env, jobject
 
         const char *result_path = env->GetStringUTFChars(java_result_path, nullptr);
         bool result = false;
-        int result_fd = open(result_path, O_WRONLY | O_CREAT | O_TRUNC);
+        int result_fd = open(result_path, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
 
         env->ReleaseStringUTFChars(java_result_path, result_path);
         if (result_fd == -1) {
             _error_log(LOG_TAG, "Failed to write leak chains to result path, errno: %d.", errno);
             return false;
         }
-#define write_data(content, size)                                                           \
+#define write_data(content, size)                                                       \
         if (write(result_fd, content, size) == -1) {                                    \
             _error_log(LOG_TAG, "Failed to write content to result path, errno: %d.",   \
                        errno);                                                          \

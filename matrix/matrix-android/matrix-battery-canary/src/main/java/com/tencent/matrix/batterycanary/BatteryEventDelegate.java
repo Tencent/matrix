@@ -101,7 +101,7 @@ public final class BatteryEventDelegate {
             throw new IllegalStateException("Context should not be null");
         }
         mContext = context;
-        mLastBatteryPowerPct = BatteryCanaryUtil.getBatteryPercentage(context);
+        mLastBatteryPowerPct = BatteryCanaryUtil.getBatteryPercentageImmediately(context);
         mLastBatteryTemp = BatteryCanaryUtil.getBatteryTemperature(context);
     }
 
