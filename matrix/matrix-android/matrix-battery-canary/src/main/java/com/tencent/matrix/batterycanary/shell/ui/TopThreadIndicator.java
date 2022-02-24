@@ -1,4 +1,4 @@
-package sample.tencent.matrix.battery.shell;
+package com.tencent.matrix.batterycanary.shell.ui;
 
 import android.annotation.SuppressLint;
 import android.app.ActivityManager;
@@ -22,13 +22,15 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.tencent.matrix.batterycanary.BatteryCanary;
+import com.tencent.matrix.batterycanary.R;
+import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCallback;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
 import com.tencent.matrix.batterycanary.shell.TopThreadFeature;
 import com.tencent.matrix.batterycanary.shell.TopThreadFeature.ContinuousCallback;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
+import com.tencent.matrix.batterycanary.utils.CallStackCollector;
 import com.tencent.matrix.batterycanary.utils.Consumer;
-import com.tencent.matrix.javalib.util.Pair;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.ArrayList;
@@ -36,7 +38,10 @@ import java.util.List;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import sample.tencent.matrix.R;
+import androidx.core.util.Pair;
+
+import static com.tencent.matrix.batterycanary.shell.TopThreadFeature.figureCupLoad;
+import static com.tencent.matrix.batterycanary.shell.TopThreadFeature.fixedColumn;
 
 /**
  * See {@link TopThreadFeature}.
@@ -61,11 +66,68 @@ final public class TopThreadIndicator {
     @Nullable
     private Delta<JiffiesSnapshot> mCurrDelta;
     @NonNull
+    private CallStackCollector mCollector = new CallStackCollector();
+    @NonNull
     private Consumer<Delta<JiffiesSnapshot>> mDumpHandler = new Consumer<Delta<JiffiesSnapshot>>() {
         @Override
         public void accept(Delta<JiffiesSnapshot> delta) {
+            if (delta == null) {
+                if (mRootView != null) {
+                    Toast.makeText(mRootView.getContext(), "Skip dump: no data", Toast.LENGTH_SHORT).show();
+                }
+                return;
+            }
+            if (delta.dlt.pid != Process.myPid()) {
+                if (mRootView != null) {
+                    Toast.makeText(mRootView.getContext(), "Skip dump: only support curr process now", Toast.LENGTH_SHORT).show();
+                }
+                return;
+            }
+
+            String tag = "TOP_THREAD_DUMP";
+            BatteryMonitorCallback.BatteryPrinter.Printer printer = new BatteryMonitorCallback.BatteryPrinter.Printer();
+            printer.writeTitle();
+            printer.append("| " + tag + "\n");
+            if (delta.isValid()) {
+                // Thread Load
+                printer.createSection("Proc");
+                printer.writeLine("pid", String.valueOf(delta.dlt.pid));
+                printer.writeLine("cmm", String.valueOf(delta.dlt.name));
+                printer.writeLine("load", (int) figureCupLoad(delta.dlt.totalJiffies.get(), delta.during / 10) + "%");
+                printer.createSubSection("Thread(" + delta.dlt.threadEntries.getList().size() + ")");
+                printer.writeLine("  TID\tLOAD \tSTATUS \tTHREAD_NAME \tJIFFY");
+                for (JiffiesSnapshot.ThreadJiffiesEntry threadJiffies : delta.dlt.threadEntries.getList()) {
+                    long entryJffies = threadJiffies.get();
+                    printer.append("|   -> ")
+                            .append(fixedColumn(String.valueOf(threadJiffies.tid), 5)).append("\t")
+                            .append(fixedColumn((int) figureCupLoad(entryJffies, delta.during / 10) + "%", 4)).append("\t")
+                            .append(threadJiffies.isNewAdded ? "+" : "~").append("/").append(threadJiffies.stat).append("\t")
+                            .append(fixedColumn(threadJiffies.name, 16)).append("\t")
+                            .append(entryJffies).append("\t")
+                            .append("\n");
+                }
+                // Thread Stack
+                printer.createSection("Stacks");
+                for (JiffiesSnapshot.ThreadJiffiesEntry threadJiffies : delta.dlt.threadEntries.getList()) {
+                    long entryJffies = threadJiffies.get();
+                    int load = (int) figureCupLoad(entryJffies, delta.during / 10);
+                    if (load > 0) {
+                        printer.createSubSection(threadJiffies.name + "(" + threadJiffies.tid + ")");
+                        String stack = mCollector.collect(threadJiffies.tid);
+                        int idx = 0;
+                        for (String line : stack.split("\n")) {
+                            printer.append(idx == 0 ? "|   -> " : "|      ").append(line).append("\n");
+                            idx++;
+                        }
+                    }
+                }
+            } else {
+                printer.createSection("Invalid data, ignore");
+            }
+            printer.writeEnding();
+            printer.dump();
             if (mRootView != null) {
-                Toast.makeText(mRootView.getContext(), "Dumping not impl", Toast.LENGTH_SHORT).show();
+                Toast.makeText(mRootView.getContext(), "Dump finish, search TAG '" + tag + "' for detail", Toast.LENGTH_LONG).show();
             }
         }
     };
@@ -121,7 +183,7 @@ final public class TopThreadIndicator {
             }
 
             final TextView tvPid = mRootView.findViewById(R.id.tv_pid);
-            tvPid.setText(String.valueOf(mCurrProc.left));
+            tvPid.setText(String.valueOf(mCurrProc.first));
 
             // listener
             mRootView.findViewById(R.id.layout_proc).setOnClickListener(new View.OnClickListener() {
@@ -131,7 +193,7 @@ final public class TopThreadIndicator {
                     PopupMenu menu = new PopupMenu(v.getContext(), tvProc);
                     final List<Pair<Integer, String>> procList = getProcList(v.getContext());
                     for (Pair<Integer, String> item : procList) {
-                        menu.getMenu().add("Process :" + item.right);
+                        menu.getMenu().add("Process :" + item.second);
                     }
                     menu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
                         @SuppressLint("SetTextI18n")
@@ -141,10 +203,10 @@ final public class TopThreadIndicator {
                             if (title.contains(":")) {
                                 String proc = title.substring(title.lastIndexOf(":") + 1);
                                 for (Pair<Integer, String> procItem : procList) {
-                                    if (title.equals("Process :" + procItem.right)) {
+                                    if (title.equals("Process :" + procItem.second)) {
                                         mCurrProc = procItem;
                                         tvProc.setText(":" + proc);
-                                        tvPid.setText(String.valueOf(mCurrProc.left));
+                                        tvPid.setText(String.valueOf(mCurrProc.first));
                                     }
                                 }
                             }
@@ -226,7 +288,7 @@ final public class TopThreadIndicator {
                 }
 
                 for (Delta<JiffiesSnapshot> delta : deltaList) {
-                    if (delta.dlt.pid == mCurrProc.left) {
+                    if (delta.dlt.pid == mCurrProc.first) {
                         if (delta.isValid()) {
                             int pid = delta.dlt.pid;
                             String name = delta.dlt.name;
@@ -290,10 +352,7 @@ final public class TopThreadIndicator {
         return proc;
     }
 
-    static float figureCupLoad(long jiffies, long cpuJiffies) {
-        return (jiffies / (cpuJiffies * 1f)) * 100;
-    }
-
+    @SuppressWarnings("SameParameterValue")
     static int dip2px(Context context, float dpVale) {
         final float scale = context.getResources().getDisplayMetrics().density;
         return (int) (dpVale * scale + 0.5f);

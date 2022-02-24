@@ -89,17 +89,6 @@ public class TopThreadFeature extends AbsMonitorFeature {
                 printer.dump();
                 return sStopShell;
             }
-
-            String fixedColumn(String input, int width) {
-                if (input != null && input.length() >= width) {
-                    return input;
-                }
-                return repeat(" ", width - (input == null ? 0 : input.length())) + input;
-            }
-
-            String repeat(String with, int count) {
-                return new String(new char[count]).replace("\0", with);
-            }
         });
     }
 
@@ -165,7 +154,19 @@ public class TopThreadFeature extends AbsMonitorFeature {
         return list;
     }
 
-    static float figureCupLoad(long jiffies, long cpuJiffies) {
+    public static float figureCupLoad(long jiffies, long cpuJiffies) {
         return (jiffies / (cpuJiffies * 1f)) * 100;
+    }
+
+
+    public static String fixedColumn(String input, int width) {
+        if (input != null && input.length() >= width) {
+            return input;
+        }
+        return repeat(" ", width - (input == null ? 0 : input.length())) + input;
+    }
+
+    public static String repeat(String with, int count) {
+        return new String(new char[count]).replace("\0", with);
     }
 }
