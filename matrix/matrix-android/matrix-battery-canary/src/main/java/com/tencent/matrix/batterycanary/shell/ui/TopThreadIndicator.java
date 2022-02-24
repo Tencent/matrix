@@ -1,5 +1,7 @@
 package com.tencent.matrix.batterycanary.shell.ui;
 
+import android.animation.PropertyValuesHolder;
+import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.ActivityManager;
@@ -18,9 +20,11 @@ import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.view.animation.AccelerateInterpolator;
 import android.widget.LinearLayout;
 import android.widget.PopupMenu;
 import android.widget.TextView;
@@ -191,14 +195,15 @@ final public class TopThreadIndicator {
                 MatrixLog.w(TAG, "Can not load indicator view!");
                 return false;
             }
-            WindowManager windowManager = (WindowManager) context.getApplicationContext().getSystemService(Context.WINDOW_SERVICE);
+            final int hashcode = mRootView.hashCode();
+            final WindowManager windowManager = (WindowManager) context.getApplicationContext().getSystemService(Context.WINDOW_SERVICE);
             DisplayMetrics metrics = new DisplayMetrics();
             if (null != windowManager.getDefaultDisplay()) {
                 windowManager.getDefaultDisplay().getMetrics(displayMetrics);
                 windowManager.getDefaultDisplay().getMetrics(metrics);
             }
 
-            WindowManager.LayoutParams layoutParam = new WindowManager.LayoutParams();
+            final WindowManager.LayoutParams layoutParam = new WindowManager.LayoutParams();
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 layoutParam.type = WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
             } else {
@@ -229,6 +234,58 @@ final public class TopThreadIndicator {
 
             final TextView tvPid = mRootView.findViewById(R.id.tv_pid);
             tvPid.setText(String.valueOf(mCurrProc.first));
+
+            // drag
+            mRootView.setOnTouchListener(new View.OnTouchListener() {
+                float downX = 0;
+                float downY = 0;
+                int downOffsetX = 0;
+                int downOffsetY = 0;
+
+                @SuppressLint("ClickableViewAccessibility")
+                @Override
+                public boolean onTouch(final View v, MotionEvent event) {
+                    switch (event.getAction()) {
+                        case MotionEvent.ACTION_DOWN:
+                            downX = event.getX();
+                            downY = event.getY();
+                            downOffsetX = layoutParam.x;
+                            downOffsetY = layoutParam.y;
+                            break;
+                        case MotionEvent.ACTION_MOVE:
+                            float moveX = event.getX();
+                            float moveY = event.getY();
+                            layoutParam.x += (moveX - downX) / 3;
+                            layoutParam.y += (moveY - downY) / 3;
+                            if (v != null) {
+                                windowManager.updateViewLayout(v, layoutParam);
+                            }
+                            break;
+                        case MotionEvent.ACTION_UP:
+                            PropertyValuesHolder holder = PropertyValuesHolder.ofInt(
+                                    "trans",
+                                    layoutParam.x,
+                                    layoutParam.x > (displayMetrics.widthPixels - mRootView.getWidth()) / 2 ? displayMetrics.widthPixels - mRootView.getWidth() : 0
+                            );
+                            ValueAnimator animator = ValueAnimator.ofPropertyValuesHolder(holder);
+                            animator.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                                @Override
+                                public void onAnimationUpdate(ValueAnimator animation) {
+                                    if (mRootView == null || mRootView.hashCode() != hashcode) {
+                                        return;
+                                    }
+                                    layoutParam.x = (int) animation.getAnimatedValue("trans");
+                                    windowManager.updateViewLayout(v, layoutParam);
+                                }
+                            });
+                            animator.setInterpolator(new AccelerateInterpolator());
+                            animator.setDuration(180).start();
+                            break;
+                    }
+                    return true;
+                }
+
+            });
 
             // listener
             mRootView.findViewById(R.id.layout_proc).setOnClickListener(new View.OnClickListener() {
