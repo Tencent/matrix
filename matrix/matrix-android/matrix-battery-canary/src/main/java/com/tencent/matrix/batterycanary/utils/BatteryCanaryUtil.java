@@ -84,6 +84,8 @@ public final class BatteryCanaryUtil {
         @AppStats.DevStatusDef int getDevStat(Context context);
         void updateAppStat(int value);
         void updateDevStat(int value);
+        int getBatteryPercentage(Context context);
+        int getBatteryCapacity(Context context);
 
         final class ExpireRef {
             final int value;
@@ -102,12 +104,15 @@ public final class BatteryCanaryUtil {
         }
     }
 
+    @SuppressWarnings("SpellCheckingInspection")
     static Proxy sCacheStub = new Proxy() {
         private String mProcessName;
         private String mPackageName;
         private ExpireRef mBatteryTemp;
         private ExpireRef mLastAppStat;
         private ExpireRef mLastDevStat;
+        private ExpireRef mLastBattPct;
+        private ExpireRef mLastBattCap;
 
         @Override
         public String getProcessName() {
@@ -178,6 +183,26 @@ public final class BatteryCanaryUtil {
             synchronized (this) {
                 mLastDevStat = new ExpireRef(value, DEFAULT_AMS_CACHE_MILLIS);
             }
+        }
+
+        @Override
+        public int getBatteryPercentage(Context context) {
+            if (mLastBattPct != null && !mLastBattPct.isExpired()) {
+                return mLastBattPct.value;
+            }
+            int val = getBatteryPercentageImmediately(context);
+            mLastBattPct = new ExpireRef(val, ONE_MIN);
+            return mLastBattPct.value;
+        }
+
+        @Override
+        public int getBatteryCapacity(Context context) {
+            if (mLastBattCap != null && !mLastBattCap.isExpired()) {
+                return mLastBattCap.value;
+            }
+            int val = getBatteryCapacityImmediately(context);
+            mLastBattCap = new ExpireRef(val, ONE_MIN);
+            return mLastBattCap.value;
         }
     };
 
@@ -479,7 +504,7 @@ public final class BatteryCanaryUtil {
     }
 
     @Nullable
-    public static Intent getBatteryStickyIntent(Context context) {
+    static Intent getBatteryStickyIntent(Context context) {
         try {
             return context.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
         } catch (Exception e) {
@@ -497,6 +522,10 @@ public final class BatteryCanaryUtil {
     }
 
     public static int getBatteryPercentage(Context context) {
+        return sCacheStub.getBatteryPercentage(context);
+    }
+
+    public static int getBatteryPercentageImmediately(Context context) {
         Intent batIntent = getBatteryStickyIntent(context);
         if (batIntent != null) {
             int level = batIntent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
@@ -508,9 +537,13 @@ public final class BatteryCanaryUtil {
         return -1;
     }
 
+    public static int getBatteryCapacity(Context context) {
+        return sCacheStub.getBatteryCapacity(context);
+    };
+
     @SuppressWarnings("ConstantConditions")
     @SuppressLint("PrivateApi")
-    public static int getBatteryCapacity(Context context) {
+    public static int getBatteryCapacityImmediately(Context context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             BatteryManager mBatteryManager = (BatteryManager) context.getSystemService(Context.BATTERY_SERVICE);
             int chargeCounter = mBatteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER);

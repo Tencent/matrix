@@ -212,13 +212,13 @@ public class CanaryUtilsTest {
 
     @Test
     public void testGetBatteryPercentage() {
-        int pct = BatteryCanaryUtil.getBatteryPercentage(mContext);
+        int pct = BatteryCanaryUtil.getBatteryPercentageImmediately(mContext);
         Assert.assertTrue(pct > 0);
     }
 
     @Test
     public void testGetBatteryCapacity() throws Exception {
-        int capacity0 = BatteryCanaryUtil.getBatteryCapacity(mContext);
+        int capacity0 = BatteryCanaryUtil.getBatteryCapacityImmediately(mContext);
         Assert.assertTrue(capacity0 > 0);
 
         PowerProfile powerProfile = PowerProfile.init(mContext);
