@@ -29,7 +29,9 @@ struct pthread_stack_info {
     uintptr_t stackbot;
 };
 
+#if defined(__arm64__) || defined(__x86_64__)
 static_assert(sizeof(pthread_stack_info) == (1 << 11), "Not aligned!");
+#endif
 
 // maybe fail
 void memory_logging_pthread_introspection_hook_install();

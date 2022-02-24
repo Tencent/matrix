@@ -25,20 +25,25 @@ extern "C" {
 #include <KSStackCursor.h>
 
 // a lite version of STRUCT_MCONTEXT_L in KSMachineContext
-#ifdef __arm64__
+#if defined(__arm64__)
 typedef struct {
     _STRUCT_ARM_EXCEPTION_STATE64   __es;
     _STRUCT_ARM_THREAD_STATE64      __ss;
 } KSCpuContext;
-#elif __arm__
+#elif defined(__arm__)
 typedef struct {
     _STRUCT_ARM_EXCEPTION_STATE     __es;
     _STRUCT_ARM_THREAD_STATE        __ss;
 } KSCpuContext;
-#elif __x86_64__
+#elif defined(__x86_64__)
 typedef struct {
     _STRUCT_X86_EXCEPTION_STATE64   __es;
     _STRUCT_X86_THREAD_STATE64      __ss;
+} KSCpuContext;
+#elif defined(__i386__)
+typedef struct {
+    _STRUCT_X86_EXCEPTION_STATE32   __es;
+    _STRUCT_X86_THREAD_STATE32      __ss;
 } KSCpuContext;
 #endif
 
