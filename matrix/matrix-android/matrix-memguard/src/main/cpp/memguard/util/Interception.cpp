@@ -636,7 +636,7 @@ bool memguard::interception::Install() {
     }
 
     if (xhook_export_symtable_hook("libc.so", "realloc",
-            reinterpret_cast<void*>(HandleReAlloc), nullptr) != 0) {
+            reinterpret_cast<void*>(HandleGlobalReAlloc), nullptr) != 0) {
         LOGE(LOG_TAG, "Fail to do export symtab hook for 'realloc'.");
         return false;
     }
