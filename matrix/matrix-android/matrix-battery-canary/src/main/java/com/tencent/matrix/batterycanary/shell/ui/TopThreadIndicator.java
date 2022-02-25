@@ -231,9 +231,10 @@ final public class TopThreadIndicator {
                 entryItemView.setVisibility(View.GONE);
                 entryGroup.addView(entryItemView, layoutParams);
             }
-
             final TextView tvPid = mRootView.findViewById(R.id.tv_pid);
             tvPid.setText(String.valueOf(mCurrProc.first));
+            final TextView tvProc = mRootView.findViewById(R.id.tv_proc);
+            tvProc.setText(mCurrProc.second);
 
             // drag
             mRootView.setOnTouchListener(new View.OnTouchListener() {
