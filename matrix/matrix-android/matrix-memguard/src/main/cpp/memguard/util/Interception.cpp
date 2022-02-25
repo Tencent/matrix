@@ -174,6 +174,7 @@ static void* HandleMAlloc(size_t size) {
         LOGD(LOG_TAG, "HandleMAlloc(%" PRIu32 ") = %p, skipped.", size, res);
     } else {
         LOGD(LOG_TAG, "HandleMAlloc(%" PRIu32 ") = %p, guarded.", size, res);
+        errno = 0;
     }
     return res;
 }
@@ -185,6 +186,7 @@ static void* HandleCAlloc(size_t elem_count, size_t elem_size) {
         LOGD(LOG_TAG, "HandleCAlloc(%" PRIu32 ",%" PRIu32 ") = %p, skipped.", elem_count, elem_size, res);
     } else {
         memset(res, 0, elem_count * elem_size);
+        errno = 0;
         LOGD(LOG_TAG, "HandleCAlloc(%" PRIu32 ",%" PRIu32 ") = %p, guarded.", elem_count, elem_size, res);
     }
     return res;
@@ -192,20 +194,21 @@ static void* HandleCAlloc(size_t elem_count, size_t elem_size) {
 
 static void* HandleReAlloc(void* ptr, size_t size) {
     if (ptr == nullptr) {
-        return HandleMAlloc(size);
+        return ORIGINAL_FUNCTION(malloc)(size);
     }
     if (size == 0) {
         HandleFree(ptr);
-        return ptr;
+        errno = 0;
+        return nullptr;
     }
     if (LIKELY(!allocation::IsAllocatedByThisAllocator(ptr))) {
         void* res = ORIGINAL_FUNCTION(realloc)(ptr, size);
         LOGD(LOG_TAG, "HandleReAlloc(%p,%" PRIu32 ") = %p, skipped.", ptr, size, res);
+        errno = 0;
         return res;
     }
-
     void* newPtr = HandleMAlloc(size);
-    if (newPtr == nullptr) {
+    if (UNLIKELY(newPtr == nullptr)) {
         LOGD(LOG_TAG, "HandleReAlloc(%p,%" PRIu32 ") = %p, failure.", ptr, size, newPtr);
         errno = ENOMEM;
         return nullptr;
@@ -214,6 +217,7 @@ static void* HandleReAlloc(void* ptr, size_t size) {
     memcpy(newPtr, ptr, (oldSize <= size ? oldSize : size));
     allocation::Free(ptr);
     LOGD(LOG_TAG, "HandleReAlloc(%p,%" PRIu32 ") = %p, moved, guarded.", ptr, size, newPtr);
+    errno = 0;
     return newPtr;
 }
 
@@ -224,6 +228,7 @@ static void* HandleMemAlign(size_t alignment, size_t byte_count) {
     }
     void* res = allocation::AlignedAllocate(byte_count, alignment);
     if (res != nullptr) {
+        errno = 0;
         LOGD(LOG_TAG, "HandleMemAlign(%" PRIu32 ",%" PRIu32 ") = %p, guarded.", alignment, byte_count, res);
         return res;
     } else {
@@ -242,6 +247,7 @@ static int HandlePosixMemAlign(void** ptr, size_t alignment, size_t size) {
         LOGD(LOG_TAG, "HandlePosixMemAlign(%p,%" PRIu32 ",%" PRIu32 ") = 0 (ptr_res:%p), guarded.",
              ptr, alignment, size, res);
         *ptr = res;
+        errno = 0;
         return 0;
     } else {
         int originalFnRet = ORIGINAL_FUNCTION(posix_memalign)(ptr, alignment, size);
@@ -264,6 +270,7 @@ static char* HandleStrDup(const char* str) {
     char* buf = (char*) allocation::Allocate(len + 1);
     if (buf != nullptr) {
         ::memcpy(buf, str, len + 1);
+        errno = 0;
         LOGD(LOG_TAG, "HandleStrDup(%p) = %p, guarded.", str, buf);
     } else {
         buf = ORIGINAL_FUNCTION(strdup)(str);
@@ -279,6 +286,7 @@ static char* HandleStrNDup(const char* str, size_t n) {
     if (buf != nullptr) {
         ::memcpy(buf, str, dupLen);
         buf[dupLen] = '\0';
+        errno = 0;
         LOGD(LOG_TAG, "HandleStrNDup(%p, %" PRIu32 ") = %p, guarded.", str, n, buf);
     } else {
         buf = ORIGINAL_FUNCTION(strndup)(str, n);
@@ -304,6 +312,7 @@ static void HandleFree(void* ptr) {
         ORIGINAL_FUNCTION(free)(ptr);
         LOGD(LOG_TAG, "HandleFree(%p), skipped.", ptr);
     } else {
+        errno = 0;
         LOGD(LOG_TAG, "HandleFree(%p), recycled.", ptr);
     }
 }
@@ -504,34 +513,6 @@ static void HandleDeleteArrSizeAligned(void* ptr, unsigned int size, size_t alig
     }
 }
 
-static void* HandleGlobalReAlloc(void* ptr, size_t size) {
-    if (ptr == nullptr) {
-        return ORIGINAL_FUNCTION(malloc)(size);
-    }
-    if (size == 0) {
-        HandleFree(ptr);
-        return ptr;
-    }
-    if (LIKELY(!allocation::IsAllocatedByThisAllocator(ptr))) {
-        void* res = ORIGINAL_FUNCTION(realloc)(ptr, size);
-        LOGD(LOG_TAG, "HandleGlobalReAlloc(%p,%" PRIu32 ") = %p, skipped.", ptr, size, res);
-        return res;
-    }
-
-    void* newPtr = ORIGINAL_FUNCTION(malloc)(size);
-    if (newPtr == nullptr) {
-        LOGD(LOG_TAG, "HandleGlobalReAlloc(%p,%" PRIu32 ") = %p, failure.", ptr, size, newPtr);
-        errno = ENOMEM;
-        return nullptr;
-    }
-    size_t oldSize = allocation::GetAllocatedSize(ptr);
-    memcpy(newPtr, ptr, (oldSize <= size ? oldSize : size));
-    allocation::Free(ptr);
-    LOGD(LOG_TAG, "HandleGlobalReAlloc(%p,%" PRIu32 ") = %p, moved, guarded.", ptr, size, newPtr);
-    return newPtr;
-}
-
-
 static bool InitializeOriginalFunctions() {
   sLibCHandle = ::dlopen("libc.so", RTLD_NOW);
   if (sLibCHandle == nullptr) {
@@ -610,6 +591,18 @@ bool memguard::interception::Install() {
         return false;
     }
 
+    if (xhook_export_symtable_hook("libc.so", "free",
+                                   reinterpret_cast<void*>(HandleFree), nullptr) != 0) {
+        LOGE(LOG_TAG, "Fail to do export symtab hook for 'free'.");
+        return false;
+    }
+
+    if (xhook_export_symtable_hook("libc.so", "realloc",
+                                   reinterpret_cast<void*>(HandleReAlloc), nullptr) != 0) {
+        LOGE(LOG_TAG, "Fail to do export symtab hook for 'realloc'.");
+        return false;
+    }
+
   #define X(pattern, ret_type, sym, args, handler, def_lib_handle) \
     if (!DoHook(HOOK_REQUEST_GROUPID_MEMGUARD, pattern, #sym, (void*) handler, nullptr)) { \
       return false; \
@@ -617,27 +610,15 @@ bool memguard::interception::Install() {
 
     for (auto & pattern : gOpts.targetSOPatterns) {
         ENUM_C_ALLOC_FUNCTIONS(pattern.c_str())
-        ENUM_CPP_ALLOC_FUNCTIONS(pattern.c_str())
+        // ENUM_CPP_ALLOC_FUNCTIONS(pattern.c_str())
     }
 
     ENUM_C_DEALLOC_AND_OTHER_FUNCTIONS(".*\\.so$")
-    ENUM_CPP_DEALLOC_FUNCTIONS(".*\\.so$")
+    // ENUM_CPP_DEALLOC_FUNCTIONS(".*\\.so$")
   #undef X
 
-    if (!DoHook(HOOK_REQUEST_GROUPID_MEMGUARD_2, ".*\\.so$", "realloc",
-            reinterpret_cast<void*>(HandleGlobalReAlloc), nullptr)) {
-        return false;
-    }
-
-    if (xhook_export_symtable_hook("libc.so", "free",
-            reinterpret_cast<void*>(HandleFree), nullptr) != 0) {
-        LOGE(LOG_TAG, "Fail to do export symtab hook for 'free'.");
-        return false;
-    }
-
-    if (xhook_export_symtable_hook("libc.so", "realloc",
-            reinterpret_cast<void*>(HandleGlobalReAlloc), nullptr) != 0) {
-        LOGE(LOG_TAG, "Fail to do export symtab hook for 'realloc'.");
+    if (!DoHook(HOOK_REQUEST_GROUPID_MEMGUARD, ".*\\.so$", "realloc",
+            reinterpret_cast<void*>(HandleReAlloc), nullptr)) {
         return false;
     }
 
