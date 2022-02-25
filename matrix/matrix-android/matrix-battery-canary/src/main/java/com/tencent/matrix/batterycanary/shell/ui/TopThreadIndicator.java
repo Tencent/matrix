@@ -440,7 +440,7 @@ final public class TopThreadIndicator {
                                 tvStatus.setText(status);
                                 tvLoad.setText(threadLoad + "%");
 
-                                int alertLevel = threadLoad >= 50 ? 2 : threadLoad >= 10 ? 1 : 0;
+                                int alertLevel = threadJiffies.isNewAdded ? 0 : threadLoad >= 50 ? 2 : threadLoad >= 10 ? 1 : 0;
                                 setTextAlertColor(tvName, alertLevel);
                                 setTextAlertColor(tvTid, alertLevel);
                                 setTextAlertColor(tvStatus, alertLevel);
