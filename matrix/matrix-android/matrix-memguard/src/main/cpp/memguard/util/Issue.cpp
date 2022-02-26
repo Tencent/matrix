@@ -54,34 +54,35 @@ static std::vector<std::string> GetReadableStackTrace(const void** pcs, size_t c
 static void PrintLineV(int fd, const char* fmt, va_list args) {
     char line[1024] = {};
     int bytesPrint = vsnprintf(line, sizeof(line), fmt, args);
+    if (bytesPrint < 0) {
+        return;
+    }
+    if (static_cast<size_t>(bytesPrint) < sizeof(line)) {
+        line[bytesPrint++] = '\n';
+    } else {
+        line[bytesPrint - 1] = '\n';
+    }
     if (fd >= 0) {
         TEMP_FAILURE_RETRY(syscall(__NR_write, fd, line, bytesPrint));
-        TEMP_FAILURE_RETRY(syscall(__NR_write, fd, "\n", 1));
+        syscall(__NR_fsync, fd);
     }
 }
 
 static void PrintLine(int fd, const char* fmt, ...) {
     va_list args;
     va_start(args, fmt);
-    char line[1024] = {};
-    int bytesPrint = vsnprintf(line, sizeof(line), fmt, args);
-    if (fd >= 0) {
-        TEMP_FAILURE_RETRY(syscall(__NR_write, fd, line, bytesPrint));
-        TEMP_FAILURE_RETRY(syscall(__NR_write, fd, "\n", 1));
-    }
+    PrintLineV(fd, fmt, args);
     va_end(args);
 }
 
 static void PrintStackTrace(int fd, const std::vector<std::string>& stack_trace, const char* header_fmt, ...) {
     va_list headerArgs;
     va_start(headerArgs, header_fmt);
-    ON_SCOPE_EXIT(va_end(headerArgs));
-
     PrintLineV(fd, header_fmt, headerArgs);
     for (size_t i = 0; i < stack_trace.size(); ++i) {
         PrintLine(fd, "    #%02d %s", i, stack_trace[i].c_str());
     }
-    fsync(fd);
+    va_end(headerArgs);
 }
 
 static pagepool::slot_t GetNearestSlotID(const void* addr) {
