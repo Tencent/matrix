@@ -32,11 +32,7 @@ int memguard::unwind::UnwindStack(void** pcs, size_t max_count) {
 }
 
 int memguard::unwind::UnwindStack(void* ucontext, void** pcs, size_t max_count) {
-#if defined(__aarch64__) || defined(__i386__)
-    return fastunwind::Unwind(ucontext, pcs, max_count);
-#else
     return sLocalUnwinder->Unwind(ucontext, pcs, max_count);
-#endif
 }
 
 char* memguard::unwind::GetStackElementDescription(const void* pc, char* desc_out, size_t max_length) {
