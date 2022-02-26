@@ -17,6 +17,7 @@ import com.tencent.matrix.util.MatrixLog;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+import java.io.FilenameFilter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -29,6 +30,7 @@ public final class MemGuard {
     private static final String NATIVE_LIB_NAME = "matrix-memguard";
     private static final String ISSUE_CALLBACK_THREAD_NAME = "MemGuard.IssueCB";
     private static final long ISSUE_CALLBACK_TIMEOUT_MS = 5000;
+    private static final String DEFAULT_DUMP_FILE_EXT = ".txt";
 
     private static final boolean[] sInstalled = {false};
 
@@ -121,14 +123,19 @@ public final class MemGuard {
         }
     }
 
-    @Nullable
-    public static File getLastIssueDumpFileIfExists() {
-        final String issueDumpFilePath = nativeGetIssueDumpFilePath();
-        if (TextUtils.isEmpty(issueDumpFilePath)) {
-            return null;
+    @NonNull
+    public static List<File> getLastIssueDumpFilesInDefaultDir(@NonNull Context context) {
+        final File[] subFiles = new File(getDefaultIssueDumpDir(context)).listFiles(new FilenameFilter() {
+            @Override
+            public boolean accept(File dir, String name) {
+                return name.endsWith(DEFAULT_DUMP_FILE_EXT);
+            }
+        });
+        if (subFiles != null) {
+            return Collections.unmodifiableList(Arrays.asList(subFiles));
+        } else {
+            return Collections.emptyList();
         }
-        final File result = new File(issueDumpFilePath);
-        return result.exists() ? result : null;
     }
 
     private static native boolean nativeInstall(@NonNull Options opts);
@@ -460,6 +467,7 @@ public final class MemGuard {
     }
 
     private static String generateIssueDumpFilePath(Context context, String dirPath) {
-        return new File(dirPath, "memguard_issue_in_proc_" + getProcessSuffix(context) + ".txt").getAbsolutePath();
+        return new File(dirPath, "memguard_issue_in_proc_"
+                + getProcessSuffix(context) + "_" + Process.myPid() + ".txt").getAbsolutePath();
     }
 }
