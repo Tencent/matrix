@@ -4,7 +4,6 @@ import android.app.Activity;
 import android.app.ActivityManager;
 import android.content.Context;
 import android.os.Process;
-import android.text.TextUtils;
 
 import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
