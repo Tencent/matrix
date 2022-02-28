@@ -120,6 +120,7 @@ namespace matrix {
         pthread_create(&thread_, nullptr,
                        reinterpret_cast<void *(*)(void *)>(&BufferManagement::process_routine),
                        this);
+        pthread_setname_np(thread_, "matrix.gl_rou");
         pthread_detach(thread_);
     }
 

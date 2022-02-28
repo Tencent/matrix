@@ -32,7 +32,7 @@ public class MemoryInfo {
 
     private int usage;
 
-    private int backtraceKey;
+    private int backtraceKey = -1;
 
     private long nativeStackPtr;
 
@@ -91,6 +91,10 @@ public class MemoryInfo {
 
         if (this.nativeStackPtr != 0) {
             OpenGLHook.releaseNative(this.nativeStackPtr);
+        }
+
+        if (this.backtraceKey != -1) {
+            JavaStacktrace.removeBacktraceKey(backtraceKey);
         }
 
         this.backtraceKey = key;
@@ -188,6 +192,13 @@ public class MemoryInfo {
         this.size = size;
         this.backtraceKey = backtrace;
         this.nativeStackPtr = nativeStackPtr;
+        if (this.nativeStackPtr != 0) {
+            OpenGLHook.releaseNative(this.nativeStackPtr);
+        }
+
+        if (this.backtraceKey != -1) {
+            JavaStacktrace.removeBacktraceKey(backtraceKey);
+        }
     }
 
     public void setRenderbufferInfo(int target, int width, int height, int internalFormat, int id, long eglContextId, long size, int backtrace, long nativeStackPtr) {
@@ -200,6 +211,13 @@ public class MemoryInfo {
         this.size = size;
         this.backtraceKey = backtrace;
         this.nativeStackPtr = nativeStackPtr;
+        if (this.nativeStackPtr != 0) {
+            OpenGLHook.releaseNative(this.nativeStackPtr);
+        }
+
+        if (this.backtraceKey != -1) {
+            JavaStacktrace.removeBacktraceKey(backtraceKey);
+        }
     }
 
     @Override
