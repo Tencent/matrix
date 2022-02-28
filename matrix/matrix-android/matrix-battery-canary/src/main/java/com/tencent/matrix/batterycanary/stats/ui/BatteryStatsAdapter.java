@@ -597,7 +597,12 @@ public class BatteryStatsAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
             }
 
             protected String getDetailInfo() {
-                return mItem.record.extras.toString();
+                StringBuilder sb = new StringBuilder();
+                sb.append("EVENT_ID: ").append(mItem.record.id).append("\n\n");
+                for (String key : mItem.record.extras.keySet()) {
+                    sb.append(key).append(" = ").append(mItem.record.extras.get(key)).append("\n");
+                }
+                return sb.toString();
             }
         }
 

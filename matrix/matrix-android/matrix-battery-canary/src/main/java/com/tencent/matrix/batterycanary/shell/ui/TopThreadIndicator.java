@@ -37,13 +37,16 @@ import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.Ji
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
 import com.tencent.matrix.batterycanary.shell.TopThreadFeature;
 import com.tencent.matrix.batterycanary.shell.TopThreadFeature.ContinuousCallback;
+import com.tencent.matrix.batterycanary.stats.BatteryStatsFeature;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.CallStackCollector;
 import com.tencent.matrix.batterycanary.utils.Consumer;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -81,7 +84,7 @@ final public class TopThreadIndicator {
     @NonNull
     private Consumer<Delta<JiffiesSnapshot>> mDumpHandler = new Consumer<Delta<JiffiesSnapshot>>() {
         @Override
-        public void accept(Delta<JiffiesSnapshot> delta) {
+        public void accept(final Delta<JiffiesSnapshot> delta) {
             if (delta == null) {
                 if (mRootView != null) {
                     Toast.makeText(mRootView.getContext(), "Skip dump: no data", Toast.LENGTH_SHORT).show();
@@ -100,11 +103,14 @@ final public class TopThreadIndicator {
             printer.writeTitle();
             printer.append("| " + tag + "\n");
             if (delta.isValid()) {
-                // Thread Load
+                final Map<String, Object> extras = new LinkedHashMap<>();
+                int cpuLoad = (int) figureCupLoad(delta.dlt.totalJiffies.get(), delta.during / 10);
+                extras.put("load", cpuLoad);
+                // Load
                 printer.createSection("Proc");
                 printer.writeLine("pid", String.valueOf(delta.dlt.pid));
                 printer.writeLine("cmm", String.valueOf(delta.dlt.name));
-                printer.writeLine("load", (int) figureCupLoad(delta.dlt.totalJiffies.get(), delta.during / 10) + "%");
+                printer.writeLine("load", cpuLoad + "%");
                 printer.createSubSection("Thread(" + delta.dlt.threadEntries.getList().size() + ")");
                 printer.writeLine("  TID\tLOAD \tSTATUS \tTHREAD_NAME \tJIFFY");
                 for (JiffiesSnapshot.ThreadJiffiesEntry threadJiffies : delta.dlt.threadEntries.getList()) {
@@ -125,6 +131,7 @@ final public class TopThreadIndicator {
                     if (load > 0) {
                         printer.createSubSection(threadJiffies.name + "(" + threadJiffies.tid + ")");
                         String stack = mCollector.collect(threadJiffies.tid);
+                        extras.put("stack_" + threadJiffies.name + "(" + threadJiffies.tid + ")", stack);
                         int idx = 0;
                         for (String line : stack.split("\n")) {
                             printer.append(idx == 0 ? "|   -> " : "|      ").append(line).append("\n");
@@ -132,6 +139,16 @@ final public class TopThreadIndicator {
                         }
                     }
                 }
+
+                // FIXME: remove dependency of BatteryCanary
+                BatteryCanary.getMonitorFeature(BatteryStatsFeature.class, new Consumer<BatteryStatsFeature>() {
+                    @Override
+                    public void accept(BatteryStatsFeature stats) {
+                        String event = "MATRIX_TOP_DUMP";
+                        int eventId = delta.dlt.pid;
+                        stats.statsEvent(event, eventId, extras);
+                    }
+                });
             } else {
                 printer.createSection("Invalid data, ignore");
             }
