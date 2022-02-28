@@ -61,6 +61,7 @@ import static com.tencent.matrix.batterycanary.shell.TopThreadFeature.fixedColum
  */
 final public class TopThreadIndicator {
     private static final String TAG = "Matrix.TopThreadIndicator";
+    private static final int MAX_PROC_NUM = 10;
     private static final int MAX_THREAD_NUM = 10;
     @SuppressLint("StaticFieldLeak")
     private static final TopThreadIndicator sInstance = new TopThreadIndicator();
@@ -190,6 +191,7 @@ final public class TopThreadIndicator {
         }
 
         try {
+            // 1. Window View
             mRootView = LayoutInflater.from(context).inflate(R.layout.float_top_thread, null);
             if (mRootView == null) {
                 MatrixLog.w(TAG, "Can not load indicator view!");
@@ -222,21 +224,32 @@ final public class TopThreadIndicator {
 
             windowManager.addView(mRootView, layoutParam);
 
-            // init entryGroup
-            LinearLayout entryGroup = mRootView.findViewById(R.id.layout_entry_group);
-            for (int i = 0; i < MAX_THREAD_NUM - 1; i++) {
-                View entryItemView = LayoutInflater.from(entryGroup.getContext()).inflate(R.layout.float_item_entry, entryGroup, false);
-                LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-                layoutParams.topMargin = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 5, entryGroup.getContext().getResources().getDisplayMetrics());
-                entryItemView.setVisibility(View.GONE);
-                entryGroup.addView(entryItemView, layoutParams);
-            }
-            final TextView tvPid = mRootView.findViewById(R.id.tv_pid);
+            // 2. Init views
+            final TextView tvPid = mRootView.findViewById(R.id.tv_curr_pid);
             tvPid.setText(String.valueOf(mCurrProc.first));
             final TextView tvProc = mRootView.findViewById(R.id.tv_proc);
             tvProc.setText(mCurrProc.second);
 
-            // drag
+            // init thread entryGroup
+            LinearLayout procEntryGroup = mRootView.findViewById(R.id.layout_entry_proc_group);
+            for (int i = 0; i < MAX_PROC_NUM - 1; i++) {
+                View entryItemView = LayoutInflater.from(procEntryGroup.getContext()).inflate(R.layout.float_item_proc_entry, procEntryGroup, false);
+                LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                layoutParams.topMargin = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 5, procEntryGroup.getContext().getResources().getDisplayMetrics());
+                entryItemView.setVisibility(View.GONE);
+                procEntryGroup.addView(entryItemView, layoutParams);
+            }
+            // init thread entryGroup
+            LinearLayout threadEntryGroup = mRootView.findViewById(R.id.layout_entry_group);
+            for (int i = 0; i < MAX_THREAD_NUM - 1; i++) {
+                View entryItemView = LayoutInflater.from(threadEntryGroup.getContext()).inflate(R.layout.float_item_thread_entry, threadEntryGroup, false);
+                LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                layoutParams.topMargin = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 5, threadEntryGroup.getContext().getResources().getDisplayMetrics());
+                entryItemView.setVisibility(View.GONE);
+                threadEntryGroup.addView(entryItemView, layoutParams);
+            }
+
+            // 3. Drag
             mRootView.setOnTouchListener(new View.OnTouchListener() {
                 float downX = 0;
                 float downY = 0;
@@ -288,7 +301,7 @@ final public class TopThreadIndicator {
 
             });
 
-            // listener
+            // 4. Listener
             mRootView.findViewById(R.id.layout_proc).setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -406,22 +419,35 @@ final public class TopThreadIndicator {
                 tvHeaderLeft.setText((battTemp > 0 ? battTemp / 10f : "/") + "°C");
                 setTextAlertColor(tvHeaderLeft, battTemp >= 350 ? 2 :  battTemp >= 300 ? 1 : 0);
 
-                // ThreadList
-                LinearLayout entryGroup = mRootView.findViewById(R.id.layout_entry_group);
-                for (int i = 0; i < entryGroup.getChildCount(); i++) {
-                    entryGroup.getChildAt(i).setVisibility(View.GONE);
+                // EntryList
+                LinearLayout procEntryGroup = mRootView.findViewById(R.id.layout_entry_proc_group);
+                for (int i = 0; i < procEntryGroup.getChildCount(); i++) {
+                    procEntryGroup.getChildAt(i).setVisibility(View.GONE);
+                }
+                LinearLayout threadEntryGroup = mRootView.findViewById(R.id.layout_entry_group);
+                for (int i = 0; i < threadEntryGroup.getChildCount(); i++) {
+                    threadEntryGroup.getChildAt(i).setVisibility(View.GONE);
                 }
 
-                for (Delta<JiffiesSnapshot> delta : deltaList) {
-                    //noinspection ConstantConditions
-                    if (delta.dlt.pid == mCurrProc.first) {
-                        if (delta.isValid()) {
-                            int pid = delta.dlt.pid;
-                            String name = delta.dlt.name;
-                            int procLoad = (int) figureCupLoad(delta.dlt.totalJiffies.get(), delta.during / 10L);
-                            TextView tvHeaderRight = mRootView.findViewById(R.id.tv_header_right);
-                            tvHeaderRight.setText(procLoad + "%");
+                List<Pair<Integer, String>> procList = getProcList(mRootView.getContext());
+                int totalCpuLoad = 0;
+                for (int i = 0; i < deltaList.size(); i++) {
+                    Delta<JiffiesSnapshot> delta = deltaList.get(i);
+                    if (delta.isValid()) {
+                        // Proc
+                        int pid = delta.dlt.pid;
+                        String name = delta.dlt.name;
+                        for (Pair<Integer, String> item : procList) {
+                            //noinspection ConstantConditions
+                            if (item.first == pid) {
+                                name = item.second;
+                            }
+                        }
 
+                        //noinspection ConstantConditions
+                        if (pid == mCurrProc.first) {
+                            // Curr Selected Proc's threads
+                            name = name + " <-";
                             int idx = 0;
                             for (JiffiesSnapshot.ThreadJiffiesEntry threadJiffies : delta.dlt.threadEntries.getList()) {
                                 long entryJffies = threadJiffies.get();
@@ -430,12 +456,12 @@ final public class TopThreadIndicator {
                                 String status = (threadJiffies.isNewAdded ? "+" : "~") + threadJiffies.stat;
                                 int threadLoad = (int) figureCupLoad(entryJffies, delta.during / 10L);
 
-                                View entryItemView = entryGroup.getChildAt(idx);
-                                entryItemView.setVisibility(View.VISIBLE);
-                                TextView tvName = entryItemView.findViewById(R.id.tv_name);
-                                TextView tvTid = entryItemView.findViewById(R.id.tv_tid);
-                                TextView tvStatus = entryItemView.findViewById(R.id.tv_status);
-                                TextView tvLoad = entryItemView.findViewById(R.id.tv_load);
+                                View threadItemView = threadEntryGroup.getChildAt(idx);
+                                threadItemView.setVisibility(View.VISIBLE);
+                                TextView tvName = threadItemView.findViewById(R.id.tv_name);
+                                TextView tvTid = threadItemView.findViewById(R.id.tv_tid);
+                                TextView tvStatus = threadItemView.findViewById(R.id.tv_status);
+                                TextView tvLoad = threadItemView.findViewById(R.id.tv_load);
                                 tvName.setText(threadName);
                                 tvTid.setText(String.valueOf(tid));
                                 tvStatus.setText(status);
@@ -452,11 +478,24 @@ final public class TopThreadIndicator {
                                     break;
                                 }
                             }
+                            mCurrDelta = delta;
                         }
-                        mCurrDelta = delta;
-                        break;
+
+                        int procLoad = (int) figureCupLoad(delta.dlt.totalJiffies.get(), delta.during / 10L);
+                        totalCpuLoad += procLoad;
+                        View procItemView = procEntryGroup.getChildAt(i);
+                        procItemView.setVisibility(View.VISIBLE);
+                        TextView tvProcName = procItemView.findViewById(R.id.tv_name);
+                        TextView tvProcPid = procItemView.findViewById(R.id.tv_pid);
+                        TextView tvProcLoad = procItemView.findViewById(R.id.tv_load);
+                        tvProcName.setText(":" + name);
+                        tvProcPid.setText(String.valueOf(pid));
+                        tvProcLoad.setText(procLoad + "%");
                     }
                 }
+
+                TextView tvHeaderRight = mRootView.findViewById(R.id.tv_header_right);
+                tvHeaderRight.setText(totalCpuLoad + "%");
             }
         });
     }
