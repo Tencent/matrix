@@ -34,7 +34,7 @@ public class MemoryInfo {
 
     private int backtraceKey = -1;
 
-    private long nativeStackPtr;
+    private long nativeStackPtr = 0;
 
     private final OpenGLInfo.TYPE resType;
 
@@ -190,15 +190,17 @@ public class MemoryInfo {
         this.id = id;
         this.eglContextId = eglContextId;
         this.size = size;
-        this.backtraceKey = backtrace;
-        this.nativeStackPtr = nativeStackPtr;
-        if (this.nativeStackPtr != 0) {
-            OpenGLHook.releaseNative(this.nativeStackPtr);
-        }
 
         if (this.backtraceKey != -1) {
             JavaStacktrace.removeBacktraceKey(backtraceKey);
         }
+
+        if (this.nativeStackPtr != 0) {
+            OpenGLHook.releaseNative(this.nativeStackPtr);
+        }
+
+        this.backtraceKey = backtrace;
+        this.nativeStackPtr = nativeStackPtr;
     }
 
     public void setRenderbufferInfo(int target, int width, int height, int internalFormat, int id, long eglContextId, long size, int backtrace, long nativeStackPtr) {
@@ -209,15 +211,17 @@ public class MemoryInfo {
         this.id = id;
         this.eglContextId = eglContextId;
         this.size = size;
-        this.backtraceKey = backtrace;
-        this.nativeStackPtr = nativeStackPtr;
-        if (this.nativeStackPtr != 0) {
-            OpenGLHook.releaseNative(this.nativeStackPtr);
-        }
 
         if (this.backtraceKey != -1) {
             JavaStacktrace.removeBacktraceKey(backtraceKey);
         }
+
+        if (this.nativeStackPtr != 0) {
+            OpenGLHook.releaseNative(this.nativeStackPtr);
+        }
+
+        this.backtraceKey = backtrace;
+        this.nativeStackPtr = nativeStackPtr;
     }
 
     @Override
