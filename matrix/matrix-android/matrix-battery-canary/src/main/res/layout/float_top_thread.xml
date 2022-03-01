@@ -2,8 +2,9 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
+    android:layout_height="match_parent"
     android:background="@color/BW_95"
-    android:layout_height="match_parent">
+    android:foreground="?attr/selectableItemBackground">
 
     <RelativeLayout
         android:id="@+id/layout_logo"
@@ -150,6 +151,17 @@
             android:layout_alignParentLeft="true"
             android:layout_centerVertical="true"
             android:text="PID"
+            android:textColor="@color/FG_2"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/tv_close"
+            android:layout_width="60dp"
+            android:layout_height="20dp"
+            android:layout_centerInParent="true"
+            android:foreground="?attr/selectableItemBackground"
+            android:gravity="center"
+            android:text="CLOSE"
             android:textColor="@color/FG_2"
             android:textSize="12sp" />
 

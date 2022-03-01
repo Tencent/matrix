@@ -33,11 +33,13 @@ import android.widget.Toast;
 import com.tencent.matrix.batterycanary.BatteryCanary;
 import com.tencent.matrix.batterycanary.R;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCallback;
+import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
 import com.tencent.matrix.batterycanary.shell.TopThreadFeature;
 import com.tencent.matrix.batterycanary.shell.TopThreadFeature.ContinuousCallback;
 import com.tencent.matrix.batterycanary.stats.BatteryStatsFeature;
+import com.tencent.matrix.batterycanary.stats.ui.BatteryStatsActivity;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.CallStackCollector;
 import com.tencent.matrix.batterycanary.utils.Consumer;
@@ -77,6 +79,8 @@ final public class TopThreadIndicator {
 
     @Nullable
     private View mRootView;
+    @Nullable
+    private BatteryMonitorCore mCore;
     @Nullable
     private Delta<JiffiesSnapshot> mCurrDelta;
     @NonNull
@@ -141,16 +145,15 @@ final public class TopThreadIndicator {
                         break;
                     }
                 }
-
-                // FIXME: remove dependency of BatteryCanary
-                BatteryCanary.getMonitorFeature(BatteryStatsFeature.class, new Consumer<BatteryStatsFeature>() {
-                    @Override
-                    public void accept(BatteryStatsFeature stats) {
+                // Stats
+                if (mCore != null) {
+                    BatteryStatsFeature stats = mCore.getMonitorFeature(BatteryStatsFeature.class);
+                    if (stats != null) {
                         String event = "MATRIX_TOP_DUMP";
                         int eventId = delta.dlt.pid;
                         stats.statsEvent(event, eventId, extras);
                     }
-                });
+                }
             } else {
                 printer.createSection("Invalid data, ignore");
             }
@@ -162,11 +165,51 @@ final public class TopThreadIndicator {
         }
     };
 
+    @NonNull
+    private Runnable mShowReportHandler = new Runnable() {
+        @Override
+        public void run() {
+            if (mCore == null) {
+                if (mRootView != null) {
+                    String tag = "TOP_THREAD_DUMP";
+                    Toast.makeText(mRootView.getContext(), "Search TAG '" + tag + "' for detail report", Toast.LENGTH_LONG).show();
+                }
+                return;
+            }
+            // Show battery stats report
+            Intent intent = new Intent(mCore.getContext(), BatteryStatsActivity.class);
+            if (!(mCore.getContext() instanceof Activity)) {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            }
+            mCore.getContext().startActivity(intent);
+        }
+    };
+
     public static TopThreadIndicator instance() {
         return sInstance;
     }
 
     TopThreadIndicator() {
+    }
+
+    public TopThreadIndicator attach(@NonNull BatteryMonitorCore core) {
+        mCore = core;
+        return this;
+    }
+
+    public TopThreadIndicator attach(@NonNull Consumer<Delta<JiffiesSnapshot>> dumpHandler) {
+        mDumpHandler = dumpHandler;
+        return this;
+    }
+
+    public TopThreadIndicator attach(@NonNull CallStackCollector collector) {
+        mCollector = collector;
+        return this;
+    }
+
+    public TopThreadIndicator attach(@NonNull Runnable showReportHandler) {
+        mShowReportHandler = showReportHandler;
+        return this;
     }
 
     public void requestPermission(Context context, int reqCode) {
@@ -321,46 +364,65 @@ final public class TopThreadIndicator {
             });
 
             // 4. Listener
-            mRootView.findViewById(R.id.layout_proc).setOnClickListener(new View.OnClickListener() {
+            View.OnClickListener listener = new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    final TextView tvProc = mRootView.findViewById(R.id.tv_proc);
-                    PopupMenu menu = new PopupMenu(v.getContext(), tvProc);
-                    final List<Pair<Integer, String>> procList = getProcList(v.getContext());
-                    for (Pair<Integer, String> item : procList) {
-                        //noinspection ConstantConditions
-                        menu.getMenu().add("Process :" + getProcSuffix(item.second));
+                    if (v.getId() == R.id.layout_dump) {
+                        // Dump all threads
+                        mDumpHandler.accept(mCurrDelta);
+                        return;
                     }
-                    menu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
-                        @SuppressLint("SetTextI18n")
-                        @Override
-                        public boolean onMenuItemClick(MenuItem item) {
-                            String title = item.getTitle().toString();
-                            if (title.contains(":")) {
-                                String proc = title.substring(title.lastIndexOf(":") + 1);
-                                for (Pair<Integer, String> procItem : procList) {
-                                    //noinspection ConstantConditions
-                                    if (title.equals("Process :" + getProcSuffix(procItem.second))) {
-                                        mCurrProc = procItem;
-                                        tvProc.setText(":" + proc);
-                                        tvPid.setText(String.valueOf(mCurrProc.first));
+                    if (v.getId() == R.id.layout_proc) {
+                        // Choose proc
+                        final TextView tvProc = mRootView.findViewById(R.id.tv_proc);
+                        PopupMenu menu = new PopupMenu(v.getContext(), tvProc);
+                        final List<Pair<Integer, String>> procList = getProcList(v.getContext());
+                        for (Pair<Integer, String> item : procList) {
+                            //noinspection ConstantConditions
+                            menu.getMenu().add("Process :" + getProcSuffix(item.second));
+                        }
+                        menu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+                            @SuppressLint("SetTextI18n")
+                            @Override
+                            public boolean onMenuItemClick(MenuItem item) {
+                                String title = item.getTitle().toString();
+                                if (title.contains(":")) {
+                                    String proc = title.substring(title.lastIndexOf(":") + 1);
+                                    for (Pair<Integer, String> procItem : procList) {
+                                        //noinspection ConstantConditions
+                                        if (title.equals("Process :" + getProcSuffix(procItem.second))) {
+                                            mCurrProc = procItem;
+                                            tvProc.setText(":" + proc);
+                                            tvPid.setText(String.valueOf(mCurrProc.first));
+                                        }
                                     }
                                 }
+                                return false;
                             }
-                            return false;
-                        }
-                    });
-                    menu.show();
+                        });
+                        menu.show();
+                        return;
+                    }
+                    if (v.getId() == R.id.iv_logo) {
+                        // Show dump report
+                        mShowReportHandler.run();
+                        return;
+                    }
+                    if (v.getId() == R.id.tv_close) {
+                        // Close
+                        mUiHandler.postDelayed(new Runnable() {
+                            @Override
+                            public void run() {
+                                dismiss();
+                            }
+                        }, 200L);
+                    }
                 }
-            });
-            mRootView.findViewById(R.id.layout_dump).setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    // Dump all threads
-                    mDumpHandler.accept(mCurrDelta);
-                }
-            });
-
+            };
+            mRootView.findViewById(R.id.layout_proc).setOnClickListener(listener);
+            mRootView.findViewById(R.id.layout_dump).setOnClickListener(listener);
+            mRootView.findViewById(R.id.iv_logo).setOnClickListener(listener);
+            mRootView.findViewById(R.id.tv_close).setOnClickListener(listener);
             return true;
         } catch (Exception e) {
             MatrixLog.w(TAG, "Create float view failed:" + e.getMessage());
@@ -415,14 +477,6 @@ final public class TopThreadIndicator {
     @NonNull
     public Consumer<Delta<JiffiesSnapshot>> getDumpHandler() {
         return mDumpHandler;
-    }
-
-    public void setDumpHandler(@NonNull Consumer<Delta<JiffiesSnapshot>> dumpHandler) {
-        mDumpHandler = dumpHandler;
-    }
-
-    public void setCollector(@NonNull CallStackCollector collector) {
-        mCollector = collector;
     }
 
     private void setTextAlertColor(TextView tv, int level) {

@@ -92,6 +92,7 @@ public class TestBatteryActivity extends Activity {
                 .sample(CpuFreqSnapshot.class, 1000L)
                 .sample(BatteryTmpSnapshot.class, 1000L);
         mCompositeMonitors.start();
+        TopThreadIndicator.instance().attach(plugin.core());
         benchmark();
 
         //
