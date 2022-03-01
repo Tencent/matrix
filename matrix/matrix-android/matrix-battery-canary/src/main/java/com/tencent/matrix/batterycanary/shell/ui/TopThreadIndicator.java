@@ -254,7 +254,7 @@ final public class TopThreadIndicator {
 
         try {
             // 1. Window View
-            mRootView = LayoutInflater.from(context).inflate(R.layout.float_top_thread, null);
+            mRootView = LayoutInflater.from(context).inflate(R.layout.float_top_thread_container, null);
             if (mRootView == null) {
                 MatrixLog.w(TAG, "Can not load indicator view!");
                 return false;
@@ -280,7 +280,7 @@ final public class TopThreadIndicator {
             //     layoutParam.x = metrics.widthPixels - rootView.getLayoutParams().width * 2;
             // }
             layoutParam.y = 0;
-            layoutParam.width = dip2px(context, 250f);
+            layoutParam.width = WindowManager.LayoutParams.WRAP_CONTENT;
             layoutParam.height = WindowManager.LayoutParams.WRAP_CONTENT;
             layoutParam.format = PixelFormat.TRANSPARENT;
 
@@ -356,6 +356,44 @@ final public class TopThreadIndicator {
                             });
                             animator.setInterpolator(new AccelerateInterpolator());
                             animator.setDuration(180).start();
+
+                            int upOffsetX = layoutParam.x;
+                            int upOffsetY = layoutParam.y;
+                            if (Math.abs(upOffsetX - downOffsetX) <= 20 && Math.abs(upOffsetY - downOffsetY) <= 20) {
+                                // OnClick
+                                if (mRootView.findViewById(R.id.iv_logo_minify).getVisibility() == View.VISIBLE) {
+                                    // Minify LOGO
+                                    View anchorView = mRootView.findViewById(R.id.iv_logo_minify);
+                                    PopupMenu menu = new PopupMenu(v.getContext(), anchorView);
+                                    menu.getMenu().add("Expand");
+                                    menu.getMenu().add("Close");
+                                    menu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+                                        @SuppressLint("SetTextI18n")
+                                        @Override
+                                        public boolean onMenuItemClick(MenuItem item) {
+                                            String title = item.getTitle().toString();
+                                            switch (title) {
+                                                case "Expand":
+                                                    mRootView.findViewById(R.id.layout_top).setVisibility(View.VISIBLE);
+                                                    mRootView.findViewById(R.id.iv_logo_minify).setVisibility(View.GONE);
+                                                    break;
+                                                case "Close":
+                                                    mUiHandler.postDelayed(new Runnable() {
+                                                        @Override
+                                                        public void run() {
+                                                            dismiss();
+                                                        }
+                                                    }, 200L);
+                                                    break;
+                                                default:
+                                                    break;
+                                            }
+                                            return false;
+                                        }
+                                    });
+                                    menu.show();
+                                }
+                            }
                             break;
                     }
                     return true;
@@ -408,21 +446,51 @@ final public class TopThreadIndicator {
                         mShowReportHandler.run();
                         return;
                     }
-                    if (v.getId() == R.id.tv_close) {
-                        // Close
-                        mUiHandler.postDelayed(new Runnable() {
+                    if (v.getId() == R.id.tv_minify) {
+                        // Minify
+                        mRootView.findViewById(R.id.layout_top).setVisibility(View.GONE);
+                        mRootView.findViewById(R.id.iv_logo_minify).setVisibility(View.VISIBLE);
+                        return;
+                    }
+                    if (v.getId() == R.id.iv_logo_minify) {
+                        // Minify LOGO
+                        View anchorView = mRootView.findViewById(R.id.iv_logo_minify);
+                        PopupMenu menu = new PopupMenu(v.getContext(), anchorView);
+                        menu.getMenu().add("Expand");
+                        menu.getMenu().add("Close");
+                        menu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+                            @SuppressLint("SetTextI18n")
                             @Override
-                            public void run() {
-                                dismiss();
+                            public boolean onMenuItemClick(MenuItem item) {
+                                String title = item.getTitle().toString();
+                                switch (title) {
+                                    case "Expand":
+                                        mRootView.findViewById(R.id.layout_top).setVisibility(View.VISIBLE);
+                                        mRootView.findViewById(R.id.iv_logo_minify).setVisibility(View.GONE);
+                                        break;
+                                    case "Close":
+                                        mUiHandler.postDelayed(new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                dismiss();
+                                            }
+                                        }, 200L);
+                                        break;
+                                    default:
+                                        break;
+                                }
+                                return false;
                             }
-                        }, 200L);
+                        });
+                        menu.show();
                     }
                 }
             };
+
             mRootView.findViewById(R.id.layout_proc).setOnClickListener(listener);
             mRootView.findViewById(R.id.layout_dump).setOnClickListener(listener);
             mRootView.findViewById(R.id.iv_logo).setOnClickListener(listener);
-            mRootView.findViewById(R.id.tv_close).setOnClickListener(listener);
+            mRootView.findViewById(R.id.tv_minify).setOnClickListener(listener);
             return true;
         } catch (Exception e) {
             MatrixLog.w(TAG, "Create float view failed:" + e.getMessage());

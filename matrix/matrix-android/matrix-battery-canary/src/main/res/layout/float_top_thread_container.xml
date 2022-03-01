@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content">
+
+    <ImageView
+        android:id="@+id/iv_logo_minify"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:contentDescription="logo"
+        android:foreground="?attr/selectableItemBackground"
+        android:src="@drawable/ic_launcher"
+        android:visibility="gone"
+        tools:ignore="HardcodedText"
+        tools:visibility="gone" />
+
+    <RelativeLayout
+        android:id="@+id/layout_top"
+        android:layout_width="250dp"
+        android:layout_height="wrap_content"
+        android:visibility="visible"
+        tools:visibility="visible">
+
+        <include layout="@layout/float_top_thread" />
+    </RelativeLayout>
+
+</RelativeLayout>
