@@ -1,6 +1,5 @@
 package com.tencent.matrix.batterycanary.shell;
 
-import android.app.ActivityManager;
 import android.content.Context;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -12,11 +11,13 @@ import com.tencent.matrix.batterycanary.monitor.feature.AbsMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
+import com.tencent.matrix.batterycanary.shell.ui.TopThreadIndicator;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import androidx.annotation.Nullable;
+import androidx.core.util.Pair;
 
 /**
  * Something like 'adb shell top -Hb -u <uid>'
@@ -142,13 +143,10 @@ public class TopThreadFeature extends AbsMonitorFeature {
     static List<Integer> getAllPidList(Context context) {
         ArrayList<Integer> list = new ArrayList<>();
         list.add(Process.myPid());
-        ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
-        if (am != null) {
-            List<ActivityManager.RunningAppProcessInfo> processes = am.getRunningAppProcesses();
-            for (ActivityManager.RunningAppProcessInfo item : processes) {
-                if (item.processName.contains(context.getPackageName()) && !list.contains(item.pid)) {
-                    list.add(item.pid);
-                }
+        List<Pair<Integer, String>> procList = TopThreadIndicator.getProcList(context);
+        for (Pair<Integer, String> item : procList) {
+            if (!list.contains(item.first)) {
+                list.add(item.first);
             }
         }
         return list;

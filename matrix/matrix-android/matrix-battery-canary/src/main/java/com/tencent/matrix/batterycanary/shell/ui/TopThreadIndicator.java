@@ -137,6 +137,8 @@ final public class TopThreadIndicator {
                             printer.append(idx == 0 ? "|   -> " : "|      ").append(line).append("\n");
                             idx++;
                         }
+                    } else {
+                        break;
                     }
                 }
 
@@ -326,7 +328,8 @@ final public class TopThreadIndicator {
                     PopupMenu menu = new PopupMenu(v.getContext(), tvProc);
                     final List<Pair<Integer, String>> procList = getProcList(v.getContext());
                     for (Pair<Integer, String> item : procList) {
-                        menu.getMenu().add("Process :" + item.second);
+                        //noinspection ConstantConditions
+                        menu.getMenu().add("Process :" + getProcSuffix(item.second));
                     }
                     menu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
                         @SuppressLint("SetTextI18n")
@@ -336,7 +339,8 @@ final public class TopThreadIndicator {
                             if (title.contains(":")) {
                                 String proc = title.substring(title.lastIndexOf(":") + 1);
                                 for (Pair<Integer, String> procItem : procList) {
-                                    if (title.equals("Process :" + procItem.second)) {
+                                    //noinspection ConstantConditions
+                                    if (title.equals("Process :" + getProcSuffix(procItem.second))) {
                                         mCurrProc = procItem;
                                         tvProc.setText(":" + proc);
                                         tvPid.setText(String.valueOf(mCurrProc.first));
@@ -408,6 +412,11 @@ final public class TopThreadIndicator {
         }
     }
 
+    @NonNull
+    public Consumer<Delta<JiffiesSnapshot>> getDumpHandler() {
+        return mDumpHandler;
+    }
+
     public void setDumpHandler(@NonNull Consumer<Delta<JiffiesSnapshot>> dumpHandler) {
         mDumpHandler = dumpHandler;
     }
@@ -457,7 +466,8 @@ final public class TopThreadIndicator {
                         for (Pair<Integer, String> item : procList) {
                             //noinspection ConstantConditions
                             if (item.first == pid) {
-                                name = item.second;
+                                //noinspection ConstantConditions
+                                name = getProcSuffix(item.second);
                             }
                         }
 
@@ -517,15 +527,14 @@ final public class TopThreadIndicator {
         });
     }
 
-    static List<Pair<Integer, String>> getProcList(Context context) {
+    public static List<Pair<Integer, String>> getProcList(Context context) {
         ArrayList<Pair<Integer, String>> list = new ArrayList<>();
         ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
         if (am != null) {
             List<ActivityManager.RunningAppProcessInfo> processes = am.getRunningAppProcesses();
             for (ActivityManager.RunningAppProcessInfo item : processes) {
                 if (item.processName.contains(context.getPackageName())) {
-                    String proc = getProcSuffix(item.processName);
-                    list.add(new Pair<>(item.pid, proc));
+                    list.add(new Pair<>(item.pid, item.processName));
                 }
             }
         }
