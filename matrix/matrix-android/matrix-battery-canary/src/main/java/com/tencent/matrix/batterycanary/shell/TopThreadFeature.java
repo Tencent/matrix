@@ -1,5 +1,6 @@
 package com.tencent.matrix.batterycanary.shell;
 
+import android.app.ActivityManager;
 import android.content.Context;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -11,7 +12,6 @@ import com.tencent.matrix.batterycanary.monitor.feature.AbsMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
-import com.tencent.matrix.batterycanary.shell.ui.TopThreadIndicator;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -56,12 +56,12 @@ public class TopThreadFeature extends AbsMonitorFeature {
                 for (Delta<JiffiesSnapshot> delta : deltaList) {
                     allProcJiffies += delta.dlt.totalJiffies.get();
                 }
-                int totalLoad = (int) figureCupLoad(allProcJiffies, seconds * 100L);
+                float totalLoad = figureCupLoad(allProcJiffies, seconds * 100L);
 
                 Printer printer = new Printer();
                 printer.writeTitle();
                 printer.append("| TOP Thread\tpidNum=").append(deltaList.size())
-                        .append("\tcpuLoad=").append(totalLoad).append("%")
+                        .append("\tcpuLoad=").append(formatFloat(totalLoad, 1)).append("%")
                         .append("\n");
 
                 // Thread Load
@@ -70,14 +70,14 @@ public class TopThreadFeature extends AbsMonitorFeature {
                         printer.createSection("Proc");
                         printer.writeLine("pid", String.valueOf(delta.dlt.pid));
                         printer.writeLine("cmm", String.valueOf(delta.dlt.name));
-                        printer.writeLine("load", (int) figureCupLoad(delta.dlt.totalJiffies.get(), seconds * 100L) + "%");
+                        printer.writeLine("load", formatFloat(figureCupLoad(delta.dlt.totalJiffies.get(), seconds * 100L), 1) + "%");
                         printer.createSubSection("Thread(" + delta.dlt.threadEntries.getList().size() + ")");
                         printer.writeLine("  TID\tLOAD \tSTATUS \tTHREAD_NAME \tJIFFY");
                         for (JiffiesSnapshot.ThreadJiffiesEntry threadJiffies : delta.dlt.threadEntries.getList()) {
                             long entryJffies = threadJiffies.get();
                             printer.append("|   -> ")
                                     .append(fixedColumn(String.valueOf(threadJiffies.tid), 5)).append("\t")
-                                    .append(fixedColumn((int) figureCupLoad(entryJffies, seconds * 100L) + "%", 4)).append("\t")
+                                    .append(fixedColumn(formatFloat(figureCupLoad(entryJffies, seconds * 100L), 1), 4)).append("\t")
                                     .append(threadJiffies.isNewAdded ? "+" : "~").append("/").append(threadJiffies.stat).append("\t")
                                     .append(fixedColumn(threadJiffies.name, 16)).append("\t")
                                     .append(entryJffies).append("\t")
@@ -143,10 +143,24 @@ public class TopThreadFeature extends AbsMonitorFeature {
     static List<Integer> getAllPidList(Context context) {
         ArrayList<Integer> list = new ArrayList<>();
         list.add(Process.myPid());
-        List<Pair<Integer, String>> procList = TopThreadIndicator.getProcList(context);
+        List<Pair<Integer, String>> procList = getProcList(context);
         for (Pair<Integer, String> item : procList) {
             if (!list.contains(item.first)) {
                 list.add(item.first);
+            }
+        }
+        return list;
+    }
+
+    public static List<Pair<Integer, String>> getProcList(Context context) {
+        ArrayList<Pair<Integer, String>> list = new ArrayList<>();
+        ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+        if (am != null) {
+            List<ActivityManager.RunningAppProcessInfo> processes = am.getRunningAppProcesses();
+            for (ActivityManager.RunningAppProcessInfo item : processes) {
+                if (item.processName.contains(context.getPackageName())) {
+                    list.add(new Pair<>(item.pid, item.processName));
+                }
             }
         }
         return list;
@@ -156,6 +170,9 @@ public class TopThreadFeature extends AbsMonitorFeature {
         return (jiffies / (cpuJiffies * 1f)) * 100;
     }
 
+    public static String formatFloat(float input, int decimal) {
+        return String.format("%." + decimal + "f", input);
+    }
 
     public static String fixedColumn(String input, int width) {
         if (input != null && input.length() >= width) {
@@ -164,7 +181,8 @@ public class TopThreadFeature extends AbsMonitorFeature {
         return repeat(" ", width - (input == null ? 0 : input.length())) + input;
     }
 
-    public static String repeat(String with, int count) {
-        return new String(new char[count]).replace("\0", with);
+    @SuppressWarnings("SameParameterValue")
+    static String repeat(String symbol, int count) {
+        return new String(new char[count]).replace("\0", symbol);
     }
 }

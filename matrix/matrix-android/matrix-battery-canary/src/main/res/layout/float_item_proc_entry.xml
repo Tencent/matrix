@@ -23,7 +23,7 @@
 
         <TextView
             android:id="@+id/tv_pid"
-            android:layout_width="30dp"
+            android:layout_width="35dp"
             android:layout_height="wrap_content"
             android:layout_marginRight="5dp"
             android:ellipsize="end"
@@ -48,7 +48,7 @@
 
         <TextView
             android:id="@+id/tv_load"
-            android:layout_width="30dp"
+            android:layout_width="35dp"
             android:layout_height="wrap_content"
             android:ellipsize="end"
             android:gravity="right"
