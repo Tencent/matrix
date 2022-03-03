@@ -260,6 +260,20 @@ static pthread_mutex_t* get_dl_mutex_address() {
     return s_dl_mutex_address;
 }
 
+typedef struct {
+    void* original_data;
+    iterate_callback original_cb;
+} dl_iter_data_wrapper_t;
+
+static int dl_iterate_phdr_npe_avoidance_cb(struct dl_phdr_info* info, size_t info_size, void* wrapped_data) {
+    if (info->dlpi_name == NULL) {
+        LOGW(LOG_TAG, "Path is null, skip it.");
+        return 0;
+    }
+    dl_iter_data_wrapper_t* casted_wrapped_data = (dl_iter_data_wrapper_t*) wrapped_data;
+    return casted_wrapped_data->original_cb(info, info_size, casted_wrapped_data->original_data);
+}
+
 int semi_dl_iterate_phdr(iterate_callback cb, void* data) {
     int sdk = android_get_device_api_level();
     bool fallback_to_legacy = false;
@@ -293,7 +307,11 @@ int semi_dl_iterate_phdr(iterate_callback cb, void* data) {
             goto bail_sdk_21_22;
         }
 
-        ret = dl_iterate_phdr(cb, data);
+        dl_iter_data_wrapper_t wrapped_data = {
+                .original_cb = cb,
+                .original_data = data
+        };
+        ret = dl_iterate_phdr(dl_iterate_phdr_npe_avoidance_cb, &wrapped_data);
 
         bail_sdk_21_22:
         if (dl_mutex != NULL) {
@@ -318,7 +336,11 @@ int semi_dl_iterate_phdr(iterate_callback cb, void* data) {
             goto bail_sdk_23_26;
         }
 
-        ret = dl_iterate_phdr(cb, data);
+        dl_iter_data_wrapper_t wrapped_data = {
+                .original_cb = cb,
+                .original_data = data
+        };
+        ret = dl_iterate_phdr(dl_iterate_phdr_npe_avoidance_cb, &wrapped_data);
 
         bail_sdk_23_26:
         return ret;
