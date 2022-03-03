@@ -51,7 +51,7 @@ namespace matrix::hprof {
             throw std::runtime_error(error_msg);
         }
         if (!S_ISREG(file_stat.st_mode))
-            throw std::runtime_error("File descriptor is a regular file.");
+            throw std::runtime_error("File descriptor is not a regular file.");
         data_size_ = file_stat.st_size;
         data_ = mmap(nullptr, data_size_, PROT_READ, MAP_PRIVATE, hprof_fd, 0);
         if (data_ == nullptr) throw std::runtime_error("Failed to mmap file.");
