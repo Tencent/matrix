@@ -25,3 +25,4 @@
 #-renamesourcefileattribute SourceFile
 
 -keep class com.tencent.matrix.resource.analyzer.model.DestroyedActivityInfo { *; }
+-keep class com.tencent.matrix.resource.TaskResult { *; }
