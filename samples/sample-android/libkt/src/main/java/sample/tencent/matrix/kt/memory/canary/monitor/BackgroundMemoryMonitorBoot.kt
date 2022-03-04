@@ -40,7 +40,7 @@ object BackgroundMemoryMonitorBoot {
     }
 
     internal val procStagedBgMemoryMonitorConfig = ProcessBgMemoryMonitorConfig(
-        reportCallback = procBgMemCallback,
+        callback = procBgMemCallback,
         bgStatefulOwner = StagedBackgroundOwner,
         checkInterval = 20 * 1000L,
         javaThresholdByte = 10 * 1000L,
@@ -49,7 +49,7 @@ object BackgroundMemoryMonitorBoot {
     )
 
     internal val procDeepBgMemoryMonitorConfig = ProcessBgMemoryMonitorConfig(
-        reportCallback = procBgMemCallback,
+        callback = procBgMemCallback,
         bgStatefulOwner = DeepBackgroundOwner,
         checkInterval = 20 * 1000L,
         javaThresholdByte = 10 * 1000L,
