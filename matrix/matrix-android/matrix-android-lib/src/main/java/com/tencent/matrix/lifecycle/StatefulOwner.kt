@@ -95,6 +95,9 @@ private class AutoReleaseObserverWrapper constructor(
 ) : ObserverWrapper(observer, targetObservable), LifecycleObserver {
 
     init {
+        if (lifecycleOwner.lifecycle.currentState == Lifecycle.State.DESTROYED) {
+            throw IllegalStateException("NOT allow to observe with DESTROYED lifecycle owner")
+        }
         lifecycleOwner.lifecycle.addObserver(this)
     }
 
