@@ -3,7 +3,7 @@ package sample.tencent.matrix.kt.memory.canary.monitor
 import com.tencent.matrix.lifecycle.owners.ProcessDeepBackgroundOwner
 import com.tencent.matrix.lifecycle.owners.ProcessStagedBackgroundOwner
 import com.tencent.matrix.lifecycle.supervisor.AppDeepBackgroundOwner
-import com.tencent.matrix.lifecycle.supervisor.ProcessSupervisor
+import com.tencent.matrix.lifecycle.supervisor.AppStagedBackgroundOwner
 import com.tencent.matrix.memory.canary.MemInfo
 import com.tencent.matrix.memory.canary.monitor.AppBgSumPssMonitorConfig
 import com.tencent.matrix.memory.canary.monitor.ProcessBgMemoryMonitorConfig
@@ -23,7 +23,7 @@ object BackgroundMemoryMonitorBoot {
     internal val appStagedBgMemoryMonitorConfig =
         AppBgSumPssMonitorConfig(
             callback = appBgMemCallback,
-            bgStatefulOwner = ProcessSupervisor.appStagedBackgroundOwner,
+            bgStatefulOwner = AppStagedBackgroundOwner,
             thresholdKB = 2 * 1024L,
             checkInterval = 10 * 1000L,
             checkTimes = 1,

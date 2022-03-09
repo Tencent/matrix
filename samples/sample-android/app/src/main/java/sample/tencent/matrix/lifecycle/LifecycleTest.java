@@ -13,6 +13,7 @@ import com.tencent.matrix.lifecycle.owners.ProcessUILifecycleOwner;
 import com.tencent.matrix.lifecycle.owners.ProcessUIResumedStateOwner;
 import com.tencent.matrix.lifecycle.owners.ProcessUIStartedStateOwner;
 import com.tencent.matrix.lifecycle.supervisor.AppExplicitBackgroundOwner;
+import com.tencent.matrix.lifecycle.supervisor.AppStagedBackgroundOwner;
 import com.tencent.matrix.lifecycle.supervisor.AppUIForegroundOwner;
 import com.tencent.matrix.lifecycle.supervisor.ProcessSupervisor;
 import com.tencent.matrix.listeners.IAppForeground;
@@ -109,7 +110,7 @@ public class LifecycleTest {
             }
         });
 
-        ProcessSupervisor.INSTANCE.getAppStagedBackgroundOwner().observeForever(new IStateObserver() {
+        AppStagedBackgroundOwner.INSTANCE.observeForever(new IStateObserver() {
             @Override
             public void on() {
                 MatrixLog.d(TAG, "AppStagedBg: on");
