@@ -30,13 +30,13 @@ interface IBackgroundStatefulOwner : IStatefulOwner
  * So do [OverlayWindowLifecycleOwner].
  *
  * If one of [ForegroundServiceLifecycleOwner] and [OverlayWindowLifecycleOwner] were disabled, the
- * [ExplicitBackgroundOwner] would start the timer checker to check if there are foreground services
+ * [ProcessExplicitBackgroundOwner] would start the timer checker to check if there are foreground services
  * or Overlay Windows
  *
  * The state change event is delayed for at least 34ms for removing foreground widgets
  * like floating view which depends on [ProcessUILifecycleOwner]. see [TimerChecker]
  */
-object ExplicitBackgroundOwner : StatefulOwner(), IBackgroundStatefulOwner {
+object ProcessExplicitBackgroundOwner : StatefulOwner(), IBackgroundStatefulOwner {
     private const val TAG = "Matrix.background.Explicit"
 
     var maxCheckInterval = MAX_CHECK_INTERVAL
@@ -50,7 +50,7 @@ object ExplicitBackgroundOwner : StatefulOwner(), IBackgroundStatefulOwner {
 
     private val checkTask = object : TimerChecker(TAG, maxCheckInterval) {
         override fun action(): Boolean {
-            val uiForeground by lazy { ProcessUILifecycleOwner.startedStateOwner.active() }
+            val uiForeground by lazy { ProcessUIStartedStateOwner.active() }
             val fgService by lazy { ProcessUILifecycleOwner.hasForegroundService() }
             val visibleWindow by lazy { OverlayWindowLifecycleOwner.hasVisibleWindow() }
 
@@ -74,7 +74,7 @@ object ExplicitBackgroundOwner : StatefulOwner(), IBackgroundStatefulOwner {
     init {
         object : ImmutableMultiSourceStatefulOwner(
             ReduceOperators.OR,
-            ProcessUILifecycleOwner.startedStateOwner,
+            ProcessUIStartedStateOwner,
             ForegroundServiceLifecycleOwner,
             OverlayWindowLifecycleOwner
         ), ISerialObserver {}.observeForever(object : ISerialObserver {
@@ -94,7 +94,7 @@ object ExplicitBackgroundOwner : StatefulOwner(), IBackgroundStatefulOwner {
      * stopForeground/removeFloatingView for more accurate state callbacks.
      */
     override fun active(): Boolean {
-        return if (ProcessUILifecycleOwner.startedStateOwner.active()) {
+        return if (ProcessUIStartedStateOwner.active()) {
             turnOff()
             false
         } else {
@@ -107,12 +107,12 @@ object ExplicitBackgroundOwner : StatefulOwner(), IBackgroundStatefulOwner {
 
 /**
  * State-ON:
- * Process is explicitly in background: [ExplicitBackgroundOwner] isNotActive
+ * Process is explicitly in background: [ProcessExplicitBackgroundOwner] isNotActive
  * BUT there are tasks in recent screen
  *
- * notice: same as [ExplicitBackgroundOwner]
+ * notice: same as [ProcessExplicitBackgroundOwner]
  */
-object StagedBackgroundOwner : StatefulOwner(), IBackgroundStatefulOwner {
+object ProcessStagedBackgroundOwner : StatefulOwner(), IBackgroundStatefulOwner {
     private const val TAG = "Matrix.background.Staged"
 
     var maxCheckInterval = MAX_CHECK_INTERVAL
@@ -135,10 +135,10 @@ object StagedBackgroundOwner : StatefulOwner(), IBackgroundStatefulOwner {
 
     private val checkTask = object : TimerChecker(TAG, maxCheckInterval, maxCheckTimes) {
         override fun action(): Boolean {
-            if (ExplicitBackgroundOwner.active()
+            if (ProcessExplicitBackgroundOwner.active()
                 && (ProcessUILifecycleOwner.hasRunningAppTask()
                     .also { MatrixLog.i(TAG, "hasRunningAppTask? $it") }
-                        || ProcessUILifecycleOwner.createdStateOwner.active())
+                        || ProcessUICreatedStateOwner.active())
             ) {
                 MatrixLog.i(TAG, "turn ON")
                 turnOn() // staged background
@@ -151,7 +151,7 @@ object StagedBackgroundOwner : StatefulOwner(), IBackgroundStatefulOwner {
     }
 
     init {
-        ExplicitBackgroundOwner.observeForever(object : ISerialObserver {
+        ProcessExplicitBackgroundOwner.observeForever(object : ISerialObserver {
             override fun on() { // explicit background
                 checkTask.post()
             }
@@ -164,7 +164,7 @@ object StagedBackgroundOwner : StatefulOwner(), IBackgroundStatefulOwner {
     }
 
     override fun active(): Boolean {
-        return if (!ExplicitBackgroundOwner.active()) {
+        return if (!ProcessExplicitBackgroundOwner.active()) {
             turnOff()
             false
         } else {
@@ -174,13 +174,13 @@ object StagedBackgroundOwner : StatefulOwner(), IBackgroundStatefulOwner {
     }
 }
 
-object DeepBackgroundOwner : StatefulOwner(), IBackgroundStatefulOwner {
+object ProcessDeepBackgroundOwner : StatefulOwner(), IBackgroundStatefulOwner {
 
     private val delegate = object : ImmutableMultiSourceStatefulOwner(
         ReduceOperators.AND,
-        ProcessUILifecycleOwner.createdStateOwner.reverse(), // move to first to avoid useless checks
-        ExplicitBackgroundOwner,
-        StagedBackgroundOwner.reverse()
+        ProcessUICreatedStateOwner.reverse(), // move to first to avoid useless checks
+        ProcessExplicitBackgroundOwner,
+        ProcessStagedBackgroundOwner.reverse()
     ), ISerialObserver {}
 
     override fun active() = delegate.active()

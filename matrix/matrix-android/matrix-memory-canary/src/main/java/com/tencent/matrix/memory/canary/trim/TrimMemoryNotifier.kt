@@ -8,8 +8,8 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.OnLifecycleEvent
 import com.tencent.matrix.Matrix
 import com.tencent.matrix.lifecycle.IStateObserver
-import com.tencent.matrix.lifecycle.owners.DeepBackgroundOwner
-import com.tencent.matrix.lifecycle.owners.StagedBackgroundOwner
+import com.tencent.matrix.lifecycle.owners.ProcessDeepBackgroundOwner
+import com.tencent.matrix.lifecycle.owners.ProcessStagedBackgroundOwner
 import com.tencent.matrix.util.MatrixHandlerThread
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.safeApply
@@ -79,8 +79,8 @@ object TrimMemoryNotifier {
             }
 
             bgObserver.let {
-                StagedBackgroundOwner.observeForever(it)
-                DeepBackgroundOwner.observeForever(it)
+                ProcessStagedBackgroundOwner.observeForever(it)
+                ProcessDeepBackgroundOwner.observeForever(it)
             }
         }
     }

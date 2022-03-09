@@ -9,6 +9,7 @@ import android.os.Process
 import android.text.TextUtils
 import com.tencent.matrix.Matrix
 import com.tencent.matrix.lifecycle.owners.ProcessUILifecycleOwner
+import com.tencent.matrix.lifecycle.owners.ProcessUIStartedStateOwner
 import com.tencent.matrix.lifecycle.supervisor.ProcessSupervisor
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.MatrixUtil
@@ -60,7 +61,7 @@ data class ProcessInfo(
     val pid: Int = Process.myPid(),
     val name: String = MatrixUtil.getProcessName(Matrix.with().application),
     val activity: String = ProcessUILifecycleOwner.recentScene.substringAfterLast('.'),
-    val isProcessFg: Boolean = ProcessUILifecycleOwner.startedStateOwner.active(),
+    val isProcessFg: Boolean = ProcessUIStartedStateOwner.active(),
     val isAppFg: Boolean = ProcessSupervisor.isAppUIForeground
 ) {
     override fun toString(): String {

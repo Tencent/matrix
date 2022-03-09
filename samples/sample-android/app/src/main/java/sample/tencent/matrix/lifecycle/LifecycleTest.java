@@ -5,11 +5,15 @@ import androidx.lifecycle.LifecycleOwner;
 import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.lifecycle.IStateObserver;
-import com.tencent.matrix.lifecycle.owners.DeepBackgroundOwner;
-import com.tencent.matrix.lifecycle.owners.ExplicitBackgroundOwner;
 import com.tencent.matrix.lifecycle.owners.OverlayWindowLifecycleOwner;
+import com.tencent.matrix.lifecycle.owners.ProcessDeepBackgroundOwner;
+import com.tencent.matrix.lifecycle.owners.ProcessExplicitBackgroundOwner;
+import com.tencent.matrix.lifecycle.owners.ProcessStagedBackgroundOwner;
 import com.tencent.matrix.lifecycle.owners.ProcessUILifecycleOwner;
-import com.tencent.matrix.lifecycle.owners.StagedBackgroundOwner;
+import com.tencent.matrix.lifecycle.owners.ProcessUIResumedStateOwner;
+import com.tencent.matrix.lifecycle.owners.ProcessUIStartedStateOwner;
+import com.tencent.matrix.lifecycle.supervisor.AppExplicitBackgroundOwner;
+import com.tencent.matrix.lifecycle.supervisor.AppUIForegroundOwner;
 import com.tencent.matrix.lifecycle.supervisor.ProcessSupervisor;
 import com.tencent.matrix.listeners.IAppForeground;
 import com.tencent.matrix.util.MatrixLog;
@@ -29,7 +33,7 @@ public class LifecycleTest {
             }
         });
 
-        ProcessUILifecycleOwner.INSTANCE.getResumedStateOwner().observeForever(new IStateObserver() {
+        ProcessUIResumedStateOwner.INSTANCE.observeForever(new IStateObserver() {
             @Override
             public void on() {
                 MatrixLog.d(TAG, "ProcessUILifecycleOwner: ON_RESUME");
@@ -41,7 +45,7 @@ public class LifecycleTest {
             }
         });
 
-        ProcessUILifecycleOwner.INSTANCE.getStartedStateOwner().observeForever(new IStateObserver() {
+        ProcessUIStartedStateOwner.INSTANCE.observeForever(new IStateObserver() {
             @Override
             public void on() {
                 MatrixLog.d(TAG, "ProcessUILifecycleOwner: ON_START");
@@ -53,7 +57,7 @@ public class LifecycleTest {
             }
         });
 
-        ExplicitBackgroundOwner.INSTANCE.observeForever(new IStateObserver() {
+        ProcessExplicitBackgroundOwner.INSTANCE.observeForever(new IStateObserver() {
             @Override
             public void on() {
                 MatrixLog.d(TAG, "ExplicitBackgroundOwner: ON");
@@ -69,7 +73,7 @@ public class LifecycleTest {
             }
         });
 
-        StagedBackgroundOwner.INSTANCE.observeForever(new IStateObserver() {
+        ProcessStagedBackgroundOwner.INSTANCE.observeForever(new IStateObserver() {
             @Override
             public void on() {
                 MatrixLog.d(TAG, "StagedBackgroundOwner: ON");
@@ -81,7 +85,7 @@ public class LifecycleTest {
             }
         });
 
-        DeepBackgroundOwner.INSTANCE.observeForever(new IStateObserver() {
+        ProcessDeepBackgroundOwner.INSTANCE.observeForever(new IStateObserver() {
             @Override
             public void on() {
                 MatrixLog.d(TAG, "DeepBackgroundOwner: ON");
@@ -93,7 +97,7 @@ public class LifecycleTest {
             }
         });
 
-        ProcessSupervisor.INSTANCE.getAppUIForegroundOwner().observeForever(new IStateObserver() {
+        AppUIForegroundOwner.INSTANCE.observeForever(new IStateObserver() {
             @Override
             public void on() {
                 MatrixLog.d(TAG, "AppUI: on ...... %s", ProcessSupervisor.INSTANCE.getRecentScene());
@@ -117,7 +121,7 @@ public class LifecycleTest {
             }
         });
 
-        ProcessSupervisor.INSTANCE.getAppExplicitBackgroundOwner().observeForever(
+        AppExplicitBackgroundOwner.INSTANCE.observeForever(
                 new IStateObserver() {
                     @Override
                     public void on() {
