@@ -143,8 +143,9 @@ public class OpenGLHook {
         if (ids.length > 0) {
             final AtomicInteger counter = new AtomicInteger(ids.length);
 
+            JavaStacktrace.Trace trace = JavaStacktrace.getBacktraceValue(throwable);
             for (final int id : ids) {
-                final OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.TEXTURE, id, threadId, eglContext, throwable, nativeStackPtr, ActivityRecorder.getInstance().getCurrentActivityInfo(), counter);
+                final OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.TEXTURE, id, threadId, eglContext, trace, nativeStackPtr, ActivityRecorder.getInstance().getCurrentActivityInfo(), counter);
                 ResRecordManager.getInstance().gen(openGLInfo);
 
                 if (getInstance().mResourceListener != null) {
@@ -171,8 +172,9 @@ public class OpenGLHook {
         if (ids.length > 0) {
             AtomicInteger counter = new AtomicInteger(ids.length);
 
+            JavaStacktrace.Trace trace = JavaStacktrace.getBacktraceValue(throwable);
             for (int id : ids) {
-                final OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.BUFFER, id, threadId, eglContext, throwable, nativeStackPtr, ActivityRecorder.getInstance().getCurrentActivityInfo(), counter);
+                final OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.BUFFER, id, threadId, eglContext, trace, nativeStackPtr, ActivityRecorder.getInstance().getCurrentActivityInfo(), counter);
                 ResRecordManager.getInstance().gen(openGLInfo);
 
                 if (getInstance().mResourceListener != null) {
@@ -199,8 +201,9 @@ public class OpenGLHook {
         if (ids.length > 0) {
             AtomicInteger counter = new AtomicInteger(ids.length);
 
+            JavaStacktrace.Trace trace = JavaStacktrace.getBacktraceValue(throwable);
             for (int id : ids) {
-                final OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.FRAME_BUFFERS, id, threadId, eglContext, throwable, nativeStackPtr, ActivityRecorder.getInstance().getCurrentActivityInfo(), counter);
+                final OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.FRAME_BUFFERS, id, threadId, eglContext, trace, nativeStackPtr, ActivityRecorder.getInstance().getCurrentActivityInfo(), counter);
                 ResRecordManager.getInstance().gen(openGLInfo);
 
                 if (getInstance().mResourceListener != null) {
@@ -227,8 +230,9 @@ public class OpenGLHook {
         if (ids.length > 0) {
             AtomicInteger counter = new AtomicInteger(ids.length);
 
+            JavaStacktrace.Trace trace = JavaStacktrace.getBacktraceValue(throwable);
             for (int id : ids) {
-                final OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.RENDER_BUFFERS, id, threadId, eglContext, throwable, nativeStackPtr, ActivityRecorder.getInstance().getCurrentActivityInfo(), counter);
+                final OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.RENDER_BUFFERS, id, threadId, eglContext, trace, nativeStackPtr, ActivityRecorder.getInstance().getCurrentActivityInfo(), counter);
                 ResRecordManager.getInstance().gen(openGLInfo);
 
                 if (getInstance().mResourceListener != null) {
@@ -313,11 +317,12 @@ public class OpenGLHook {
             return;
         }
 
+        JavaStacktrace.Trace javatrace = JavaStacktrace.getBacktraceValue(throwable);
         MemoryInfo memoryInfo = openGLInfo.getMemoryInfo();
         if (memoryInfo == null) {
             memoryInfo = new MemoryInfo(OpenGLInfo.TYPE.TEXTURE);
         }
-        memoryInfo.setTexturesInfo(target, level, internalFormat, width, height, 0, border, format, type, openGLInfo.getId(), openGLInfo.getEglContextNativeHandle(), size, throwable, nativeStack);
+        memoryInfo.setTexturesInfo(target, level, internalFormat, width, height, 0, border, format, type, openGLInfo.getId(), openGLInfo.getEglContextNativeHandle(), size, javatrace, nativeStack);
         openGLInfo.setMemoryInfo(memoryInfo);
 
         if (getInstance().mMemoryListener != null) {
@@ -332,11 +337,12 @@ public class OpenGLHook {
             return;
         }
 
+        JavaStacktrace.Trace javatrace = JavaStacktrace.getBacktraceValue(throwable);
         MemoryInfo memoryInfo = openGLInfo.getMemoryInfo();
         if (memoryInfo == null) {
             memoryInfo = new MemoryInfo(OpenGLInfo.TYPE.TEXTURE);
         }
-        memoryInfo.setTexturesInfo(target, level, internalFormat, width, height, depth, border, format, type, openGLInfo.getId(), openGLInfo.getEglContextNativeHandle(), size, throwable, nativeStack);
+        memoryInfo.setTexturesInfo(target, level, internalFormat, width, height, depth, border, format, type, openGLInfo.getId(), openGLInfo.getEglContextNativeHandle(), size, javatrace, nativeStack);
         openGLInfo.setMemoryInfo(memoryInfo);
 
         if (getInstance().mMemoryListener != null) {
@@ -357,11 +363,13 @@ public class OpenGLHook {
         } else {
             actualSize = size;
         }
+
+        JavaStacktrace.Trace javatrace = JavaStacktrace.getBacktraceValue(throwable);
         MemoryInfo memoryInfo = openGLInfo.getMemoryInfo();
         if (memoryInfo == null) {
             memoryInfo = new MemoryInfo(OpenGLInfo.TYPE.BUFFER);
         }
-        memoryInfo.setBufferInfo(target, usage, openGLInfo.getId(), openGLInfo.getEglContextNativeHandle(), actualSize, throwable, nativeStack);
+        memoryInfo.setBufferInfo(target, usage, openGLInfo.getId(), openGLInfo.getEglContextNativeHandle(), actualSize, javatrace, nativeStack);
         openGLInfo.setMemoryInfo(memoryInfo);
 
         if (getInstance().mMemoryListener != null) {
@@ -377,11 +385,12 @@ public class OpenGLHook {
             return;
         }
 
+        JavaStacktrace.Trace javatrace = JavaStacktrace.getBacktraceValue(key);
         MemoryInfo memoryInfo = openGLInfo.getMemoryInfo();
         if (memoryInfo == null) {
             memoryInfo = new MemoryInfo(OpenGLInfo.TYPE.RENDER_BUFFERS);
         }
-        memoryInfo.setRenderbufferInfo(target, width, height, internalformat, openGLInfo.getId(), openGLInfo.getEglContextNativeHandle(), size, key, nativeStack);
+        memoryInfo.setRenderbufferInfo(target, width, height, internalformat, openGLInfo.getId(), openGLInfo.getEglContextNativeHandle(), size, javatrace, nativeStack);
         openGLInfo.setMemoryInfo(memoryInfo);
 
         if (getInstance().mMemoryListener != null) {
