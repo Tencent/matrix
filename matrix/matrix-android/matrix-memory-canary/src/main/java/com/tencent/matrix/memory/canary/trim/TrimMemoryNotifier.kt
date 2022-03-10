@@ -10,6 +10,8 @@ import com.tencent.matrix.Matrix
 import com.tencent.matrix.lifecycle.IStateObserver
 import com.tencent.matrix.lifecycle.owners.ProcessDeepBackgroundOwner
 import com.tencent.matrix.lifecycle.owners.ProcessStagedBackgroundOwner
+import com.tencent.matrix.lifecycle.supervisor.AppDeepBackgroundOwner
+import com.tencent.matrix.lifecycle.supervisor.AppStagedBackgroundOwner
 import com.tencent.matrix.util.MatrixHandlerThread
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.safeApply
@@ -28,12 +30,15 @@ object TrimMemoryNotifier {
 
     private const val TAG = "Matrix.TrimMemoryNotifier"
 
-    private val trimCallbacks = ArrayList<TrimCallback>()
+    private val procTrimCallbacks = ArrayList<TrimCallback>()
+    private val appTrimCallbacks = ArrayList<TrimCallback>()
 
     private fun ArrayList<TrimCallback>.trim() {
-        forEach {
-            safeApply(TAG) {
-                it.trim()
+        synchronized(this) {
+            forEach {
+                safeApply(TAG) {
+                    it.trim()
+                }
             }
         }
     }
@@ -47,13 +52,15 @@ object TrimMemoryNotifier {
             Matrix.with().application.registerComponentCallbacks(object : ComponentCallbacks2 {
                 override fun onLowMemory() {
                     MatrixLog.e(TAG, "onLowMemory")
-                    trimCallbacks.trim()
+                    procTrimCallbacks.trim()
+                    appTrimCallbacks.trim()
                 }
 
                 override fun onTrimMemory(level: Int) {
-                    if (level <= 15) {
+                    if (level <= ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL) {
                         MatrixLog.e(TAG, "onTrimMemory: $level")
-                        trimCallbacks.trim()
+                        procTrimCallbacks.trim()
+                        appTrimCallbacks.trim()
                     }
                 }
 
@@ -61,45 +68,102 @@ object TrimMemoryNotifier {
             })
 
 
-            val task = Runnable {
-                trimCallbacks.trim()
+            val procTrimTask = Runnable {
+                MatrixLog.i(TAG, "trim: process staged bg timeout ${config.delayMillis}")
+                procTrimCallbacks.trim()
             }
 
-            val bgObserver = object : IStateObserver {
+            object : IStateObserver {
                 val runningHandler = MatrixHandlerThread.getDefaultHandler()
 
                 override fun on() {
                     runningHandler.removeCallbacksAndMessages(null)
-                    runningHandler.postDelayed(task, config.delayMillis)
+                    runningHandler.postDelayed(procTrimTask, config.delayMillis)
                 }
 
                 override fun off() {
-                    runningHandler.removeCallbacks(task)
+                    runningHandler.removeCallbacks(procTrimTask)
                 }
+            }.let {
+                ProcessStagedBackgroundOwner.observeForever(it)
             }
 
-            bgObserver.let {
-                ProcessStagedBackgroundOwner.observeForever(it)
-                ProcessDeepBackgroundOwner.observeForever(it)
+            ProcessDeepBackgroundOwner.observeForever(object : IStateObserver {
+                override fun on() {
+                    MatrixLog.i(TAG, "trim: process deep bg")
+                    procTrimCallbacks.trim()
+                }
+
+                override fun off() {}
+            })
+
+
+            val appTrimTask = Runnable {
+                MatrixLog.i(TAG, "trim: app staged bg timeout ${config.delayMillis}")
+                appTrimCallbacks.trim()
             }
+
+            object : IStateObserver {
+                val runningHandler = MatrixHandlerThread.getDefaultHandler()
+
+                override fun on() {
+                    runningHandler.removeCallbacksAndMessages(null)
+                    runningHandler.postDelayed(appTrimTask, config.delayMillis)
+                }
+
+                override fun off() {
+                    runningHandler.removeCallbacks(appTrimTask)
+                }
+            }.let {
+                AppStagedBackgroundOwner.observeForever(it)
+            }
+
+            AppDeepBackgroundOwner.observeForever(object : IStateObserver {
+                override fun on() {
+                    MatrixLog.i(TAG, "trim: app deep bg")
+                    appTrimCallbacks.trim()
+                }
+
+                override fun off() {}
+            })
         }
     }
 
-    fun addTrimCallback(callback: TrimCallback) {
-        trimCallbacks.add(callback)
+    @Synchronized
+    fun addProcessBackgroundTrimCallback(callback: TrimCallback) {
+        procTrimCallbacks.add(callback)
     }
 
-    fun addTrimCallback(lifecycleOwner: LifecycleOwner, callback: TrimCallback) {
-        trimCallbacks.add(callback)
+    @Synchronized
+    fun addProcessBackgroundTrimCallback(lifecycleOwner: LifecycleOwner, callback: TrimCallback) {
+        procTrimCallbacks.add(callback)
         lifecycleOwner.lifecycle.addObserver(object : LifecycleObserver {
             @OnLifecycleEvent(Lifecycle.Event.ON_DESTROY)
             fun release() {
-                trimCallbacks.remove(callback)
+                procTrimCallbacks.remove(callback)
             }
         })
     }
 
+    @Synchronized
+    fun addAppBackgroundTrimCallback(callback: TrimCallback) {
+        appTrimCallbacks.add(callback)
+    }
+
+    @Synchronized
+    fun addAppBackgroundTrimCallback(lifecycleOwner: LifecycleOwner, callback: TrimCallback) {
+        appTrimCallbacks.add(callback)
+        lifecycleOwner.lifecycle.addObserver(object : LifecycleObserver {
+            @OnLifecycleEvent(Lifecycle.Event.ON_DESTROY)
+            fun release() {
+                appTrimCallbacks.remove(callback)
+            }
+        })
+    }
+
+    @Synchronized
     fun removeTrimCallback(callback: TrimCallback) {
-        trimCallbacks.remove(callback)
+        procTrimCallbacks.remove(callback)
+        appTrimCallbacks.remove(callback)
     }
 }
