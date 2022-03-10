@@ -39,6 +39,7 @@ public class JavaStacktrace {
             return resultTrace;
         } else {
             sThrowableMap.remove(key);
+            mapTrace.addReference();
             return mapTrace;
         }
     }
