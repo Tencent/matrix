@@ -192,14 +192,14 @@ object ProcessSupervisor : IProcessListener by ProcessSubordinate.processListene
                     safeApply(log = false) { app.unbindService(this) }
 
                     safeLet({
-                        app.bindService(intent, this, BIND_ABOVE_CLIENT)
+                        app.bindService(intent, this, BIND_WAIVE_PRIORITY)
                         MatrixLog.e(tag, "rebound supervisor")
                     }, failed = {
                         // install subordinate pacemaker
                         MatrixLog.printErrStackTrace(tag, it, "rebound supervisor failed")
                         SubordinatePacemaker.install(app) {
                             safeApply(tag) {
-                                app.bindService(intent, this, BIND_ABOVE_CLIENT)
+                                app.bindService(intent, this, BIND_WAIVE_PRIORITY)
                                 SubordinatePacemaker.uninstall(app)
                                 MatrixLog.i(tag, "subordinate pacemaker rebound supervisor")
                             }
@@ -212,7 +212,7 @@ object ProcessSupervisor : IProcessListener by ProcessSubordinate.processListene
         app.bindService(
             intent,
             conn,
-            if (autoCreate) (BIND_AUTO_CREATE.or(BIND_ABOVE_CLIENT)) else BIND_ABOVE_CLIENT
+            if (autoCreate) (BIND_AUTO_CREATE) else BIND_WAIVE_PRIORITY
         )
 
         MatrixLog.i(tag, "inCharge")
