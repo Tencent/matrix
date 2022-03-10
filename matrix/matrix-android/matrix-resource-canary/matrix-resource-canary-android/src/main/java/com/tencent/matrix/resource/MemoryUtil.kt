@@ -32,9 +32,9 @@ private fun error(message: String, throwable: Throwable? = null) {
  * Memory non-suspending dump / analyze util.
  *
  * The util is used to dump / analyze heap memory into a HPROF file, like [Debug.dumpHprofData] and
- * LeakCanary. However, all dump API of the util can dump memory without suspending runtime because
- * the util will fork a new process for dumping
- * (See [Copy-on-Write](https://en.wikipedia.org/wiki/Copy-on-write)).
+ * LeakCanary. However, all APIs of the util can dump memory without suspending runtime because the
+ * util will fork a new process for dumping (See
+ * [Copy-on-Write](https://en.wikipedia.org/wiki/Copy-on-write)).
  *
  * The idea is from [KOOM](https://github.com/KwaiAppTeam/KOOM).
  *
@@ -66,6 +66,8 @@ object MemoryUtil {
         }
         return@lazy true
     }
+
+    private external fun loadJniCache(): Boolean
 
     private fun initializeTaskStateDir(): Boolean {
         val taskStateDir = File(storageDir, "/ts").apply {
@@ -100,45 +102,89 @@ object MemoryUtil {
         hprofPath: String,
         timeout: Long = DEFAULT_TASK_TIMEOUT
     ): Boolean = initSafe(false) {
-        return when (val pid = fork(timeout)) {
+        return when (val pid = forkDump(hprofPath, timeout)) {
             -1 -> run {
                 error("Failed to fork task executing process.")
                 false
             }
-            0 -> run { // task process
-                // Unnecessary to catch exception because new exception instance cannot be created
-                // in forked process. The process just exits with non-zero code.
-                updateTaskState(TaskState.DUMP)
-                Debug.dumpHprofData(hprofPath)
-                exit(0)
-                true
-            }
             else -> run { // current process
-                info("Start dumping HPROF. Wait for task process [${pid}] complete executing.")
-                val result = wait(pid)
-                info("Complete dumping HPROF with error: ${result.errorMessage}.")
+                info("Wait for task process [${pid}] complete executing.")
+                val result = waitTask(pid)
+                info("Complete task with error: ${result.errorMessage}.")
                 result.success
             }
         }
     }
 
-    private external fun analyzeInternal(
-        hprofPath: String,
-        resultPath: String,
-        referenceKey: String
-    ): Boolean
+    private external fun forkDump(hprofPath: String, timeout: Long): Int
 
     private val initializeFailedResult
         get() = ActivityLeakResult.failure(RuntimeException("Initialize failed."), 0)
+
+    private fun createAnalyzeDeserializeTask(
+        hprofPath: String,
+        referenceKey: String,
+        timeout: Long,
+        keepResult: Boolean,
+        forkTask: (String, String, String, Long) -> Int
+    ): ActivityLeakResult = initSafe(initializeFailedResult) {
+        val analyzeStart = System.currentTimeMillis()
+        val resultFile = createAnalyzeFile()
+            ?: return ActivityLeakResult.failure(
+                RuntimeException("Failed to create temporary analyze result file"), 0
+            )
+        val resultPath = resultFile.absolutePath
+        return when (val pid =
+            forkTask(hprofPath, resultPath, referenceKey, timeout)) {
+            -1 -> run {
+                ActivityLeakResult.failure(
+                    RuntimeException("Failed to fork task executing process."),
+                    0
+                )
+            }
+            else -> run { // current process
+                info("Wait for task process [${pid}] complete executing.")
+                val result = waitTask(pid)
+                info("Complete task with error: ${result.errorMessage}.")
+                if (!result.success) {
+                    return ActivityLeakResult.failure(
+                        RuntimeException("Analyze failed with error message: ${result.errorMessage}. Last task state: ${result.lastState}."),
+                        System.currentTimeMillis() - analyzeStart
+                    )
+                }
+                return try {
+                    val chains = deserialize(resultFile)
+                    if (chains.isEmpty()) {
+                        ActivityLeakResult.noLeak(System.currentTimeMillis() - analyzeStart)
+                    } else {
+                        // TODO: support reporting multiple leak chain.
+                        chains.first().run {
+                            ActivityLeakResult.leakDetected(
+                                false,
+                                nodes.last().objectName,
+                                convertToReferenceChain(),
+                                System.currentTimeMillis() - analyzeStart
+                            )
+                        }
+                    }
+                } catch (exception: Exception) {
+                    ActivityLeakResult.failure(
+                        exception, System.currentTimeMillis() - analyzeStart
+                    )
+                } finally {
+                    if (!keepResult) {
+                        if (resultFile.exists()) resultFile.delete()
+                    }
+                }
+            }
+        }
+    }
 
     /**
      * Analyze existing HPROF file [hprofPath]. This function will suspend current thread.
      *
      * Object referring from [DestroyedActivityInfo] instance with key [referenceKey] will be marked
      * as leak object while analyzing.
-     *
-     * Unlike other APIs in [MemoryUtil], this function will not fork a new process but execute task
-     * on current process. Memory usage of current process will increase while analyzing.
      *
      * The function creates a binary file containing analyze result, the result file will be saved
      * if [keepResult] is true, and it can be deserialized by function [deserializeAnalyzeResult].
@@ -151,44 +197,18 @@ object MemoryUtil {
     fun analyze(
         hprofPath: String,
         referenceKey: String,
+        timeout: Long = DEFAULT_TASK_TIMEOUT,
         keepResult: Boolean = false
-    ): ActivityLeakResult = initSafe(initializeFailedResult) {
-        val analyzeStart = System.currentTimeMillis()
-        val resultFile = createAnalyzeFile()
-            ?: return ActivityLeakResult.failure(
-                RuntimeException("Failed to create temporary analyze result file"), 0
-            )
-        val resultPath = resultFile.absolutePath
-        return try {
-            if (analyzeInternal(hprofPath, resultPath, referenceKey)) {
-                val chains = deserialize(resultFile)
-                if (chains.isEmpty()) {
-                    ActivityLeakResult.noLeak(System.currentTimeMillis() - analyzeStart)
-                } else {
-                    // TODO: support reporting multiple leak chain.
-                    chains.first().run {
-                        ActivityLeakResult.leakDetected(
-                            false,
-                            nodes.last().objectName,
-                            convertToReferenceChain(),
-                            System.currentTimeMillis() - analyzeStart
-                        )
-                    }
-                }
-            } else {
-                ActivityLeakResult.failure(
-                    RuntimeException("Analyze failed."),
-                    System.currentTimeMillis() - analyzeStart
-                )
-            }
-        } catch (exception: Exception) {
-            ActivityLeakResult.failure(exception, System.currentTimeMillis() - analyzeStart)
-        } finally {
-            if (!keepResult) {
-                if (resultFile.exists()) resultFile.delete()
-            }
-        }
-    }
+    ): ActivityLeakResult =
+        createAnalyzeDeserializeTask(
+            hprofPath, referenceKey,
+            timeout, keepResult, ::forkAnalyze
+        )
+
+    private external fun forkAnalyze(
+        hprofPath: String, resultPath: String, referenceKey: String,
+        timeout: Long
+    ): Int
 
     /**
      * Dumps HPROF to specific file on [hprofPath] and analyzes it immediately. The function will
@@ -214,66 +234,15 @@ object MemoryUtil {
         timeout: Long = DEFAULT_TASK_TIMEOUT,
         keepResult: Boolean = false
     ): ActivityLeakResult =
-        initSafe(initializeFailedResult) {
-            val analyzeStart = System.currentTimeMillis()
-            val resultFile = createAnalyzeFile()
-                ?: return ActivityLeakResult.failure(
-                    RuntimeException("Failed to create temporary analyze result file"), 0
-                )
-            val resultPath = resultFile.absolutePath
-            return when (val pid = fork(timeout)) {
-                -1 -> run {
-                    ActivityLeakResult.failure(
-                        RuntimeException("Failed to fork task executing process."),
-                        0
-                    )
-                }
-                0 -> run { // task process
-                    // Unnecessary to catch exception because new exception instance cannot be created
-                    // in forked process. The process just exits with non-zero code.
-                    updateTaskState(TaskState.DUMP)
-                    Debug.dumpHprofData(hprofPath)
-                    val code = if (analyzeInternal(hprofPath, resultPath, referenceKey)) 0 else -1
-                    exit(code)
-                    ActivityLeakResult.noLeak(0) // Unreachable.
-                }
-                else -> run { // current process
-                    info("Start analyzing memory. Wait for task process [${pid}] complete executing.")
-                    val result = wait(pid)
-                    info("Complete analyzing memory with error: ${result.errorMessage}.")
-                    if (!result.success) {
-                        return ActivityLeakResult.failure(
-                            RuntimeException("Analyze failed with error message: ${result.errorMessage}. Last task state: ${result.lastState}."),
-                            System.currentTimeMillis() - analyzeStart
-                        )
-                    }
-                    return try {
-                        val chains = deserialize(resultFile)
-                        if (chains.isEmpty()) {
-                            ActivityLeakResult.noLeak(System.currentTimeMillis() - analyzeStart)
-                        } else {
-                            // TODO: support reporting multiple leak chain.
-                            chains.first().run {
-                                ActivityLeakResult.leakDetected(
-                                    false,
-                                    nodes.last().objectName,
-                                    convertToReferenceChain(),
-                                    System.currentTimeMillis() - analyzeStart
-                                )
-                            }
-                        }
-                    } catch (exception: Exception) {
-                        ActivityLeakResult.failure(
-                            exception, System.currentTimeMillis() - analyzeStart
-                        )
-                    } finally {
-                        if (!keepResult) {
-                            if (resultFile.exists()) resultFile.delete()
-                        }
-                    }
-                }
-            }
-        }
+        createAnalyzeDeserializeTask(
+            hprofPath, referenceKey,
+            timeout, keepResult, ::forkDumpAndAnalyze
+        )
+
+    private external fun forkDumpAndAnalyze(
+        hprofPath: String, resultPath: String, referenceKey: String,
+        timeout: Long
+    ): Int
 
     private val analyzeResultDir by lazy {
         File(storageDir, "analyze").apply {
@@ -425,88 +394,61 @@ object MemoryUtil {
     @Throws(IOException::class)
     fun deserializeAnalyzeResult(file: File): List<ReferenceChain> =
         deserialize(file).map { it.convertToReferenceChain() }
-}
 
-private external fun loadJniCache(): Boolean
-
-private object TaskState {
-    const val DUMP: Byte = 1
-    const val ANALYZER_CREATE: Byte = 2
-    const val ANALYZER_INITIALIZE: Byte = 3
-    const val ANALYZER_EXECUTE: Byte = 4
-    const val SERIALIZE_RESULT: Byte = 5
-}
-
-/**
- * Update task state in child process.
- *
- * The function is designed as a native function because the runtime is broken that we cannot
- * allocate any object.
- */
-private external fun updateTaskState(state: Byte)
-
-/**
- * Fork dump process. To solve the deadlock, this function will suspend the symbol.runtime and resume it in
- * parent process.
- *
- * The function is implemented with native standard fork().
- * See [man fork](https://man7.org/linux/man-pages/man2/fork.2.html).
- */
-private external fun fork(timeout: Long): Int
-
-private class TaskResult(
-    private val type: Int,
-    private val code: Int,
-    private val last: Byte
-) {
-    companion object {
-        private const val TYPE_WAIT_FAILED = -1
-        private const val TYPE_EXIT = 0
-        private const val TYPE_SIGNALED = 1
+    private object TaskState {
+        const val DUMP: Byte = 1
+        const val ANALYZER_CREATE: Byte = 2
+        const val ANALYZER_INITIALIZE: Byte = 3
+        const val ANALYZER_EXECUTE: Byte = 4
+        const val SERIALIZE_RESULT: Byte = 5
     }
 
-    val success: Boolean
-        get() = type == TYPE_EXIT && code == 0
-
-    val errorMessage: String?
-        get() {
-            if (success) return null
-            return when (type) {
-                TYPE_WAIT_FAILED -> "failed to invoke waitpid() (errno: $code)"
-                TYPE_EXIT -> "task process exit with status $code"
-                TYPE_SIGNALED -> "task process was terminated by signal $code"
-                else -> "unknown error"
-            }
+    private class TaskResult(
+        private val type: Int,
+        private val code: Int,
+        private val last: Byte
+    ) {
+        companion object {
+            private const val TYPE_WAIT_FAILED = -1
+            private const val TYPE_EXIT = 0
+            private const val TYPE_SIGNALED = 1
         }
 
-    val lastState: String
-        get() {
-            return when (last) {
-                TaskState.DUMP -> "dump"
-                TaskState.ANALYZER_CREATE -> "analyzer_create"
-                TaskState.ANALYZER_INITIALIZE -> "analyzer_initialize"
-                TaskState.ANALYZER_EXECUTE -> "analyzer_execute"
-                TaskState.SERIALIZE_RESULT -> "serialize_result"
-                else -> "unknown"
+        val success: Boolean
+            get() = type == TYPE_EXIT && code == 0
+
+        val errorMessage: String?
+            get() {
+                if (success) return null
+                return when (type) {
+                    TYPE_WAIT_FAILED -> "invoke waitpid() failed with errno $code"
+                    TYPE_EXIT -> "task process exit with status $code"
+                    TYPE_SIGNALED -> "task process was terminated by signal $code"
+                    else -> "unknown error"
+                }
             }
-        }
+
+        val lastState: String
+            get() {
+                return when (last) {
+                    TaskState.DUMP -> "dump"
+                    TaskState.ANALYZER_CREATE -> "analyzer_create"
+                    TaskState.ANALYZER_INITIALIZE -> "analyzer_initialize"
+                    TaskState.ANALYZER_EXECUTE -> "analyzer_execute"
+                    TaskState.SERIALIZE_RESULT -> "serialize_result"
+                    else -> "unknown"
+                }
+            }
+    }
+
+    /**
+     * Waits task process exits and returns exit status of child process.
+     *
+     * The function is implemented with native standard waitpid().
+     * See [man wait](https://man7.org/linux/man-pages/man2/wait.2.html).
+     */
+    private external fun waitTask(pid: Int): TaskResult
 }
-
-/**
- * Wait dump process exits and return exit status of child process.
- *
- * The function is implemented with native standard waitpid().
- * See [man wait](https://man7.org/linux/man-pages/man2/wait.2.html).
- */
-private external fun wait(pid: Int): TaskResult
-
-/**
- * Exit current process.
- *
- * The function is implemented with native standard _exit().
- * See [man _exit](https://man7.org/linux/man-pages/man2/exit.2.html).
- */
-private external fun exit(code: Int)
 
 private fun File.assureIsDirectory() {
     if (!isDirectory) {

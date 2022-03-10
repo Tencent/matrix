@@ -13,16 +13,37 @@
 
 static int android_version_;
 
+/**
+ * Points to symbol `art::hprof::DumpHeap()`.
+ */
+static void (*dump_heap_)(const char *, int, bool) = nullptr;
+
+void dump_heap(const char *file_name) {
+    dump_heap_(file_name, -1, false);
+}
+
 using namespace art::gc;
 
 namespace mirror {
+    /**
+     * Mirror type of `art::ScopedSuspendAll`.
+     */
     class ScopedSuspend {
     };
 
+    /**
+     * Points to symbol `art::gc::ScopedGCCriticalSection()`.
+     */
     static void (*sgc_constructor)(void *, Thread *, GcCause, CollectorType) = nullptr;
 
+    /**
+     * Points to symbol `art::gc::~ScopedGCCriticalSection()`.
+     */
     static void (*sgc_destructor)(void *) = nullptr;
 
+    /**
+     * Mirror type of `art::gc::ScopedGCCriticalSection`.
+     */
     class ScopedGCCriticalSection {
     private:
         uint64_t buf[8] = {0};
@@ -36,10 +57,19 @@ namespace mirror {
         }
     };
 
+    /**
+     * Points to symbol `art::ReaderWriterMutex::ExclusiveLock()`.
+     */
     static void (*exclusive_lock)(void *, Thread *) = nullptr;
 
+    /**
+     * Points to symbol `art::ReaderWriterMutex::ExclusiveUnlock()`.
+     */
     static void (*exclusive_unlock)(void *, Thread *) = nullptr;
 
+    /**
+     * Mirror type of `art::ReaderWriterMutex`.
+     */
     class ReadWriteMutex {
     public:
         void ExclusiveLock(Thread *self) {
@@ -64,6 +94,9 @@ static mirror::ScopedSuspend suspend_;
 
 static mirror::ReadWriteMutex *mutator_lock_ = nullptr;
 
+/**
+ * Points to symbol `art::Dbg::SuspendVM()`.
+ */
 static void *suspend_all_ptr_ = nullptr;
 
 void suspend_runtime(mirror::Thread *thread) {
@@ -84,6 +117,9 @@ void suspend_runtime(mirror::Thread *thread) {
     }
 }
 
+/**
+ * Points to symbol `art::Dbg::ResumeVM()`.
+ */
 static void *resume_all_ptr_ = nullptr;
 
 void resume_runtime(mirror::Thread *thread) {
@@ -113,6 +149,11 @@ bool initialize_symbols() {
         _error_log(TAG, err);                           \
         goto on_error;                                      \
     }
+
+    load_symbol(dump_heap_,
+                void(*)(const char *, int, bool ),
+                "_ZN3art5hprof8DumpHeapEPKcib",
+                "Cannot find symbol art::hprof::DumpHeap().")
 
     if (android_version_ > __ANDROID_API_Q__) {
         load_symbol(mirror::sgc_constructor,
