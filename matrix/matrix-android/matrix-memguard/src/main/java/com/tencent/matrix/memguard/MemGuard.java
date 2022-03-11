@@ -26,6 +26,7 @@ import java.util.Objects;
 public final class MemGuard {
     private static final String TAG = "MemGuard";
 
+    private static final String HOOK_COMMON_NATIVE_LIB_NAME = "matrix-hookcommon";
     private static final String NATIVE_LIB_NAME = "matrix-memguard";
     private static final String ISSUE_CALLBACK_THREAD_NAME = "MemGuard.IssueCB";
     private static final long ISSUE_CALLBACK_TIMEOUT_MS = 5000;
@@ -91,8 +92,10 @@ public final class MemGuard {
             boolean success = false;
             try {
                 if (soLoader != null) {
+                    soLoader.loadLibrary(HOOK_COMMON_NATIVE_LIB_NAME);
                     soLoader.loadLibrary(NATIVE_LIB_NAME);
                 } else {
+                    System.loadLibrary(HOOK_COMMON_NATIVE_LIB_NAME);
                     System.loadLibrary(NATIVE_LIB_NAME);
                 }
 
