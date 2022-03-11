@@ -112,6 +112,10 @@
     return m_currentConfiguration.triggerToBeFilteredCount;
 }
 
+- (uint32_t)getDumpDailyLimit {
+    return m_currentConfiguration.dumpDailyLimit;
+}
+
 - (BOOL)getShouldPrintMemoryUse {
     return m_currentConfiguration.bPrintMemomryUse;
 }

@@ -126,18 +126,15 @@ static char *g_PointMainThreadProfile = NULL;
 static KSStackCursor **g_PointCPUHighThreadArray = NULL;
 static int g_PointCpuHighThreadCount = 0;
 static float *g_PointCpuHighThreadValueArray = NULL;
-
-static BOOL g_filterSameStack = NO;
-static uint32_t g_triggerdFilterSameCnt = 0;
 static BOOL g_runloopThresholdUpdated = NO;
 
 API_AVAILABLE(ios(11.0))
 static NSProcessInfoThermalState g_thermalState = NSProcessInfoThermalStateNominal;
 
-#define APP_SHOULD_SUSPEND (180 * BM_MicroFormat_Second)
-
 #define PRINT_MEMORY_USE_INTERVAL (5 * BM_MicroFormat_Second)
 #define PRINT_CPU_FREQUENCY_INTERVAL (10 * BM_MicroFormat_Second)
+
+#define DETECTION_THREAD_JUDGE_SUSPEND_THRESHOLD (10 * BM_MicroFormat_Second)
 
 #define __timercmp(tvp, uvp, cmp) (((tvp)->tv_sec == (uvp)->tv_sec) ? ((tvp)->tv_usec cmp(uvp)->tv_usec) : ((tvp)->tv_sec cmp(uvp)->tv_sec))
 
@@ -155,7 +152,6 @@ static BOOL g_eventStart;
 
 static struct timeval g_tvRun;
 static BOOL g_bRun;
-static struct timeval g_enterBackground;
 static struct timeval g_tvSuspend;
 static CFRunLoopActivity g_runLoopActivity;
 static struct timeval g_lastCheckTime;
@@ -164,8 +160,6 @@ static BOOL g_bLaunchOver = NO;
 #if !TARGET_OS_OSX
 static BOOL g_bBackgroundLaunch = NO;
 #endif
-static BOOL g_bMonitor = NO;
-static BOOL g_bInSuspend = NO;
 
 typedef enum : NSUInteger {
     eRunloopInitMode,
@@ -247,6 +241,8 @@ float *kscrash_pointCpuHighThreadArrayCallBack(void) {
 
     BOOL m_suspendAllThreads;
     BOOL m_enableSnapshot;
+    
+    struct timeval m_recordStackTime;
 }
 
 @property (nonatomic, strong) WCBlockMonitorConfigHandler *monitorConfigHandler;
@@ -336,8 +332,6 @@ float *kscrash_pointCpuHighThreadArrayCallBack(void) {
         return;
     }
 
-    g_bMonitor = YES;
-
     g_MainThreadHandle = [_monitorConfigHandler getMainThreadHandle];
     g_MainThreadProfile = [_monitorConfigHandler getMainThreadProfile];
     [self setRunloopThreshold:[_monitorConfigHandler getRunloopTimeOut] isFirstTime:YES];
@@ -349,7 +343,6 @@ float *kscrash_pointCpuHighThreadArrayCallBack(void) {
     m_blockDiffTime = 0;
     m_firstSleepTime = 5;
     gettimeofday(&g_tvSuspend, NULL);
-    g_enterBackground = { 0, 0 };
     gettimeofday(&g_lastCheckTime, NULL);
 
     if ([_monitorConfigHandler getShouldPrintMemoryUse]) {
@@ -381,17 +374,11 @@ float *kscrash_pointCpuHighThreadArrayCallBack(void) {
     } else {
         m_powerConsumeStackCollector = nil;
     }
-    g_filterSameStack = [_monitorConfigHandler getShouldFilterSameStack];
-    g_triggerdFilterSameCnt = [_monitorConfigHandler getTriggerFilterCount];
 
     g_bSensitiveRunloopHangDetection = [_monitorConfigHandler getSensitiveRunloopHangDetection];
 
     m_suspendAllThreads = [_monitorConfigHandler getShouldSuspendAllThreads];
     m_enableSnapshot = [_monitorConfigHandler getShouldEnableSnapshot];
-
-    if ([_monitorConfigHandler getShouldGetDiskIOStack]) {
-        // delete the IO Disk Stack Collector
-    }
 
 #if !TARGET_OS_OSX
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(willTerminate) name:UIApplicationWillTerminateNotification object:nil];
@@ -447,14 +434,11 @@ float *kscrash_pointCpuHighThreadArrayCallBack(void) {
 #if !TARGET_OS_OSX
 
 - (void)handleBackgroundLaunch {
-    g_bMonitor = NO;
     g_bBackgroundLaunch = YES;
 }
 
 - (void)handleSuspend {
-    g_bMonitor = NO;
     gettimeofday(&g_tvSuspend, NULL);
-    g_bInSuspend = YES;
 }
 
 #endif
@@ -478,25 +462,21 @@ float *kscrash_pointCpuHighThreadArrayCallBack(void) {
 - (void)didBecomeActive {
     MatrixInfo(@"did become active");
 
-    g_enterBackground = { 0, 0 };
-
-    g_bInSuspend = NO;
     m_currentState = [UIApplication sharedApplication].applicationState;
 
-    g_bMonitor = YES;
-    g_bLaunchOver = YES;
-
-    if (g_bBackgroundLaunch) {
+    if (g_bBackgroundLaunch && !g_bLaunchOver) {
+        MatrixInfo(@"backgroundLaunch before launchOver, clean dump");
         [self clearDumpInBackgroundLaunch];
         g_bBackgroundLaunch = NO;
     }
+    
+    g_bLaunchOver = YES;
 
     [self clearLaunchLagRecord];
 }
 
 - (void)didEnterBackground {
     MatrixInfo(@"did enter background");
-    gettimeofday(&g_enterBackground, NULL);
     m_currentState = [UIApplication sharedApplication].applicationState;
 }
 
@@ -563,86 +543,83 @@ float *kscrash_pointCpuHighThreadArrayCallBack(void) {
         m_firstSleepTime = 0;
     }
 
-    if (g_filterSameStack) {
-        m_stackHandler = [[WCFilterStackHandler alloc] init];
-    }
+    m_stackHandler = [[WCFilterStackHandler alloc] init];
 
     set_curr_thread_ignore_logging(true);
 
     while (YES) {
         @autoreleasepool {
-            if (g_bMonitor) {
-                EDumpType dumpType = [self check];
-                if (m_bStop) {
-                    break;
-                }
-                BM_SAFE_CALL_SELECTOR_NO_RETURN(_delegate,
-                                                @selector(onBlockMonitor:enterNextCheckWithDumpType:),
-                                                onBlockMonitor:self enterNextCheckWithDumpType:dumpType);
-                if (dumpType != EDumpType_Unlag) {
-                    if (EDumpType_BackgroundMainThreadBlock == dumpType || EDumpType_MainThreadBlock == dumpType) {
-                        EFilterType filterType = [self needFilter];
-                        if (filterType == EFilterType_None) {
-                            if (g_MainThreadHandle) {
-                                if (g_PointMainThreadArray != NULL) {
-                                    free(g_PointMainThreadArray);
-                                    g_PointMainThreadArray = NULL;
+                
+            EDumpType dumpType = [self check];
+            if (m_bStop) {
+                break;
+            }
+            BM_SAFE_CALL_SELECTOR_NO_RETURN(_delegate,
+                                            @selector(onBlockMonitor:enterNextCheckWithDumpType:),
+                                            onBlockMonitor:self enterNextCheckWithDumpType:dumpType);
+            if (dumpType != EDumpType_Unlag) {
+                if (EDumpType_BackgroundMainThreadBlock == dumpType || EDumpType_MainThreadBlock == dumpType) {
+                    EFilterType filterType = [self needFilter];
+                    if (filterType == EFilterType_None) {
+                        if (g_MainThreadHandle) {
+                            if (g_PointMainThreadArray != NULL) {
+                                free(g_PointMainThreadArray);
+                                g_PointMainThreadArray = NULL;
+                            }
+                            if (g_MainThreadProfile) {
+                                g_PointMainThreadProfile = [m_pointMainThreadHandler getStackProfile];
+                            }
+                            g_PointMainThreadArray = [m_pointMainThreadHandler getPointStackCursor];
+                            g_PointMainThreadRepeatCountArray = [m_pointMainThreadHandler getPointStackRepeatCount];
+                            m_potenHandledLagFile = [self dumpFileWithType:dumpType];
+                            BM_SAFE_CALL_SELECTOR_NO_RETURN(_delegate,
+                                                            @selector(onBlockMonitor:getDumpFile:withDumpType:),
+                                                            onBlockMonitor:self getDumpFile:m_potenHandledLagFile withDumpType:dumpType);
+                            if (g_PointMainThreadArray != NULL) {
+                                KSStackCursor_Backtrace_Context *context = (KSStackCursor_Backtrace_Context *)g_PointMainThreadArray->context;
+                                if (context->backtrace) {
+                                    free((uintptr_t *)context->backtrace);
                                 }
-                                if (g_MainThreadProfile) {
-                                    g_PointMainThreadProfile = [m_pointMainThreadHandler getStackProfile];
-                                }
-                                g_PointMainThreadArray = [m_pointMainThreadHandler getPointStackCursor];
-                                g_PointMainThreadRepeatCountArray = [m_pointMainThreadHandler getPointStackRepeatCount];
-                                m_potenHandledLagFile = [self dumpFileWithType:dumpType];
-                                BM_SAFE_CALL_SELECTOR_NO_RETURN(_delegate,
-                                                                @selector(onBlockMonitor:getDumpFile:withDumpType:),
-                                                                onBlockMonitor:self getDumpFile:m_potenHandledLagFile withDumpType:dumpType);
-                                if (g_PointMainThreadArray != NULL) {
-                                    KSStackCursor_Backtrace_Context *context = (KSStackCursor_Backtrace_Context *)g_PointMainThreadArray->context;
-                                    if (context->backtrace) {
-                                        free((uintptr_t *)context->backtrace);
-                                    }
-                                    free(g_PointMainThreadArray);
-                                    g_PointMainThreadArray = NULL;
-                                }
-                                if (g_PointMainThreadProfile != NULL) {
-                                    free(g_PointMainThreadProfile);
-                                    g_PointMainThreadProfile = NULL;
-                                }
-                            } else {
-                                m_potenHandledLagFile = [self dumpFileWithType:dumpType];
-                                BM_SAFE_CALL_SELECTOR_NO_RETURN(_delegate,
-                                                                @selector(onBlockMonitor:getDumpFile:withDumpType:),
-                                                                onBlockMonitor:self getDumpFile:m_potenHandledLagFile withDumpType:dumpType);
+                                free(g_PointMainThreadArray);
+                                g_PointMainThreadArray = NULL;
+                            }
+                            if (g_PointMainThreadProfile != NULL) {
+                                free(g_PointMainThreadProfile);
+                                g_PointMainThreadProfile = NULL;
                             }
                         } else {
+                            m_potenHandledLagFile = [self dumpFileWithType:dumpType];
                             BM_SAFE_CALL_SELECTOR_NO_RETURN(_delegate,
-                                                            @selector(onBlockMonitor:dumpType:filter:),
-                                                            onBlockMonitor:self dumpType:dumpType filter:filterType);
+                                                            @selector(onBlockMonitor:getDumpFile:withDumpType:),
+                                                            onBlockMonitor:self getDumpFile:m_potenHandledLagFile withDumpType:dumpType);
                         }
-
-                        BM_SAFE_CALL_SELECTOR_NO_RETURN(_delegate,
-                                                        @selector(onBlockMonitorMainThreadBlock:),
-                                                        onBlockMonitorMainThreadBlock:self);
-                    } else if (EDumpType_CPUBlock == dumpType) {
-                        //1. get cpu high stack cursor
-                        if (m_powerConsumeStackCollector) {
-                            if (g_PointCPUHighThreadArray != NULL) {
-                                [self freeCpuHighThreadArray];
-                            }
-                            g_PointCPUHighThreadArray = [m_powerConsumeStackCollector getCPUStackCursor];
-                            g_PointCpuHighThreadCount = [m_powerConsumeStackCollector getCurrentCpuHighStackNumber];
-                            g_PointCpuHighThreadValueArray = [m_powerConsumeStackCollector getCpuHighThreadValueArray];
-                        }
-                        //2. dump file with type
-                        m_potenHandledLagFile = [self dumpFileWithType:dumpType];
-                        [self freeCpuHighThreadArray];
                     } else {
-                        m_potenHandledLagFile = [self dumpFileWithType:dumpType];
+                        BM_SAFE_CALL_SELECTOR_NO_RETURN(_delegate,
+                                                        @selector(onBlockMonitor:dumpType:filter:),
+                                                        onBlockMonitor:self dumpType:dumpType filter:filterType);
                     }
+
+                    BM_SAFE_CALL_SELECTOR_NO_RETURN(_delegate,
+                                                    @selector(onBlockMonitorMainThreadBlock:),
+                                                    onBlockMonitorMainThreadBlock:self);
+                } else if (EDumpType_CPUBlock == dumpType) {
+                    //1. get cpu high stack cursor
+                    if (m_powerConsumeStackCollector) {
+                        if (g_PointCPUHighThreadArray != NULL) {
+                            [self freeCpuHighThreadArray];
+                        }
+                        g_PointCPUHighThreadArray = [m_powerConsumeStackCollector getCPUStackCursor];
+                        g_PointCpuHighThreadCount = [m_powerConsumeStackCollector getCurrentCpuHighStackNumber];
+                        g_PointCpuHighThreadValueArray = [m_powerConsumeStackCollector getCpuHighThreadValueArray];
+                    }
+                    //2. dump file with type
+                    m_potenHandledLagFile = [self dumpFileWithType:dumpType];
+                    [self freeCpuHighThreadArray];
                 } else {
-                    [self resetStatus];
+                    m_potenHandledLagFile = [self dumpFileWithType:dumpType];
                 }
+            } else {
+                [self resetStatus];
             }
 
             [self recordCurrentStack];
@@ -671,7 +648,8 @@ float *kscrash_pointCpuHighThreadArrayCallBack(void) {
      */
     unsigned long nTotalCnt = m_nIntervalTime / g_CheckPeriodTime;
     for (int nCnt = 0; nCnt < nTotalCnt && !m_bStop; nCnt++) {
-        if (g_MainThreadHandle && g_bMonitor) {
+        gettimeofday(&m_recordStackTime, NULL);
+        if (g_MainThreadHandle) {
             int intervalCount = g_CheckPeriodTime / g_PerStackInterval; // 1s 每秒检查20次
             if (intervalCount <= 0) {
                 usleep(g_CheckPeriodTime);
@@ -699,6 +677,16 @@ float *kscrash_pointCpuHighThreadArrayCallBack(void) {
             }
         } else {
             usleep(g_CheckPeriodTime);
+        }
+        
+        struct timeval tvCur;
+        gettimeofday(&tvCur, NULL);
+        unsigned long long diff = [WCBlockMonitorMgr diffTime:&m_recordStackTime endTime:&tvCur];
+        if (diff > DETECTION_THREAD_JUDGE_SUSPEND_THRESHOLD) {
+            //running after suspend
+            gettimeofday(&g_tvRun, NULL);
+            MatrixInfo(@"running after suspend, diff %llu", diff);
+            return;
         }
     }
 }
@@ -743,20 +731,12 @@ float *kscrash_pointCpuHighThreadArrayCallBack(void) {
                    g_runLoopActivity,
                    diff);
 
-        if (g_bBackgroundLaunch) {
-            MatrixInfo(@"background launch, filter");
+        if (g_bBackgroundLaunch && !g_bLaunchOver) {
+            MatrixInfo(@"backgroundLaunch before launchOver, filter");
             return EDumpType_Unlag;
         }
 
         if (m_currentState == UIApplicationStateBackground) {
-            if (g_enterBackground.tv_sec != 0 || g_enterBackground.tv_usec != 0) {
-                unsigned long long enterBackgroundTime = [WCBlockMonitorMgr diffTime:&g_enterBackground endTime:&tvCur];
-                if (__timercmp(&g_enterBackground, &tvCur, <) && (enterBackgroundTime > APP_SHOULD_SUSPEND)) {
-                    MatrixInfo(@"may mistake block %lld", enterBackgroundTime);
-                    return EDumpType_Unlag;
-                }
-            }
-
             return EDumpType_BackgroundMainThreadBlock;
         }
 #endif
@@ -865,7 +845,6 @@ float *kscrash_pointCpuHighThreadArrayCallBack(void) {
     BOOL bIsSame = NO;
     static std::vector<NSUInteger> vecCallStack(300);
     __block NSUInteger nSum = 0;
-    __block NSUInteger stackFeat = 0; // use the top stack address;
 
     if (g_MainThreadHandle) {
         nSum = [m_pointMainThreadHandler getLastMainThreadStackCount];
@@ -874,7 +853,6 @@ float *kscrash_pointCpuHighThreadArrayCallBack(void) {
             for (size_t i = 0; i < nSum; i++) {
                 vecCallStack[i] = stack[i];
             }
-            stackFeat = kssymbolicate_symboladdress(stack[0]);
         } else {
             nSum = 0;
         }
@@ -882,9 +860,6 @@ float *kscrash_pointCpuHighThreadArrayCallBack(void) {
         [WCGetMainThreadUtil getCurrentMainThreadStack:^(NSUInteger pc) {
             if (nSum < WXGBackTraceMaxEntries) {
                 vecCallStack[nSum] = pc;
-            }
-            if (nSum == 0) {
-                stackFeat = kssymbolicate_symboladdress(pc);
             }
             nSum++;
         }];
@@ -925,13 +900,12 @@ float *kscrash_pointCpuHighThreadArrayCallBack(void) {
             m_lastMainThreadStackCount++;
         }
 
-        if (g_filterSameStack) {
-            NSUInteger repeatCnt = [m_stackHandler addStackFeat:stackFeat];
-            if (repeatCnt > g_triggerdFilterSameCnt) {
-                MatrixInfo(@"call stack appear too much today, repeat count:[%u]", (uint32_t)repeatCnt);
-                return EFilterType_TrigerByTooMuch;
-            }
+        NSUInteger reportCount = [m_stackHandler addStackFeat:0]; // 传入0当作简单计数器
+        if (reportCount > [_monitorConfigHandler getDumpDailyLimit]) {
+            MatrixInfo(@"exceeds report limit today, count:[%lu]", reportCount);
+            return EFilterType_TrigerByTooMuch;
         }
+
         MatrixInfo(@"call stack diff");
         return EFilterType_None;
     }
@@ -1015,21 +989,21 @@ void myRunLoopBeginCallback(CFRunLoopObserverRef observer, CFRunLoopActivity act
             break;
 
         case kCFRunLoopBeforeTimers:
-            if (g_bRun == NO && g_bInSuspend == NO) {
+            if (g_bRun == NO) {
                 gettimeofday(&g_tvRun, NULL);
             }
             g_bRun = YES;
             break;
 
         case kCFRunLoopBeforeSources:
-            if (g_bRun == NO && g_bInSuspend == NO) {
+            if (g_bRun == NO) {
                 gettimeofday(&g_tvRun, NULL);
             }
             g_bRun = YES;
             break;
 
         case kCFRunLoopAfterWaiting:
-            if (g_bRun == NO && g_bInSuspend == NO) {
+            if (g_bRun == NO) {
                 gettimeofday(&g_tvRun, NULL);
             }
             g_bRun = YES;
@@ -1051,9 +1025,7 @@ void myRunLoopEndCallback(CFRunLoopObserverRef observer, CFRunLoopActivity activ
             if (g_bSensitiveRunloopHangDetection && g_bRun) {
                 [WCBlockMonitorMgr checkRunloopDuration];
             }
-            if (g_bInSuspend == NO) {
-                gettimeofday(&g_tvRun, NULL);
-            }
+            gettimeofday(&g_tvRun, NULL);
             g_bRun = NO;
             break;
 

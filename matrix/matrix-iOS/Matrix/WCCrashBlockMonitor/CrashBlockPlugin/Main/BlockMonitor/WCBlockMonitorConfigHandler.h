@@ -34,8 +34,9 @@
 - (BOOL)getShouldGetCPUHighLog;
 - (BOOL)getShouldGetPowerConsumeStack;
 - (float)getPowerConsumeCPULimit;
-- (BOOL)getShouldFilterSameStack;
-- (uint32_t)getTriggerFilterCount;
+- (BOOL)getShouldFilterSameStack DEPRECATED_MSG_ATTRIBUTE("use dumpDailyLimit instead");
+- (uint32_t)getTriggerFilterCount DEPRECATED_MSG_ATTRIBUTE("use dumpDailyLimit instead");
+- (uint32_t)getDumpDailyLimit;
 - (BOOL)getShouldPrintMemoryUse;
 - (BOOL)getShouldGetDiskIOStack DEPRECATED_MSG_ATTRIBUTE("feature removed");
 - (size_t)getSingleReadLimit DEPRECATED_MSG_ATTRIBUTE("feature removed");
