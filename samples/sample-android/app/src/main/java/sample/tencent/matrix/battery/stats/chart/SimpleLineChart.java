@@ -15,9 +15,12 @@ import android.view.View;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 import androidx.annotation.Nullable;
 import androidx.core.util.Pair;
@@ -27,6 +30,7 @@ public class SimpleLineChart extends View {
     public static final int MODE_ONE = 1;
     public static final int MODE_TWO = 2;
     protected static final DateFormat sTimeFormat = new SimpleDateFormat("HH:mm", Locale.US);
+    static final int MAX_COUNT = 7;
 
     // 画笔
     private Paint mPaint;
@@ -301,6 +305,7 @@ public class SimpleLineChart extends View {
     }
 
     public void setData(List<Pair<Float, Long>> dataSet) {
+        dataSet = polishDataSet(dataSet);
         List<Float> data = new ArrayList<>();
         List<Long> millis = new ArrayList<>();
         for (Pair<Float, Long> item : dataSet) {
@@ -314,5 +319,72 @@ public class SimpleLineChart extends View {
 
     public void setMode(int mode) {
         this.mode = mode;
+    }
+
+    static List<Pair<Float, Long>> polishDataSet(List<Pair<Float, Long>> input) {
+        if (input.size() <= MAX_COUNT) {
+            return input;
+        }
+
+        float avg = 0;
+        for (Pair<Float, Long> item : input) {
+            avg += item.first;
+        }
+        avg = avg / input.size();
+
+        Set<Integer> targetIdxSet = new HashSet<>();
+        targetIdxSet.add(0);
+        targetIdxSet.add(input.size() - 1);
+        Pair<Integer, Integer> minMaxIdx = figureOutMinMaxIdx(input);
+        targetIdxSet.add(minMaxIdx.first);
+        targetIdxSet.add(minMaxIdx.second);
+        List<Integer> targetIdxList = new ArrayList<>(targetIdxSet);
+
+        figureOutIdxList(input, targetIdxList, avg, MAX_COUNT);
+        Collections.sort(targetIdxList);
+
+        List<Pair<Float, Long>> output = new ArrayList<>(MAX_COUNT);
+        for (Integer idx : targetIdxList) {
+            output.add(input.get(idx));
+        }
+        return output;
+    }
+
+    private static Pair<Integer, Integer> figureOutMinMaxIdx(List<Pair<Float, Long>> input) {
+        if (input.isEmpty()) {
+            throw new IllegalStateException("Input list in empty");
+        }
+        int idxMin = 0, idxMax = 0;
+        float lastMin = input.get(idxMin).first, lastMax = input.get(idxMax).first;
+        for (int i = 1; i < input.size(); i++) {
+            Pair<Float, Long> curr = input.get(i);
+            if (curr.first < lastMin) {
+                lastMin = curr.first;
+                idxMin = i;
+            }
+            if (curr.first > lastMax) {
+                lastMax = curr.first;
+                idxMax = i;
+            }
+        }
+        return new Pair<>(idxMin, idxMax);
+    }
+
+    private static void figureOutIdxList(List<Pair<Float, Long>> input, List<Integer> targetIdxList, float avg, int findCount) {
+        if (input.size() >= findCount && targetIdxList.size() < findCount) {
+            int idx = -1;
+            float lastDelta = -1;
+            for (int i = 0; i < input.size(); i++) {
+                if (!targetIdxList.contains(i)) {
+                    float delta = input.get(i).first - avg;
+                    if (Math.abs(delta) > lastDelta) {
+                        idx = i;
+                        lastDelta = delta;
+                    }
+                }
+            }
+            targetIdxList.add(idx);
+            figureOutIdxList(input, targetIdxList, avg, findCount);
+        }
     }
 }
