@@ -51,7 +51,7 @@ object MemoryUtil {
         }
 
     private val initialized by lazy {
-        System.loadLibrary("matrix_resource_canary")
+        System.loadLibrary("matrix_mem_util")
         if (!loadJniCache()) {
             error("Failed to load JNI cache.")
             return@lazy false
