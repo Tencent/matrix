@@ -18,7 +18,8 @@ import com.tencent.matrix.util.safeApply
 import java.util.concurrent.TimeUnit
 
 interface TrimCallback {
-    fun trim()
+    fun backgroundTrim()
+    fun systemTrim(level: Int)
 }
 
 data class TrimMemoryConfig(val delayMillis: Long = TimeUnit.MINUTES.toMillis(1))
@@ -33,11 +34,21 @@ object TrimMemoryNotifier {
     private val procTrimCallbacks = ArrayList<TrimCallback>()
     private val appTrimCallbacks = ArrayList<TrimCallback>()
 
-    private fun ArrayList<TrimCallback>.trim() {
+    private fun ArrayList<TrimCallback>.backgroundTrim() {
         synchronized(this) {
             forEach {
                 safeApply(TAG) {
-                    it.trim()
+                    it.backgroundTrim()
+                }
+            }
+        }
+    }
+
+    private fun ArrayList<TrimCallback>.systemTrim(level: Int) {
+        synchronized(this) {
+            forEach {
+                safeApply(TAG) {
+                    it.systemTrim(level)
                 }
             }
         }
@@ -52,15 +63,15 @@ object TrimMemoryNotifier {
             Matrix.with().application.registerComponentCallbacks(object : ComponentCallbacks2 {
                 override fun onLowMemory() {
                     MatrixLog.e(TAG, "onLowMemory")
-                    procTrimCallbacks.trim()
-                    appTrimCallbacks.trim()
+                    procTrimCallbacks.systemTrim(ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL)
+                    appTrimCallbacks.systemTrim(ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL)
                 }
 
                 override fun onTrimMemory(level: Int) {
                     if (level <= ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL) {
                         MatrixLog.e(TAG, "onTrimMemory: $level")
-                        procTrimCallbacks.trim()
-                        appTrimCallbacks.trim()
+                        procTrimCallbacks.systemTrim(level)
+                        appTrimCallbacks.systemTrim(level)
                     }
                 }
 
@@ -70,7 +81,7 @@ object TrimMemoryNotifier {
 
             val procTrimTask = Runnable {
                 MatrixLog.i(TAG, "trim: process staged bg timeout ${config.delayMillis}")
-                procTrimCallbacks.trim()
+                procTrimCallbacks.backgroundTrim()
             }
 
             object : IStateObserver {
@@ -91,7 +102,7 @@ object TrimMemoryNotifier {
             ProcessDeepBackgroundOwner.observeForever(object : IStateObserver {
                 override fun on() {
                     MatrixLog.i(TAG, "trim: process deep bg")
-                    procTrimCallbacks.trim()
+                    procTrimCallbacks.backgroundTrim()
                 }
 
                 override fun off() {}
@@ -100,7 +111,7 @@ object TrimMemoryNotifier {
 
             val appTrimTask = Runnable {
                 MatrixLog.i(TAG, "trim: app staged bg timeout ${config.delayMillis}")
-                appTrimCallbacks.trim()
+                appTrimCallbacks.backgroundTrim()
             }
 
             object : IStateObserver {
@@ -121,7 +132,7 @@ object TrimMemoryNotifier {
             AppDeepBackgroundOwner.observeForever(object : IStateObserver {
                 override fun on() {
                     MatrixLog.i(TAG, "trim: app deep bg")
-                    appTrimCallbacks.trim()
+                    appTrimCallbacks.backgroundTrim()
                 }
 
                 override fun off() {}
