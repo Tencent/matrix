@@ -188,7 +188,7 @@ data class StatusInfo(
 ) {
     override fun toString(): String {
         return String.format(
-            "%-21s %-21s %-21s %-21s %-21s %-21s",
+            "%-21s %-21s %-21s %-21s %-21s %-21s %-21s %-21s",
             "State=$state",
             "FDSize=$fdSize",
             "VmSize=$vmSizeK K",
