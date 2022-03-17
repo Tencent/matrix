@@ -9,3 +9,4 @@
 **/.*
 **/bin/
 /gradle/oss-android-template.gradle
+local.gradle

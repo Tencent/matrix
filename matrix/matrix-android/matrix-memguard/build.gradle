@@ -21,22 +21,10 @@ android {
             cmake {
                 arguments = ['-DANDROID_STL=c++_shared', "-DEnableLOG=${gradle.enableLog() ? "ON" : "OFF"}" as String]
             }
-
-            exportHeaders {
-                from('src/main/cpp/common') {
-                    include '**/*.h'
-                    include '*.h'
-                }
-
-                from('src/main/cpp/external/fastunwind') {
-                    include '**/*.h'
-                }
-            }
         }
     }
 
     buildTypes {
-
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
