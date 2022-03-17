@@ -209,7 +209,7 @@ execute_analyze(const char *hprof_path, const char *reference_key) {
     }
 
     update_task_state(TS_ANALYZER_EXECUTE);
-    return analyzer.Analyze([reference_key](const HprofHeap &heap) {
+    auto result = analyzer.Analyze([reference_key](const HprofHeap &heap) {
         const object_id_t leak_ref_class_id = unwrap_optional(
                 heap.FindClassByName(
                         "com.tencent.matrix.resource.analyzer.model.DestroyedActivityInfo"),
@@ -230,6 +230,12 @@ execute_analyze(const char *hprof_path, const char *reference_key) {
         }
         return leaks;
     });
+    if (result.has_value()) {
+        return result.value();
+    } else {
+        _error_log(TAG, HprofAnalyzer::CheckError());
+        return std::nullopt;
+    }
 }
 
 static bool execute_serialize(const char *result_path, const std::vector<LeakChain> &leak_chains) {

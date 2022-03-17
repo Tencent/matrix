@@ -5,6 +5,8 @@
 
 #include "mock/mock_engine.h"
 
+#include "errorha.h"
+
 #include <bit>
 
 using namespace matrix::hprof::internal::heap;
@@ -162,7 +164,8 @@ TEST(parser_engine, header) {
         });
         Reader reader(reinterpret_cast<const uint8_t *>(buffer.data()), buffer.size());
         Heap heap;
-        EXPECT_THROW(engine.ParseHeader(reader, heap), std::runtime_error);
+        EXPECT_FALSE(engine.ParseHeader(reader, heap));
+        EXPECT_EQ(0, strcmp(get_matrix_hprof_analyzer_error(), "Invalid HPROF header."));
     }
 }
 
@@ -569,10 +572,10 @@ TEST(parser_engine, heap_content_error_handle) {
     Reader reader(reinterpret_cast<const uint8_t *>(buffer.data()), buffer.size());
     HeapParserEngineImpl engine;
     MockEngine mock_engine(sizeof(identifier_t));
-    EXPECT_THROW(engine.ParseHeapContent(
+    EXPECT_FALSE(engine.ParseHeapContent(
             reader, heap, buffer.size(),
             empty_exclude_matcher_group, mock_engine
-    ), std::runtime_error);
+    ));
 }
 
 TEST(parser_engine, root_unknown) {

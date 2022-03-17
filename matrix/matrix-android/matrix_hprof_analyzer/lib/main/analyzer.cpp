@@ -8,54 +8,82 @@
 #include <cerrno>
 
 #include "analyzer.h"
+#include "errorha.h"
 
 namespace matrix::hprof {
 
     // public interface
 
-    HprofAnalyzer::HprofAnalyzer(int hprof_fd) : impl_(new HprofAnalyzerImpl(hprof_fd)) {}
+    const char* HprofAnalyzer::CheckError() {
+        return get_matrix_hprof_analyzer_error();
+    }
+
+    HprofAnalyzer::HprofAnalyzer(int hprof_fd) : impl_(HprofAnalyzerImpl::Create(hprof_fd)) {}
 
     HprofAnalyzer::~HprofAnalyzer() = default;
 
     void HprofAnalyzer::ExcludeInstanceFieldReference(const std::string &class_name,
                                                       const std::string &field_name) {
-        impl_->ExcludeInstanceFieldReference(class_name, field_name);
+        if (impl_ != nullptr) {
+            impl_->ExcludeInstanceFieldReference(class_name, field_name);
+        }
     }
 
     void HprofAnalyzer::ExcludeStaticFieldReference(const std::string &class_name,
                                                     const std::string &field_name) {
-        impl_->ExcludeStaticFieldReference(class_name, field_name);
+        if (impl_ != nullptr) {
+            impl_->ExcludeStaticFieldReference(class_name, field_name);
+        }
     }
 
     void HprofAnalyzer::ExcludeThreadReference(const std::string &thread_name) {
-        impl_->ExcludeThreadReference(thread_name);
+        if (impl_ != nullptr) {
+            impl_->ExcludeThreadReference(thread_name);
+        }
     }
 
     void HprofAnalyzer::ExcludeNativeGlobalReference(const std::string &class_name) {
-        impl_->ExcludeNativeGlobalReference(class_name);
+        if (impl_ != nullptr) {
+            impl_->ExcludeNativeGlobalReference(class_name);
+        }
     }
 
-    std::vector<LeakChain>
-    HprofAnalyzer::Analyze(const std::function<std::vector<object_id_t>(const HprofHeap &)> &leak_finder) {
-        return impl_->Analyze(leak_finder);
+    std::optional<std::vector<LeakChain>>
+    HprofAnalyzer::Analyze(
+            const std::function<std::vector<object_id_t>(const HprofHeap &)> &leak_finder) {
+        if (impl_ != nullptr) {
+            return impl_->Analyze(leak_finder);
+        } else {
+            return std::nullopt;
+        }
     }
-
 
     // implementation
 
-    HprofAnalyzerImpl::HprofAnalyzerImpl(int hprof_fd) : parser_(new internal::parser::HeapParser()) {
+    std::unique_ptr<HprofAnalyzerImpl> HprofAnalyzerImpl::Create(int hprof_fd) {
         struct stat file_stat{};
         if (fstat(hprof_fd, &file_stat)) {
-            std::string error_msg =
-                    "Failed to check state of file descriptor. Error code: " + std::to_string(errno) + ".";
-            throw std::runtime_error(error_msg);
+            set_matrix_hprof_analyzer_error("Failed to invoke fstat with errno " + std::to_string(errno) + ".");
+            return nullptr;
         }
-        if (!S_ISREG(file_stat.st_mode))
-            throw std::runtime_error("File descriptor is not a regular file.");
-        data_size_ = file_stat.st_size;
-        data_ = mmap(nullptr, data_size_, PROT_READ, MAP_PRIVATE, hprof_fd, 0);
-        if (data_ == nullptr) throw std::runtime_error("Failed to mmap file.");
+        if (!S_ISREG(file_stat.st_mode)) {
+            set_matrix_hprof_analyzer_error("File descriptor is not a regular file.");
+            return nullptr;
+        }
+        const size_t data_size = file_stat.st_size;
+        void *data = mmap(nullptr, data_size, PROT_READ, MAP_PRIVATE, hprof_fd, 0);
+        if (data == nullptr) {
+            set_matrix_hprof_analyzer_error("Failed to mmap file.");
+            return nullptr;
+        }
+        return std::make_unique<HprofAnalyzerImpl>(data, data_size);
     }
+
+    HprofAnalyzerImpl::HprofAnalyzerImpl(void *data, size_t data_size) :
+            data_(data),
+            data_size_(data_size),
+            parser_(new internal::parser::HeapParser()),
+            exclude_matcher_group_() {}
 
     HprofAnalyzerImpl::~HprofAnalyzerImpl() {
         munmap(data_, data_size_);
@@ -84,7 +112,8 @@ namespace matrix::hprof {
     }
 
     std::vector<LeakChain>
-    HprofAnalyzerImpl::Analyze(const std::function<std::vector<object_id_t>(const HprofHeap &)> &leak_finder) {
+    HprofAnalyzerImpl::Analyze(
+            const std::function<std::vector<object_id_t>(const HprofHeap &)> &leak_finder) {
         internal::heap::Heap heap;
         internal::reader::Reader reader(reinterpret_cast<const uint8_t *>(data_), data_size_);
         parser_->Parse(reader, heap, exclude_matcher_group_);
@@ -115,9 +144,11 @@ namespace matrix::hprof {
             const auto &chain_node = chain[i];
             const std::string referent = ({
                 const object_id_t class_id = (chain_node.second.has_value() &&
-                                              chain_node.second.value().type == internal::heap::kStaticField)
+                                              chain_node.second.value().type ==
+                                              internal::heap::kStaticField)
                                              ? chain_node.first
-                                             : unwrap(heap.GetClass(chain_node.first), return std::nullopt);
+                                             : unwrap(heap.GetClass(chain_node.first),
+                                                      return std::nullopt);
                 unwrap(heap.GetClassName(class_id), return std::nullopt);
             });
             if (i == 0) {
@@ -127,12 +158,14 @@ namespace matrix::hprof {
             } else {
                 const std::string reference = next_reference.type == internal::heap::kArrayElement
                                               ? std::to_string(next_reference.index)
-                                              : heap.GetString(next_reference.field_name_id);
+                                              : heap.GetString(
+                                next_reference.field_name_id).value_or("");
                 const LeakChain::Node::ReferenceType reference_type =
                         convert_reference_type(next_reference.type);
                 const LeakChain::Node::ObjectType referent_type =
                         convert_object_type(heap.GetInstanceType(chain_node.first));
-                nodes.emplace_back(create_leak_chain_node(reference, reference_type, referent, referent_type));
+                nodes.emplace_back(
+                        create_leak_chain_node(reference, reference_type, referent, referent_type));
             }
             next_reference = unwrap(chain_node.second, break);
         }

@@ -16,7 +16,9 @@ namespace matrix::hprof {
 
     class HprofAnalyzerImpl {
     public:
-        explicit HprofAnalyzerImpl(int hprof_fd);
+        static std::unique_ptr<HprofAnalyzerImpl> Create(int hprof_fd);
+
+        HprofAnalyzerImpl(void *data, size_t data_size);
 
         ~HprofAnalyzerImpl();
 
@@ -38,8 +40,8 @@ namespace matrix::hprof {
         BuildLeakChain(const internal::heap::Heap &heap, const std::vector<std::pair<internal::heap::object_id_t,
                 std::optional<internal::heap::reference_t>>> &chain);
 
-        void *data_;
-        size_t data_size_;
+        void *data_{};
+        size_t data_size_{};
         const std::unique_ptr<const internal::parser::HeapParser> parser_;
         internal::parser::ExcludeMatcherGroup exclude_matcher_group_;
     };

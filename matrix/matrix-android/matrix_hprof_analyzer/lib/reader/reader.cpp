@@ -1,3 +1,4 @@
+#include "errorha.h"
 #include "include/reader.h"
 
 namespace matrix::hprof::internal::reader {
@@ -24,7 +25,7 @@ namespace matrix::hprof::internal::reader {
         uint64_t ret = 0;
         for (size_t i = 0; i < size; ++i) {
             if (cursor_ >= buffer_size_) {
-                throw std::runtime_error("Reach the end of buffer.");
+                fatal("Reach the end of buffer.");
             }
             ret = (ret << 8) | buffer_[cursor_];
             cursor_ += sizeof(uint8_t);
@@ -35,7 +36,7 @@ namespace matrix::hprof::internal::reader {
     void Reader::Skip(size_t size) {
         cursor_ += size;
         if (cursor_ > buffer_size_) {
-            throw std::runtime_error("Reach the end of buffer.");
+            fatal("Reach the end of buffer.");
         }
     }
 

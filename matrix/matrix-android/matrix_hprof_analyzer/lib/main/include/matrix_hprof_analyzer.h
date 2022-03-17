@@ -88,7 +88,8 @@ namespace matrix::hprof {
         template<typename T>
         [[nodiscard]] std::optional<T>
         GetFieldPrimitive(object_id_t referrer_id, const std::string &reference_name) const {
-            const uint64_t data = unwrap(GetFieldPrimitiveRaw(referrer_id, reference_name), return std::nullopt);
+            const uint64_t data = unwrap(GetFieldPrimitiveRaw(referrer_id, reference_name),
+                                         return std::nullopt);
             return *reinterpret_cast<const T *>(&data);
         }
 
@@ -242,8 +243,9 @@ namespace matrix::hprof {
             [[nodiscard]] ObjectType GetObjectType() const;
 
         private:
-            friend Node create_leak_chain_node(const std::string &reference, Node::ReferenceType reference_type,
-                                               const std::string &object, Node::ObjectType object_type);
+            friend Node
+            create_leak_chain_node(const std::string &reference, Node::ReferenceType reference_type,
+                                   const std::string &object, Node::ObjectType object_type);
 
             Node(std::string reference, Node::ReferenceType reference_type,
                  std::string object, Node::ObjectType object_type);
@@ -289,9 +291,12 @@ namespace matrix::hprof {
      */
     class HprofAnalyzer {
     public:
+
         /**
-         * Create analyzer for HPROF file with file descriptor \a hprof_fd.
+         * Gets error message if the analyzing is failed, or returns empty string if no error found. Use it like \errno.
          */
+        static const char *CheckError();
+
         explicit HprofAnalyzer(int hprof_fd);
 
         ~HprofAnalyzer();
@@ -301,14 +306,16 @@ namespace matrix::hprof {
          * <p>
          * Use "*" to match all.
          */
-        void ExcludeInstanceFieldReference(const std::string &class_name, const std::string &field_name);
+        void
+        ExcludeInstanceFieldReference(const std::string &class_name, const std::string &field_name);
 
         /**
          * Exclude references referred as static field \a field_name of class \a class_name.
          * <p>
          * Use "*" to match all.
          */
-        void ExcludeStaticFieldReference(const std::string &class_name, const std::string &field_name);
+        void
+        ExcludeStaticFieldReference(const std::string &class_name, const std::string &field_name);
 
         /**
          * Exclude references referred from stack frame of thread \a thread_name.
@@ -331,8 +338,11 @@ namespace matrix::hprof {
          * function will returns the same amount of LeakChain instances as leaks, each of which corresponds to a leak,
          * or amount of LeakChain instances is less than leaks count when there is a "leak" did not being referred by
          * GC roots.
+         * <p>
+         * The function returns std::nullopt if analyzes failed.
          */
-        std::vector<LeakChain> Analyze(const std::function<std::vector<object_id_t>(const HprofHeap &)> &leak_finder);
+        std::optional<std::vector<LeakChain>>
+        Analyze(const std::function<std::vector<object_id_t>(const HprofHeap &)> &leak_finder);
 
     private:
         friend_test(main_analyzer, construct);

@@ -186,7 +186,7 @@ namespace matrix::hprof::internal::heap {
     public:
         void AddClassNameRecord(object_id_t class_id, string_id_t class_name_id);
 
-        [[nodiscard]] string_id_t GetClassNameId(object_id_t class_id) const;
+        [[nodiscard]] std::optional<string_id_t> GetClassNameId(object_id_t class_id) const;
 
         [[nodiscard]] std::optional<object_id_t>
         FindClassByName(const std::string &class_name) const;
@@ -289,7 +289,7 @@ namespace matrix::hprof::internal::heap {
 
         void AddString(string_id_t string_id, const char *data, size_t length);
 
-        [[nodiscard]] std::string GetString(string_id_t string_id) const;
+        [[nodiscard]] std::optional<std::string> GetString(string_id_t string_id) const;
 
         [[nodiscard]] std::optional<string_id_t> FindStringId(const std::string &value) const;
 
