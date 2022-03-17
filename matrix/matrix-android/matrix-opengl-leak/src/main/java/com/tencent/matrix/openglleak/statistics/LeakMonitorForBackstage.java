@@ -20,6 +20,7 @@ public class LeakMonitorForBackstage extends LeakMonitorDefault implements IAppF
 
     private Handler mH;
     private LeakMonitorForBackstage.LeakListener mLeakListener;
+    private LeakMonitorForBackstage.LeakListListener mLeakListListener;
 
     private List<OpenGLInfo> mLeaksList = new LinkedList<>();
 
@@ -37,6 +38,10 @@ public class LeakMonitorForBackstage extends LeakMonitorDefault implements IAppF
 
     public void setLeakListener(LeakListener l) {
         mLeakListener = l;
+    }
+
+    public void setLeakListListener(LeakListListener l) {
+        mLeakListListener = l;
     }
 
     public void start(Application context) {
@@ -62,6 +67,7 @@ public class LeakMonitorForBackstage extends LeakMonitorDefault implements IAppF
         @Override
         public void run() {
             synchronized (mLeaksList) {
+                List<OpenGLInfo> allInfos = new LinkedList<>();
                 Iterator<OpenGLInfo> it = mLeaksList.iterator();
                 while (it.hasNext()) {
                     OpenGLInfo item = it.next();
@@ -71,14 +77,13 @@ public class LeakMonitorForBackstage extends LeakMonitorDefault implements IAppF
                                 mLeakListener.onLeak(item);
                             }
                         }
-
+                        allInfos.add(item);
                         it.remove();
                     }
                 }
-            }
-
-            if (null == mLeakListener) {
-                return;
+                if (mLeakListListener != null) {
+                    mLeakListListener.onLeak(allInfos);
+                }
             }
         }
     };
@@ -94,4 +99,9 @@ public class LeakMonitorForBackstage extends LeakMonitorDefault implements IAppF
     public interface LeakListener {
         void onLeak(OpenGLInfo info);
     }
+
+    public interface LeakListListener {
+        void onLeak(List<OpenGLInfo> infos);
+    }
+
 }

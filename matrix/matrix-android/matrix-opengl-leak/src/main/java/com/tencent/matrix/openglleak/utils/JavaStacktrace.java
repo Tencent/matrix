@@ -7,6 +7,8 @@ public class JavaStacktrace {
 
     private static final Map<Integer, Throwable> sThrowableMap = new ConcurrentHashMap<>();
 
+    private static final Map<String, Trace> sString2Trace = new ConcurrentHashMap<>();
+
     private static int sCollision = 0;
 
     private JavaStacktrace() {
@@ -22,20 +24,28 @@ public class JavaStacktrace {
         return key;
     }
 
-    public static String getBacktraceValue(int key) {
+    public static Trace getBacktraceValue(int key) {
         Throwable throwable = sThrowableMap.get(key);
         if (throwable == null) {
-            return "";
+            return new Trace();
         }
-        return stackTraceToString(throwable.getStackTrace());
+        String traceKey = stackTraceToString(throwable.getStackTrace());
+        Trace mapTrace = sString2Trace.get(traceKey);
+        if (mapTrace == null) {
+            Trace resultTrace = new Trace(traceKey);
+            resultTrace.addReference();
+            sString2Trace.put(traceKey, resultTrace);
+            sThrowableMap.remove(key);
+            return resultTrace;
+        } else {
+            sThrowableMap.remove(key);
+            mapTrace.addReference();
+            return mapTrace;
+        }
     }
 
     public static int getCollision() {
         return sCollision;
-    }
-
-    public static void removeBacktraceKey(int key) {
-        sThrowableMap.remove(key);
     }
 
     private static String stackTraceToString(StackTraceElement[] arr) {
@@ -53,6 +63,37 @@ public class JavaStacktrace {
             sb.append("\t").append(element).append('\n');
         }
         return sb.toString();
+    }
+
+    public static class Trace {
+
+        private final String content;
+
+        private int refCount = 0;
+
+        public Trace() {
+            content = "";
+        }
+
+        public Trace(String content) {
+            this.content = content;
+        }
+
+        public String getContent() {
+            return content;
+        }
+
+        public void addReference() {
+            refCount++;
+        }
+
+        public void reduceReference() {
+            refCount--;
+            if (refCount == 0) {
+                sString2Trace.remove(this.content);
+            }
+        }
+
     }
 
 

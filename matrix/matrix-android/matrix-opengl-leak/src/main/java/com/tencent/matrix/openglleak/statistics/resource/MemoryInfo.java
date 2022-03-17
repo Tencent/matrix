@@ -32,7 +32,7 @@ public class MemoryInfo {
 
     private int usage;
 
-    private int backtraceKey = -1;
+    private JavaStacktrace.Trace javatrace;
 
     private long nativeStackPtr = 0;
 
@@ -50,10 +50,6 @@ public class MemoryInfo {
             final int cubeMapFaceCount = 6;
             faces = new FaceInfo[cubeMapFaceCount];
         }
-    }
-
-    public int getJavaStacktraceKey() {
-        return backtraceKey;
     }
 
     private int getFaceId(int target) {
@@ -82,7 +78,7 @@ public class MemoryInfo {
         nativeStackPtr = 0;
     }
 
-    public void setTexturesInfo(int target, int level, int internalFormat, int width, int height, int depth, int border, int format, int type, int id, long eglContextId, long size, int key, long nativeStackPtr) {
+    public void setTexturesInfo(int target, int level, int internalFormat, int width, int height, int depth, int border, int format, int type, int id, long eglContextId, long size, JavaStacktrace.Trace javatrace, long nativeStackPtr) {
         int faceId = getFaceId(target);
         if (faceId == -1) {
             MatrixLog.e("MicroMsg.OpenGLHook", "setTexturesInfo faceId = -1, target = " + target);
@@ -93,11 +89,11 @@ public class MemoryInfo {
             OpenGLHook.releaseNative(this.nativeStackPtr);
         }
 
-        if (this.backtraceKey != -1) {
-            JavaStacktrace.removeBacktraceKey(backtraceKey);
+        if (this.javatrace != null) {
+            javatrace.reduceReference();
         }
 
-        this.backtraceKey = key;
+        this.javatrace = javatrace;
         this.nativeStackPtr = nativeStackPtr;
 
         FaceInfo faceInfo = faces[faceId];
@@ -126,7 +122,7 @@ public class MemoryInfo {
     }
 
     public String getJavaStack() {
-        return JavaStacktrace.getBacktraceValue(backtraceKey);
+        return javatrace == null ? "" : javatrace.getContent();
     }
 
     public String getNativeStack() {
@@ -184,26 +180,26 @@ public class MemoryInfo {
     }
 
 
-    public void setBufferInfo(int target, int usage, int id, long eglContextId, long size, int backtrace, long nativeStackPtr) {
+    public void setBufferInfo(int target, int usage, int id, long eglContextId, long size, JavaStacktrace.Trace backtrace, long nativeStackPtr) {
         this.target = target;
         this.usage = usage;
         this.id = id;
         this.eglContextId = eglContextId;
         this.size = size;
 
-        if (this.backtraceKey != -1) {
-            JavaStacktrace.removeBacktraceKey(backtraceKey);
+        if (this.javatrace != null) {
+            this.javatrace.reduceReference();
         }
 
         if (this.nativeStackPtr != 0) {
             OpenGLHook.releaseNative(this.nativeStackPtr);
         }
 
-        this.backtraceKey = backtrace;
+        this.javatrace = backtrace;
         this.nativeStackPtr = nativeStackPtr;
     }
 
-    public void setRenderbufferInfo(int target, int width, int height, int internalFormat, int id, long eglContextId, long size, int backtrace, long nativeStackPtr) {
+    public void setRenderbufferInfo(int target, int width, int height, int internalFormat, int id, long eglContextId, long size, JavaStacktrace.Trace backtrace, long nativeStackPtr) {
         this.target = target;
         this.width = width;
         this.height = height;
@@ -212,16 +208,23 @@ public class MemoryInfo {
         this.eglContextId = eglContextId;
         this.size = size;
 
-        if (this.backtraceKey != -1) {
-            JavaStacktrace.removeBacktraceKey(backtraceKey);
+        if (this.javatrace != null) {
+            this.javatrace.reduceReference();
         }
 
         if (this.nativeStackPtr != 0) {
             OpenGLHook.releaseNative(this.nativeStackPtr);
         }
 
-        this.backtraceKey = backtrace;
+        this.javatrace = backtrace;
         this.nativeStackPtr = nativeStackPtr;
+    }
+
+    public void releaseJavaStacktrace() {
+        if (javatrace != null) {
+            this.javatrace.reduceReference();
+            this.javatrace = null;
+        }
     }
 
     @Override
