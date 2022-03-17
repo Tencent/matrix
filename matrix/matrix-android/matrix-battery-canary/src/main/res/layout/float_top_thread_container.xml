@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content">
+
+    <RelativeLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@color/BW_97_Alpha_0_9"
+        android:foreground="?attr/selectableItemBackground">
+
+        <ImageView
+            android:id="@+id/iv_logo_minify"
+            android:layout_width="25dp"
+            android:layout_height="25dp"
+            android:contentDescription="logo"
+            android:src="@drawable/ic_launcher"
+            android:visibility="gone"
+            tools:ignore="HardcodedText"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/tv_temp_minify"
+            android:layout_width="40dp"
+            android:layout_height="wrap_content"
+            android:layout_centerVertical="true"
+            android:layout_marginLeft="5dp"
+            android:layout_toRightOf="@+id/iv_logo_minify"
+            android:gravity="center"
+            android:text="NULL"
+            android:textSize="12sp"
+            tools:text="25.0°C" />
+
+        <TextView
+            android:id="@+id/tv_load_minify"
+            android:layout_width="40dp"
+            android:layout_height="wrap_content"
+            android:layout_centerVertical="true"
+            android:layout_marginRight="5dp"
+            android:layout_toRightOf="@+id/tv_temp_minify"
+            android:gravity="right"
+            android:text="NULL"
+            android:textSize="12sp"
+            tools:text="100.0%" />
+    </RelativeLayout>
+
+
+    <RelativeLayout
+        android:id="@+id/layout_top"
+        android:layout_width="250dp"
+        android:layout_height="wrap_content"
+        android:visibility="visible"
+        tools:visibility="gone">
+
+        <include layout="@layout/float_top_thread" />
+    </RelativeLayout>
+
+</RelativeLayout>

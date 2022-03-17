@@ -94,6 +94,20 @@
                 android:visibility="gone"
                 tools:visibility="visible" />
 
+            <Button
+                style="@style/EntryButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:onClick="onShowIndicator"
+                android:text="Show TOP Indicator" />
+
+            <Button
+                style="@style/EntryButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:onClick="onCloseIndicator"
+                android:text="Close TOP Indicator" />
+
         </LinearLayout>
     </ScrollView>
 
