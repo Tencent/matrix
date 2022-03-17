@@ -14,12 +14,17 @@ import android.os.Process
 import android.text.TextUtils
 import androidx.lifecycle.*
 import com.tencent.matrix.lifecycle.ISerialObserver
+import com.tencent.matrix.lifecycle.IStatefulOwner
 import com.tencent.matrix.lifecycle.MatrixLifecycleThread
 import com.tencent.matrix.lifecycle.StatefulOwner
 import com.tencent.matrix.listeners.IAppForeground
 import com.tencent.matrix.util.*
 import java.util.*
 import kotlin.collections.HashMap
+
+object ProcessUICreatedStateOwner: IStatefulOwner by ProcessUILifecycleOwner.createdStateOwner
+object ProcessUIStartedStateOwner: IStatefulOwner by ProcessUILifecycleOwner.startedStateOwner
+object ProcessUIResumedStateOwner: IStatefulOwner by ProcessUILifecycleOwner.resumedStateOwner
 
 /**
  * multi process version of [androidx.lifecycle.ProcessLifecycleOwner]
@@ -92,9 +97,9 @@ object ProcessUILifecycleOwner {
         }
     }
 
-    val createdStateOwner: StatefulOwner = CreatedStateOwner()
-    val resumedStateOwner: StatefulOwner = AsyncOwner()
-    val startedStateOwner: StatefulOwner = AsyncOwner()
+    internal val createdStateOwner: StatefulOwner = CreatedStateOwner()
+    internal val resumedStateOwner: StatefulOwner = AsyncOwner()
+    internal val startedStateOwner: StatefulOwner = AsyncOwner()
 
     internal interface OnSceneChangedListener {
         fun onSceneChanged(newScene: String, origin: String)
