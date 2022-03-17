@@ -2,7 +2,7 @@ package com.tencent.matrix.memory.canary.monitor
 
 import com.tencent.matrix.lifecycle.IStateObserver
 import com.tencent.matrix.lifecycle.owners.IBackgroundStatefulOwner
-import com.tencent.matrix.lifecycle.owners.StagedBackgroundOwner
+import com.tencent.matrix.lifecycle.owners.ProcessStagedBackgroundOwner
 import com.tencent.matrix.memory.canary.MemInfo
 import com.tencent.matrix.util.MatrixHandlerThread
 import com.tencent.matrix.util.MatrixLog
@@ -16,7 +16,7 @@ private const val TAG = "Matrix.monitor.BackgroundMemoryMonitor"
 
 class ProcessBgMemoryMonitorConfig(
     val enable: Boolean = true,
-    val bgStatefulOwner: IBackgroundStatefulOwner = StagedBackgroundOwner,
+    val bgStatefulOwner: IBackgroundStatefulOwner = ProcessStagedBackgroundOwner,
     val checkInterval: Long = TimeUnit.MINUTES.toMillis(3),
     javaThresholdByte: Long = 250 * 1024 * 1024L,
     nativeThresholdByte: Long = 500 * 1024 * 1024L,

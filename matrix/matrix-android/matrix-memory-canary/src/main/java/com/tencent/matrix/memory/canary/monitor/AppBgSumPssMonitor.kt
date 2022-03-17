@@ -2,6 +2,7 @@ package com.tencent.matrix.memory.canary.monitor
 
 import com.tencent.matrix.lifecycle.IStateObserver
 import com.tencent.matrix.lifecycle.owners.IBackgroundStatefulOwner
+import com.tencent.matrix.lifecycle.supervisor.AppStagedBackgroundOwner
 import com.tencent.matrix.lifecycle.supervisor.ProcessSupervisor
 import com.tencent.matrix.memory.canary.MemInfo
 import com.tencent.matrix.util.MatrixHandlerThread
@@ -15,7 +16,7 @@ private const val TAG = "Matrix.monitor.AppBgSumPssMonitor"
  */
 class AppBgSumPssMonitorConfig(
     val enable: Boolean = true,
-    val bgStatefulOwner: IBackgroundStatefulOwner = ProcessSupervisor.appStagedBackgroundOwner,
+    val bgStatefulOwner: IBackgroundStatefulOwner = AppStagedBackgroundOwner,
     val checkInterval: Long = TimeUnit.MINUTES.toMillis(3),
     thresholdKB: Long = 2 * 1024 * 1024L + 500 * 1024L, // 2.5G
     checkTimes: Int = 3,

@@ -2,7 +2,6 @@ package com.tencent.matrix.lifecycle.supervisor
 
 import android.content.Context
 import android.os.*
-import com.tencent.matrix.lifecycle.owners.ExplicitBackgroundOwner
 import com.tencent.matrix.util.MatrixUtil
 
 /**
