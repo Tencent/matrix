@@ -106,6 +106,7 @@ public final class MemGuard {
             }
             if (success) {
                 MatrixLog.i(TAG, "Install MemGuard successfully with " + opts);
+                MemoryHook.INSTANCE.notifyMemGuardInstalled();
             } else {
                 MatrixLog.e(TAG, "Install MemGuard failed with " + opts);
             }

@@ -3,15 +3,15 @@
 //
 
 #include <cstring>
+#include <sstream>
 #include <util/Allocation.h>
 #include <util/Auxiliary.h>
 #include <util/SignalHandler.h>
 #include <util/Interception.h>
 #include <util/PagePool.h>
 #include <util/Log.h>
-#include <sstream>
 #include <util/Paths.h>
-#include <common/SoLoadMonitor.h>
+#include <SoLoadMonitor.h>
 #include "MemGuard.h"
 
 using namespace memguard;

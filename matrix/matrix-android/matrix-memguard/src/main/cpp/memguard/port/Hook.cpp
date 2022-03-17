@@ -7,7 +7,7 @@
 #include <util/Auxiliary.h>
 #include <util/Hook.h>
 #include <util/Log.h>
-#include <common/HookCommon.h>
+#include <HookCommon.h>
 
 using namespace memguard;
 

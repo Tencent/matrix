@@ -8,9 +8,15 @@
 
 #include <android/log.h>
 #include "Auxiliary.h"
+#include "LogFn.h"
 
-#ifndef MEMGUARD_LOG_LEVEL
-#define MEMGUARD_LOG_LEVEL LOG_DEBUG
+#ifndef EnableLOG
+    #undef MEMGUARD_LOG_LEVEL
+    #define MEMGUARD_LOG_LEVEL LOG_SILENT
+#else
+    #ifndef MEMGUARD_LOG_LEVEL
+        #define MEMGUARD_LOG_LEVEL LOG_VERBOSE
+    #endif
 #endif
 
 #define LOG_VERBOSE 2
@@ -81,13 +87,6 @@ static inline void OmitLogV(const char* tag, const char* fmt, va_list va_args) {
         __android_log_assert(nullptr, "MemGuard", "Assertion failed: %s, msg: " fmt, #cond, ##args); \
       } \
     } while (0)
-
-namespace memguard {
-    namespace log {
-        extern void PrintLog(int level, const char* tag, const char* fmt, ...);
-        extern void PrintLogV(int level, const char* tag, const char* fmt, va_list args);
-    }
-}
 
 
 #endif //__MEMGUARD_LOG_H__

@@ -4,6 +4,4 @@
         JNI_OnUnload;
         Java_*;
         fake_*;
-    local:
-        *;
 };

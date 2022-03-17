@@ -8,8 +8,8 @@
 #include <dlfcn.h>
 #include <sys/mman.h>
 #include <pthread.h>
-#include <common/HookCommon.h>
-#include <common/SoLoadMonitor.h>
+#include <HookCommon.h>
+#include <SoLoadMonitor.h>
 #include "Auxiliary.h"
 #include "Allocation.h"
 #include "Hook.h"
