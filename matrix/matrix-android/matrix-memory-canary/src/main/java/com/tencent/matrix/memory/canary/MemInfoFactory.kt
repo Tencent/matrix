@@ -9,6 +9,7 @@ import android.os.Process
 import android.text.TextUtils
 import com.tencent.matrix.Matrix
 import com.tencent.matrix.lifecycle.owners.ProcessUILifecycleOwner
+import com.tencent.matrix.lifecycle.owners.ProcessUIStartedStateOwner
 import com.tencent.matrix.lifecycle.supervisor.ProcessSupervisor
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.MatrixUtil
@@ -60,7 +61,7 @@ data class ProcessInfo(
     val pid: Int = Process.myPid(),
     val name: String = MatrixUtil.getProcessName(Matrix.with().application),
     val activity: String = ProcessUILifecycleOwner.recentScene.substringAfterLast('.'),
-    val isProcessFg: Boolean = ProcessUILifecycleOwner.startedStateOwner.active(),
+    val isProcessFg: Boolean = ProcessUIStartedStateOwner.active(),
     val isAppFg: Boolean = ProcessSupervisor.isAppUIForeground
 ) {
     override fun toString(): String {
@@ -176,22 +177,26 @@ data class PssInfo(
 }
 
 data class StatusInfo(
-    var state: String = "default",
-    var fdSize: Int = -1,
-    var vmSizeK: Int = -1,
-    var vmRssK: Int = -1,
-    var vmSwapK: Int = -1,
-    var threads: Int = -1
+    val state: String = "default",
+    val fdSize: Int = -1,
+    val vmSizeK: Int = -1,
+    val vmRssK: Int = -1,
+    val vmSwapK: Int = -1,
+    val threads: Int = -1,
+    val oomAdj: Int = -1,
+    val oomScoreAdj: Int = -1
 ) {
     override fun toString(): String {
         return String.format(
-            "%-21s %-21s %-21s %-21s %-21s %-21s",
+            "%-21s %-21s %-21s %-21s %-21s %-21s %-21s %-21s",
             "State=$state",
             "FDSize=$fdSize",
             "VmSize=$vmSizeK K",
             "VmRss=$vmRssK K",
             "VmSwap=$vmSwapK K",
-            "Threads=$threads"
+            "Threads=$threads",
+            "oom_adj=$oomAdj",
+            "oom_score_adj=$oomScoreAdj"
         )
     }
 
@@ -203,33 +208,49 @@ data class StatusInfo(
             put("vmSwap", vmSwapK)
             put("threads", threads)
             put("fdSize", fdSize)
+            put("oom_adj", oomAdj)
+            put("oom_score_adj", oomScoreAdj)
         }
     }
 
     companion object {
         @JvmStatic
         fun get(pid: Int = Process.myPid()): StatusInfo {
-            return StatusInfo().also {
-                convertProcStatus(pid).apply {
-                    fun Map<String, String>.getString(key: String) = get(key) ?: "unknown"
+            return convertProcStatus(pid).run {
+                fun Map<String, String>.getString(key: String) = get(key) ?: "unknown"
 
-                    fun Map<String, String>.getInt(key: String): Int {
-                        getString(key).let {
-                            val matcher = Pattern.compile("\\d+").matcher(it)
-                            while (matcher.find()) {
-                                return matcher.group().toInt()
-                            }
+                fun Map<String, String>.getInt(key: String): Int {
+                    getString(key).let {
+                        val matcher = Pattern.compile("\\d+").matcher(it)
+                        while (matcher.find()) {
+                            return matcher.group().toInt()
                         }
-                        return -2
                     }
-
-                    it.state = getString("State").trimIndent()
-                    it.fdSize = getInt("FDSize")
-                    it.vmSizeK = getInt("VmSize")
-                    it.vmRssK = getInt("VmRSS")
-                    it.vmSwapK = getInt("VmSwap")
-                    it.threads = getInt("Threads")
+                    return -2
                 }
+
+                StatusInfo(
+                    state = getString("State").trimIndent(),
+                    fdSize = getInt("FDSize"),
+                    vmSizeK = getInt("VmSize"),
+                    vmRssK = getInt("VmRSS"),
+                    vmSwapK = getInt("VmSwap"),
+                    threads = getInt("Threads"),
+                    oomAdj = getOomAdj(pid),
+                    oomScoreAdj = getOomScoreAdj(pid)
+                )
+            }
+        }
+
+        private fun getOomAdj(pid: Int): Int = safeLet(TAG, defVal = Int.MAX_VALUE) {
+            File("/proc/$pid/oom_adj").useLines {
+                it.first().toInt()
+            }
+        }
+
+        private fun getOomScoreAdj(pid: Int): Int = safeLet(TAG, defVal = Int.MAX_VALUE) {
+            File("/proc/$pid/oom_score_adj").useLines {
+                it.first().toInt()
             }
         }
 
@@ -309,10 +330,10 @@ data class NativeMemInfo(
 }
 
 data class SystemInfo(
-    var totalMemByte: Long = -1,
-    var availMemByte: Long = -1,
-    var lowMemory: Boolean = false,
-    var thresholdByte: Long = -1
+    val totalMemByte: Long = -1,
+    val availMemByte: Long = -1,
+    val lowMemory: Boolean = false,
+    val thresholdByte: Long = -1
 ) {
     companion object {
         fun get(): SystemInfo {

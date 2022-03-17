@@ -351,9 +351,14 @@ public final class BatteryCanaryUtil {
     }
 
     public static int getBatteryTemperatureImmediately(Context context) {
-        Intent batIntent = getBatteryStickyIntent(context);
-        if (batIntent == null) return 0;
-        return batIntent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0);
+        try {
+            Intent batIntent = getBatteryStickyIntent(context);
+            if (batIntent == null) return 0;
+            return batIntent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0);
+        } catch (Exception e) {
+            MatrixLog.w(TAG, "get EXTRA_TEMPERATURE failed: " + e.getMessage());
+            return 0;
+        }
     }
 
     @AppStats.AppStatusDef

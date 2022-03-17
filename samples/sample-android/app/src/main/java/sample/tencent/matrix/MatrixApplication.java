@@ -22,6 +22,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ServiceInfo;
 import android.os.Build;
+import android.util.Log;
 
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.BatteryEventDelegate;
@@ -143,10 +144,15 @@ public class MatrixApplication extends Application {
         Matrix.with().startAllPlugins();
 
         LifecycleTest.test1();
-        TrimMemoryNotifier.INSTANCE.addTrimCallback(new TrimCallback() {
+        TrimMemoryNotifier.INSTANCE.addProcessBackgroundTrimCallback(new TrimCallback() {
             @Override
-            public void trim() {
-                MatrixLog.i(TAG, "trim memory");
+            public void systemTrim(int i) {
+                MatrixLog.d(TAG, "systemTrim: ");
+            }
+
+            @Override
+            public void backgroundTrim() {
+                MatrixLog.d(TAG, "backgroundTrim: ");
             }
         });
 

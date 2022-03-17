@@ -40,6 +40,13 @@ data class SupervisorConfig(
     val lruKillerWhiteList: List<String> = emptyList()
 )
 
+// @formatter:off
+object AppUIForegroundOwner: IStatefulOwner by ProcessSupervisor.appUIForegroundOwner
+object AppExplicitBackgroundOwner: IBackgroundStatefulOwner by ProcessSupervisor.appExplicitBackgroundOwner
+object AppDeepBackgroundOwner: IBackgroundStatefulOwner by ProcessSupervisor.appDeepBackgroundOwner
+object AppStagedBackgroundOwner: IBackgroundStatefulOwner by ProcessSupervisor.appStagedBackgroundOwner
+// @formatter:on
+
 object ProcessSupervisor : IProcessListener by ProcessSubordinate.processListener {
 
     private const val TAG = "Matrix.ProcessSupervisor"
@@ -100,9 +107,9 @@ object ProcessSupervisor : IProcessListener by ProcessSubordinate.processListene
     internal const val DEEP_BACKGROUND_OWNER = "DeepBackgroundOwner"
 
     // @formatter:off
-    val appUIForegroundOwner: StatefulOwner = DispatcherStateOwner(ReduceOperators.OR, ProcessUILifecycleOwner.startedStateOwner, STARTED_STATE_OWNER)
-    val appExplicitBackgroundOwner: IBackgroundStatefulOwner = object : DispatcherStateOwner(ReduceOperators.AND, ExplicitBackgroundOwner, EXPLICIT_BACKGROUND_OWNER), IBackgroundStatefulOwner {}
-    val appDeepBackgroundOwner: IBackgroundStatefulOwner = object : DispatcherStateOwner(ReduceOperators.AND, DeepBackgroundOwner, DEEP_BACKGROUND_OWNER), IBackgroundStatefulOwner {}
+    internal val appUIForegroundOwner: StatefulOwner = DispatcherStateOwner(ReduceOperators.OR, ProcessUILifecycleOwner.startedStateOwner, STARTED_STATE_OWNER)
+    internal val appExplicitBackgroundOwner: IBackgroundStatefulOwner = object : DispatcherStateOwner(ReduceOperators.AND, ProcessExplicitBackgroundOwner, EXPLICIT_BACKGROUND_OWNER), IBackgroundStatefulOwner {}
+    internal val appDeepBackgroundOwner: IBackgroundStatefulOwner = object : DispatcherStateOwner(ReduceOperators.AND, ProcessDeepBackgroundOwner, DEEP_BACKGROUND_OWNER), IBackgroundStatefulOwner {}
     // @formatter:on
 
     private class AppStagedBackgroundOwner(
@@ -113,7 +120,7 @@ object ProcessSupervisor : IProcessListener by ProcessSubordinate.processListene
         ), ISerialObserver {}
     ) : IBackgroundStatefulOwner, IStatefulOwner by delegate
 
-    val appStagedBackgroundOwner: IBackgroundStatefulOwner = AppStagedBackgroundOwner()
+    internal val appStagedBackgroundOwner: IBackgroundStatefulOwner = AppStagedBackgroundOwner()
 
     fun init(app: Application, config: SupervisorConfig?): Boolean {
         if (config == null || !config.enable) {

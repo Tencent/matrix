@@ -45,6 +45,7 @@ import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature
 import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature.CpuFreqSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot.ThreadJiffiesEntry;
+import com.tencent.matrix.batterycanary.shell.ui.TopThreadIndicator;
 import com.tencent.matrix.batterycanary.stats.BatteryStatsFeature;
 import com.tencent.matrix.batterycanary.stats.ui.BatteryStatsActivity;
 import com.tencent.matrix.batterycanary.utils.Consumer;
@@ -91,6 +92,7 @@ public class TestBatteryActivity extends Activity {
                 .sample(CpuFreqSnapshot.class, 1000L)
                 .sample(BatteryTmpSnapshot.class, 1000L);
         mCompositeMonitors.start();
+        TopThreadIndicator.instance().attach(plugin.core());
         benchmark();
 
         //
@@ -124,11 +126,32 @@ public class TestBatteryActivity extends Activity {
         // if (BatteryCanary.getMonitorFeature(NotificationMonitorFeature.class) != null) {
         //     tryNotify();
         // }
+
+        showIndicator();
+    }
+
+    private void showIndicator() {
+        if (!TopThreadIndicator.instance().isShowing()) {
+            if (TopThreadIndicator.instance().checkPermission(this)) {
+                TopThreadIndicator.instance().show(this);
+                TopThreadIndicator.instance().start(5);
+            }
+        }
+    }
+
+    private void dismissIndicator() {
+        TopThreadIndicator.instance().stop();
+        TopThreadIndicator.instance().dismiss();
     }
 
     @Override
     protected void onStart() {
         super.onStart();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
     }
 
     @Override
@@ -151,6 +174,14 @@ public class TestBatteryActivity extends Activity {
        // }).start();
     }
 
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == 2233) {
+            showIndicator();
+        }
+    }
+
     private void benchmark() {
         mBenchmarkThread = new Thread(new Runnable() {
             @Override
@@ -161,6 +192,20 @@ public class TestBatteryActivity extends Activity {
             }
         }, "Benchmark");
         mBenchmarkThread.start();
+    }
+
+    public void onShowIndicator(View view) {
+        if (!TopThreadIndicator.instance().isShowing()) {
+            if (TopThreadIndicator.instance().checkPermission(this)) {
+                showIndicator();
+            } else {
+                TopThreadIndicator.instance().requestPermission(this, 2233);
+            }
+        }
+    }
+
+    public void onCloseIndicator(View view) {
+        dismissIndicator();
     }
 
     public void onDumpBatteryStats(View view) {

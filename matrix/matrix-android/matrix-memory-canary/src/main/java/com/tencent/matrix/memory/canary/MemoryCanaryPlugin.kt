@@ -1,7 +1,9 @@
 package com.tencent.matrix.memory.canary
 
-import com.tencent.matrix.lifecycle.owners.DeepBackgroundOwner
-import com.tencent.matrix.lifecycle.owners.StagedBackgroundOwner
+import com.tencent.matrix.lifecycle.owners.ProcessDeepBackgroundOwner
+import com.tencent.matrix.lifecycle.owners.ProcessStagedBackgroundOwner
+import com.tencent.matrix.lifecycle.supervisor.AppDeepBackgroundOwner
+import com.tencent.matrix.lifecycle.supervisor.AppStagedBackgroundOwner
 import com.tencent.matrix.lifecycle.supervisor.ProcessSupervisor
 import com.tencent.matrix.memory.canary.monitor.AppBgSumPssMonitor
 import com.tencent.matrix.memory.canary.monitor.AppBgSumPssMonitorConfig
@@ -15,12 +17,12 @@ import com.tencent.matrix.util.safeLet
 @Suppress("ArrayInDataClass")
 data class MemoryCanaryConfig(
     val appBgSumPssMonitorConfigs: Array<AppBgSumPssMonitorConfig> = arrayOf(
-        AppBgSumPssMonitorConfig(bgStatefulOwner = ProcessSupervisor.appStagedBackgroundOwner),
-        AppBgSumPssMonitorConfig(bgStatefulOwner = ProcessSupervisor.appDeepBackgroundOwner)
+        AppBgSumPssMonitorConfig(bgStatefulOwner = AppStagedBackgroundOwner),
+        AppBgSumPssMonitorConfig(bgStatefulOwner = AppDeepBackgroundOwner)
     ),
     val processBgMemoryMonitorConfigs: Array<ProcessBgMemoryMonitorConfig> = arrayOf(
-        ProcessBgMemoryMonitorConfig(bgStatefulOwner = StagedBackgroundOwner),
-        ProcessBgMemoryMonitorConfig(bgStatefulOwner = DeepBackgroundOwner)
+        ProcessBgMemoryMonitorConfig(bgStatefulOwner = ProcessStagedBackgroundOwner),
+        ProcessBgMemoryMonitorConfig(bgStatefulOwner = ProcessDeepBackgroundOwner)
     ),
 )
 
