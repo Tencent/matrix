@@ -9,6 +9,8 @@ import com.tencent.matrix.memory.canary.monitor.AppBgSumPssMonitor
 import com.tencent.matrix.memory.canary.monitor.AppBgSumPssMonitorConfig
 import com.tencent.matrix.memory.canary.monitor.ProcessBgMemoryMonitor
 import com.tencent.matrix.memory.canary.monitor.ProcessBgMemoryMonitorConfig
+import com.tencent.matrix.memory.canary.trim.TrimMemoryConfig
+import com.tencent.matrix.memory.canary.trim.TrimMemoryNotifier
 import com.tencent.matrix.plugin.Plugin
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.MatrixUtil
@@ -24,6 +26,7 @@ data class MemoryCanaryConfig(
         ProcessBgMemoryMonitorConfig(bgStatefulOwner = ProcessStagedBackgroundOwner),
         ProcessBgMemoryMonitorConfig(bgStatefulOwner = ProcessDeepBackgroundOwner)
     ),
+    val trimMemoryConfig: TrimMemoryConfig = TrimMemoryConfig()
 )
 
 class MemoryCanaryPlugin(
@@ -51,6 +54,7 @@ class MemoryCanaryPlugin(
             processBgMemoryMonitorConfigs.forEach {
                 ProcessBgMemoryMonitor(it).init()
             }
+            TrimMemoryNotifier.init(trimMemoryConfig)
         }
     }
 
