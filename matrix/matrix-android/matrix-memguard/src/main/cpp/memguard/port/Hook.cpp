@@ -7,7 +7,7 @@
 #include <util/Auxiliary.h>
 #include <util/Hook.h>
 #include <util/Log.h>
-#include <common/HookCommon.h>
+#include <HookCommon.h>
 
 using namespace memguard;
 
@@ -18,8 +18,8 @@ bool memguard::BeginHook() {
     return true;
 }
 
-bool memguard::DoHook(const char* pathname_regex, const char* sym_name, void* handler_func, void** original_func) {
-    int ret = xhook_grouped_register(HOOK_REQUEST_GROUPID_MEMGUARD, pathname_regex, sym_name, handler_func, original_func);
+bool memguard::DoHook(int rule_group_id, const char* pathname_regex, const char* sym_name, void* handler_func, void** original_func) {
+    int ret = xhook_grouped_register(rule_group_id, pathname_regex, sym_name, handler_func, original_func);
     if (UNLIKELY(ret != 0)) {
         LOGE(LOG_TAG, "Fail to hook symbol '%s' of libs match pattern '%s', ret: %d", sym_name, pathname_regex, ret);
         return false;
@@ -28,31 +28,47 @@ bool memguard::DoHook(const char* pathname_regex, const char* sym_name, void* ha
     return true;
 }
 
-bool memguard::EndHook(const std::vector<std::string>& ignore_pathname_regex_list) {
+bool memguard::EndHook(int rule_group_id, const std::vector<std::string>& ignore_pathname_regex_list) {
     int ret = 0;
     for (auto & pattern : ignore_pathname_regex_list) {
-        if ((ret = xhook_grouped_ignore(HOOK_REQUEST_GROUPID_MEMGUARD, pattern.c_str(), nullptr)) != 0) {
+        if ((ret = xhook_grouped_ignore(rule_group_id, pattern.c_str(), nullptr)) != 0) {
             LOGE(LOG_TAG, "Fail to ignore all symbols in library matches pattern %s, ret: %d", pattern.c_str(), ret);
             return false;
         }
     }
-    if ((ret = xhook_grouped_ignore(HOOK_REQUEST_GROUPID_MEMGUARD, ".*/libmemguard\\.so$", nullptr)) != 0) {
+    if ((ret = xhook_grouped_ignore(rule_group_id, ".*/libmatrix-memguard\\.so$", nullptr)) != 0) {
         LOGE(LOG_TAG, "Fail to ignore all symbols in libmemguard.so, ret: %d", ret);
         return false;
     }
 #if defined(__LP64__)
-    if ((ret = xhook_grouped_ignore(HOOK_REQUEST_GROUPID_MEMGUARD, ".*/linker64$", nullptr)) != 0) {
+    if ((ret = xhook_grouped_ignore(rule_group_id, ".*/linker64$", nullptr)) != 0) {
         LOGE(LOG_TAG, "Fail to ignore all symbols in linker64, ret: %d", ret);
         return false;
     }
 #else
-    if ((ret = xhook_grouped_ignore(HOOK_REQUEST_GROUPID_MEMGUARD, ".*/linker$", nullptr)) != 0) {
+    if ((ret = xhook_grouped_ignore(rule_group_id, ".*/linker$", nullptr)) != 0) {
         LOGE(LOG_TAG, "Fail to ignore all symbols in linker, ret: %d", ret);
         return false;
     }
 #endif
-    if ((ret = xhook_grouped_ignore(HOOK_REQUEST_GROUPID_MEMGUARD, ".*/libc\\.so", nullptr)) != 0) {
+    if ((ret = xhook_grouped_ignore(rule_group_id, ".*/libc\\.so$", nullptr)) != 0) {
         LOGE(LOG_TAG, "Fail to ignore all symbols in libc.so, ret: %d", ret);
+        return false;
+    }
+    if ((ret = xhook_grouped_ignore(rule_group_id, ".*/libwechatcrash\\.so$", nullptr)) != 0) {
+        LOGE(LOG_TAG, "Fail to ignore all symbols in libwechatcrash.so, ret: %d", ret);
+        return false;
+    }
+    if ((ret = xhook_grouped_ignore(rule_group_id, ".*/liblog\\.so$", nullptr)) != 0) {
+        LOGE(LOG_TAG, "Fail to ignore all symbols in liblog.so, ret: %d", ret);
+        return false;
+    }
+    if ((ret = xhook_grouped_ignore(rule_group_id, ".*/libmatrix-hookcommon\\.so$", nullptr)) != 0) {
+        LOGE(LOG_TAG, "Fail to ignore all symbols in libmatrix-hookcommon.so, ret: %d", ret);
+        return false;
+    }
+    if ((ret = xhook_grouped_ignore(rule_group_id, ".*/libwechatbacktrace\\.so$", nullptr)) != 0) {
+        LOGE(LOG_TAG, "Fail to ignore all symbols in libwechatbacktrace.so, ret: %d", ret);
         return false;
     }
     xhook_enable_debug(0);

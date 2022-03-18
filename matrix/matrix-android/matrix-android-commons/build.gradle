@@ -19,6 +19,7 @@ android {
         externalNativeBuild {
             cmake {
                 targets = ['xhook', 'semi_dlfcn', 'enhance_dlsym']
+                arguments = ["-DEnableLOG=${gradle.enableLog() ? "ON" : "OFF"}" as String]
             }
             exportHeaders {
                 from('src/main/cpp/libxhook') {

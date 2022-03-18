@@ -73,7 +73,7 @@ typedef struct
     int         is_use_gnu_hash;
 } xh_elf_t;
 
-int xh_elf_init(xh_elf_t *self, uintptr_t base_addr, const char *pathname);
+int xh_elf_init(xh_elf_t *self, uintptr_t bias_addr, ElfW(Phdr)* phdrs, ElfW(Half) phdr_count, const char *pathname);
 int xh_elf_hook(xh_elf_t *self, const char *symbol, void *new_func, void **old_func);
 
 int xh_elf_check_elfheader(uintptr_t base_addr);

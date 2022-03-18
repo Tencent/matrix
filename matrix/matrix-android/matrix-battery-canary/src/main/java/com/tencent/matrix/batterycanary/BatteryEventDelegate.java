@@ -169,16 +169,20 @@ public final class BatteryEventDelegate {
                                         onBatteryPowerChanged(currPct);
                                     }
                                     // Battery temperature
-                                    int currTemp = intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1);
-                                    if (currTemp != -1 && Math.abs(currTemp - mLastBatteryTemp) >= BATTERY_TEMPERATURE_GRADUATION) {
-                                        mLastBatteryTemp = currTemp;
-                                        if (mCore != null) {
-                                            BatteryStatsFeature feat = mCore.getMonitorFeature(BatteryStatsFeature.class);
-                                            if (feat != null) {
-                                                feat.statsBatteryTempEvent(currTemp);
+                                    try {
+                                        int currTemp = intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1);
+                                        if (currTemp != -1 && Math.abs(currTemp - mLastBatteryTemp) >= BATTERY_TEMPERATURE_GRADUATION) {
+                                            mLastBatteryTemp = currTemp;
+                                            if (mCore != null) {
+                                                BatteryStatsFeature feat = mCore.getMonitorFeature(BatteryStatsFeature.class);
+                                                if (feat != null) {
+                                                    feat.statsBatteryTempEvent(currTemp);
+                                                }
                                             }
+                                            onBatteryTemperatureChanged(currTemp);
                                         }
-                                        onBatteryTemperatureChanged(currTemp);
+                                    } catch (Exception e) {
+                                        MatrixLog.w(TAG, "get EXTRA_TEMPERATURE failed: " + e.getMessage());
                                     }
                                 }
                             });

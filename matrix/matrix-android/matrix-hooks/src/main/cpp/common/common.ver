@@ -1,7 +1,8 @@
 {
     global:
         set_fake_backtrace_vectors*;
-    local:
         xh_*;
         semi_*;
+        flogger0;
+        rp_*;
 };

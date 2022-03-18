@@ -11,8 +11,8 @@
 
 namespace memguard {
     extern bool BeginHook();
-    extern bool DoHook(const char* pathname_regex, const char* sym_name, void* handler_func, void** original_func);
-    extern bool EndHook(const std::vector<std::string>& ignore_pathname_regex_list);
+    extern bool DoHook(int rule_group_id, const char* pathname_regex, const char* sym_name, void* handler_func, void** original_func);
+    extern bool EndHook(int rule_group_id, const std::vector<std::string>& ignore_pathname_regex_list);
     extern bool UpdateHook();
 }
 

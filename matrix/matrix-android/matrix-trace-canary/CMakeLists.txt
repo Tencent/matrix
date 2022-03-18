@@ -24,6 +24,7 @@ find_library( log-lib
 target_link_libraries( trace-canary
         PRIVATE ${log-lib}
         PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/libxhook.a
+        PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/libsemi_dlfcn.a
         )
 
 set_target_properties(trace-canary PROPERTIES

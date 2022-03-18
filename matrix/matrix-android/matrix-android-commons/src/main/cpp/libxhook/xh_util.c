@@ -52,7 +52,10 @@ static int xh_util_get_mem_protect_maps_iter_cb(void* data, uintptr_t start, uin
     int* load0 = (int*) ((void**) data)[4];
     int* found_all = (int*) ((void**) data)[5];
 
-    if (pathname != NULL && strcmp(expected_pathname, pathname) != 0) return 0;
+    // Use addr to locate map entry is enough.
+    // Use pathname to locate map entry may fail if expected map entry was mapped directly from apk. In this case
+    // map entry name is always the apk path while our expect name is the so path.
+    // if (pathname != NULL && strcmp(expected_pathname, pathname) != 0) return 0;
 
     if(perms[3] != 'p') return 0;
 

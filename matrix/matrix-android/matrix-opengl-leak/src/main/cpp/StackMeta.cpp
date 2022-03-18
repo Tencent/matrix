@@ -93,7 +93,9 @@ wechat_backtrace::Backtrace *deduplicate_backtrace(wechat_backtrace::Backtrace *
             }
 
             stack_meta = target;
-            if (stack_meta->backtrace->frame_size == 0 && backtrace->frame_size != 0) {
+            if (stack_meta->backtrace == nullptr && backtrace->frame_size != 0) {
+                stack_meta->backtrace = backtrace;
+            } else if (stack_meta->backtrace->frame_size == 0 && backtrace->frame_size != 0) {
                 stack_meta->backtrace = backtrace;
             } else {
                 delete backtrace;

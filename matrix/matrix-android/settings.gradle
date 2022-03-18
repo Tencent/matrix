@@ -24,6 +24,7 @@ include ':matrix-traffic'
 // Components for memory hook
 include ':matrix-backtrace'
 include ':matrix-hooks'
+include ':matrix-memguard'
 include ':matrix-jectl'
 include ':matrix-fd'
 

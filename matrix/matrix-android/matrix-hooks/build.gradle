@@ -27,6 +27,10 @@ android {
                     include '**/*.h'
                     include '*.h'
                 }
+
+                from('src/main/cpp/external/fastunwind') {
+                    include '**/*.h'
+                }
             }
         }
     }
