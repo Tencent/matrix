@@ -51,20 +51,25 @@ object MemoryUtil {
         }
 
     private val initialized by lazy {
-        System.loadLibrary("matrix_mem_util")
-        if (!loadJniCache()) {
-            error("Failed to load JNI cache.")
+        try {
+            System.loadLibrary("matrix_mem_util")
+            if (!loadJniCache()) {
+                error("Failed to load JNI cache.")
+                return@lazy false
+            }
+            if (!initializeTaskStateDir()) {
+                error("Failed to initialize task state directory.")
+                return@lazy false
+            }
+            if (!initializeSymbol()) {
+                error("Failed to initialize resources.")
+                return@lazy false
+            }
+            return@lazy true
+        } catch (exception: Exception) {
+            MatrixLog.printErrStackTrace(TAG, exception, "")
             return@lazy false
         }
-        if (!initializeTaskStateDir()) {
-            error("Failed to initialize task state directory.")
-            return@lazy false
-        }
-        if (!initializeSymbol()) {
-            error("Failed to initialize resources.")
-            return@lazy false
-        }
-        return@lazy true
     }
 
     private external fun loadJniCache(): Boolean
