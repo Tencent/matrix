@@ -3,8 +3,11 @@
 
 bool initialize_symbols();
 
+void dump_heap(const char *file_name);
+
 namespace mirror {
-    class Thread {};
+    class Thread {
+    };
 }
 
 mirror::Thread *current_thread();

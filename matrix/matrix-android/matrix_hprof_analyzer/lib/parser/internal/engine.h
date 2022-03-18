@@ -18,20 +18,20 @@ namespace matrix::hprof::internal::parser {
     public:
         virtual ~HeapParserEngine() = default;
 
-        virtual void Parse(reader::Reader &reader, heap::Heap &heap, const ExcludeMatcherGroup &exclude_matchers,
+        virtual bool Parse(reader::Reader &reader, heap::Heap &heap, const ExcludeMatcherGroup &exclude_matchers,
                            const HeapParserEngine &next) const = 0;
 
-        virtual void ParseHeader(reader::Reader &reader, heap::Heap &heap) const = 0;
+        virtual bool ParseHeader(reader::Reader &reader, heap::Heap &heap) const = 0;
 
-        virtual void ParseStringRecord(reader::Reader &reader, heap::Heap &heap, size_t record_length) const = 0;
+        virtual bool ParseStringRecord(reader::Reader &reader, heap::Heap &heap, size_t record_length) const = 0;
 
-        virtual void ParseLoadClassRecord(reader::Reader &reader, heap::Heap &heap, size_t record_length) const = 0;
+        virtual bool ParseLoadClassRecord(reader::Reader &reader, heap::Heap &heap, size_t record_length) const = 0;
 
-        virtual void ParseHeapContent(reader::Reader &reader, heap::Heap &heap, size_t record_length,
+        virtual bool ParseHeapContent(reader::Reader &reader, heap::Heap &heap, size_t record_length,
                                       const ExcludeMatcherGroup &exclude_matchers,
                                       const HeapParserEngine &next) const = 0;
 
-        virtual void LazyParse(heap::Heap &heap, const ExcludeMatcherGroup &exclude_matcher_group) const = 0;
+        virtual bool LazyParse(heap::Heap &heap, const ExcludeMatcherGroup &exclude_matcher_group) const = 0;
 
         virtual size_t
         ParseHeapContentRootUnknownSubRecord(reader::Reader &reader, heap::Heap &heap) const = 0;
@@ -106,20 +106,20 @@ namespace matrix::hprof::internal::parser {
      */
     class HeapParserEngineImpl final : public HeapParserEngine {
     public:
-        void Parse(reader::Reader &reader, heap::Heap &heap, const ExcludeMatcherGroup &exclude_matcher_group,
+        bool Parse(reader::Reader &reader, heap::Heap &heap, const ExcludeMatcherGroup &exclude_matcher_group,
                    const HeapParserEngine &next) const override;
 
-        void ParseHeader(reader::Reader &reader, heap::Heap &heap) const override;
+        bool ParseHeader(reader::Reader &reader, heap::Heap &heap) const override;
 
-        void ParseStringRecord(reader::Reader &reader, heap::Heap &heap, size_t record_length) const override;
+        bool ParseStringRecord(reader::Reader &reader, heap::Heap &heap, size_t record_length) const override;
 
-        void ParseLoadClassRecord(reader::Reader &reader, heap::Heap &heap, size_t record_length) const override;
+        bool ParseLoadClassRecord(reader::Reader &reader, heap::Heap &heap, size_t record_length) const override;
 
-        void ParseHeapContent(reader::Reader &reader, heap::Heap &heap, size_t record_length,
+        bool ParseHeapContent(reader::Reader &reader, heap::Heap &heap, size_t record_length,
                               const ExcludeMatcherGroup &exclude_matcher_group,
                               const HeapParserEngine &next) const override;
 
-        void LazyParse(heap::Heap &heap, const ExcludeMatcherGroup &exclude_matcher_group) const override;
+        bool LazyParse(heap::Heap &heap, const ExcludeMatcherGroup &exclude_matcher_group) const override;
 
         size_t ParseHeapContentRootUnknownSubRecord(reader::Reader &reader, heap::Heap &heap) const override;
 

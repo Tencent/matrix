@@ -6,6 +6,8 @@
 
 #include "heap.h"
 
+#include "errorha.h"
+
 using namespace matrix::hprof::internal::heap;
 
 namespace matrix::hprof {
@@ -28,7 +30,10 @@ namespace matrix::hprof {
     TEST(main_analyzer, construct_error_handle) {
         // unknown file descriptor
         {
-            EXPECT_THROW(HprofAnalyzer impl(-1), std::runtime_error);
+            HprofAnalyzer impl(-1);
+            EXPECT_EQ(std::nullopt, impl.Analyze([](const HprofHeap &) { return std::vector<matrix::hprof::object_id_t>(); }));
+            std::cout << get_matrix_hprof_analyzer_error() << std::endl;
+            EXPECT_EQ(0, strcmp("Failed to invoke fstat with errno 9.", get_matrix_hprof_analyzer_error()));
         }
         // not regular file
         {
@@ -36,7 +41,9 @@ namespace matrix::hprof {
             char *temp_dir_path = mkdtemp(name_template);
             if (temp_dir_path == nullptr) FAIL() << "Unsupported test platform: Failed to create temporary directory.";
             int fd = open(temp_dir_path, O_RDONLY);
-            EXPECT_THROW(HprofAnalyzer impl(fd), std::runtime_error);
+            HprofAnalyzer impl(fd);
+            EXPECT_EQ(std::nullopt, impl.Analyze([](const HprofHeap &) { return std::vector<matrix::hprof::object_id_t>(); }));
+            EXPECT_EQ(0, strcmp("File descriptor is not a regular file.", get_matrix_hprof_analyzer_error()));
         }
     }
 
