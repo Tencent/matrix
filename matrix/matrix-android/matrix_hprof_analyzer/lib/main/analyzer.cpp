@@ -14,7 +14,7 @@ namespace matrix::hprof {
 
     // public interface
 
-    const char* HprofAnalyzer::CheckError() {
+    const char *HprofAnalyzer::CheckError() {
         return get_matrix_hprof_analyzer_error();
     }
 
@@ -63,17 +63,27 @@ namespace matrix::hprof {
     std::unique_ptr<HprofAnalyzerImpl> HprofAnalyzerImpl::Create(int hprof_fd) {
         struct stat file_stat{};
         if (fstat(hprof_fd, &file_stat)) {
-            set_matrix_hprof_analyzer_error("Failed to invoke fstat with errno " + std::to_string(errno) + ".");
+            set_matrix_hprof_analyzer_error(
+                    "Failed to invoke fstat on HPROF file with errno " +
+                    std::to_string(errno) +
+                    ".");
             return nullptr;
         }
         if (!S_ISREG(file_stat.st_mode)) {
-            set_matrix_hprof_analyzer_error("File descriptor is not a regular file.");
+            set_matrix_hprof_analyzer_error("HPROF file descriptor is not a regular file.");
             return nullptr;
         }
         const size_t data_size = file_stat.st_size;
+        if (data_size == 0) {
+            set_matrix_hprof_analyzer_error("HPROF file is empty.");
+            return nullptr;
+        }
         void *data = mmap(nullptr, data_size, PROT_READ, MAP_PRIVATE, hprof_fd, 0);
-        if (data == nullptr) {
-            set_matrix_hprof_analyzer_error("Failed to mmap file.");
+        if (data == MAP_FAILED) {
+            set_matrix_hprof_analyzer_error(
+                    "Failed to mmap HPROF file with errno " +
+                    std::to_string(errno) +
+                    ".");
             return nullptr;
         }
         return std::make_unique<HprofAnalyzerImpl>(data, data_size);
