@@ -1,6 +1,8 @@
 #include "errorha.h"
 #include "include/reader.h"
 
+#include <sstream>
+
 namespace matrix::hprof::internal::reader {
     Reader::Reader(const uint8_t *source, size_t buffer_size) :
             buffer_size_(buffer_size),
@@ -13,12 +15,12 @@ namespace matrix::hprof::internal::reader {
     }
 
     std::string Reader::ReadNullTerminatedString() {
-        std::string result;
+        std::stringstream stream;
         char current;
         while ((current = static_cast<char>(ReadU1())) != '\0') {
-            result += current;
+            stream << current;
         }
-        return result;
+        return stream.str();
     }
 
     uint64_t Reader::Read(size_t size) {
