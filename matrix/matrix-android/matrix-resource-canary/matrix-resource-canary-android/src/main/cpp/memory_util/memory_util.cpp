@@ -331,16 +331,10 @@ Java_com_tencent_matrix_resource_MemoryUtil_forkDump(JNIEnv *env, jobject,
     if (task_pid != 0) {
         return task_pid;
     } else {
-        /* task process */
-        try {
-            /* dump */
-            execute_dump(hprof_path.c_str());
-            /* end */
-            _exit(TC_NO_ERROR);
-        } catch (const std::exception &exception) {
-            _error_log(TAG, "Exception thrown while executing task: %s.", exception.what());
-            _exit(TC_EXCEPTION);
-        }
+        /* dump */
+        execute_dump(hprof_path.c_str());
+        /* end */
+        _exit(TC_NO_ERROR);
     }
 }
 
@@ -359,21 +353,15 @@ Java_com_tencent_matrix_resource_MemoryUtil_forkAnalyze(JNIEnv *env, jobject,
     if (task_pid != 0) {
         return task_pid;
     } else {
-        /* task process */
-        try {
-            /* analyze */
-            const std::optional<std::vector<LeakChain>> result =
-                    execute_analyze(hprof_path.c_str(), reference_key.c_str());
-            if (!result.has_value()) _exit(TC_ANALYZE_ERROR);
-            /* serialize result */
-            const bool serialized = execute_serialize(result_path.c_str(), result.value());
-            if (!serialized) _exit(TC_SERIALIZE_ERROR);
-            /* end */
-            _exit(TC_NO_ERROR);
-        } catch (const std::exception &exception) {
-            _error_log(TAG, "Exception thrown while executing task: %s.", exception.what());
-            _exit(TC_EXCEPTION);
-        }
+        /* analyze */
+        const std::optional<std::vector<LeakChain>> result =
+                execute_analyze(hprof_path.c_str(), reference_key.c_str());
+        if (!result.has_value()) _exit(TC_ANALYZE_ERROR);
+        /* serialize result */
+        const bool serialized = execute_serialize(result_path.c_str(), result.value());
+        if (!serialized) _exit(TC_SERIALIZE_ERROR);
+        /* end */
+        _exit(TC_NO_ERROR);
     }
 }
 
@@ -392,23 +380,17 @@ Java_com_tencent_matrix_resource_MemoryUtil_forkDumpAndAnalyze(JNIEnv *env, jobj
     if (task_pid != 0) {
         return task_pid;
     } else {
-        /* task process */
-        try {
-            /* dump */
-            execute_dump(hprof_path.c_str());
-            /* analyze */
-            const std::optional<std::vector<LeakChain>> result =
-                    execute_analyze(hprof_path.c_str(), reference_key.c_str());
-            if (!result.has_value()) _exit(TC_ANALYZE_ERROR);
-            /* serialize result */
-            const bool serialized = execute_serialize(result_path.c_str(), result.value());
-            if (!serialized) _exit(TC_SERIALIZE_ERROR);
-            /* end */
-            _exit(TC_NO_ERROR);
-        } catch (const std::exception &exception) {
-            _error_log(TAG, "Exception thrown while executing task: %s.", exception.what());
-            _exit(TC_EXCEPTION);
-        }
+        /* dump */
+        execute_dump(hprof_path.c_str());
+        /* analyze */
+        const std::optional<std::vector<LeakChain>> result =
+                execute_analyze(hprof_path.c_str(), reference_key.c_str());
+        if (!result.has_value()) _exit(TC_ANALYZE_ERROR);
+        /* serialize result */
+        const bool serialized = execute_serialize(result_path.c_str(), result.value());
+        if (!serialized) _exit(TC_SERIALIZE_ERROR);
+        /* end */
+        _exit(TC_NO_ERROR);
     }
 }
 
