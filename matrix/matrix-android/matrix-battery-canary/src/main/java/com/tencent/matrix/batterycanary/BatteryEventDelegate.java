@@ -158,28 +158,32 @@ public final class BatteryEventDelegate {
                                 public void run() {
                                     // Power percentage
                                     int currPct = BatteryCanaryUtil.getBatteryPercentage(mContext);
-                                    if (Math.abs(currPct - mLastBatteryPowerPct) >= BATTERY_POWER_GRADUATION) {
-                                        mLastBatteryPowerPct = currPct;
-                                        if (mCore != null) {
-                                            BatteryStatsFeature feat = mCore.getMonitorFeature(BatteryStatsFeature.class);
-                                            if (feat != null) {
-                                                feat.statsBatteryEvent(currPct);
+                                    if (currPct >= 0 && currPct <= 1000) {
+                                        if (Math.abs(currPct - mLastBatteryPowerPct) >= BATTERY_POWER_GRADUATION) {
+                                            mLastBatteryPowerPct = currPct;
+                                            if (mCore != null) {
+                                                BatteryStatsFeature feat = mCore.getMonitorFeature(BatteryStatsFeature.class);
+                                                if (feat != null) {
+                                                    feat.statsBatteryEvent(currPct);
+                                                }
                                             }
+                                            onBatteryPowerChanged(currPct);
                                         }
-                                        onBatteryPowerChanged(currPct);
                                     }
                                     // Battery temperature
                                     try {
                                         int currTemp = intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1);
-                                        if (currTemp != -1 && Math.abs(currTemp - mLastBatteryTemp) >= BATTERY_TEMPERATURE_GRADUATION) {
-                                            mLastBatteryTemp = currTemp;
-                                            if (mCore != null) {
-                                                BatteryStatsFeature feat = mCore.getMonitorFeature(BatteryStatsFeature.class);
-                                                if (feat != null) {
-                                                    feat.statsBatteryTempEvent(currTemp);
+                                        if (currTemp >= 0 && currPct <= 1000) {
+                                            if (Math.abs(currTemp - mLastBatteryTemp) >= BATTERY_TEMPERATURE_GRADUATION) {
+                                                mLastBatteryTemp = currTemp;
+                                                if (mCore != null) {
+                                                    BatteryStatsFeature feat = mCore.getMonitorFeature(BatteryStatsFeature.class);
+                                                    if (feat != null) {
+                                                        feat.statsBatteryTempEvent(currTemp);
+                                                    }
                                                 }
+                                                onBatteryTemperatureChanged(currTemp);
                                             }
-                                            onBatteryTemperatureChanged(currTemp);
                                         }
                                     } catch (Exception e) {
                                         MatrixLog.w(TAG, "get EXTRA_TEMPERATURE failed: " + e.getMessage());
