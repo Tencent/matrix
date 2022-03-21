@@ -66,8 +66,8 @@ object MemoryUtil {
                 return@lazy false
             }
             return@lazy true
-        } catch (exception: Exception) {
-            MatrixLog.printErrStackTrace(TAG, exception, "")
+        } catch (throwable: Throwable) {
+            MatrixLog.printErrStackTrace(TAG, throwable, "")
             return@lazy false
         }
     }
@@ -172,9 +172,9 @@ object MemoryUtil {
                             )
                         }
                     }
-                } catch (exception: Exception) {
+                } catch (throwable: Throwable) {
                     ActivityLeakResult.failure(
-                        exception, System.currentTimeMillis() - analyzeStart
+                        throwable, System.currentTimeMillis() - analyzeStart
                     )
                 } finally {
                     if (!keepResult) {
