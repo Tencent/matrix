@@ -15,18 +15,23 @@ class NativeForkAnalyzeProcessor(watcher: ActivityRefWatcher) : BaseLeakProcesso
         val key = destroyedActivityInfo.mKey
 
         val result = MemoryUtil.dumpAndAnalyze(hprof.absolutePath, key, timeout = 600)
-        if (result.mLeakFound) {
-            publishIssue(
-                SharePluginInfo.IssueType.LEAK_FOUND,
-                ResourceConfig.DumpMode.FORK_ANALYSE,
-                activity, key, result.toString(), result.mAnalysisDurationMs.toString()
-            )
-        } else if (result.mFailure != null) {
+        if (result.mFailure != null) {
             publishIssue(
                 SharePluginInfo.IssueType.ERR_EXCEPTION,
                 ResourceConfig.DumpMode.FORK_ANALYSE,
                 activity, key, result.mFailure.toString(), "0"
             )
+        } else {
+            if (hprof.exists()) {
+                hprof.delete()
+            }
+            if (result.mLeakFound) {
+                publishIssue(
+                    SharePluginInfo.IssueType.LEAK_FOUND,
+                    ResourceConfig.DumpMode.FORK_ANALYSE,
+                    activity, key, result.toString(), result.mAnalysisDurationMs.toString()
+                )
+            }
         }
 
         return true
