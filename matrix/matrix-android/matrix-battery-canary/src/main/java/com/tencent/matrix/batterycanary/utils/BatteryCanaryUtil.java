@@ -223,10 +223,13 @@ public final class BatteryCanaryUtil {
     }
 
     public static String stackTraceToString(final StackTraceElement[] arr) {
+        return stackTraceToString(arr, false);
+    }
+
+    public static String stackTraceToString(final StackTraceElement[] arr, boolean trim) {
         if (arr == null) {
             return "";
         }
-
         ArrayList<StackTraceElement> stacks = new ArrayList<>(arr.length);
         for (StackTraceElement traceElement : arr) {
             String className = traceElement.getClassName();
@@ -241,21 +244,24 @@ public final class BatteryCanaryUtil {
             stacks.add(traceElement);
         }
         // stack still too large
-        String pkg = getPackageName();
-        if (stacks.size() > DEFAULT_MAX_STACK_LAYER && !TextUtils.isEmpty(pkg)) {
-            ListIterator<StackTraceElement> iterator = stacks.listIterator(stacks.size());
-            // from backward to forward
-            while (iterator.hasPrevious()) {
-                StackTraceElement stack = iterator.previous();
-                String className = stack.getClassName();
-                if (!className.contains(pkg)) {
-                    iterator.remove();
-                }
-                if (stacks.size() <= DEFAULT_MAX_STACK_LAYER) {
-                    break;
+        if (trim) {
+            String pkg = getPackageName();
+            if (stacks.size() > DEFAULT_MAX_STACK_LAYER && !TextUtils.isEmpty(pkg)) {
+                ListIterator<StackTraceElement> iterator = stacks.listIterator(stacks.size());
+                // from backward to forward
+                while (iterator.hasPrevious()) {
+                    StackTraceElement stack = iterator.previous();
+                    String className = stack.getClassName();
+                    if (!className.contains(pkg)) {
+                        iterator.remove();
+                    }
+                    if (stacks.size() <= DEFAULT_MAX_STACK_LAYER) {
+                        break;
+                    }
                 }
             }
         }
+
         StringBuilder sb = new StringBuilder();
         for (StackTraceElement traceElement : stacks) {
             sb.append("\n").append("at ").append(traceElement);
@@ -267,7 +273,7 @@ public final class BatteryCanaryUtil {
         if (throwable == null) {
             return "";
         }
-        return stackTraceToString(throwable.getStackTrace());
+        return stackTraceToString(throwable.getStackTrace(), true);
     }
 
     public static long getUTCTriggerAtMillis(final long triggerAtMillis, final int type) {
