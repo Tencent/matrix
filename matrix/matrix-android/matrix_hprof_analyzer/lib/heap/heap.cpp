@@ -1,3 +1,4 @@
+#include "errorha.h"
 #include "include/heap.h"
 
 #include <codecvt>
@@ -44,7 +45,8 @@ namespace matrix::hprof::internal::heap {
     value_type_t value_type_cast(uint8_t type) {
         if (std::find(valid_value_types.begin(), valid_value_types.end(), type) ==
             valid_value_types.end()) {
-            throw std::runtime_error("Invalid value type." + std::to_string(type));
+            const std::string error_message = "Invalid value type." + std::to_string(type);
+            fatal(error_message.c_str());
         }
         return static_cast<value_type_t>(type);
     }
@@ -63,7 +65,7 @@ namespace matrix::hprof::internal::heap {
     find_class_by_name_get_memorized_result(const Heap *heap, const std::string &name) {
         try {
             return find_class_by_name_memorized.at(heap).at(name);
-        } catch (std::out_of_range &) {
+        } catch (const std::out_of_range &) {
             return std::nullopt;
         }
     }
@@ -79,7 +81,7 @@ namespace matrix::hprof::internal::heap {
     find_string_id_get_memorized_result(const Heap *heap, const std::string &name) {
         try {
             return find_string_id_memorized.at(heap).at(name);
-        } catch (std::out_of_range &) {
+        } catch (const std::out_of_range &) {
             return std::nullopt;
         }
     }
@@ -99,17 +101,17 @@ namespace matrix::hprof::internal::heap {
 
     void Heap::InitializeIdSize(size_t id_size) {
         if (id_size == 0) {
-            throw std::runtime_error("Invalid identifier size.");
+            fatal("Invalid identifier size.");
         }
         if (id_size_ != 0) {
-            throw std::runtime_error("Identifier size already initialized.");
+            fatal("Identifier size already initialized.");
         }
         id_size_ = id_size;
     }
 
     size_t Heap::GetIdSize() const {
         if (id_size_ == 0) {
-            throw std::runtime_error("Identifier size is not initialized.");
+            fatal("Identifier size is not initialized.");
         }
         return id_size_;
     }
@@ -121,11 +123,11 @@ namespace matrix::hprof::internal::heap {
         class_names_[class_id] = class_name_id;
     }
 
-    string_id_t Heap::GetClassNameId(object_id_t class_id) const {
+    std::optional<string_id_t> Heap::GetClassNameId(object_id_t class_id) const {
         try {
             return class_names_.at(class_id);
         } catch (const std::out_of_range &) {
-            throw std::runtime_error("Failed to find class name.");
+            return std::nullopt;
         }
     }
 
@@ -156,11 +158,9 @@ namespace matrix::hprof::internal::heap {
     }
 
     std::optional<std::string> Heap::GetClassName(object_id_t class_id) const {
-        try {
-            return GetString(GetClassNameId(class_id));
-        } catch (const std::runtime_error &) {
-            return std::nullopt;
-        }
+        const string_id_t class_name_id =
+                unwrap(GetClassNameId(class_id), return std::nullopt);
+        return GetString(class_name_id);
     }
 
 
@@ -216,7 +216,7 @@ namespace matrix::hprof::internal::heap {
         try {
             return instance_types_.at(instance_id);
         } catch (const std::out_of_range &) {
-            throw std::runtime_error("Failed to find instance type.");
+            fatal("Failed to find instance type.");
         }
     }
 
@@ -261,7 +261,7 @@ namespace matrix::hprof::internal::heap {
         try {
             return gc_root_types_.at(gc_root);
         } catch (const std::out_of_range &) {
-            throw std::runtime_error("Failed to find GC root type.");
+            fatal("Failed to find GC root type.");
         }
     }
 
@@ -281,7 +281,7 @@ namespace matrix::hprof::internal::heap {
         try {
             return thread_serial_numbers_.at(instance_id);
         } catch (const std::out_of_range &) {
-            throw std::runtime_error("Failed to find thread serial number.");
+            fatal("Failed to find thread serial number.");
         }
     }
 
@@ -294,7 +294,7 @@ namespace matrix::hprof::internal::heap {
         try {
             return thread_object_ids_.at(thread_serial_number);
         } catch (const std::out_of_range &) {
-            throw std::runtime_error("Failed to find thread object.");
+            fatal("Failed to find thread object.");
         }
     }
 
@@ -307,12 +307,12 @@ namespace matrix::hprof::internal::heap {
         };
     }
 
-    std::string Heap::GetString(string_id_t string_id) const {
+    std::optional<std::string> Heap::GetString(string_id_t string_id) const {
         try {
             const string_t &string_record = strings_.at(string_id);
-            return {string_record.data, string_record.length};
+            return std::string{string_record.data, string_record.length};
         } catch (const std::out_of_range &) {
-            throw std::runtime_error("Failed to find string.");
+            return std::nullopt;
         }
     }
 
@@ -562,7 +562,7 @@ namespace matrix::hprof::internal::heap {
                     reinterpret_cast<const char *>(string_content_array_data->GetData()),
                     string_content_array_data->GetSize());
         } else {
-            throw std::runtime_error("Unexpected array type for field java.lang.String.value.");
+            fatal("Unexpected array type for field java.lang.String.value.");
         }
     }
 

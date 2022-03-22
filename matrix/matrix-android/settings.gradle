@@ -18,7 +18,6 @@ include ':matrix-sqlite-lint:matrix-sqlite-lint-android-sdk'
 include ':matrix-battery-canary'
 include ':matrix-arscutil'
 include ':matrix-opengl-leak'
-include ':matrix-memory-dump'
 include ':matrix-traffic'
 
 // Components for memory hook

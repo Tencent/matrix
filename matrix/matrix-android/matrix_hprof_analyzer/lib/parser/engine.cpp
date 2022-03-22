@@ -1,4 +1,5 @@
 #include "internal/engine.h"
+#include "errorha.h"
 
 #include "macro.h"
 
@@ -46,10 +47,11 @@ namespace matrix::hprof::internal::parser {
         static constexpr uint8_t kHeapDumpInfo = 0xfe;
     }
 
-    void
+    bool
     HeapParserEngineImpl::Parse(reader::Reader &reader, heap::Heap &heap,
-                                const ExcludeMatcherGroup &exclude_matcher_group, const HeapParserEngine &next) const {
-        next.ParseHeader(reader, heap);
+                                const ExcludeMatcherGroup &exclude_matcher_group,
+                                const HeapParserEngine &next) const {
+        if (!next.ParseHeader(reader, heap)) return false;
 
         while (true) {
             const uint8_t tag = reader.ReadU1();
@@ -57,14 +59,15 @@ namespace matrix::hprof::internal::parser {
             const uint32_t length = reader.ReadU4();
             switch (tag) {
                 case tag::kStrings:
-                    next.ParseStringRecord(reader, heap, length);
+                    if (!next.ParseStringRecord(reader, heap, length)) return false;
                     break;
                 case tag::kLoadClasses:
-                    next.ParseLoadClassRecord(reader, heap, length);
+                    if (!next.ParseLoadClassRecord(reader, heap, length)) return false;
                     break;
                 case tag::kHeapDump:
                 case tag::kHeapDumpSegment:
-                    next.ParseHeapContent(reader, heap, length, exclude_matcher_group, next);
+                    if (!next.ParseHeapContent(reader, heap, length, exclude_matcher_group, next))
+                        return false;
                     break;
                 case tag::kHeapDumpEnd:
                     goto break_read_loop;
@@ -74,32 +77,38 @@ namespace matrix::hprof::internal::parser {
             }
         }
         break_read_loop:
-        next.LazyParse(heap, exclude_matcher_group);
+        if (!next.LazyParse(heap, exclude_matcher_group)) return false;
+        return true;
     }
 
-    void HeapParserEngineImpl::ParseHeader(reader::Reader &reader, heap::Heap &heap) const {
+    bool HeapParserEngineImpl::ParseHeader(reader::Reader &reader, heap::Heap &heap) const {
         // Version string.
         const std::string version = reader.ReadNullTerminatedString();
         if (version != "JAVA PROFILE 1.0" &&
             version != "JAVA PROFILE 1.0.1" &&
             version != "JAVA PROFILE 1.0.2" &&
             version != "JAVA PROFILE 1.0.3") {
-            throw std::runtime_error("Invalid HPROF file.");
+            set_matrix_hprof_analyzer_error("Invalid HPROF header.");
+            return false;
         }
         // Identifier size.
         heap.InitializeIdSize(reader.ReadU4());
         // Skip timestamp.
         reader.SkipU8();
+        return true;
     }
 
-    void HeapParserEngineImpl::ParseStringRecord(reader::Reader &reader, heap::Heap &heap, size_t record_length) const {
+    bool HeapParserEngineImpl::ParseStringRecord(reader::Reader &reader, heap::Heap &heap,
+                                                 size_t record_length) const {
         const heap::string_id_t string_id = reader.Read(heap.GetIdSize());
         const size_t length = record_length - heap.GetIdSize();
         heap.AddString(string_id, reinterpret_cast<const char *>(reader.Extract(length)), length);
+        return true;
     }
 
-    void
-    HeapParserEngineImpl::ParseLoadClassRecord(reader::Reader &reader, heap::Heap &heap, size_t record_length) const {
+    bool
+    HeapParserEngineImpl::ParseLoadClassRecord(reader::Reader &reader, heap::Heap &heap,
+                                               size_t record_length) const {
         // Skip class serial number.
         reader.SkipU4();
         // Class object ID.
@@ -109,9 +118,11 @@ namespace matrix::hprof::internal::parser {
         // Class name string ID.
         const heap::string_id_t class_name_id = reader.Read(heap.GetIdSize());
         heap.AddClassNameRecord(class_id, class_name_id);
+        return true;
     }
 
-    static std::optional<std::string> get_thread_name(const heap::Heap &heap, heap::object_id_t thread_object_id) {
+    static std::optional<std::string>
+    get_thread_name(const heap::Heap &heap, heap::object_id_t thread_object_id) {
         const heap::object_id_t thread_class_id =
                 unwrap(heap.FindClassByName("java.lang.Thread"), return std::nullopt);
         if (!heap.InstanceOf(thread_object_id, thread_class_id)) return std::nullopt;
@@ -120,7 +131,8 @@ namespace matrix::hprof::internal::parser {
         return heap.GetValueFromStringInstance(name_string_id);
     }
 
-    void HeapParserEngineImpl::ParseHeapContent(reader::Reader &reader, heap::Heap &heap, size_t record_length,
+    bool HeapParserEngineImpl::ParseHeapContent(reader::Reader &reader, heap::Heap &heap,
+                                                size_t record_length,
                                                 const ExcludeMatcherGroup &exclude_matcher_group,
                                                 const HeapParserEngine &next) const {
         size_t bytes_read = 0;
@@ -177,7 +189,8 @@ namespace matrix::hprof::internal::parser {
                     bytes_read += next.ParseHeapContentRootUnreachableSubRecord(reader, heap);
                     break;
                 case tag::kHeapClassDump:
-                    bytes_read += next.ParseHeapContentClassSubRecord(reader, heap, exclude_matcher_group);
+                    bytes_read += next.ParseHeapContentClassSubRecord(reader, heap,
+                                                                      exclude_matcher_group);
                     break;
                 case tag::kHeapInstanceDump:
                     bytes_read += next.ParseHeapContentInstanceSubRecord(reader, heap);
@@ -189,15 +202,18 @@ namespace matrix::hprof::internal::parser {
                     bytes_read += next.ParseHeapContentPrimitiveArraySubRecord(reader, heap);
                     break;
                 case tag::kHeapPrimitiveArrayNoDataDump:
-                    bytes_read += next.ParseHeapContentPrimitiveArrayNoDataDumpSubRecord(reader, heap);
+                    bytes_read += next.ParseHeapContentPrimitiveArrayNoDataDumpSubRecord(reader,
+                                                                                         heap);
                     break;
                 case tag::kHeapDumpInfo:
                     bytes_read += next.SkipHeapContentInfoSubRecord(reader, heap);
                     break;
                 default:
-                    throw std::runtime_error("Unsupported Heap dump tag.");
+                    set_matrix_hprof_analyzer_error("Unsupported Heap dump tag.");
+                    return false;
             }
         }
+        return true;
     }
 
     struct field_exclude_matcher_flatten_t {
@@ -226,9 +242,10 @@ namespace matrix::hprof::internal::parser {
     };
 
     static void
-    flatten_native_global_exclude_matchers(std::vector<native_global_exclude_matcher_flatten_t> &flatten_matchers,
-                                           const heap::Heap &heap,
-                                           const std::vector<NativeGlobalExcludeMatcher> &matchers) {
+    flatten_native_global_exclude_matchers(
+            std::vector<native_global_exclude_matcher_flatten_t> &flatten_matchers,
+            const heap::Heap &heap,
+            const std::vector<NativeGlobalExcludeMatcher> &matchers) {
         for (const auto &matcher: matchers) {
             flatten_matchers.emplace_back(native_global_exclude_matcher_flatten_t{
                     .class_id = matcher.FullMatchClassName()
@@ -238,7 +255,8 @@ namespace matrix::hprof::internal::parser {
         }
     }
 
-    void HeapParserEngineImpl::LazyParse(heap::Heap &heap, const ExcludeMatcherGroup &exclude_matcher_group) const {
+    bool HeapParserEngineImpl::LazyParse(heap::Heap &heap,
+                                         const ExcludeMatcherGroup &exclude_matcher_group) const {
         std::vector<field_exclude_matcher_flatten_t> instance_field_matchers;
         flatten_field_exclude_matchers(instance_field_matchers, heap,
                                        exclude_matcher_group.instance_fields_);
@@ -253,7 +271,8 @@ namespace matrix::hprof::internal::parser {
             heap::object_id_t current_class_id = referrer_class_id;
             std::vector<field_exclude_matcher_flatten_t> class_match_matchers;
             for (const auto &matcher: instance_field_matchers) {
-                if (matcher.class_id == 0 || heap.ChildClassOf(referrer_class_id, matcher.class_id)) {
+                if (matcher.class_id == 0 ||
+                    heap.ChildClassOf(referrer_class_id, matcher.class_id)) {
                     class_match_matchers.emplace_back(matcher);
                 }
             }
@@ -266,16 +285,20 @@ namespace matrix::hprof::internal::parser {
                             bool exclude = false;
                             // Find exclude matcher of instance field.
                             for (const auto &matcher: class_match_matchers) {
-                                if (matcher.field_name_id == 0 || matcher.field_name_id == field.name_id) {
+                                if (matcher.field_name_id == 0 ||
+                                    matcher.field_name_id == field.name_id) {
                                     exclude = true;
                                     break;
                                 }
                             }
-                            if (exclude) heap.AddFieldExcludedReference(referrer_id, field.name_id, referent_id);
+                            if (exclude)
+                                heap.AddFieldExcludedReference(referrer_id, field.name_id,
+                                                               referent_id);
                             else heap.AddFieldReference(referrer_id, field.name_id, referent_id);
                         }
                     } else {
-                        heap.ReadPrimitive(referrer_id, field.name_id, field.type, &fields_data_reader);
+                        heap.ReadPrimitive(referrer_id, field.name_id, field.type,
+                                           &fields_data_reader);
                     }
                 }
                 current_class_id = unwrap(heap.GetSuperClass(current_class_id), break);
@@ -288,8 +311,10 @@ namespace matrix::hprof::internal::parser {
                                                exclude_matcher_group.native_globals_);
         for (const auto gc_root: heap.GetGcRoots()) {
             if (heap.GetGcRootType(gc_root) == heap::gc_root_type_t::kRootJavaFrame) {
-                const heap::object_id_t thread_object_id = heap.GetThreadObject(heap.GetThreadReference(gc_root));
-                const std::string thread_name = unwrap(get_thread_name(heap, thread_object_id), continue);
+                const heap::object_id_t thread_object_id = heap.GetThreadObject(
+                        heap.GetThreadReference(gc_root));
+                const std::string thread_name = unwrap(get_thread_name(heap, thread_object_id),
+                                                       continue);
                 for (const auto &matcher: exclude_matcher_group.threads_) {
                     if (matcher.FullMatchThreadName() || matcher.GetThreadName() == thread_name) {
                         heap.ExcludeReferences(gc_root);
@@ -307,17 +332,21 @@ namespace matrix::hprof::internal::parser {
                 }
             }
         }
+
+        return true;
     }
 
     size_t
-    HeapParserEngineImpl::ParseHeapContentRootUnknownSubRecord(reader::Reader &reader, heap::Heap &heap) const {
+    HeapParserEngineImpl::ParseHeapContentRootUnknownSubRecord(reader::Reader &reader,
+                                                               heap::Heap &heap) const {
         const heap::object_id_t object_id = reader.Read(heap.GetIdSize());
         if (object_id != 0) heap.MarkGcRoot(object_id, heap::gc_root_type_t::kRootUnknown);
         return heap.GetIdSize();
     }
 
     size_t
-    HeapParserEngineImpl::ParseHeapContentRootJniGlobalSubRecord(reader::Reader &reader, heap::Heap &heap) const {
+    HeapParserEngineImpl::ParseHeapContentRootJniGlobalSubRecord(reader::Reader &reader,
+                                                                 heap::Heap &heap) const {
         const heap::object_id_t object_id = reader.Read(heap.GetIdSize());
         if (object_id != 0) heap.MarkGcRoot(object_id, heap::gc_root_type_t::kRootJniGlobal);
         reader.Skip(heap.GetIdSize()); // Skip JNI global reference ID.
@@ -325,7 +354,8 @@ namespace matrix::hprof::internal::parser {
     }
 
     size_t
-    HeapParserEngineImpl::ParseHeapContentRootJniLocalSubRecord(reader::Reader &reader, heap::Heap &heap) const {
+    HeapParserEngineImpl::ParseHeapContentRootJniLocalSubRecord(reader::Reader &reader,
+                                                                heap::Heap &heap) const {
         const heap::object_id_t object_id = reader.Read(heap.GetIdSize());
         if (object_id != 0) heap.MarkGcRoot(object_id, heap::gc_root_type_t::kRootJniLocal);
         reader.SkipU4(); // Skip thread serial number.
@@ -334,7 +364,8 @@ namespace matrix::hprof::internal::parser {
     }
 
     size_t
-    HeapParserEngineImpl::ParseHeapContentRootJavaFrameSubRecord(reader::Reader &reader, heap::Heap &heap) const {
+    HeapParserEngineImpl::ParseHeapContentRootJavaFrameSubRecord(reader::Reader &reader,
+                                                                 heap::Heap &heap) const {
         const heap::object_id_t object_id = reader.Read(heap.GetIdSize());
         if (object_id != 0) heap.MarkGcRoot(object_id, heap::gc_root_type_t::kRootJavaFrame);
         const heap::thread_serial_number_t thread_serial_number = reader.ReadU4();
@@ -346,7 +377,8 @@ namespace matrix::hprof::internal::parser {
     }
 
     size_t
-    HeapParserEngineImpl::ParseHeapContentRootNativeStackSubRecord(reader::Reader &reader, heap::Heap &heap) const {
+    HeapParserEngineImpl::ParseHeapContentRootNativeStackSubRecord(reader::Reader &reader,
+                                                                   heap::Heap &heap) const {
         const heap::object_id_t object_id = reader.Read(heap.GetIdSize());
         if (object_id != 0) heap.MarkGcRoot(object_id, heap::gc_root_type_t::kRootNativeStack);
         reader.SkipU4(); // Skip thread serial number.
@@ -354,14 +386,16 @@ namespace matrix::hprof::internal::parser {
     }
 
     size_t
-    HeapParserEngineImpl::ParseHeapContentRootStickyClassSubRecord(reader::Reader &reader, heap::Heap &heap) const {
+    HeapParserEngineImpl::ParseHeapContentRootStickyClassSubRecord(reader::Reader &reader,
+                                                                   heap::Heap &heap) const {
         const heap::object_id_t object_id = reader.Read(heap.GetIdSize());
         if (object_id != 0) heap.MarkGcRoot(object_id, heap::gc_root_type_t::kRootStickyClass);
         return heap.GetIdSize();
     }
 
     size_t
-    HeapParserEngineImpl::ParseHeapContentRootThreadBlockSubRecord(reader::Reader &reader, heap::Heap &heap) const {
+    HeapParserEngineImpl::ParseHeapContentRootThreadBlockSubRecord(reader::Reader &reader,
+                                                                   heap::Heap &heap) const {
         const heap::object_id_t object_id = reader.Read(heap.GetIdSize());
         if (object_id != 0) heap.MarkGcRoot(object_id, heap::gc_root_type_t::kRootThreadBlock);
         reader.SkipU4(); // Skip thread serial number.
@@ -369,14 +403,16 @@ namespace matrix::hprof::internal::parser {
     }
 
     size_t
-    HeapParserEngineImpl::ParseHeapContentRootMonitorUsedSubRecord(reader::Reader &reader, heap::Heap &heap) const {
+    HeapParserEngineImpl::ParseHeapContentRootMonitorUsedSubRecord(reader::Reader &reader,
+                                                                   heap::Heap &heap) const {
         const heap::object_id_t object_id = reader.Read(heap.GetIdSize());
         if (object_id != 0) heap.MarkGcRoot(object_id, heap::gc_root_type_t::kRootMonitorUsed);
         return heap.GetIdSize();
     }
 
     size_t
-    HeapParserEngineImpl::ParseHeapContentRootThreadObjectSubRecord(reader::Reader &reader, heap::Heap &heap) const {
+    HeapParserEngineImpl::ParseHeapContentRootThreadObjectSubRecord(reader::Reader &reader,
+                                                                    heap::Heap &heap) const {
         const heap::object_id_t object_id = reader.Read(heap.GetIdSize());
         if (object_id != 0) heap.MarkGcRoot(object_id, heap::gc_root_type_t::kRootThreadObject);
         const heap::thread_serial_number_t thread_serial_number = reader.ReadU4();
@@ -388,21 +424,24 @@ namespace matrix::hprof::internal::parser {
     }
 
     size_t
-    HeapParserEngineImpl::ParseHeapContentRootInternedStringSubRecord(reader::Reader &reader, heap::Heap &heap) const {
+    HeapParserEngineImpl::ParseHeapContentRootInternedStringSubRecord(reader::Reader &reader,
+                                                                      heap::Heap &heap) const {
         const heap::object_id_t object_id = reader.Read(heap.GetIdSize());
         if (object_id != 0) heap.MarkGcRoot(object_id, heap::gc_root_type_t::kRootInternedString);
         return heap.GetIdSize();
     }
 
     size_t
-    HeapParserEngineImpl::ParseHeapContentRootFinalizingSubRecord(reader::Reader &reader, heap::Heap &heap) const {
+    HeapParserEngineImpl::ParseHeapContentRootFinalizingSubRecord(reader::Reader &reader,
+                                                                  heap::Heap &heap) const {
         const heap::object_id_t object_id = reader.Read(heap.GetIdSize());
         if (object_id != 0) heap.MarkGcRoot(object_id, heap::gc_root_type_t::kRootFinalizing);
         return heap.GetIdSize();
     }
 
     size_t
-    HeapParserEngineImpl::ParseHeapContentRootDebuggerSubRecord(reader::Reader &reader, heap::Heap &heap) const {
+    HeapParserEngineImpl::ParseHeapContentRootDebuggerSubRecord(reader::Reader &reader,
+                                                                heap::Heap &heap) const {
         const heap::object_id_t object_id = reader.Read(heap.GetIdSize());
         if (object_id != 0) heap.MarkGcRoot(object_id, heap::gc_root_type_t::kRootDebugger);
         return heap.GetIdSize();
@@ -417,14 +456,16 @@ namespace matrix::hprof::internal::parser {
     }
 
     size_t
-    HeapParserEngineImpl::ParseHeapContentRootVMInternalSubRecord(reader::Reader &reader, heap::Heap &heap) const {
+    HeapParserEngineImpl::ParseHeapContentRootVMInternalSubRecord(reader::Reader &reader,
+                                                                  heap::Heap &heap) const {
         const heap::object_id_t object_id = reader.Read(heap.GetIdSize());
         if (object_id != 0) heap.MarkGcRoot(object_id, heap::gc_root_type_t::kRootVMInternal);
         return heap.GetIdSize();
     }
 
     size_t
-    HeapParserEngineImpl::ParseHeapContentRootJniMonitorSubRecord(reader::Reader &reader, heap::Heap &heap) const {
+    HeapParserEngineImpl::ParseHeapContentRootJniMonitorSubRecord(reader::Reader &reader,
+                                                                  heap::Heap &heap) const {
         const heap::object_id_t object_id = reader.Read(heap.GetIdSize());
         if (object_id != 0) heap.MarkGcRoot(object_id, heap::gc_root_type_t::kRootJniMonitor);
         reader.SkipU4(); // Skip stack trace serial number.
@@ -433,7 +474,8 @@ namespace matrix::hprof::internal::parser {
     }
 
     size_t
-    HeapParserEngineImpl::ParseHeapContentRootUnreachableSubRecord(reader::Reader &reader, heap::Heap &heap) const {
+    HeapParserEngineImpl::ParseHeapContentRootUnreachableSubRecord(reader::Reader &reader,
+                                                                   heap::Heap &heap) const {
         const heap::object_id_t object_id = reader.Read(heap.GetIdSize());
         if (object_id != 0) heap.MarkGcRoot(object_id, heap::gc_root_type_t::kRootUnreachable);
         return heap.GetIdSize();
@@ -468,7 +510,8 @@ namespace matrix::hprof::internal::parser {
             const size_t type_size = ({
                 const heap::value_type_t type = heap::value_type_cast(reader.ReadU1());
                 content_size += sizeof(uint8_t);
-                (type == heap::value_type_t::kObject) ? heap.GetIdSize() : heap::get_value_type_size(type);
+                (type == heap::value_type_t::kObject) ? heap.GetIdSize()
+                                                      : heap::get_value_type_size(type);
             });
             reader.Skip(type_size);
             content_size += type_size;
@@ -479,7 +522,8 @@ namespace matrix::hprof::internal::parser {
         content_size += sizeof(uint16_t);
 
         std::vector<field_exclude_matcher_flatten_t> static_exclude_matchers;
-        flatten_field_exclude_matchers(static_exclude_matchers, heap, exclude_matcher_group.static_fields_);
+        flatten_field_exclude_matchers(static_exclude_matchers, heap,
+                                       exclude_matcher_group.static_fields_);
         std::vector<field_exclude_matcher_flatten_t> class_match_matchers;
         for (const auto &matcher: static_exclude_matchers) {
             if (matcher.class_id == 0 || heap.ChildClassOf(class_id, matcher.class_id)) {
@@ -504,7 +548,8 @@ namespace matrix::hprof::internal::parser {
                             break;
                         }
                     }
-                    if (exclude) heap.AddFieldExcludedReference(class_id, field_name_id, referent_id, true);
+                    if (exclude)
+                        heap.AddFieldExcludedReference(class_id, field_name_id, referent_id, true);
                     else heap.AddFieldReference(class_id, field_name_id, referent_id, true);
                 }
             } else {
@@ -522,14 +567,17 @@ namespace matrix::hprof::internal::parser {
             content_size += heap.GetIdSize();
             const auto type = heap::value_type_cast(reader.ReadU1());
             content_size += sizeof(uint8_t);
-            heap.AddInstanceFieldRecord(class_id, heap::field_t{.name_id = field_name_id, .type = type});
+            heap.AddInstanceFieldRecord(class_id,
+                                        heap::field_t{.name_id = field_name_id, .type = type});
         }
 
-        return heap.GetIdSize() + sizeof(uint32_t) + (heap.GetIdSize() * 6) + sizeof(uint32_t) + content_size;
+        return heap.GetIdSize() + sizeof(uint32_t) + (heap.GetIdSize() * 6) + sizeof(uint32_t) +
+               content_size;
     }
 
     size_t
-    HeapParserEngineImpl::ParseHeapContentInstanceSubRecord(reader::Reader &reader, heap::Heap &heap) const {
+    HeapParserEngineImpl::ParseHeapContentInstanceSubRecord(reader::Reader &reader,
+                                                            heap::Heap &heap) const {
         const heap::object_id_t instance_id = reader.Read(heap.GetIdSize());
         heap.AddInstanceTypeRecord(instance_id, heap::object_type_t::kInstance);
 
@@ -541,11 +589,13 @@ namespace matrix::hprof::internal::parser {
         const size_t fields_data_size = reader.ReadU4();
         heap.ReadFieldsData(instance_id, class_id, fields_data_size, &reader);
 
-        return heap.GetIdSize() + sizeof(uint32_t) + heap.GetIdSize() + sizeof(uint32_t) + fields_data_size;
+        return heap.GetIdSize() + sizeof(uint32_t) + heap.GetIdSize() + sizeof(uint32_t) +
+               fields_data_size;
     }
 
     size_t
-    HeapParserEngineImpl::ParseHeapContentObjectArraySubRecord(reader::Reader &reader, heap::Heap &heap) const {
+    HeapParserEngineImpl::ParseHeapContentObjectArraySubRecord(reader::Reader &reader,
+                                                               heap::Heap &heap) const {
         const heap::object_id_t array_id = reader.Read(heap.GetIdSize());
         heap.AddInstanceTypeRecord(array_id, heap::object_type_t::kObjectArray);
 
@@ -562,7 +612,8 @@ namespace matrix::hprof::internal::parser {
     }
 
     size_t
-    HeapParserEngineImpl::ParseHeapContentPrimitiveArraySubRecord(reader::Reader &reader, heap::Heap &heap) const {
+    HeapParserEngineImpl::ParseHeapContentPrimitiveArraySubRecord(reader::Reader &reader,
+                                                                  heap::Heap &heap) const {
         const heap::object_id_t array_id = reader.Read(heap.GetIdSize());
         heap.AddInstanceTypeRecord(array_id, heap::object_type_t::kPrimitiveArray);
 
@@ -571,7 +622,8 @@ namespace matrix::hprof::internal::parser {
         const heap::value_type_t type = heap::value_type_cast(reader.ReadU1());
         const size_t array_size = array_length * heap::get_value_type_size(type);
         heap.ReadPrimitiveArray(array_id, type, array_size, &reader);
-        return heap.GetIdSize() + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint8_t) + array_size;
+        return heap.GetIdSize() + sizeof(uint32_t) + sizeof(uint32_t) + sizeof(uint8_t) +
+               array_size;
     }
 
     size_t
@@ -587,7 +639,8 @@ namespace matrix::hprof::internal::parser {
     }
 
     size_t
-    HeapParserEngineImpl::SkipHeapContentInfoSubRecord(reader::Reader &reader, const heap::Heap &heap) const {
+    HeapParserEngineImpl::SkipHeapContentInfoSubRecord(reader::Reader &reader,
+                                                       const heap::Heap &heap) const {
         reader.SkipU4();
         reader.Skip(heap.GetIdSize());
         return sizeof(uint32_t) + heap.GetIdSize();

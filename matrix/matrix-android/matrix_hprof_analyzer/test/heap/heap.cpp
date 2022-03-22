@@ -67,7 +67,7 @@ TEST(heap, class_name) {
     heap.AddClassNameRecord(0x001, 0x101);
     EXPECT_EQ(0x101, heap.GetClassNameId(0x001));
     EXPECT_EQ("test.SampleClass", heap.GetClassName(0x001));
-    EXPECT_THROW(auto i = heap.GetClassNameId(0x002), std::runtime_error);
+    EXPECT_EQ(std::nullopt, heap.GetClassNameId(0x002));
     EXPECT_EQ(std::nullopt, heap.GetClassName(0x002));
     EXPECT_EQ(0x001, heap.FindClassByName("test.SampleClass"));
     EXPECT_EQ(0x001, heap.FindClassByName("test.SampleClass")); // Test memorized.
@@ -171,7 +171,7 @@ TEST(heap, string) {
     EXPECT_EQ(0x101, heap.FindStringId("Hello world!")); // Test memorized.
     EXPECT_EQ(0x102, heap.FindStringId("Hello slice!"));
     EXPECT_EQ(0x102, heap.FindStringId("Hello slice!")); // Test memorized.
-    EXPECT_THROW(auto i = heap.GetString(0x103), std::runtime_error);
+    EXPECT_EQ(std::nullopt, heap.GetString(0x103));
     EXPECT_EQ(std::nullopt, heap.FindStringId("Unknown"));
     EXPECT_EQ(std::nullopt, heap.FindStringId("Unknown")); // Test memorized.
 }
