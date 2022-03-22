@@ -14,7 +14,7 @@ const char* get_matrix_hprof_analyzer_error() {
 
 #ifdef __ANDROID__
 
-#include <android/log.h>
+#include <unistd.h>
 
 #else
 
@@ -24,7 +24,7 @@ const char* get_matrix_hprof_analyzer_error() {
 
 [[noreturn]] void fatal(const char *message) {
 #ifdef __ANDROID__
-    __android_log_print(ANDROID_LOG_FATAL, "matrix_hprof_analyzer", "%s", message);
+    _exit(10);
 #else
     throw std::runtime_error(message);
 #endif

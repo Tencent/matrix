@@ -5,10 +5,6 @@ set(CMAKE_CXX_STANDARD 17)
 
 add_library(hprof_analyzer_error STATIC err/errorha.cpp)
 target_include_directories(hprof_analyzer_error INTERFACE err/include)
-if (ANDROID)
-    find_library(log-lib log)
-    target_link_libraries(hprof_analyzer_error ${log-lib})
-endif ()
 
 add_library(hprof_analyzer_reader STATIC reader/reader.cpp)
 target_include_directories(hprof_analyzer_reader INTERFACE reader/include)
