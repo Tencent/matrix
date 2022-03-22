@@ -9,88 +9,93 @@ import com.tencent.matrix.resource.analyzer.model.DestroyedActivityInfo
 import com.tencent.matrix.resource.config.ResourceConfig
 import com.tencent.matrix.resource.config.SharePluginInfo
 import com.tencent.matrix.resource.watcher.ActivityRefWatcher
-import com.tencent.matrix.util.MatrixHandlerThread
 import com.tencent.matrix.util.MatrixLog
 import java.io.File
 import java.util.*
+import java.util.concurrent.Executors
 
 private fun File.deleteIfExist() {
     if (exists()) delete()
 }
 
-class NativeForkAnalyzeProcessor(watcher: ActivityRefWatcher) : BaseLeakProcessor(watcher) {
+private const val TAG = "Matrix.LeakProcessor.NativeForkAnalyze"
 
-    companion object {
-        private const val TAG = "Matrix.LeakProcessor.NativeForkAnalyze"
+private class RetryRepository(dir: File) {
 
-        private val handler = MatrixHandlerThread.getDefaultHandler()
+    private val hprofDir by lazy {
+        File(dir, "hprof").apply {
+            if (!exists()) mkdirs()
+        }
     }
 
-    private class RetryRepository(dir: File) {
-
-        private val hprofDir by lazy {
-            File(dir, "hprof").apply {
-                if (!exists()) mkdirs()
-            }
+    private val keyDir by lazy {
+        File(dir, "key").apply {
+            if (!exists()) mkdirs()
         }
+    }
 
-        private val keyDir by lazy {
-            File(dir, "key").apply {
-                if (!exists()) mkdirs()
-            }
+    fun save(hprof: File, activity: String, key: String, failure: String): Boolean {
+        try {
+            if (!hprof.isFile) return false
+            val id = UUID.randomUUID().toString()
+            MatrixLog.i(TAG, "Save HPROF analyze retry record ${activity}(${id}).")
+            File(hprofDir, id)
+                .also {
+                    hprof.copyTo(it, true)
+                }
+            File(keyDir, id)
+                .apply {
+                    createNewFile()
+                }
+                .bufferedWriter()
+                .use {
+                    it.write(activity)
+                    it.newLine()
+                    it.write(key)
+                    it.newLine()
+                    it.write(failure)
+                    it.flush()
+                }
+            return true
+        } catch (throwable: Throwable) {
+            MatrixLog.printErrStackTrace(
+                TAG, throwable,
+                "Failed to save HPROF record into retry repository"
+            )
+            return false
         }
+    }
 
-        fun save(hprof: File, activity: String, key: String): Boolean {
+    fun process(action: (File, String, String, String) -> Unit) {
+        val hprofs = hprofDir.listFiles() ?: emptyArray<File>()
+        hprofs.forEach { hprofFile ->
+            val keyFile = File(keyDir, hprofFile.name)
             try {
-                if (!hprof.isFile) return false
-                val id = UUID.randomUUID().toString()
-                MatrixLog.i(TAG, "Save HPROF file ${hprof.name} with id ${id}.")
-                File(hprofDir, id)
-                    .also {
-                        hprof.copyTo(it, true)
+                if (keyFile.isFile) {
+                    val (activity, key, failure) = keyFile.bufferedReader().use {
+                        Triple(it.readLine(), it.readLine(), it.readLine())
                     }
-                File(keyDir, id)
-                    .apply {
-                        createNewFile()
-                    }
-                    .bufferedWriter()
-                    .use {
-                        it.write(activity)
-                        it.newLine()
-                        it.write(key)
-                        it.flush()
-                    }
-                return true
+                    action.invoke(hprofFile, activity, key, failure)
+                }
             } catch (throwable: Throwable) {
                 MatrixLog.printErrStackTrace(
                     TAG, throwable,
-                    "Failed to save HPROF record into retry repository"
+                    "Failed to read HPROF record from retry repository"
                 )
-                return false
+            } finally {
+                hprofFile.deleteIfExist()
+                keyFile.deleteIfExist()
             }
         }
+    }
+}
 
-        fun process(action: (File, String, String) -> Unit) {
-            val hprofs = hprofDir.listFiles() ?: emptyArray<File>()
-            hprofs.forEach { hprofFile ->
-                val keyFile = File(keyDir, hprofFile.name)
-                try {
-                    if (keyFile.isFile) {
-                        val (activity, key) = keyFile.bufferedReader().use {
-                            Pair(it.readLine(), it.readLine())
-                        }
-                        action.invoke(hprofFile, activity, key)
-                    }
-                } catch (throwable: Throwable) {
-                    MatrixLog.printErrStackTrace(
-                        TAG, throwable,
-                        "Failed to read HPROF record in retry repository"
-                    )
-                } finally {
-                    hprofFile.deleteIfExist()
-                    keyFile.deleteIfExist()
-                }
-            }
+class NativeForkAnalyzeProcessor(watcher: ActivityRefWatcher) : BaseLeakProcessor(watcher) {
+
+    companion object {
+
+        private val retryExecutor = Executors.newSingleThreadExecutor {
+            Thread(it, "matrix_res_native_analyze_retry")
         }
     }
 
@@ -114,26 +119,33 @@ class NativeForkAnalyzeProcessor(watcher: ActivityRefWatcher) : BaseLeakProcesso
 
     private val screenStateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            MatrixLog.i(TAG, "Screen is off.")
-            handler.post {
-                MatrixLog.i(TAG, "Start iterating files.")
-                retryRepo?.process { hprof, activity, key ->
-                    MatrixLog.i(TAG, "Found record ${hprof.name} (activity: ${activity}, key: ${key}).")
-                    val result =
-                        MemoryUtil.analyze(hprof.absolutePath, key, timeout = 1200)
+            retryExecutor.execute {
+                retryRepo?.process { hprof, activity, key, failure ->
+                    MatrixLog.i(TAG, "Found record ${activity}(${hprof.name}).")
+                    val historyFailure = mutableListOf<String>().apply {
+                        add(failure)
+                    }
+                    var retryCount = 1
+                    var result = MemoryUtil.analyze(hprof.absolutePath, key, timeout = 1200)
+                    if (result.mFailure != null) {
+                        historyFailure.add(result.mFailure.toString())
+                        retryCount++
+                        result = analyze(hprof, key)
+                    }
                     if (result.mLeakFound) {
                         publishIssue(
                             SharePluginInfo.IssueType.LEAK_FOUND,
                             ResourceConfig.DumpMode.FORK_ANALYSE,
                             activity, key, result.toString(),
-                            result.mAnalysisDurationMs.toString(), 1
+                            result.mAnalysisDurationMs.toString(), retryCount
                         )
                     } else if (result.mFailure != null) {
+                        historyFailure.add(result.mFailure.toString())
                         publishIssue(
                             SharePluginInfo.IssueType.ERR_EXCEPTION,
                             ResourceConfig.DumpMode.FORK_ANALYSE,
-                            activity, key, result.mFailure.toString(),
-                            result.mAnalysisDurationMs.toString(), 1
+                            activity, key, historyFailure.joinToString(";"),
+                            result.mAnalysisDurationMs.toString(), retryCount
                         )
                     }
                 }
@@ -172,11 +184,12 @@ class NativeForkAnalyzeProcessor(watcher: ActivityRefWatcher) : BaseLeakProcesso
         if (result.mFailure != null) {
             // Copies file to retry repository and analyzes it again when the screen is locked.
             MatrixLog.i(TAG, "Process failed, move into retry repository.")
-            if (retryRepo?.save(hprof, activity, key) != true) {
+            val failure = result.mFailure.toString()
+            if (retryRepo?.save(hprof, activity, key, failure) != true) {
                 publishIssue(
                     SharePluginInfo.IssueType.ERR_EXCEPTION,
                     ResourceConfig.DumpMode.FORK_ANALYSE,
-                    activity, key, result.mFailure.toString(),
+                    activity, key, failure,
                     result.mAnalysisDurationMs.toString()
                 )
             }
