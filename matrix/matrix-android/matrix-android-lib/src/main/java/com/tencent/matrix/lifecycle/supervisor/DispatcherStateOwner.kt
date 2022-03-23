@@ -18,7 +18,7 @@ import java.util.concurrent.ConcurrentHashMap
 @Suppress("LeakingThis")
 internal open class DispatcherStateOwner(
     reduceOperator: (stateful: Collection<IStateful>) -> Boolean,
-    val attachedSource: StatefulOwner,
+    val attachedSource: IStatefulOwner,
     val name: String
 ) : MultiSourceStatefulOwner(reduceOperator), ISerialObserver {
 

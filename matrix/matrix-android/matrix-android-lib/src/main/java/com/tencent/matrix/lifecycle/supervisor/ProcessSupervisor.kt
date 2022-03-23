@@ -41,7 +41,7 @@ data class SupervisorConfig(
 )
 
 // @formatter:off
-object AppUIForegroundOwner: IStatefulOwner by ProcessSupervisor.appUIForegroundOwner
+object AppUIForegroundOwner: IForegroundStatefulOwner by ProcessSupervisor.appUIForegroundOwner
 object AppExplicitBackgroundOwner: IBackgroundStatefulOwner by ProcessSupervisor.appExplicitBackgroundOwner
 object AppDeepBackgroundOwner: IBackgroundStatefulOwner by ProcessSupervisor.appDeepBackgroundOwner
 object AppStagedBackgroundOwner: IBackgroundStatefulOwner by ProcessSupervisor.appStagedBackgroundOwner
@@ -107,7 +107,7 @@ object ProcessSupervisor : IProcessListener by ProcessSubordinate.processListene
     internal const val DEEP_BACKGROUND_OWNER = "DeepBackgroundOwner"
 
     // @formatter:off
-    internal val appUIForegroundOwner: StatefulOwner = DispatcherStateOwner(ReduceOperators.OR, ProcessUILifecycleOwner.startedStateOwner, STARTED_STATE_OWNER)
+    internal val appUIForegroundOwner: IForegroundStatefulOwner = object : DispatcherStateOwner(ReduceOperators.OR, ProcessUILifecycleOwner.startedStateOwner, STARTED_STATE_OWNER), IForegroundStatefulOwner {}
     internal val appExplicitBackgroundOwner: IBackgroundStatefulOwner = object : DispatcherStateOwner(ReduceOperators.AND, ProcessExplicitBackgroundOwner, EXPLICIT_BACKGROUND_OWNER), IBackgroundStatefulOwner {}
     internal val appDeepBackgroundOwner: IBackgroundStatefulOwner = object : DispatcherStateOwner(ReduceOperators.AND, ProcessDeepBackgroundOwner, DEEP_BACKGROUND_OWNER), IBackgroundStatefulOwner {}
     // @formatter:on

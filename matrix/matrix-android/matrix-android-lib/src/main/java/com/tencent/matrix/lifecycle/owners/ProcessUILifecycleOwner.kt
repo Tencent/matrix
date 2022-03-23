@@ -13,18 +13,17 @@ import android.os.Bundle
 import android.os.Process
 import android.text.TextUtils
 import androidx.lifecycle.*
+import com.tencent.matrix.lifecycle.*
 import com.tencent.matrix.lifecycle.ISerialObserver
-import com.tencent.matrix.lifecycle.IStatefulOwner
 import com.tencent.matrix.lifecycle.MatrixLifecycleThread
-import com.tencent.matrix.lifecycle.StatefulOwner
 import com.tencent.matrix.listeners.IAppForeground
 import com.tencent.matrix.util.*
 import java.util.*
 import kotlin.collections.HashMap
 
-object ProcessUICreatedStateOwner: IStatefulOwner by ProcessUILifecycleOwner.createdStateOwner
-object ProcessUIStartedStateOwner: IStatefulOwner by ProcessUILifecycleOwner.startedStateOwner
-object ProcessUIResumedStateOwner: IStatefulOwner by ProcessUILifecycleOwner.resumedStateOwner
+object ProcessUICreatedStateOwner: IForegroundStatefulOwner by ProcessUILifecycleOwner.createdStateOwner
+object ProcessUIStartedStateOwner: IForegroundStatefulOwner by ProcessUILifecycleOwner.startedStateOwner
+object ProcessUIResumedStateOwner: IForegroundStatefulOwner by ProcessUILifecycleOwner.resumedStateOwner
 
 /**
  * multi process version of [androidx.lifecycle.ProcessLifecycleOwner]
@@ -86,7 +85,7 @@ object ProcessUILifecycleOwner {
     private var pauseSent = true
     private var stopSent = true
 
-    private open class AsyncOwner : StatefulOwner() {
+    private open class AsyncOwner : StatefulOwner(), IForegroundStatefulOwner {
         open fun turnOnAsync() = turnOn()
         open fun turnOffAsync() = turnOff()
     }
@@ -97,9 +96,9 @@ object ProcessUILifecycleOwner {
         }
     }
 
-    internal val createdStateOwner: StatefulOwner = CreatedStateOwner()
-    internal val resumedStateOwner: StatefulOwner = AsyncOwner()
-    internal val startedStateOwner: StatefulOwner = AsyncOwner()
+    internal val createdStateOwner: IForegroundStatefulOwner = CreatedStateOwner()
+    internal val resumedStateOwner: IForegroundStatefulOwner = AsyncOwner()
+    internal val startedStateOwner: IForegroundStatefulOwner = AsyncOwner()
 
     internal interface OnSceneChangedListener {
         fun onSceneChanged(newScene: String, origin: String)

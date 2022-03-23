@@ -8,8 +8,6 @@ import java.util.concurrent.TimeUnit
 private val MAX_CHECK_INTERVAL = TimeUnit.MINUTES.toMillis(1)
 private const val MAX_CHECK_TIMES = 20
 
-interface IBackgroundStatefulOwner : IStatefulOwner
-
 /**
  * State-ON:
  * Activity is NOT in foreground

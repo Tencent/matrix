@@ -53,6 +53,7 @@ import java.util.ArrayList;
 import sample.tencent.matrix.battery.BatteryCanaryInitHelper;
 import sample.tencent.matrix.battery.BatteryCanarySimpleInitHelper;
 import sample.tencent.matrix.config.DynamicConfigImplDemo;
+import sample.tencent.matrix.kt.lifecycle.MatrixLifecycleLogger;
 import sample.tencent.matrix.kt.memory.canary.MemoryCanaryBoot;
 import sample.tencent.matrix.lifecycle.LifecycleTest;
 import sample.tencent.matrix.listener.TestPluginListener;
@@ -142,8 +143,7 @@ public class MatrixApplication extends Application {
 //        memoryCanaryPlugin.start();
 
         Matrix.with().startAllPlugins();
-
-        LifecycleTest.test1();
+        MatrixLifecycleLogger.INSTANCE.start();
         TrimMemoryNotifier.INSTANCE.addProcessBackgroundTrimCallback(new TrimCallback() {
             @Override
             public void systemTrim(int i) {
