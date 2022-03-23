@@ -35,28 +35,35 @@ private class RetryRepository(dir: File) {
         }
     }
 
+    /**
+     * The lock used to avoid processing uncopied files.
+     */
+    private val accessLock = Any()
+
     fun save(hprof: File, activity: String, key: String, failure: String): Boolean {
         try {
             if (!hprof.isFile) return false
             val id = UUID.randomUUID().toString()
             MatrixLog.i(TAG, "Save HPROF analyze retry record ${activity}(${id}).")
-            File(hprofDir, id)
-                .also {
-                    hprof.copyTo(it, true)
-                }
-            File(keyDir, id)
-                .apply {
-                    createNewFile()
-                }
-                .bufferedWriter()
-                .use {
-                    it.write(activity)
-                    it.newLine()
-                    it.write(key)
-                    it.newLine()
-                    it.write(failure)
-                    it.flush()
-                }
+            synchronized(accessLock) {
+                File(hprofDir, id)
+                    .also {
+                        hprof.copyTo(it, true)
+                    }
+                File(keyDir, id)
+                    .apply {
+                        createNewFile()
+                    }
+                    .bufferedWriter()
+                    .use {
+                        it.write(activity)
+                        it.newLine()
+                        it.write(key)
+                        it.newLine()
+                        it.write(failure)
+                        it.flush()
+                    }
+            }
             return true
         } catch (throwable: Throwable) {
             MatrixLog.printErrStackTrace(
@@ -68,7 +75,9 @@ private class RetryRepository(dir: File) {
     }
 
     fun process(action: (File, String, String, String) -> Unit) {
-        val hprofs = hprofDir.listFiles() ?: emptyArray<File>()
+        val hprofs = synchronized(accessLock) {
+            hprofDir.listFiles() ?: emptyArray<File>()
+        }
         hprofs.forEach { hprofFile ->
             val keyFile = File(keyDir, hprofFile.name)
             try {
