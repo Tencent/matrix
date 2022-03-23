@@ -3,7 +3,7 @@ project(matrix-resource-canary-android)
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_subdirectory(../../../../../../matrix_hprof_analyzer matrix_hprof_analyzer.out)
+add_subdirectory(../../../../../../matrix-hprof-analyzer matrix-hprof-analyzer.out)
 
 add_library(matrix_mem_util SHARED
         excludes/excludes.cpp symbol/dlsym/dlsym.cpp symbol/symbol.cpp log.cpp memory_util.cpp)
