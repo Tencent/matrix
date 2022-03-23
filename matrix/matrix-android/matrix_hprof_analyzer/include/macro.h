@@ -8,7 +8,10 @@
         result.value();                             \
     })
 
-#define friend_test(test_case_name, test_name)\
-friend class test_case_name##_##test_name##_Test
+#ifdef __test_mode__
+#define friend_test(test_case_name, test_name) friend class test_case_name##_##test_name##_Test
+#else
+#define friend_test(test_case_name, test_name)
+#endif
 
 #endif

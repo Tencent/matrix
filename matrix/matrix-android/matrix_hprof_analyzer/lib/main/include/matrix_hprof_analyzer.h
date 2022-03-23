@@ -12,6 +12,8 @@ namespace matrix::hprof {
 
     typedef uint64_t object_id_t;
 
+    typedef void (*error_listener_t)(const char *);
+
     class HprofHeapImpl;
 
     /**
@@ -293,9 +295,10 @@ namespace matrix::hprof {
     public:
 
         /**
-         * Gets error message if the analyzing is failed, or returns empty string if no error found. Use it like \errno.
+         * Listens error message if the analyzing errors or failures happen. The function returns the origin listener
+         * pointer.
          */
-        static const char *CheckError();
+        static error_listener_t SetErrorListener(error_listener_t listener);
 
         explicit HprofAnalyzer(int hprof_fd);
 

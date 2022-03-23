@@ -19,7 +19,7 @@ target_include_directories(
 
 target_link_libraries(
         matrix_mem_util
-        hprof_analyzer
+        matrix_hprof_analyzer
         ${log-lib}
         ${EXT_DEP}/lib/${ANDROID_ABI}/libenhance_dlsym.a
         ${EXT_DEP}/lib/${ANDROID_ABI}/libsemi_dlfcn.a)

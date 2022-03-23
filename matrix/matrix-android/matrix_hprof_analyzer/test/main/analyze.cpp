@@ -27,13 +27,15 @@ namespace matrix::hprof {
         close(fd);
     }
 
+    static void test_error_listener(const char *message) {
+        throw std::runtime_error(message);
+    }
+
     TEST(main_analyzer, construct_error_handle) {
+        HprofAnalyzer::SetErrorListener(test_error_listener);
         // unknown file descriptor
         {
-            HprofAnalyzer impl(-1);
-            EXPECT_EQ(std::nullopt, impl.Analyze([](const HprofHeap &) { return std::vector<matrix::hprof::object_id_t>(); }));
-            std::cout << get_matrix_hprof_analyzer_error() << std::endl;
-            EXPECT_EQ(0, strcmp("Failed to invoke fstat with errno 9.", get_matrix_hprof_analyzer_error()));
+            EXPECT_THROW(HprofAnalyzer impl(-1), std::runtime_error);
         }
         // not regular file
         {
@@ -41,16 +43,16 @@ namespace matrix::hprof {
             char *temp_dir_path = mkdtemp(name_template);
             if (temp_dir_path == nullptr) FAIL() << "Unsupported test platform: Failed to create temporary directory.";
             int fd = open(temp_dir_path, O_RDONLY);
-            HprofAnalyzer impl(fd);
-            EXPECT_EQ(std::nullopt, impl.Analyze([](const HprofHeap &) { return std::vector<matrix::hprof::object_id_t>(); }));
-            EXPECT_EQ(0, strcmp("File descriptor is not a regular file.", get_matrix_hprof_analyzer_error()));
+            EXPECT_THROW(HprofAnalyzer impl(fd), std::runtime_error);
         }
     }
 
     TEST(main_analyzer, exclude_matchers) {
+        HprofAnalyzer::SetErrorListener(test_error_listener);
         // instance field
         {
             int fd = fileno(tmpfile());
+            write(fd, "test", sizeof("test"));
             HprofAnalyzer analyzer(fd);
             HprofAnalyzerImpl *impl = analyzer.impl_.get();
             analyzer.ExcludeInstanceFieldReference("test.SampleClass", "reference");
@@ -61,6 +63,7 @@ namespace matrix::hprof {
         }
         {
             int fd = fileno(tmpfile());
+            write(fd, "test", sizeof("test"));
             HprofAnalyzer analyzer(fd);
             HprofAnalyzerImpl *impl = analyzer.impl_.get();
             analyzer.ExcludeInstanceFieldReference("test.SampleClass", "*");
@@ -71,6 +74,7 @@ namespace matrix::hprof {
         }
         {
             int fd = fileno(tmpfile());
+            write(fd, "test", sizeof("test"));
             HprofAnalyzer analyzer(fd);
             HprofAnalyzerImpl *impl = analyzer.impl_.get();
             analyzer.ExcludeInstanceFieldReference("*", "reference");
@@ -81,6 +85,7 @@ namespace matrix::hprof {
         }
         {
             int fd = fileno(tmpfile());
+            write(fd, "test", sizeof("test"));
             HprofAnalyzer analyzer(fd);
             HprofAnalyzerImpl *impl = analyzer.impl_.get();
             analyzer.ExcludeInstanceFieldReference("*", "*");
@@ -92,6 +97,7 @@ namespace matrix::hprof {
         // static field
         {
             int fd = fileno(tmpfile());
+            write(fd, "test", sizeof("test"));
             HprofAnalyzer analyzer(fd);
             HprofAnalyzerImpl *impl = analyzer.impl_.get();
             analyzer.ExcludeStaticFieldReference("test.SampleClass", "reference");
@@ -102,6 +108,7 @@ namespace matrix::hprof {
         }
         {
             int fd = fileno(tmpfile());
+            write(fd, "test", sizeof("test"));
             HprofAnalyzer analyzer(fd);
             HprofAnalyzerImpl *impl = analyzer.impl_.get();
             analyzer.ExcludeStaticFieldReference("test.SampleClass", "*");
@@ -112,6 +119,7 @@ namespace matrix::hprof {
         }
         {
             int fd = fileno(tmpfile());
+            write(fd, "test", sizeof("test"));
             HprofAnalyzer analyzer(fd);
             HprofAnalyzerImpl *impl = analyzer.impl_.get();
             analyzer.ExcludeStaticFieldReference("*", "reference");
@@ -122,6 +130,7 @@ namespace matrix::hprof {
         }
         {
             int fd = fileno(tmpfile());
+            write(fd, "test", sizeof("test"));
             HprofAnalyzer analyzer(fd);
             HprofAnalyzerImpl *impl = analyzer.impl_.get();
             analyzer.ExcludeStaticFieldReference("*", "*");
@@ -133,6 +142,7 @@ namespace matrix::hprof {
         // thread
         {
             int fd = fileno(tmpfile());
+            write(fd, "test", sizeof("test"));
             HprofAnalyzer analyzer(fd);
             HprofAnalyzerImpl *impl = analyzer.impl_.get();
             analyzer.ExcludeThreadReference("sample_thread");
@@ -141,6 +151,7 @@ namespace matrix::hprof {
         }
         {
             int fd = fileno(tmpfile());
+            write(fd, "test", sizeof("test"));
             HprofAnalyzer analyzer(fd);
             HprofAnalyzerImpl *impl = analyzer.impl_.get();
             analyzer.ExcludeThreadReference("*");
@@ -150,6 +161,7 @@ namespace matrix::hprof {
         // native global
         {
             int fd = fileno(tmpfile());
+            write(fd, "test", sizeof("test"));
             HprofAnalyzer analyzer(fd);
             HprofAnalyzerImpl *impl = analyzer.impl_.get();
             analyzer.ExcludeNativeGlobalReference("test.SampleClass");
@@ -158,6 +170,7 @@ namespace matrix::hprof {
         }
         {
             int fd = fileno(tmpfile());
+            write(fd, "test", sizeof("test"));
             HprofAnalyzer analyzer(fd);
             HprofAnalyzerImpl *impl = analyzer.impl_.get();
             analyzer.ExcludeNativeGlobalReference("*");

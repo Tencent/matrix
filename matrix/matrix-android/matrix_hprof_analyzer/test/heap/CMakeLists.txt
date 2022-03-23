@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.10.2)
-project(hprof_analyzer)
+project(matrix_hprof_analyzer)
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_executable(hprof_analyzer_heap_test heap.cpp primitive.cpp)
-target_link_libraries(hprof_analyzer_heap_test hprof_analyzer_heap)
-target_link_libraries(hprof_analyzer_heap_test gtest_main)
+add_executable(matrix_hprof_analyzer_heap_test heap.cpp primitive.cpp)
+target_link_libraries(matrix_hprof_analyzer_heap_test matrix_hprof_analyzer_heap)
+target_link_libraries(matrix_hprof_analyzer_heap_test gtest_main)
 
-gtest_discover_tests(hprof_analyzer_heap_test)
+gtest_discover_tests(matrix_hprof_analyzer_heap_test)

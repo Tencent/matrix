@@ -47,11 +47,11 @@ namespace matrix::hprof::internal::parser {
         static constexpr uint8_t kHeapDumpInfo = 0xfe;
     }
 
-    bool
+    void
     HeapParserEngineImpl::Parse(reader::Reader &reader, heap::Heap &heap,
                                 const ExcludeMatcherGroup &exclude_matcher_group,
                                 const HeapParserEngine &next) const {
-        if (!next.ParseHeader(reader, heap)) return false;
+        next.ParseHeader(reader, heap);
 
         while (true) {
             const uint8_t tag = reader.ReadU1();
@@ -59,15 +59,14 @@ namespace matrix::hprof::internal::parser {
             const uint32_t length = reader.ReadU4();
             switch (tag) {
                 case tag::kStrings:
-                    if (!next.ParseStringRecord(reader, heap, length)) return false;
+                    next.ParseStringRecord(reader, heap, length);
                     break;
                 case tag::kLoadClasses:
-                    if (!next.ParseLoadClassRecord(reader, heap, length)) return false;
+                    next.ParseLoadClassRecord(reader, heap, length);
                     break;
                 case tag::kHeapDump:
                 case tag::kHeapDumpSegment:
-                    if (!next.ParseHeapContent(reader, heap, length, exclude_matcher_group, next))
-                        return false;
+                    next.ParseHeapContent(reader, heap, length, exclude_matcher_group, next);
                     break;
                 case tag::kHeapDumpEnd:
                     goto break_read_loop;
@@ -77,36 +76,32 @@ namespace matrix::hprof::internal::parser {
             }
         }
         break_read_loop:
-        if (!next.LazyParse(heap, exclude_matcher_group)) return false;
-        return true;
+        next.LazyParse(heap, exclude_matcher_group);
     }
 
-    bool HeapParserEngineImpl::ParseHeader(reader::Reader &reader, heap::Heap &heap) const {
+    void HeapParserEngineImpl::ParseHeader(reader::Reader &reader, heap::Heap &heap) const {
         // Version string.
         const std::string version = reader.ReadNullTerminatedString();
         if (version != "JAVA PROFILE 1.0" &&
             version != "JAVA PROFILE 1.0.1" &&
             version != "JAVA PROFILE 1.0.2" &&
             version != "JAVA PROFILE 1.0.3") {
-            set_matrix_hprof_analyzer_error("Invalid HPROF header.");
-            return false;
+            pub_fatal("Invalid HPROF header.");
         }
         // Identifier size.
         heap.InitializeIdSize(reader.ReadU4());
         // Skip timestamp.
         reader.SkipU8();
-        return true;
     }
 
-    bool HeapParserEngineImpl::ParseStringRecord(reader::Reader &reader, heap::Heap &heap,
+    void HeapParserEngineImpl::ParseStringRecord(reader::Reader &reader, heap::Heap &heap,
                                                  size_t record_length) const {
         const heap::string_id_t string_id = reader.Read(heap.GetIdSize());
         const size_t length = record_length - heap.GetIdSize();
         heap.AddString(string_id, reinterpret_cast<const char *>(reader.Extract(length)), length);
-        return true;
     }
 
-    bool
+    void
     HeapParserEngineImpl::ParseLoadClassRecord(reader::Reader &reader, heap::Heap &heap,
                                                size_t record_length) const {
         // Skip class serial number.
@@ -118,7 +113,6 @@ namespace matrix::hprof::internal::parser {
         // Class name string ID.
         const heap::string_id_t class_name_id = reader.Read(heap.GetIdSize());
         heap.AddClassNameRecord(class_id, class_name_id);
-        return true;
     }
 
     static std::optional<std::string>
@@ -131,7 +125,7 @@ namespace matrix::hprof::internal::parser {
         return heap.GetValueFromStringInstance(name_string_id);
     }
 
-    bool HeapParserEngineImpl::ParseHeapContent(reader::Reader &reader, heap::Heap &heap,
+    void HeapParserEngineImpl::ParseHeapContent(reader::Reader &reader, heap::Heap &heap,
                                                 size_t record_length,
                                                 const ExcludeMatcherGroup &exclude_matcher_group,
                                                 const HeapParserEngine &next) const {
@@ -209,11 +203,9 @@ namespace matrix::hprof::internal::parser {
                     bytes_read += next.SkipHeapContentInfoSubRecord(reader, heap);
                     break;
                 default:
-                    set_matrix_hprof_analyzer_error("Unsupported Heap dump tag.");
-                    return false;
+                    pub_fatal("Unsupported Heap dump tag.");
             }
         }
-        return true;
     }
 
     struct field_exclude_matcher_flatten_t {
@@ -255,7 +247,7 @@ namespace matrix::hprof::internal::parser {
         }
     }
 
-    bool HeapParserEngineImpl::LazyParse(heap::Heap &heap,
+    void HeapParserEngineImpl::LazyParse(heap::Heap &heap,
                                          const ExcludeMatcherGroup &exclude_matcher_group) const {
         std::vector<field_exclude_matcher_flatten_t> instance_field_matchers;
         flatten_field_exclude_matchers(instance_field_matchers, heap,
@@ -332,8 +324,6 @@ namespace matrix::hprof::internal::parser {
                 }
             }
         }
-
-        return true;
     }
 
     size_t

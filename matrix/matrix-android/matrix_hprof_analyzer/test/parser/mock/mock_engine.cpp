@@ -8,37 +8,31 @@ namespace test::mock {
             parser::HeapParserEngine(),
             id_size_(id_size) {}
 
-    bool MockEngineImpl::Parse(reader::Reader &reader, heap::Heap &heap,
+    void MockEngineImpl::Parse(reader::Reader &reader, heap::Heap &heap,
                                const parser::ExcludeMatcherGroup &exclude_matchers,
                                const HeapParserEngine &next) const {
-        return true;
     }
 
-    bool MockEngineImpl::ParseHeader(reader::Reader &reader,
+    void MockEngineImpl::ParseHeader(reader::Reader &reader,
                                      heap::Heap &heap) const {
         reader.ReadNullTerminatedString();
         reader.Skip(sizeof(uint32_t) * 3);
-        return true;
     }
 
-    bool MockEngineImpl::ParseStringRecord(reader::Reader &reader, heap::Heap &heap, size_t record_length) const {
+    void MockEngineImpl::ParseStringRecord(reader::Reader &reader, heap::Heap &heap, size_t record_length) const {
         reader.Skip(record_length);
-        return true;
     }
 
-    bool MockEngineImpl::ParseLoadClassRecord(reader::Reader &reader, heap::Heap &heap, size_t record_length) const {
+    void MockEngineImpl::ParseLoadClassRecord(reader::Reader &reader, heap::Heap &heap, size_t record_length) const {
         reader.Skip(record_length);
-        return true;
     }
 
-    bool MockEngineImpl::ParseHeapContent(reader::Reader &reader, heap::Heap &heap, size_t record_length,
+    void MockEngineImpl::ParseHeapContent(reader::Reader &reader, heap::Heap &heap, size_t record_length,
                                           const parser::ExcludeMatcherGroup &, const HeapParserEngine &) const {
         reader.Skip(record_length);
-        return true;
     }
 
-    bool MockEngineImpl::LazyParse(heap::Heap &heap, const parser::ExcludeMatcherGroup &exclude_matcher_group) const {
-        return true;
+    void MockEngineImpl::LazyParse(heap::Heap &heap, const parser::ExcludeMatcherGroup &exclude_matcher_group) const {
     }
 
     size_t MockEngineImpl::ParseHeapContentRootUnknownSubRecord(reader::Reader &reader, heap::Heap &heap) const {

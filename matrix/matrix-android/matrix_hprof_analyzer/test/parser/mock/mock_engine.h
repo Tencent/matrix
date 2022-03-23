@@ -13,20 +13,20 @@ namespace test::mock {
     public:
         explicit MockEngineImpl(size_t id_size);
 
-        bool Parse(reader::Reader &reader, heap::Heap &heap, const parser::ExcludeMatcherGroup &exclude_matchers,
+        void Parse(reader::Reader &reader, heap::Heap &heap, const parser::ExcludeMatcherGroup &exclude_matchers,
                    const HeapParserEngine &next) const override;
 
-        bool ParseHeader(reader::Reader &reader, heap::Heap &heap) const override;
+        void ParseHeader(reader::Reader &reader, heap::Heap &heap) const override;
 
-        bool ParseStringRecord(reader::Reader &reader, heap::Heap &heap, size_t record_length) const override;
+        void ParseStringRecord(reader::Reader &reader, heap::Heap &heap, size_t record_length) const override;
 
-        bool ParseLoadClassRecord(reader::Reader &reader, heap::Heap &heap, size_t record_length) const override;
+        void ParseLoadClassRecord(reader::Reader &reader, heap::Heap &heap, size_t record_length) const override;
 
-        bool ParseHeapContent(reader::Reader &reader, heap::Heap &heap, size_t record_length,
+        void ParseHeapContent(reader::Reader &reader, heap::Heap &heap, size_t record_length,
                               const parser::ExcludeMatcherGroup &exclude_matchers,
                               const HeapParserEngine &next) const override;
 
-        bool LazyParse(heap::Heap &heap, const parser::ExcludeMatcherGroup &exclude_matcher_group) const override;
+        void LazyParse(heap::Heap &heap, const parser::ExcludeMatcherGroup &exclude_matcher_group) const override;
 
         size_t ParseHeapContentRootUnknownSubRecord(reader::Reader &reader, heap::Heap &heap) const override;
 
@@ -86,28 +86,28 @@ namespace test::mock {
                             [this](reader::Reader &reader, heap::Heap &heap,
                                    const parser::ExcludeMatcherGroup &exclude_matchers,
                                    const HeapParserEngine &next) {
-                                return impl_.Parse(reader, heap, exclude_matchers, next);
+                                impl_.Parse(reader, heap, exclude_matchers, next);
                             }
                     );
 
             ON_CALL(*this, ParseHeader)
                     .WillByDefault(
                             [this](reader::Reader &reader, heap::Heap &heap) {
-                                return impl_.ParseHeader(reader, heap);
+                                impl_.ParseHeader(reader, heap);
                             }
                     );
 
             ON_CALL(*this, ParseStringRecord)
                     .WillByDefault(
                             [this](reader::Reader &reader, heap::Heap &heap, size_t record_length) {
-                                return impl_.ParseStringRecord(reader, heap, record_length);
+                                impl_.ParseStringRecord(reader, heap, record_length);
                             }
                     );
 
             ON_CALL(*this, ParseLoadClassRecord)
                     .WillByDefault(
                             [this](reader::Reader &reader, heap::Heap &heap, size_t record_length) {
-                                return impl_.ParseLoadClassRecord(reader, heap, record_length);
+                                impl_.ParseLoadClassRecord(reader, heap, record_length);
                             }
                     );
 
@@ -115,14 +115,14 @@ namespace test::mock {
                     .WillByDefault(
                             [this](reader::Reader &reader, heap::Heap &heap, size_t record_length,
                                    const parser::ExcludeMatcherGroup &exclude_matchers, const HeapParserEngine &next) {
-                                return impl_.ParseHeapContent(reader, heap, record_length, exclude_matchers, next);
+                                impl_.ParseHeapContent(reader, heap, record_length, exclude_matchers, next);
                             }
                     );
 
             ON_CALL(*this, LazyParse)
                     .WillByDefault(
                             [this](heap::Heap &heap, const parser::ExcludeMatcherGroup &exclude_matchers) {
-                                return impl_.LazyParse(heap, exclude_matchers);
+                                impl_.LazyParse(heap, exclude_matchers);
                             }
                     );
 
@@ -282,25 +282,25 @@ namespace test::mock {
                     );
         }
 
-        MOCK_METHOD(bool, Parse,
+        MOCK_METHOD(void, Parse,
                     ((reader::Reader & reader), (heap::Heap & heap),
                             (const parser::ExcludeMatcherGroup &exclude_matcher_group), (const HeapParserEngine &next)),
                     (const, override));
 
-        MOCK_METHOD(bool, ParseHeader, ((reader::Reader & reader), (heap::Heap & heap)), (const, override));
+        MOCK_METHOD(void, ParseHeader, ((reader::Reader & reader), (heap::Heap & heap)), (const, override));
 
-        MOCK_METHOD(bool, ParseStringRecord, ((reader::Reader & reader), (heap::Heap & heap), (size_t)),
+        MOCK_METHOD(void, ParseStringRecord, ((reader::Reader & reader), (heap::Heap & heap), (size_t)),
                     (const, override));
 
-        MOCK_METHOD(bool, ParseLoadClassRecord,
+        MOCK_METHOD(void, ParseLoadClassRecord,
                     ((reader::Reader & reader), (heap::Heap & heap), (size_t)), (const, override));
 
-        MOCK_METHOD(bool, ParseHeapContent,
+        MOCK_METHOD(void, ParseHeapContent,
                     ((reader::Reader & reader), (heap::Heap & heap), (size_t),
                             (const parser::ExcludeMatcherGroup &exclude_matcher_group), (const HeapParserEngine &next)),
                     (const, override));
 
-        MOCK_METHOD(bool, LazyParse, ((heap::Heap & heap),(const parser::ExcludeMatcherGroup &exclude_matcher_group)),
+        MOCK_METHOD(void, LazyParse, ((heap::Heap & heap),(const parser::ExcludeMatcherGroup &exclude_matcher_group)),
                     (const, override));
 
         MOCK_METHOD(size_t, ParseHeapContentRootUnknownSubRecord, ((reader::Reader & reader), (heap::Heap & heap)),

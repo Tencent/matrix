@@ -3,10 +3,12 @@
 
 #include <string>
 
-void set_matrix_hprof_analyzer_error(const std::string& message);
+typedef void (*error_listener_t)(const char *message);
 
-const char* get_matrix_hprof_analyzer_error();
+error_listener_t set_matrix_hprof_analyzer_error_listener(error_listener_t listener);
 
-[[noreturn]] void fatal(const char* message);
+void pub_error(const std::string& message);
+
+[[noreturn]] void pub_fatal(const std::string& message);
 
 #endif

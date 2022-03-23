@@ -190,6 +190,10 @@ static void execute_dump(const char *file_name) {
     dump_heap(file_name);
 }
 
+static void analyzer_error_listener(const char* message) {
+    _error_log(TAG, message);
+}
+
 static std::optional<std::vector<LeakChain>>
 execute_analyze(const char *hprof_path, const char *reference_key) {
     _info_log(TAG, "Start analyzing in task %d.", getpid());
@@ -200,6 +204,7 @@ execute_analyze(const char *hprof_path, const char *reference_key) {
         _error_log(TAG, "Failed to open HPROF file.");
         return std::nullopt;
     }
+    HprofAnalyzer::SetErrorListener(analyzer_error_listener);
     HprofAnalyzer analyzer(hprof_fd);
 
     update_task_state(TS_ANALYZER_INITIALIZE);
@@ -209,7 +214,7 @@ execute_analyze(const char *hprof_path, const char *reference_key) {
     }
 
     update_task_state(TS_ANALYZER_EXECUTE);
-    auto result = analyzer.Analyze([reference_key](const HprofHeap &heap) {
+    return analyzer.Analyze([reference_key](const HprofHeap &heap) {
         const object_id_t leak_ref_class_id = unwrap_optional(
                 heap.FindClassByName(
                         "com.tencent.matrix.resource.analyzer.model.DestroyedActivityInfo"),
@@ -230,12 +235,6 @@ execute_analyze(const char *hprof_path, const char *reference_key) {
         }
         return leaks;
     });
-    if (result.has_value()) {
-        return result.value();
-    } else {
-        _error_log(TAG, HprofAnalyzer::CheckError());
-        return std::nullopt;
-    }
 }
 
 static bool execute_serialize(const char *result_path, const std::vector<LeakChain> &leak_chains) {

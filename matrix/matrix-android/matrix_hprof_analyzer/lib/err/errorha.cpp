@@ -1,31 +1,24 @@
 #include "include/errorha.h"
 
-#include <string>
+static error_listener_t error_listener = nullptr;
 
-thread_local static std::string error;
-
-void set_matrix_hprof_analyzer_error(const std::string& message) {
-  error = message;
+error_listener_t set_matrix_hprof_analyzer_error_listener(error_listener_t listener) {
+    const error_listener_t previous = error_listener;
+    error_listener = listener;
+    return previous;
 }
 
-const char* get_matrix_hprof_analyzer_error() {
-  return error.c_str();
+void pub_error(const std::string& message) {
+    if (error_listener != nullptr) {
+        error_listener(message.c_str());
+    }
 }
 
-#ifdef __ANDROID__
-
-#include <unistd.h>
-
-#else
-
-#include <stdexcept>
-
-#endif
-
-[[noreturn]] void fatal(const char *message) {
-#ifdef __ANDROID__
-    _exit(10);
-#else
+[[noreturn]] void pub_fatal(const std::string& message) {
+    pub_error(message);
+#if __test_mode__
     throw std::runtime_error(message);
+#else
+    abort();
 #endif
 }
