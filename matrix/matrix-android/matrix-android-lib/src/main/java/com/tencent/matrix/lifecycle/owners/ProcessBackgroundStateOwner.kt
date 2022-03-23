@@ -9,30 +9,48 @@ private val MAX_CHECK_INTERVAL = TimeUnit.MINUTES.toMillis(1)
 private const val MAX_CHECK_TIMES = 20
 
 /**
+ * Usage:
+ *  recommended readable APIs:
+ *      ProcessExplicitBackgroundOwner.isBackground()
+ *      ProcessExplicitBackgroundOwner.addLifecycleCallback(object : IMatrixLifecycleCallback() {
+ *           override fun onForeground() {}
+ *           override fun onBackground() {}
+ *      })
+ *      // auto remove callback when lifecycle destroyed
+ *      ProcessExplicitBackgroundOwner.addLifecycleCallback(lifecycleOwner, object : IMatrixLifecycleCallback() {
+ *           override fun onForeground() {}
+ *           override fun onBackground() {}
+ *      })
+ *
+ *  the origin abstract APIs are also available:
+ *      ProcessExplicitBackgroundOwner.active() // return true when state ON, in other words, it is explicit background now
+ *      ProcessExplicitBackgroundOwner.observeForever(object : IStateObserver {
+ *          override fun on() {} // entered the state, in other words, turned explicit background
+ *          override fun off() {} // exit the state, in other words, turned foreground
+ *      })
+ *      // auto remove callback when lifecycle destroyed
+ *      ProcessExplicitBackgroundOwner.observeForeverWithLifecycle(lifecycleOwner, object : IStateObserver {
+ *          override fun on() {}
+ *          override fun off() {}
+ *      })
+ *
  * State-ON:
- * Activity is NOT in foreground
- * AND without foreground Service
- * AND without floating Views
+ *  Activity is NOT in foreground
+ *  AND without foreground Service
+ *  AND without floating Views
+ * then callback [IStateObserver.on] and [IMatrixLifecycleCallback.onBackground] would be called
  *
- * notice:
+ * NOTICE:
  *
- * ForegroundServiceLifecycleOwner is an optional StatefulOwner which is disabled by default and
- * can be enable by configuring [Matrix.Builder.enableFgServiceMonitor]
+ * [ForegroundServiceLifecycleOwner] is an optional StatefulOwner which is disabled by default and
+ * can be enabled by [MatrixLifecycleConfig.enableFgServiceMonitor]
+ * [OverlayWindowLifecycleOwner] is similar, which can be enabled by [MatrixLifecycleConfig.enableOverlayWindowMonitor]
  *
- * Once this owner turned on, timer checker would be stop.
- * Therefore, the callback [IStateObserver.off] just means explicit background currently.
- *
- * If the [ForegroundServiceLifecycleOwner] were disabled and there are foreground Service launched
- * after calling [IStateObserver.off], the state wouldn't be turn on thus the [IStateObserver.on]
- * wouldn't be call either until we call the [active] or the state of upstream Owner changes.
+ * If the [ForegroundServiceLifecycleOwner] were disabled, this owner would start the timer checker
+ * to check the ForegroundService states. If there were foreground Service launched after UI turned
+ * background, the callback [IStateObserver.off] or [IMatrixLifecycleCallback.onForeground]
+ * wouldn't be call until we call the [active] or the state of upstream Owner changes.
  * So do [OverlayWindowLifecycleOwner].
- *
- * If one of [ForegroundServiceLifecycleOwner] and [OverlayWindowLifecycleOwner] were disabled, the
- * [ProcessExplicitBackgroundOwner] would start the timer checker to check if there are foreground services
- * or Overlay Windows
- *
- * The state change event is delayed for at least 34ms for removing foreground widgets
- * like floating view which depends on [ProcessUILifecycleOwner]. see [TimerChecker]
  */
 object ProcessExplicitBackgroundOwner : StatefulOwner(), IBackgroundStatefulOwner {
     private const val TAG = "Matrix.background.Explicit"
@@ -104,9 +122,12 @@ object ProcessExplicitBackgroundOwner : StatefulOwner(), IBackgroundStatefulOwne
 
 
 /**
+ * Usage:
+ *  similar to [ProcessExplicitBackgroundOwner]
+ *
  * State-ON:
- * Process is explicitly in background: [ProcessExplicitBackgroundOwner] isNotActive
- * BUT there are tasks in recent screen
+ *  Process is explicitly in background: [ProcessExplicitBackgroundOwner] isActive
+ *  BUT there are tasks of current process in the recent screen
  *
  * notice: same as [ProcessExplicitBackgroundOwner]
  */
@@ -172,6 +193,16 @@ object ProcessStagedBackgroundOwner : StatefulOwner(), IBackgroundStatefulOwner 
     }
 }
 
+/**
+ * Usage:
+ *  similar to [ProcessExplicitBackgroundOwner]
+ *
+ * State-ON:
+ *  Process is explicitly in background: [ProcessExplicitBackgroundOwner] isActive
+ *  AND there is NO task of current process in the recent screen
+ *
+ * notice: same as [ProcessExplicitBackgroundOwner]
+ */
 object ProcessDeepBackgroundOwner : StatefulOwner(), IBackgroundStatefulOwner {
 
     private val delegate = object : ImmutableMultiSourceStatefulOwner(

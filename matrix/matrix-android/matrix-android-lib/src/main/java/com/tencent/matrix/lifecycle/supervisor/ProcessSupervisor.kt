@@ -21,12 +21,6 @@ const val LRU_KILL_CANCELED = 3
 const val LRU_KILL_NOT_FOUND = 4
 
 /**
- * supervisorProcess:
- *
- * Disabled by default.
- *
- * usage: TODO
- *
  * Created by Yves on 2021/10/22
  */
 data class SupervisorConfig(
@@ -41,9 +35,37 @@ data class SupervisorConfig(
 )
 
 // @formatter:off
+/**
+ * Usage:
+ *  similar to [ProcessUIStartedStateOwner]
+ *
+ * State-ON:
+ *  [ProcessUIStartedStateOwner] of ANY process is active, in other words, at least one processes is in foreground
+ */
 object AppUIForegroundOwner: IForegroundStatefulOwner by ProcessSupervisor.appUIForegroundOwner
+
+/**
+ * Usage:
+ *  similar to [ProcessExplicitBackgroundOwner]
+ *
+ * State-ON:
+ *  [ProcessExplicitBackgroundOwner] of ALL process is active, in other words, ALL processes are in background
+ */
 object AppExplicitBackgroundOwner: IBackgroundStatefulOwner by ProcessSupervisor.appExplicitBackgroundOwner
+
+/**
+ * Usage:
+ *  similar to [ProcessDeepBackgroundOwner]
+ *
+ * State-ON:
+ *  [ProcessDeepBackgroundOwner] of ALL process is active, in other words, ALL processes are in deep background.
+ */
 object AppDeepBackgroundOwner: IBackgroundStatefulOwner by ProcessSupervisor.appDeepBackgroundOwner
+
+/**
+ * State-ON:
+ *  [ProcessStagedBackgroundOwner] of ANY process is active, in other words, at least one process has AppTask in the recent screen
+ */
 object AppStagedBackgroundOwner: IBackgroundStatefulOwner by ProcessSupervisor.appStagedBackgroundOwner
 // @formatter:on
 
