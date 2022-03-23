@@ -31,7 +31,7 @@ class SupervisorService : Service() {
                 MatrixLog.e(TAG, "duplicated start")
                 return@safeApply
             }
-            if (false == ProcessSupervisor.config?.enable) {
+            if (true != ProcessSupervisor.config?.enable) {
                 MatrixLog.e(TAG, "supervisor was disabled")
                 return@safeApply
             }
@@ -78,7 +78,7 @@ class SupervisorService : Service() {
         ) {
             val pid = Binder.getCallingPid()
 
-            if (false == ProcessSupervisor.config?.enable) {
+            if (true != ProcessSupervisor.config?.enable) {
                 MatrixLog.e(TAG, "supervisor was disabled")
                 return
             }
@@ -139,7 +139,7 @@ class SupervisorService : Service() {
         }
 
         override fun onStateChanged(token: ProcessToken) {
-            if (false == ProcessSupervisor.config?.enable) {
+            if (true != ProcessSupervisor.config?.enable) {
                 MatrixLog.e(TAG, "supervisor was disabled")
                 return
             }
@@ -154,7 +154,7 @@ class SupervisorService : Service() {
         }
 
         private fun onProcessStateChanged(token: ProcessToken) {
-            if (false == ProcessSupervisor.config?.enable) {
+            if (true != ProcessSupervisor.config?.enable) {
                 MatrixLog.e(TAG, "supervisor was disabled")
                 return
             }
@@ -176,7 +176,7 @@ class SupervisorService : Service() {
         }
 
         override fun onSceneChanged(scene: String) {
-            if (false == ProcessSupervisor.config?.enable) {
+            if (true != ProcessSupervisor.config?.enable) {
                 MatrixLog.e(TAG, "supervisor was disabled")
                 return
             }
@@ -184,7 +184,7 @@ class SupervisorService : Service() {
         }
 
         override fun onProcessKilled(token: ProcessToken) {
-            if (false == ProcessSupervisor.config?.enable) {
+            if (true != ProcessSupervisor.config?.enable) {
                 MatrixLog.e(TAG, "supervisor was disabled")
                 return
             }
@@ -202,7 +202,7 @@ class SupervisorService : Service() {
         }
 
         override fun onProcessRescuedFromKill(token: ProcessToken) {
-            if (false == ProcessSupervisor.config?.enable) {
+            if (true != ProcessSupervisor.config?.enable) {
                 MatrixLog.e(TAG, "supervisor was disabled")
                 return
             }
@@ -214,7 +214,7 @@ class SupervisorService : Service() {
         }
 
         override fun onProcessKillCanceled(token: ProcessToken) {
-            if (false == ProcessSupervisor.config?.enable) {
+            if (true != ProcessSupervisor.config?.enable) {
                 MatrixLog.e(TAG, "supervisor was disabled")
                 return
             }
@@ -225,7 +225,7 @@ class SupervisorService : Service() {
             }
         }
 
-        override fun getRecentScene() = if (false == ProcessSupervisor.config?.enable) {
+        override fun getRecentScene() = if (true != ProcessSupervisor.config?.enable) {
             MatrixLog.e(TAG, "supervisor was disabled")
             ""
         } else {
@@ -240,7 +240,7 @@ class SupervisorService : Service() {
         isSupervisor = true
         instance = this
 
-        if (false == ProcessSupervisor.config?.enable) {
+        if (true != ProcessSupervisor.config?.enable) {
             MatrixLog.e(TAG, "supervisor was disabled")
             return
         }
@@ -270,7 +270,7 @@ class SupervisorService : Service() {
     internal fun backgroundLruKill(
         killedCallback: (result: Int, process: String?, pid: Int) -> Unit
     ) {
-        if (false == ProcessSupervisor.config?.enable) {
+        if (true != ProcessSupervisor.config?.enable) {
             MatrixLog.e(TAG, "supervisor was disabled")
             return
         }
