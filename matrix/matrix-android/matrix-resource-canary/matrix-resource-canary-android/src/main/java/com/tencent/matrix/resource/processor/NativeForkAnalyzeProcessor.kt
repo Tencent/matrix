@@ -10,6 +10,7 @@ import com.tencent.matrix.resource.config.ResourceConfig
 import com.tencent.matrix.resource.config.SharePluginInfo
 import com.tencent.matrix.resource.watcher.ActivityRefWatcher
 import com.tencent.matrix.util.MatrixLog
+import com.tencent.matrix.util.MatrixUtil
 import java.io.File
 import java.util.*
 import java.util.concurrent.Executors
@@ -94,14 +95,20 @@ class NativeForkAnalyzeProcessor(watcher: ActivityRefWatcher) : BaseLeakProcesso
 
     companion object {
 
-        private val retryExecutor = Executors.newSingleThreadExecutor {
-            Thread(it, "matrix_res_native_analyze_retry")
+        private const val RETRY_THREAD_NAME = "matrix_res_native_analyze_retry"
+
+        private const val RETRY_REPO_NAME = "matrix_res_process_retry"
+
+        private val retryExecutor by lazy {
+            Executors.newSingleThreadExecutor {
+                Thread(it, RETRY_THREAD_NAME)
+            }
         }
     }
 
     private val retryRepo: RetryRepository? by lazy {
         try {
-            File(watcher.context.cacheDir, "matrix_res_canary_process_retry")
+            File(watcher.context.cacheDir, RETRY_REPO_NAME)
                 .apply {
                     if (!isDirectory) {
                         deleteIfExist()
@@ -112,41 +119,43 @@ class NativeForkAnalyzeProcessor(watcher: ActivityRefWatcher) : BaseLeakProcesso
                     RetryRepository(it)
                 }
         } catch (throwable: Throwable) {
-            MatrixLog.printErrStackTrace(TAG, throwable, "")
+            MatrixLog.printErrStackTrace(TAG, throwable, "Failed to initialize retry repository")
             null
         }
     }
 
-    private val screenStateReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            retryExecutor.execute {
-                retryRepo?.process { hprof, activity, key, failure ->
-                    MatrixLog.i(TAG, "Found record ${activity}(${hprof.name}).")
-                    val historyFailure = mutableListOf<String>().apply {
-                        add(failure)
-                    }
-                    var retryCount = 1
-                    var result = MemoryUtil.analyze(hprof.absolutePath, key, timeout = 1200)
-                    if (result.mFailure != null) {
-                        historyFailure.add(result.mFailure.toString())
-                        retryCount++
-                        result = analyze(hprof, key)
-                    }
-                    if (result.mLeakFound) {
-                        publishIssue(
-                            SharePluginInfo.IssueType.LEAK_FOUND,
-                            ResourceConfig.DumpMode.FORK_ANALYSE,
-                            activity, key, result.toString(),
-                            result.mAnalysisDurationMs.toString(), retryCount
-                        )
-                    } else if (result.mFailure != null) {
-                        historyFailure.add(result.mFailure.toString())
-                        publishIssue(
-                            SharePluginInfo.IssueType.ERR_EXCEPTION,
-                            ResourceConfig.DumpMode.FORK_ANALYSE,
-                            activity, key, historyFailure.joinToString(";"),
-                            result.mAnalysisDurationMs.toString(), retryCount
-                        )
+    private val screenStateReceiver by lazy {
+        return@lazy object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                retryExecutor.execute {
+                    retryRepo?.process { hprof, activity, key, failure ->
+                        MatrixLog.i(TAG, "Found record ${activity}(${hprof.name}).")
+                        val historyFailure = mutableListOf<String>().apply {
+                            add(failure)
+                        }
+                        var retryCount = 1
+                        var result = MemoryUtil.analyze(hprof.absolutePath, key, timeout = 1200)
+                        if (result.mFailure != null) {
+                            historyFailure.add(result.mFailure.toString())
+                            retryCount++
+                            result = analyze(hprof, key)
+                        }
+                        if (result.mLeakFound) {
+                            publishIssue(
+                                SharePluginInfo.IssueType.LEAK_FOUND,
+                                ResourceConfig.DumpMode.FORK_ANALYSE,
+                                activity, key, result.toString(),
+                                result.mAnalysisDurationMs.toString(), retryCount
+                            )
+                        } else if (result.mFailure != null) {
+                            historyFailure.add(result.mFailure.toString())
+                            publishIssue(
+                                SharePluginInfo.IssueType.ERR_EXCEPTION,
+                                ResourceConfig.DumpMode.FORK_ANALYSE,
+                                activity, key, historyFailure.joinToString(";"),
+                                result.mAnalysisDurationMs.toString(), retryCount
+                            )
+                        }
                     }
                 }
             }
@@ -154,15 +163,19 @@ class NativeForkAnalyzeProcessor(watcher: ActivityRefWatcher) : BaseLeakProcesso
     }
 
     init {
-        try {
-            IntentFilter().apply {
-                addAction(Intent.ACTION_SCREEN_OFF)
-            }.let {
-                watcher.resourcePlugin.application.registerReceiver(screenStateReceiver, it)
-                MatrixLog.i(TAG, "Filter registered.")
+        if (MatrixUtil.isInMainProcess(watcher.context)) {
+            try {
+                IntentFilter().apply {
+                    addAction(Intent.ACTION_SCREEN_OFF)
+                }.let {
+                    screenStateReceiver.also { receiver ->
+                        MatrixLog.i(TAG, "Screen state receiver $receiver registered.")
+                        watcher.resourcePlugin.application.registerReceiver(receiver, it)
+                    }
+                }
+            } catch (throwable: Throwable) {
+                MatrixLog.printErrStackTrace(TAG, throwable, "")
             }
-        } catch (throwable: Throwable) {
-            MatrixLog.printErrStackTrace(TAG, throwable, "")
         }
     }
 
