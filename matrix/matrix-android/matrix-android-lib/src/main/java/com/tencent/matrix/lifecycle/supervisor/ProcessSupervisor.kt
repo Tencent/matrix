@@ -145,11 +145,11 @@ object ProcessSupervisor : IProcessListener by ProcessSubordinate.processListene
     internal val appStagedBackgroundOwner: IBackgroundStatefulOwner = AppStagedBackgroundOwner()
 
     fun init(app: Application, config: SupervisorConfig?): Boolean {
-        if (config == null || !config.enable) {
+        this.config = config
+        if (true != config?.enable) {
             MatrixLog.i(TAG, "Supervisor is disabled")
             return false
         }
-        this.config = config
         application = app
         if (isSupervisor) {
             initSupervisor(app)
