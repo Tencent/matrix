@@ -1,11 +1,10 @@
 package com.tencent.matrix.lifecycle
 
 import android.os.Handler
+import android.os.Process
 import com.tencent.matrix.util.MatrixHandlerThread
 import com.tencent.matrix.util.MatrixLog
-import java.util.*
 import java.util.concurrent.*
-import kotlin.collections.ArrayList
 
 private const val TAG = "Matrix.Lifecycle.Thread"
 
@@ -56,15 +55,17 @@ internal object MatrixLifecycleThread {
             idleSynchronousQueue,
             { r ->
                 Thread(Thread.currentThread().threadGroup, {
+                    val name = Thread.currentThread().name
+                    val tid = Process.myTid()
+                    val begin = System.currentTimeMillis()
+                    MatrixLog.i(TAG, "thread run: tid = ${tid}, name =$name")
                     r.run()
-                    Thread.currentThread().name.let {
-                        synchronized(workerNamePool) {
-                            workerNamePool.add(it)
-                            MatrixLog.i(
-                                TAG,
-                                "thread $it finished, now pool size = ${MAX_POOL_SIZE - workerNamePool.size}"
-                            )
-                        }
+                    synchronized(workerNamePool) {
+                        workerNamePool.add(name)
+                        MatrixLog.i(
+                            TAG,
+                            "thread($tid,$name) finished, alive time ${System.currentTimeMillis() - begin}, now pool size = ${MAX_POOL_SIZE - workerNamePool.size}"
+                        )
                     }
                 }, synchronized(workerNamePool) {
                     workerNamePool.removeFirstOrNull()
