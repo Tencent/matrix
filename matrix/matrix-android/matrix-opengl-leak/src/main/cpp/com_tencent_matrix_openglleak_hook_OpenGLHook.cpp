@@ -519,6 +519,9 @@ extern "C" JNIEXPORT jboolean JNICALL
 Java_com_tencent_matrix_openglleak_hook_OpenGLHook_isEglContextAlive(
         JNIEnv *env, jclass clazz, jlong egl_context) {
     EGLDisplay display = eglGetCurrentDisplay();
+    if (display == nullptr) {
+        display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+    }
 
     const EGLint attrib_config_list[] = {
             EGL_RED_SIZE, 8,
