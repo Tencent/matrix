@@ -19,6 +19,8 @@ class NativeForkAnalyzeProcessor(watcher: ActivityRefWatcher) : BaseLeakProcesso
         val activity = destroyedActivityInfo.mActivityName
         val key = destroyedActivityInfo.mKey
 
+        watcher.triggerGc()
+
         try {
             val result = MemoryUtil.dumpAndAnalyze(hprof.absolutePath, key, timeout = 600)
             if (result.mFailure != null) {
