@@ -29,6 +29,7 @@ class NativeForkAnalyzeProcessor(watcher: ActivityRefWatcher) : BaseLeakProcesso
                 )
             } else {
                 if (result.mLeakFound) {
+                    watcher.markPublished(activity, false)
                     publishIssue(
                         SharePluginInfo.IssueType.LEAK_FOUND,
                         ResourceConfig.DumpMode.FORK_ANALYSE,
