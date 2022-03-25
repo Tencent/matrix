@@ -142,13 +142,14 @@ Java_com_tencent_matrix_resource_MemoryUtil_loadJniCache(JNIEnv *env, jobject) {
             jclass local = env->FindClass("com/tencent/matrix/resource/MemoryUtil$TaskResult");
             if (local == nullptr) {
                 log_and_throw_runtime_exception(env, "Failed to find class TaskResult");
+                return;
             }
             // Make sure the class will not be unloaded.
             // See: https://developer.android.com/training/articles/perf-jni#jclass-jmethodid-and-jfieldid
             task_result_class = reinterpret_cast<jclass>(env->NewGlobalRef(local));
             if (task_result_class == nullptr) {
-                log_and_throw_runtime_exception(env,
-                                                "Failed to create global reference of class TaskResult");
+                log_and_throw_runtime_exception(env, "Failed to create global reference of class TaskResult");
+                return;
             }
         }
 
@@ -156,6 +157,7 @@ Java_com_tencent_matrix_resource_MemoryUtil_loadJniCache(JNIEnv *env, jobject) {
                 env->GetMethodID(task_result_class, "<init>", "(IIBLjava/lang/String;)V");
         if (task_result_constructor == nullptr) {
             log_and_throw_runtime_exception(env, "Failed to find constructor of class TaskResult");
+            return;
         }
     }
 }
@@ -227,6 +229,7 @@ Java_com_tencent_matrix_resource_MemoryUtil_initializeSymbol(JNIEnv *env, jobjec
     _info_log(TAG, "initialize: initialize symbol");
     if (!initialize_symbols()) {
         log_and_throw_runtime_exception(env, "Failed to initialize symbol");
+        return;
     }
 }
 
