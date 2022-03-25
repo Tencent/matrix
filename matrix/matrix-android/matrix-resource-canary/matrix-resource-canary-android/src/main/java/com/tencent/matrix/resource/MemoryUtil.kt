@@ -56,15 +56,15 @@ object MemoryUtil {
 
     private external fun initializeSymbol()
 
-    private val initialized: InitializeException? by lazy {
+    private val initialized: InitializeException? = run {
         try {
             System.loadLibrary("matrix_mem_util")
             loadJniCache()
             syncTaskDir(storageDir.absolutePath)
             initializeSymbol()
-            return@lazy null
+            return@run null
         } catch (throwable: Throwable) {
-            return@lazy InitializeException(throwable)
+            return@run InitializeException(throwable)
         }
     }
 
