@@ -1,5 +1,7 @@
 #include "include/errorha.h"
 
+#include <unistd.h>
+
 static error_listener_t error_listener = nullptr;
 
 error_listener_t set_matrix_hprof_analyzer_error_listener(error_listener_t listener) {
@@ -19,6 +21,6 @@ void pub_error(const std::string& message) {
 #if __test_mode__
     throw std::runtime_error(message);
 #else
-    abort();
+    _exit(10);
 #endif
 }
