@@ -791,106 +791,69 @@ void xh_core_enable_sigsegv_protection(int flag)
     xh_core_sigsegv_enable = (flag ? 1 : 0);
 }
 
+typedef struct xh_single_so_iterate_args {
+    const char* path_suffix;
+    xh_core_map_info_t* mi;
+} xh_single_so_iterate_args_t;
+
+static int xh_single_so_search_iterate_cb(struct dl_phdr_info* info, size_t info_size, void* data) {
+    xh_single_so_iterate_args_t* args = (xh_single_so_iterate_args_t*) data;
+
+    const char* pathname = info->dlpi_name;
+    size_t path_len = strlen(pathname);
+    size_t path_suffix_len = strlen(args->path_suffix);
+    if (strncmp(pathname + path_len - path_suffix_len, args->path_suffix, path_suffix_len) != 0) {
+        // Continue to process next entry.
+        return 0;
+    }
+
+    int check_elf_ret = xh_core_check_elf_header(info->dlpi_addr, pathname);
+    if (0 != check_elf_ret) {
+        XH_LOG_ERROR("Fail to check elf header: %s, ret: %d.", pathname, check_elf_ret);
+        // Continue to process next entry.
+        return 0;
+    }
+
+    args->mi->pathname = strdup(pathname);
+    if (args->mi->pathname == NULL) {
+        XH_LOG_ERROR("Fail to allocate memory to store path: %s.", pathname);
+        return -1;
+    }
+    args->mi->bias_addr = info->dlpi_addr;
+    args->mi->phdrs = (ElfW(Phdr)*) info->dlpi_phdr;
+    args->mi->phdr_count = info->dlpi_phnum;
+    return 1;
+}
+
 void* xh_core_elf_open(const char *path_suffix) {
-    char line[512];
-    FILE* fp;
-    uintptr_t  base_addr;
-    char perm[5];
-    unsigned long offset;
-    int pathname_pos;
-    char *pathname;
-    size_t pathname_len;
-    xh_core_map_info_t *mi;
-    size_t path_suffix_len;
-    int found;
-
-    if (path_suffix == NULL)
-    {
+    if (path_suffix == NULL) {
+        XH_LOG_ERROR("path_suffix is null.");
         return NULL;
     }
-
-    if(NULL == (fp = fopen("/proc/self/maps", "r")))
-    {
-        XH_LOG_ERROR("fopen /proc/self/maps failed");
-        return NULL;
-    }
-
-    path_suffix_len = strlen(path_suffix);
-    if (path_suffix_len == 0)
-    {
-        fclose(fp);
-        return NULL;
-    }
-
-    found = 0;
-    while(fgets(line, sizeof(line), fp))
-    {
-        if(sscanf(line, "%"PRIxPTR"-%*lx %4s %lx %*x:%*x %*d%n", &base_addr, perm, &offset, &pathname_pos) != 3) continue;
-
-        //check permission
-        if(perm[0] != 'r') continue;
-        if(perm[3] != 'p') continue; //do not touch the shared memory
-
-        //check offset
-        //
-        //We are trying to find ELF header in memory.
-        //It can only be found at the beginning of a mapped memory regions
-        //whose offset is 0.
-        if(0 != offset) continue;
-
-        //get pathname
-        while(isspace(line[pathname_pos]) && pathname_pos < (int)(sizeof(line) - 1))
-            pathname_pos += 1;
-        if(pathname_pos >= (int)(sizeof(line) - 1)) continue;
-        pathname = line + pathname_pos;
-        pathname_len = strlen(pathname);
-        if(0 == pathname_len) continue;
-        if(pathname[pathname_len - 1] == '\n')
-        {
-            pathname[pathname_len - 1] = '\0';
-            pathname_len -= 1;
-        }
-        if(0 == pathname_len) continue;
-        if('[' == pathname[0]) continue;
-        if (path_suffix_len > pathname_len) continue;
-
-        if (strncmp(pathname + pathname_len - path_suffix_len, path_suffix, path_suffix_len) != 0)
-        {
-            continue;
-        }
-
-        if (0 != xh_core_check_elf_header(base_addr, pathname)) continue;
-
-        found = 1;
-        break;
-    }
-
-    if (found != 1)
-    {
-        fclose(fp);
-        return NULL;
-    }
-
-    mi = malloc(sizeof(xh_core_map_info_t));
-    if (mi == NULL)
-    {
-        fclose(fp);
+    xh_core_map_info_t* mi = malloc(sizeof(xh_core_map_info_t));
+    if (mi == NULL) {
+        XH_LOG_ERROR("Fail to allocate memory.");
         return NULL;
     }
     memset(mi, 0, sizeof(xh_core_map_info_t));
 
-    if ((mi->pathname = strdup(pathname)) == NULL)
-    {
-        fclose(fp);
+    xh_single_so_iterate_args_t iter_args = {
+            .path_suffix = path_suffix,
+            .mi = mi
+    };
+    int iter_ret = semi_dl_iterate_phdr(xh_single_so_search_iterate_cb, &iter_args);
+    if (iter_ret > 0) {
+        XH_LOG_INFO("Open so with path suffix %s successfully, realpath: %s.", path_suffix, mi->pathname);
+        return mi;
+    } else {
+        if (mi->pathname != NULL) {
+            free(mi->pathname);
+            mi->pathname = NULL;
+        }
         free(mi);
-        mi = NULL;
+        XH_LOG_ERROR("Fail to open %s", path_suffix);
         return NULL;
     }
-
-    mi->bias_addr = base_addr;
-    fclose(fp);
-
-    return mi;
 }
 
 static int xh_core_hook_single_sym_impl(xh_core_map_info_t *mi, const char *symbol, void *new_func,
