@@ -23,12 +23,12 @@ private const val TAG = "Matrix.LeakProcessor.NativeForkAnalyze"
 
 private class RetryRepository(private val dir: File) {
 
-    private val hprofDir
+    private val hprofDir: File
         get() = File(dir, "hprof").apply {
             if (!exists()) mkdirs()
         }
 
-    private val keyDir
+    private val keyDir: File
         get() = File(dir, "key").apply {
             if (!exists()) mkdirs()
         }

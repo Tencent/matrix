@@ -28,6 +28,42 @@ private fun error(message: String, throwable: Throwable? = null) {
         MatrixLog.e(TAG, message)
 }
 
+private val currentTime: Long
+    get() = System.currentTimeMillis()
+
+private fun File.assureIsDirectory() {
+    if (!isDirectory) {
+        if (exists())
+            throw IllegalStateException("Path $absolutePath is pointed to an existing element but it is not a directory.")
+        mkdirs()
+    }
+}
+
+private class OrderedStreamWrapper(
+    private val order: ByteOrder,
+    private val stream: InputStream
+) {
+
+    fun readOrderedInt(): Int {
+        val buffer = ByteBuffer.allocate(4)
+            .apply {
+                order(order)
+            }
+        stream.read(buffer.array(), 0, 4)
+        return buffer.getInt(0)
+    }
+
+    fun readString(length: Int): String {
+        val buffer = ByteArray(length)
+        stream.read(buffer)
+        return String(buffer, Charsets.UTF_8)
+    }
+
+    fun close() {
+        stream.close()
+    }
+}
+
 /**
  * Memory non-suspending dump / analyze util.
  *
@@ -45,7 +81,7 @@ object MemoryUtil {
 
     private const val DEFAULT_TASK_TIMEOUT = 0L
 
-    private val storageDir =
+    private val storageDir: File =
         File(Matrix.with().application.cacheDir, "matrix_mem_util").apply {
             assureIsDirectory()
         }
@@ -109,34 +145,36 @@ object MemoryUtil {
 
     private external fun forkDump(hprofPath: String, timeout: Long): Int
 
-    private fun createAnalyzeDeserializeTask(
+    private fun createTask(
         hprofPath: String,
         referenceKey: String,
         timeout: Long,
-        keepResult: Boolean,
         forkTask: (String, String, String, Long) -> Int
     ): ActivityLeakResult = initSafe { exception ->
         if (exception != null) return@initSafe ActivityLeakResult.failure(exception, 0)
-        val analyzeStart = System.currentTimeMillis()
-        val resultFile = createAnalyzeFile()
+        val analyzeStart = currentTime
+        val resultFile = createResultFile()
             ?: return ActivityLeakResult.failure(
                 RuntimeException("Failed to create temporary analyze result file."), 0
             )
         val resultPath = resultFile.absolutePath
-        return when (val pid =
-            forkTask(hprofPath, resultPath, referenceKey, timeout)) {
+        val leakResult = when (val pid = forkTask(hprofPath, resultPath, referenceKey, timeout)) {
             -1 -> ActivityLeakResult.failure(ForkException(), 0)
             else -> run { // current process
                 info("Wait for task process [${pid}] complete executing.")
                 val result = waitTask(pid)
-                result.exception?.let {
-                    info("Task process [${pid}] complete with error: ${it.message}.")
-                    return ActivityLeakResult.failure(it, System.currentTimeMillis() - analyzeStart)
-                } ?: info("Task process [${pid}] complete without error.")
-                return try {
+                if (result.exception != null) {
+                    info("Task process [${pid}] complete with error: ${result.exception!!.message}.")
+                    return@run ActivityLeakResult.failure(
+                        result.exception, currentTime - analyzeStart
+                    )
+                } else {
+                    info("Task process [${pid}] complete without error.")
+                }
+                return@run try {
                     val chains = deserialize(resultFile)
                     if (chains.isEmpty()) {
-                        ActivityLeakResult.noLeak(System.currentTimeMillis() - analyzeStart)
+                        ActivityLeakResult.noLeak(currentTime - analyzeStart)
                     } else {
                         // TODO: support reporting multiple leak chain.
                         chains.first().run {
@@ -144,21 +182,17 @@ object MemoryUtil {
                                 false,
                                 nodes.last().objectName,
                                 convertToReferenceChain(),
-                                System.currentTimeMillis() - analyzeStart
+                                currentTime - analyzeStart
                             )
                         }
                     }
                 } catch (throwable: Throwable) {
-                    ActivityLeakResult.failure(
-                        throwable, System.currentTimeMillis() - analyzeStart
-                    )
-                } finally {
-                    if (!keepResult) {
-                        if (resultFile.exists()) resultFile.delete()
-                    }
+                    ActivityLeakResult.failure(throwable, currentTime - analyzeStart)
                 }
             }
         }
+        if (resultFile.exists()) resultFile.delete()
+        return@initSafe leakResult
     }
 
     /**
@@ -166,9 +200,6 @@ object MemoryUtil {
      *
      * Object referring from [DestroyedActivityInfo] instance with key [referenceKey] will be marked
      * as leak object while analyzing.
-     *
-     * The function creates a binary file containing analyze result, the result file will be saved
-     * if [keepResult] is true, and it can be deserialized by function [deserializeAnalyzeResult].
      *
      * The function may cause jank and garbage collection, and will not throw exceptions but return
      * a failure result if error happened, see [ActivityLeakResult.failure].
@@ -179,12 +210,8 @@ object MemoryUtil {
         hprofPath: String,
         referenceKey: String,
         timeout: Long = DEFAULT_TASK_TIMEOUT,
-        keepResult: Boolean = false
     ): ActivityLeakResult =
-        createAnalyzeDeserializeTask(
-            hprofPath, referenceKey,
-            timeout, keepResult, ::forkAnalyze
-        )
+        createTask(hprofPath, referenceKey, timeout, ::forkAnalyze)
 
     private external fun forkAnalyze(
         hprofPath: String, resultPath: String, referenceKey: String,
@@ -201,9 +228,6 @@ object MemoryUtil {
      * The task will be cancelled in [timeout] seconds. If [timeout] is zero, the task will be
      * executed without time limitation.
      *
-     * The function creates a binary file containing analyze result, the result file will be saved
-     * if [keepResult] is true, and it can be deserialized by function [deserializeAnalyzeResult].
-     *
      * The function may cause jank and garbage collection, and will not throw exceptions but return
      * a failure result if error happened, see [ActivityLeakResult.failure].
      */
@@ -213,29 +237,25 @@ object MemoryUtil {
         hprofPath: String,
         referenceKey: String,
         timeout: Long = DEFAULT_TASK_TIMEOUT,
-        keepResult: Boolean = false
     ): ActivityLeakResult =
-        createAnalyzeDeserializeTask(
-            hprofPath, referenceKey,
-            timeout, keepResult, ::forkDumpAndAnalyze
-        )
+        createTask(hprofPath, referenceKey, timeout, ::forkDumpAndAnalyze)
 
     private external fun forkDumpAndAnalyze(
         hprofPath: String, resultPath: String, referenceKey: String,
         timeout: Long
     ): Int
 
-    private val analyzeResultDir by lazy {
-        File(storageDir, "analyze").apply {
+    private val resultDir: File
+        get() = File(storageDir, "result").apply {
             assureIsDirectory()
         }
-    }
 
-    private val analyzeFileTimeFormat = SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", Locale.US)
+    private val analyzeFileTimeFormat =
+        SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", Locale.US)
 
-    private fun createAnalyzeFile(): File? {
+    private fun createResultFile(): File? {
         val time = analyzeFileTimeFormat.format(Calendar.getInstance().time)
-        val result = File(analyzeResultDir, "analyze-${time}.tmp")
+        val result = File(resultDir, "result-${time}.tmp")
         return try {
             result.apply {
                 createNewFile()
@@ -368,14 +388,6 @@ object MemoryUtil {
         }
     }
 
-    /**
-     * Deserializes analyze result file generated from analyze functions.
-     */
-    @JvmStatic
-    @Throws(IOException::class)
-    fun deserializeAnalyzeResult(file: File): List<ReferenceChain> =
-        deserialize(file).map { it.convertToReferenceChain() }
-
     private object TaskState {
         const val DUMP: Byte = 1
         const val ANALYZER_CREATE: Byte = 2
@@ -447,37 +459,4 @@ object MemoryUtil {
 
     private class UnknownAnalyzeException(type: Int, code: Int, state: String, error: String) :
         RuntimeException("Unknown error with type $type returned from task process (code: ${code}, state: ${state}, error: ${error})")
-}
-
-private fun File.assureIsDirectory() {
-    if (!isDirectory) {
-        if (exists())
-            throw IllegalStateException("Path $absolutePath is pointed to an existing element but it is not a directory.")
-        mkdirs()
-    }
-}
-
-private class OrderedStreamWrapper(
-    private val order: ByteOrder,
-    private val stream: InputStream
-) {
-
-    fun readOrderedInt(): Int {
-        val buffer = ByteBuffer.allocate(4)
-            .apply {
-                order(order)
-            }
-        stream.read(buffer.array(), 0, 4)
-        return buffer.getInt(0)
-    }
-
-    fun readString(length: Int): String {
-        val buffer = ByteArray(length)
-        stream.read(buffer)
-        return String(buffer, Charsets.UTF_8)
-    }
-
-    fun close() {
-        stream.close()
-    }
 }
