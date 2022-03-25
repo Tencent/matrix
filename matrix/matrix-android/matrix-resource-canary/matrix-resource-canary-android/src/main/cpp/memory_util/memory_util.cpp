@@ -44,7 +44,7 @@ static void log_and_throw_runtime_exception(JNIEnv *env, const char *message) {
 #define TS_ANALYZER_INITIALIZE 3
 #define TS_ANALYZER_EXECUTE 4
 #define TS_CREATE_RESULT_FILE 5
-#define TS_SERIALIZE 5
+#define TS_SERIALIZE 6
 // *************************************************************************************************
 
 static std::string task_state_dir;

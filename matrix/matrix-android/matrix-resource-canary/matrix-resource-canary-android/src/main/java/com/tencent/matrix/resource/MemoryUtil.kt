@@ -393,7 +393,8 @@ object MemoryUtil {
         const val ANALYZER_CREATE: Byte = 2
         const val ANALYZER_INITIALIZE: Byte = 3
         const val ANALYZER_EXECUTE: Byte = 4
-        const val SERIALIZE_RESULT: Byte = 5
+        const val CREATE_RESULT_FILE: Byte = 5
+        const val SERIALIZE: Byte = 6
     }
 
     private class TaskResult(
@@ -415,7 +416,8 @@ object MemoryUtil {
                     TaskState.ANALYZER_CREATE -> "analyzer_create"
                     TaskState.ANALYZER_INITIALIZE -> "analyzer_initialize"
                     TaskState.ANALYZER_EXECUTE -> "analyzer_execute"
-                    TaskState.SERIALIZE_RESULT -> "serialize_result"
+                    TaskState.CREATE_RESULT_FILE -> "create_result_file"
+                    TaskState.SERIALIZE -> "serialize"
                     else -> "unknown"
                 }
             }
