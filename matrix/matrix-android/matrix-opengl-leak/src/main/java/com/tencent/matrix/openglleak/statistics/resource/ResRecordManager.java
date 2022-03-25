@@ -234,6 +234,7 @@ public class ResRecordManager {
         AutoWrapBuilder result = new AutoWrapBuilder();
         for (OpenGLDumpInfo report : resList) {
             result.append(String.format(" alloc count = %d", report.getAllocCount()))
+                    .append(String.format(" egl is release = %d", report.innerInfo.isEglContextReleased()))
                     .append(String.format(" total size = %s", report.getTotalSize()))
                     .append(String.format(" id = %s", report.getAllocIdList()))
                     .append(String.format(" activity = %s", report.innerInfo.getActivityInfo().name))
@@ -268,8 +269,10 @@ public class ResRecordManager {
             int memoryJavaHash = memoryInfo == null ? 0 : memoryInfo.getJavaStack().hashCode();
             int memoryNativeHash = memoryInfo == null ? 0 : memoryInfo.getNativeStack().hashCode();
 
+            int isEGLRelease = info.isEglContextReleased() ? 1 : 0;
+
             long infoHash = javaHash + nativeHash + memoryNativeHash + memoryJavaHash
-                    + info.getEglContextNativeHandle() + info.getActivityInfo().hashCode() + info.getThreadId().hashCode();
+                    + info.getEglContextNativeHandle() + info.getActivityInfo().hashCode() + info.getThreadId().hashCode() + isEGLRelease;
 
             OpenGLDumpInfo oldInfo = infoMap.get(infoHash);
             if (oldInfo == null) {
@@ -281,8 +284,9 @@ public class ResRecordManager {
                 boolean isSameThread = info.getThreadId().equals(oldInfo.innerInfo.getThreadId());
                 boolean isSameEglContext = info.getEglContextNativeHandle() == oldInfo.innerInfo.getEglContextNativeHandle();
                 boolean isSameActivity = info.getActivityInfo().equals(oldInfo.innerInfo.getActivityInfo());
+                boolean isSameEGLStatus = info.isEglContextReleased() == oldInfo.innerInfo.isEglContextReleased();
 
-                if (isSameType && isSameThread && isSameEglContext && isSameActivity) {
+                if (isSameType && isSameThread && isSameEglContext && isSameActivity && isSameEGLStatus) {
                     oldInfo.incAllocRecord(info.getId());
                     if (oldInfo.innerInfo.getMemoryInfo() != null) {
                         oldInfo.appendParamsInfos(info.getMemoryInfo());
