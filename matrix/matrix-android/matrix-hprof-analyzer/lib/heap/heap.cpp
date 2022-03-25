@@ -3,6 +3,7 @@
 
 #include <codecvt>
 #include <locale>
+#include <sstream>
 
 namespace matrix::hprof::internal::heap {
 
@@ -45,8 +46,9 @@ namespace matrix::hprof::internal::heap {
     value_type_t value_type_cast(uint8_t type) {
         if (std::find(valid_value_types.begin(), valid_value_types.end(), type) ==
             valid_value_types.end()) {
-            const std::string error_message = "Invalid value type." + std::to_string(type);
-            pub_fatal(error_message.c_str());
+            std::stringstream error_builder;
+            error_builder << "invalid value type " << std::to_string(type);
+            pub_fatal(error_builder.str());
         }
         return static_cast<value_type_t>(type);
     }
@@ -101,17 +103,17 @@ namespace matrix::hprof::internal::heap {
 
     void Heap::InitializeIdSize(size_t id_size) {
         if (id_size == 0) {
-            pub_fatal("Invalid identifier size.");
+            pub_fatal("invalid identifier size");
         }
         if (id_size_ != 0) {
-            pub_fatal("Identifier size already initialized.");
+            pub_fatal("identifier size already initialized");
         }
         id_size_ = id_size;
     }
 
     size_t Heap::GetIdSize() const {
         if (id_size_ == 0) {
-            pub_fatal("Identifier size is not initialized.");
+            pub_fatal("identifier size not initialized");
         }
         return id_size_;
     }
@@ -216,7 +218,7 @@ namespace matrix::hprof::internal::heap {
         try {
             return instance_types_.at(instance_id);
         } catch (const std::out_of_range &) {
-            pub_fatal("Failed to find instance type.");
+            pub_fatal("find instance type failed");
         }
     }
 
@@ -261,7 +263,7 @@ namespace matrix::hprof::internal::heap {
         try {
             return gc_root_types_.at(gc_root);
         } catch (const std::out_of_range &) {
-            pub_fatal("Failed to find GC root type.");
+            pub_fatal("find GC root type failed");
         }
     }
 
@@ -281,7 +283,7 @@ namespace matrix::hprof::internal::heap {
         try {
             return thread_serial_numbers_.at(instance_id);
         } catch (const std::out_of_range &) {
-            pub_fatal("Failed to find thread serial number.");
+            pub_fatal("find thread serial number failed");
         }
     }
 
@@ -294,7 +296,7 @@ namespace matrix::hprof::internal::heap {
         try {
             return thread_object_ids_.at(thread_serial_number);
         } catch (const std::out_of_range &) {
-            pub_fatal("Failed to find thread object.");
+            pub_fatal("find thread object failed");
         }
     }
 
@@ -562,7 +564,7 @@ namespace matrix::hprof::internal::heap {
                     reinterpret_cast<const char *>(string_content_array_data->GetData()),
                     string_content_array_data->GetSize());
         } else {
-            pub_fatal("Unexpected array type for field java.lang.String.value.");
+            pub_fatal("unexpected array type for field java.lang.String.value");
         }
     }
 

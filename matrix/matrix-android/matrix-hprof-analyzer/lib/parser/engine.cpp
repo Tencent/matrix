@@ -3,6 +3,8 @@
 
 #include "macro.h"
 
+#include <sstream>
+
 namespace matrix::hprof::internal::parser {
 
     namespace tag {
@@ -86,7 +88,7 @@ namespace matrix::hprof::internal::parser {
             version != "JAVA PROFILE 1.0.1" &&
             version != "JAVA PROFILE 1.0.2" &&
             version != "JAVA PROFILE 1.0.3") {
-            pub_fatal("Invalid HPROF header.");
+            pub_fatal("invalid HPROF header");
         }
         // Identifier size.
         heap.InitializeIdSize(reader.ReadU4());
@@ -203,7 +205,9 @@ namespace matrix::hprof::internal::parser {
                     bytes_read += next.SkipHeapContentInfoSubRecord(reader, heap);
                     break;
                 default:
-                    pub_fatal("Unsupported Heap dump tag.");
+                    std::stringstream error_builder;
+                    error_builder << "unsupported heap dump tag " << std::to_string(tag);
+                    pub_fatal(error_builder.str());
             }
         }
     }

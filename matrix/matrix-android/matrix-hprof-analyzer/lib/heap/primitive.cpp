@@ -4,7 +4,9 @@
 namespace matrix::hprof::internal::heap {
     HeapPrimitiveData::HeapPrimitiveData(value_type_t type, reader::Reader *source_reader) :
             type_(({
-                if (type == value_type_t::kObject) pub_fatal("Type is not primitive.");
+                if (type == value_type_t::kObject) {
+                    pub_fatal("value type is not primitive");
+                }
                 type;
             })),
             data_(({
@@ -29,7 +31,9 @@ namespace matrix::hprof::internal::heap {
     HeapPrimitiveArrayData::HeapPrimitiveArrayData(value_type_t type, size_t data_size,
                                                    reader::Reader *source_reader) :
             type_(({
-                if (type == value_type_t::kObject) pub_fatal("Type is not primitive.");
+                if (type == value_type_t::kObject) {
+                    pub_fatal("array element type is not primitive");
+                }
                 type;
             })),
             data_size_(data_size),

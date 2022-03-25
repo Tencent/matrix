@@ -65,24 +65,24 @@ namespace matrix::hprof {
         struct stat file_stat{};
         if (fstat(hprof_fd, &file_stat)) {
             std::stringstream error;
-            error << "Failed to invoke fstat on HPROF file with errno " << errno << ".";
+            error << "invoke fstat() failed on HPROF with errno " << errno;
             pub_error(error.str());
             return nullptr;
         }
         if (!S_ISREG(file_stat.st_mode)) {
-            pub_error("HPROF file descriptor is not a regular file.");
+            pub_error("file descriptor is not pointed to a regular file");
             return nullptr;
         }
         const size_t data_size = file_stat.st_size;
         if (data_size == 0) {
-            pub_error("HPROF file is empty.");
+            pub_error("empty HPROF");
             return nullptr;
         }
         void *data = mmap(nullptr, data_size, PROT_READ, MAP_PRIVATE, hprof_fd, 0);
         if (data == MAP_FAILED) {
-            std::stringstream error;
-            error << "Failed to invoke mmap on HPROF file with errno " << errno << ".";
-            pub_error(error.str());
+            std::stringstream error_builder;
+            error_builder << "invoke mmap() failed on HPROF with errno " << errno;
+            pub_error(error_builder.str());
             return nullptr;
         }
         return std::make_unique<HprofAnalyzerImpl>(data, data_size);

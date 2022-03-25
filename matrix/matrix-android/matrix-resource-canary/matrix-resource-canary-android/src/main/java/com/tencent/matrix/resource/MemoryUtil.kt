@@ -100,8 +100,8 @@ object MemoryUtil {
                 info("Wait for task process [${pid}] complete executing.")
                 val result = waitTask(pid)
                 result.exception?.let {
-                    info("Complete task with error: ${it.message}.")
-                } ?: info("Complete task without error.")
+                    info("Task process [${pid}] complete with error: ${it.message}.")
+                } ?: info("Task process [${pid}] complete without error.")
                 return result.exception == null
             }
         }
@@ -130,9 +130,9 @@ object MemoryUtil {
                 info("Wait for task process [${pid}] complete executing.")
                 val result = waitTask(pid)
                 result.exception?.let {
-                    info("Complete task with error: ${it.message}.")
+                    info("Task process [${pid}] complete with error: ${it.message}.")
                     return ActivityLeakResult.failure(it, System.currentTimeMillis() - analyzeStart)
-                } ?: info("Complete task without error.")
+                } ?: info("Task process [${pid}] complete without error.")
                 return try {
                     val chains = deserialize(resultFile)
                     if (chains.isEmpty()) {

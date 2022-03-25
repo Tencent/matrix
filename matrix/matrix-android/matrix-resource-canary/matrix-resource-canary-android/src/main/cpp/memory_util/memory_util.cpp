@@ -30,7 +30,7 @@ static std::string extract_string(JNIEnv *env, jstring string) {
 }
 
 static void log_and_throw_runtime_exception(JNIEnv *env, const char *message) {
-    _error_log(TAG, "%s.", message);
+    _error_log(TAG, "exception: %s", message);
     jclass runtime_exception_class = env->FindClass("java/lang/RuntimeException");
     if (runtime_exception_class != nullptr) {
         env->ThrowNew(runtime_exception_class, message);
@@ -51,19 +51,19 @@ static std::string task_state_dir;
 
 static void update_task_state(int8_t state) {
     if (!task_process) return;
-    _info_log(TAG, "Update task %d state: %d.", getpid(), state);
+    _info_log(TAG, "update_state: task %d state -> %d.", getpid(), state);
     std::stringstream task_path;
     task_path << task_state_dir << "/" << getpid();
     int task_fd = open(task_path.str().c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
     if (task_fd == -1) {
-        _error_log(TAG, "Failed to open task state file while updating (errno: %d).", errno);
+        _error_log(TAG, "update_state: invoke open() failed with errno %d", errno);
         return;
     }
     if (write(task_fd, &state, sizeof(int8_t)) != sizeof(int8_t)) {
-        _error_log(TAG, "Failed to write task state into file while updating (errno: %d).", errno);
+        _error_log(TAG, "update_state: invoke write() failed with errno %d", errno);
     }
     if (close(task_fd) == -1) {
-        _error_log(TAG, "Failed to close task state info file while updating (errno: %d).", errno);
+        _error_log(TAG, "update_state: invoke close() failed with errno %d", errno);
     }
 }
 
@@ -73,21 +73,21 @@ static int8_t get_task_state_and_cleanup(int pid) {
     int task_fd = open(task_path.str().c_str(), O_RDONLY);
     int8_t result;
     if (task_fd == -1) {
-        _error_log(TAG, "Failed to open task state file while reading (errno: %d).", errno);
+        _error_log(TAG, "get_state: invoke open() failed with errno %d", errno);
         result = TS_UNKNOWN;
         goto cleanup;
     }
     if (read(task_fd, &result, sizeof(int8_t)) != sizeof(int8_t)) {
-        _error_log(TAG, "Failed to write task state file while reading (errno: %d).", errno);
+        _error_log(TAG, "get_state: invoke read() failed with errno %d", errno);
         result = TS_UNKNOWN;
     }
     if (close(task_fd)) {
-        _error_log(TAG, "Failed to close task state file while reading (errno: %d).", errno);
+        _error_log(TAG, "get_state: invoke close() failed with errno %d", errno);
     }
     cleanup:
     if (access(task_path.str().c_str(), F_OK) == 0) {
         if (remove(task_path.str().c_str())) {
-            _error_log(TAG, "Failed to delete task state file (errno: %d).", errno);
+            _error_log(TAG, "get_state: invoke remove() failed with errno %d", errno);
         }
     }
     return result;
@@ -97,19 +97,19 @@ static std::string task_error_dir;
 
 static void update_task_error(const std::string &error) {
     if (!task_process) return;
-    _info_log(TAG, "Update task %d error: %s.", getpid(), error.c_str());
+    _info_log(TAG, "update_error: task %d error -> %s", getpid(), error.c_str());
     std::stringstream task_path;
     task_path << task_error_dir << "/" << getpid();
     int task_fd = open(task_path.str().c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
     if (task_fd == -1) {
-        _error_log(TAG, "Failed to open task error file while updating (errno: %d).", errno);
+        _error_log(TAG, "update_error: invoke open() failed with errno %d", errno);
         return;
     }
     if (write(task_fd, error.c_str(), error.length()) != error.length()) {
-        _error_log(TAG, "Failed to write task error file while updating (errno: %d).", errno);
+        _error_log(TAG, "update_error: invoke write() failed with errno %d", errno);
     }
     if (close(task_fd) == -1) {
-        _error_log(TAG, "Failed to close task error file while updating (errno: %d).", errno);
+        _error_log(TAG, "update_error: invoke close() failed with errno %d", errno);
     }
 }
 
@@ -124,7 +124,7 @@ static std::string get_task_error_and_cleanup(int pid) {
     }
     if (access(task_path.str().c_str(), F_OK) == 0) {
         if (remove(task_path.str().c_str())) {
-            _error_log(TAG, "Failed to delete task error file (errno: %d).", errno);
+            _error_log(TAG, "get_task: invoke remove() failed with errno %d", errno);
         }
     }
     return result;
@@ -136,7 +136,7 @@ static jmethodID task_result_constructor = nullptr;
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_tencent_matrix_resource_MemoryUtil_loadJniCache(JNIEnv *env, jobject) {
-    _info_log(TAG, "Load JNI pointer cache.");
+    _info_log(TAG, "initialize: load JNI pointer cache");
     if (task_result_constructor == nullptr) {
         if (task_result_class == nullptr) {
             jclass local = env->FindClass("com/tencent/matrix/resource/MemoryUtil$TaskResult");
@@ -173,7 +173,7 @@ static void create_directory(JNIEnv *env, const char *path) {
     if (errno != EEXIST) {
         std::stringstream error_builder;
         error_builder << "Failed to create directory " << path
-                      << " with errno " << std::to_string(errno);
+                      << " with errno " << errno;
         log_and_throw_runtime_exception(env, error_builder.str().c_str());
         return;
     }
@@ -182,7 +182,7 @@ static void create_directory(JNIEnv *env, const char *path) {
     if (stat(path, &s)) {
         std::stringstream error_builder;
         error_builder << "Failed to check directory " << path
-                      << " state with errno " << std::to_string(errno);
+                      << " state with errno " << errno;
         log_and_throw_runtime_exception(env, error_builder.str().c_str());
         return;
     }
@@ -195,7 +195,7 @@ static void create_directory(JNIEnv *env, const char *path) {
     if (access(path, R_OK | W_OK)) {
         std::stringstream error_builder;
         error_builder << "Directory " << path << " accessibility check failed with errno "
-                      << std::to_string(errno);
+                      << errno;
         log_and_throw_runtime_exception(env, error_builder.str().c_str());
         return;
     }
@@ -204,7 +204,7 @@ static void create_directory(JNIEnv *env, const char *path) {
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_tencent_matrix_resource_MemoryUtil_syncTaskDir(JNIEnv *env, jobject, jstring path) {
-    _info_log(TAG, "Sync and create task info directories path.");
+    _info_log(TAG, "initialize: sync and create task info directories path");
     const char *value = env->GetStringUTFChars(path, nullptr);
     task_state_dir = ({
         std::stringstream builder;
@@ -224,7 +224,7 @@ Java_com_tencent_matrix_resource_MemoryUtil_syncTaskDir(JNIEnv *env, jobject, js
 extern "C"
 JNIEXPORT void JNICALL
 Java_com_tencent_matrix_resource_MemoryUtil_initializeSymbol(JNIEnv *env, jobject) {
-    _info_log(TAG, "Initialize native symbols.");
+    _info_log(TAG, "initialize: initialize symbol");
     if (!initialize_symbols()) {
         log_and_throw_runtime_exception(env, "Failed to initialize symbol");
     }
@@ -277,14 +277,14 @@ static int fork_task(const char *task_name, unsigned int timeout) {
     return pid;
 }
 
-static void on_error(const char *message) {
-    _error_log(TAG, message);
-    update_task_error(message);
+static void on_error(const char *error) {
+    _error_log(TAG, "error happened: %s", error);
+    update_task_error(error);
 }
 
 // ! execute on task process
 static void execute_dump(const char *file_name) {
-    _info_log(TAG, "Start dumping in task %d.", getpid());
+    _info_log(TAG, "task_process %d: dump", getpid());
     update_task_state(TS_DUMP);
     dump_heap(file_name);
 }
@@ -297,12 +297,14 @@ static void analyzer_error_listener(const char *message) {
 // ! execute on task process
 static std::optional<std::vector<LeakChain>>
 execute_analyze(const char *hprof_path, const char *reference_key) {
-    _info_log(TAG, "Start analyzing in task %d.", getpid());
+    _info_log(TAG, "task_process %d: analyze", getpid());
 
     update_task_state(TS_ANALYZER_CREATE);
     const int hprof_fd = open(hprof_path, O_RDONLY);
     if (hprof_fd == -1) {
-        on_error("Failed to open HPROF file.");
+        std::stringstream error_builder;
+        error_builder << "invoke open() failed on HPROF with errno " << errno;
+        on_error(error_builder.str().c_str());
         return std::nullopt;
     }
     HprofAnalyzer::SetErrorListener(analyzer_error_listener);
@@ -310,7 +312,7 @@ execute_analyze(const char *hprof_path, const char *reference_key) {
 
     update_task_state(TS_ANALYZER_INITIALIZE);
     if (!exclude_default_references(analyzer)) {
-        on_error("Failed to add exclude default references rules.");
+        on_error("exclude default references rules failed");
         return std::nullopt;
     }
 
@@ -340,15 +342,14 @@ execute_analyze(const char *hprof_path, const char *reference_key) {
 
 // ! execute on task process
 static bool execute_serialize(const char *result_path, const std::vector<LeakChain> &leak_chains) {
-    _info_log(TAG, "Start serialize analyze result in task %d.", getpid());
+    _info_log(TAG, "task_process %d: serialize", getpid());
 
     update_task_state(TS_CREATE_RESULT_FILE);
     bool result = false;
     int result_fd = open(result_path, O_WRONLY | O_CREAT | O_TRUNC, S_IWUSR);
     if (result_fd == -1) {
         std::stringstream error_builder;
-        error_builder << "Failed to write leak chains to result path (errno: "
-                      << std::to_string(errno) << ").";
+        error_builder << "invoke open() failed on result file with errno " << errno;
         on_error(error_builder.str().c_str());
         return false;
     }
@@ -356,13 +357,12 @@ static bool execute_serialize(const char *result_path, const std::vector<LeakCha
     update_task_state(TS_SERIALIZE);
     // See comment documentation of <code>MemoryUtil.deserialize</code> for the file format of
     // result file.
-#define write_data(content, size)                                                               \
-        if (write(result_fd, content, size) == -1) {                                            \
-            std::stringstream error_builder;                                                    \
-            error_builder << "Failed to write content to result path (errno: "                  \
-                          << std::to_string(errno) << ").";                                     \
-            on_error(error_builder.str().c_str());                                              \
-            goto write_leak_chain_done;                                                         \
+#define write_data(content, size)                                                           \
+        if (write(result_fd, content, size) == -1) {                                        \
+            std::stringstream error_builder;                                                \
+            error_builder << "invoke write() failed on result file with errno " << errno;   \
+            on_error(error_builder.str().c_str());                                          \
+            goto write_leak_chain_done;                                                     \
         }
 
     const uint32_t byte_order_magic = 0x1;
@@ -512,7 +512,7 @@ extern "C" JNIEXPORT jobject JNICALL
 Java_com_tencent_matrix_resource_MemoryUtil_waitTask(JNIEnv *env, jobject, jint pid) {
     int status;
     if (waitpid(pid, &status, 0) == -1) {
-        _error_log(TAG, "Failed to invoke waitpid().");
+        _error_log(TAG, "invoke waitpid failed with errno %d", errno);
         return create_task_result(env, TR_TYPE_WAIT_FAILED, errno, TS_UNKNOWN, "none");
     }
 
