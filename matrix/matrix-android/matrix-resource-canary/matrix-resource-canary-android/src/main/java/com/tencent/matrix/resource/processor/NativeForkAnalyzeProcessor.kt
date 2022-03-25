@@ -21,19 +21,17 @@ private fun File.deleteIfExist() {
 
 private const val TAG = "Matrix.LeakProcessor.NativeForkAnalyze"
 
-private class RetryRepository(dir: File) {
+private class RetryRepository(private val dir: File) {
 
-    private val hprofDir by lazy {
-        File(dir, "hprof").apply {
+    private val hprofDir
+        get() = File(dir, "hprof").apply {
             if (!exists()) mkdirs()
         }
-    }
 
-    private val keyDir by lazy {
-        File(dir, "key").apply {
+    private val keyDir
+        get() = File(dir, "key").apply {
             if (!exists()) mkdirs()
         }
-    }
 
     /**
      * The lock used to avoid processing uncopied files.
@@ -150,6 +148,7 @@ class NativeForkAnalyzeProcessor(watcher: ActivityRefWatcher) : BaseLeakProcesso
                             result = analyze(hprof, key)
                         }
                         if (result.mLeakFound) {
+                            watcher.markPublished(activity, false)
                             publishIssue(
                                 SharePluginInfo.IssueType.LEAK_FOUND,
                                 ResourceConfig.DumpMode.FORK_ANALYSE,
@@ -217,6 +216,7 @@ class NativeForkAnalyzeProcessor(watcher: ActivityRefWatcher) : BaseLeakProcesso
             }
         } else {
             if (result.mLeakFound) {
+                watcher.markPublished(activity, false)
                 publishIssue(
                     SharePluginInfo.IssueType.LEAK_FOUND,
                     ResourceConfig.DumpMode.FORK_ANALYSE,
