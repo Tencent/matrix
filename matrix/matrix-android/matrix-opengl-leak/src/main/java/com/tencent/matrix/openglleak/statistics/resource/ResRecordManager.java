@@ -26,6 +26,7 @@ public class ResRecordManager {
     private final List<Callback> mCallbackList = new LinkedList<>();
     private final List<OpenGLInfo> mInfoList = new LinkedList<>();
     private final List<Long> mReleaseContext = new LinkedList<>();
+    private final List<Long> mReleaseSurface = new LinkedList<>();
 
     private ResRecordManager() {
 
@@ -197,6 +198,50 @@ public class ResRecordManager {
         }
     }
 
+    public boolean isEglSurfaceReleased(OpenGLInfo info) {
+        synchronized (mReleaseSurface) {
+            long eglDrawSurface = info.getEglDrawSurface();
+            long eglReadSurface = info.getEglReadSurface();
+
+            boolean drawRelease = false;
+            boolean readRelease = false;
+
+            if (eglReadSurface == 0L || eglDrawSurface == 0L) {
+                return true;
+            }
+
+            for (long item : mReleaseSurface) {
+                if (item == eglReadSurface) {
+                    readRelease = true;
+                }
+
+                if (item == eglDrawSurface) {
+                    drawRelease = true;
+                }
+            }
+
+            if (readRelease && drawRelease) {
+                return true;
+            }
+
+            if (!readRelease) {
+                readRelease = !OpenGLHook.isEglSurfaceAlive(eglReadSurface);
+            }
+
+            if (!drawRelease) {
+                drawRelease = !OpenGLHook.isEglSurfaceAlive(eglDrawSurface);
+            }
+
+            if (readRelease) {
+                mReleaseSurface.add(eglReadSurface);
+            }
+            if (drawRelease) {
+                mReleaseSurface.add(eglDrawSurface);
+            }
+            return readRelease && drawRelease;
+        }
+    }
+
     public List<OpenGLInfo> getAllItem() {
         List<OpenGLInfo> retList = new LinkedList<>();
 
@@ -235,6 +280,7 @@ public class ResRecordManager {
         for (OpenGLDumpInfo report : resList) {
             result.append(String.format(" alloc count = %d", report.getAllocCount()))
                     .append(String.format(" egl is release = %d", report.innerInfo.isEglContextReleased()))
+                    .append(String.format(" egl surface is release = %s", report.innerInfo.isEglSurfaceRelease()))
                     .append(String.format(" total size = %s", report.getTotalSize()))
                     .append(String.format(" id = %s", report.getAllocIdList()))
                     .append(String.format(" activity = %s", report.innerInfo.getActivityInfo().name))

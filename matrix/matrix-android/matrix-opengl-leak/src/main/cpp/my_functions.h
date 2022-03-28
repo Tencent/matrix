@@ -65,7 +65,6 @@ static jmethodID method_onGlTexImage3D;
 static jmethodID method_onGlBufferData;
 static jmethodID method_onGlRenderbufferStorage;
 static jmethodID method_getThrowable;
-
 const size_t BUF_SIZE = 1024;
 
 static pthread_once_t g_onceInitTls = PTHREAD_ONCE_INIT;
@@ -180,7 +179,7 @@ int get_java_throwable() {
 void
 gen_jni_callback(int alloc_count, GLuint *copy_resource, int throwable, const thread::id thread_id,
                  wechat_backtrace::Backtrace *backtracePtr, EGLContext egl_context,
-                 jmethodID jmethodId) {
+                 EGLSurface egl_draw_surface, EGLSurface egl_read_surface, jmethodID jmethodId) {
     JNIEnv *env = GET_ENV();
 
     int *result = new int[alloc_count];
@@ -204,7 +203,9 @@ gen_jni_callback(int alloc_count, GLuint *copy_resource, int throwable, const th
             j_thread_id,
             (jint) throwable,
             (jlong) backtrace,
-            (jlong) egl_context);
+            (jlong) egl_context,
+            (jlong) egl_draw_surface,
+            (jlong) egl_read_surface);
 
     delete[] result;
     env->DeleteLocalRef(newArr);
@@ -272,13 +273,16 @@ GL_APICALL void GL_APIENTRY my_glGenTextures(GLsizei n, GLuint *textures) {
 
         EGLContext egl_context = eglGetCurrentContext();
 
+        EGLSurface egl_draw_surface = eglGetCurrentSurface(EGL_DRAW);
+        EGLSurface egl_read_surface = eglGetCurrentSurface(EGL_READ);
+
         messages_containers->
                 enqueue_message((uintptr_t) egl_context,
-                                [n, copy_textures, throwable, thread_id, backtracePrt, egl_context]() {
+                                [n, copy_textures, throwable, thread_id, backtracePrt, egl_context, egl_read_surface, egl_draw_surface]() {
 
                                     gen_jni_callback(n, copy_textures, throwable, thread_id,
-                                                     backtracePrt, egl_context,
-                                                     method_onGlGenTextures);
+                                                     backtracePrt, egl_context, egl_draw_surface,
+                                                     egl_read_surface, method_onGlGenTextures);
 
                                 });
     }
@@ -329,13 +333,16 @@ GL_APICALL void GL_APIENTRY my_glGenBuffers(GLsizei n, GLuint *buffers) {
 
         EGLContext egl_context = eglGetCurrentContext();
 
+        EGLSurface egl_draw_surface = eglGetCurrentSurface(EGL_DRAW);
+        EGLSurface egl_read_surface = eglGetCurrentSurface(EGL_READ);
+
         messages_containers
                 ->enqueue_message((uintptr_t) egl_context,
-                                  [n, copy_buffers, throwable, thread_id, backtracePrt, egl_context]() {
+                                  [n, copy_buffers, throwable, thread_id, backtracePrt, egl_context, egl_draw_surface, egl_read_surface]() {
 
                                       gen_jni_callback(n, copy_buffers, throwable, thread_id,
-                                                       backtracePrt, egl_context,
-                                                       method_onGlGenBuffers);
+                                                       backtracePrt, egl_context, egl_draw_surface,
+                                                       egl_read_surface, method_onGlGenBuffers);
 
                                   });
 
@@ -386,13 +393,16 @@ GL_APICALL void GL_APIENTRY my_glGenFramebuffers(GLsizei n, GLuint *buffers) {
 
         EGLContext egl_context = eglGetCurrentContext();
 
+        EGLSurface egl_draw_surface = eglGetCurrentSurface(EGL_DRAW);
+        EGLSurface egl_read_surface = eglGetCurrentSurface(EGL_READ);
+
         messages_containers
                 ->enqueue_message((uintptr_t) egl_context,
-                                  [n, copy_buffers, throwable, thread_id, backtracePrt, egl_context]() {
+                                  [n, copy_buffers, throwable, thread_id, backtracePrt, egl_context, egl_draw_surface, egl_read_surface]() {
 
                                       gen_jni_callback(n, copy_buffers, throwable, thread_id,
-                                                       backtracePrt, egl_context,
-                                                       method_onGlGenFramebuffers);
+                                                       backtracePrt, egl_context, egl_draw_surface,
+                                                       egl_read_surface, method_onGlGenFramebuffers);
 
                                   });
 
@@ -443,13 +453,16 @@ GL_APICALL void GL_APIENTRY my_glGenRenderbuffers(GLsizei n, GLuint *buffers) {
 
         EGLContext egl_context = eglGetCurrentContext();
 
+        EGLSurface egl_draw_surface = eglGetCurrentSurface(EGL_DRAW);
+        EGLSurface egl_read_surface = eglGetCurrentSurface(EGL_READ);
+
         messages_containers
                 ->enqueue_message((uintptr_t) egl_context,
-                                  [n, copy_buffers, throwable, thread_id, backtracePrt, egl_context]() {
+                                  [n, copy_buffers, throwable, thread_id, backtracePrt, egl_context, egl_draw_surface, egl_read_surface]() {
 
                                       gen_jni_callback(n, copy_buffers, throwable, thread_id,
-                                                       backtracePrt, egl_context,
-                                                       method_onGlGenRenderbuffers);
+                                                       backtracePrt, egl_context, egl_draw_surface,
+                                                       egl_read_surface, method_onGlGenRenderbuffers);
 
                                   });
     }

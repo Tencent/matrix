@@ -16,6 +16,8 @@ public class OpenGLInfo {
     private final TYPE type;
     private MemoryInfo memoryInfo;
     private final long eglContext;
+    private final long eglDrawSurface;
+    private final long eglReadSurface;
 
     private ActivityRecorder.ActivityInfo activityInfo;
 
@@ -35,6 +37,8 @@ public class OpenGLInfo {
         this.type = clone.type;
         this.activityInfo = clone.activityInfo;
         this.memoryInfo = clone.memoryInfo;
+        this.eglDrawSurface = clone.eglDrawSurface;
+        this.eglReadSurface = clone.eglReadSurface;
     }
 
     public OpenGLInfo(TYPE type, int id, String threadId, long eglContext) {
@@ -42,9 +46,11 @@ public class OpenGLInfo {
         this.id = id;
         this.eglContext = eglContext;
         this.type = type;
+        this.eglDrawSurface = 0;
+        this.eglReadSurface = 0;
     }
 
-    public OpenGLInfo(TYPE type, int id, String threadId, long eglContext, JavaStacktrace.Trace javatrace, long nativeStackPtr, ActivityRecorder.ActivityInfo activityInfo, AtomicInteger counter) {
+    public OpenGLInfo(TYPE type, int id, String threadId, long eglContext, long eglDrawSurface, long eglReadSurface, JavaStacktrace.Trace javatrace, long nativeStackPtr, ActivityRecorder.ActivityInfo activityInfo, AtomicInteger counter) {
         this.threadId = threadId;
         this.javatrace = javatrace;
         this.nativeStackPtr = nativeStackPtr;
@@ -53,6 +59,8 @@ public class OpenGLInfo {
         this.counter = counter;
         this.id = id;
         this.eglContext = eglContext;
+        this.eglDrawSurface = eglDrawSurface;
+        this.eglReadSurface = eglReadSurface;
     }
 
     public MemoryInfo getMemoryInfo() {
@@ -116,6 +124,19 @@ public class OpenGLInfo {
         }
     }
 
+    public long getEglDrawSurface() {
+        return eglDrawSurface;
+    }
+
+    public long getEglReadSurface() {
+        return eglReadSurface;
+    }
+
+
+    public boolean isEglSurfaceRelease() {
+        return ResRecordManager.getInstance().isEglSurfaceReleased(this);
+    }
+
     @Override
     public String toString() {
         return "OpenGLInfo{" +
@@ -125,6 +146,7 @@ public class OpenGLInfo {
                 ", threadId='" + threadId + '\'' +
                 ", eglContextNativeHandle='" + getEglContextNativeHandle() + '\'' +
                 ", eglContextReleased='" + isEglContextReleased() + '\'' +
+                ", eglSurfaceReleased='" + isEglSurfaceRelease() + '\'' +
                 ", javaStack='" + getJavaStack() + '\'' +
                 ", nativeStack='" + getNativeStack() + '\'' +
                 ", nativeStackPtr=" + nativeStackPtr +
