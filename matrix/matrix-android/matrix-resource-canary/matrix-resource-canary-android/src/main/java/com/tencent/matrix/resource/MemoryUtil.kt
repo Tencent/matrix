@@ -28,6 +28,42 @@ private fun error(message: String, throwable: Throwable? = null) {
         MatrixLog.e(TAG, message)
 }
 
+private val currentTime: Long
+    get() = System.currentTimeMillis()
+
+private fun File.assureIsDirectory() {
+    if (!isDirectory) {
+        if (exists())
+            throw IllegalStateException("Path $absolutePath is pointed to an existing element but it is not a directory.")
+        mkdirs()
+    }
+}
+
+private class OrderedStreamWrapper(
+    private val order: ByteOrder,
+    private val stream: InputStream
+) {
+
+    fun readOrderedInt(): Int {
+        val buffer = ByteBuffer.allocate(4)
+            .apply {
+                order(order)
+            }
+        stream.read(buffer.array(), 0, 4)
+        return buffer.getInt(0)
+    }
+
+    fun readString(length: Int): String {
+        val buffer = ByteArray(length)
+        stream.read(buffer)
+        return String(buffer, Charsets.UTF_8)
+    }
+
+    fun close() {
+        stream.close()
+    }
+}
+
 /**
  * Memory non-suspending dump / analyze util.
  *
@@ -45,51 +81,31 @@ object MemoryUtil {
 
     private const val DEFAULT_TASK_TIMEOUT = 0L
 
-    private val storageDir =
+    private val storageDir: File =
         File(Matrix.with().application.cacheDir, "matrix_mem_util").apply {
             assureIsDirectory()
         }
 
-    private val initialized by lazy {
+    private external fun loadJniCache()
+
+    private external fun syncTaskDir(storageDirPath: String)
+
+    private external fun initializeSymbol()
+
+    private val initialized: InitializeException? = run {
         try {
             System.loadLibrary("matrix_mem_util")
-            if (!loadJniCache()) {
-                error("Failed to load JNI cache.")
-                return@lazy false
-            }
-            if (!initializeTaskStateDir()) {
-                error("Failed to initialize task state directory.")
-                return@lazy false
-            }
-            if (!initializeSymbol()) {
-                error("Failed to initialize resources.")
-                return@lazy false
-            }
-            return@lazy true
-        } catch (exception: Exception) {
-            MatrixLog.printErrStackTrace(TAG, exception, "")
-            return@lazy false
+            loadJniCache()
+            syncTaskDir(storageDir.absolutePath)
+            initializeSymbol()
+            return@run null
+        } catch (throwable: Throwable) {
+            return@run InitializeException(throwable)
         }
     }
 
-    private external fun loadJniCache(): Boolean
-
-    private fun initializeTaskStateDir(): Boolean {
-        val taskStateDir = File(storageDir, "/ts").apply {
-            if (exists()) delete()
-            mkdirs()
-        }
-        return syncTaskStateDir(taskStateDir.absolutePath)
-    }
-
-    private external fun syncTaskStateDir(path: String): Boolean
-
-    private external fun initializeSymbol(): Boolean
-
-    private inline fun <T> initSafe(failed: T, action: () -> T): T {
-        if (initialized) return action.invoke()
-        error("Skip by reason of failure initialization.")
-        return failed
+    private inline fun <T> initSafe(action: (exception: InitializeException?) -> T): T {
+        return action.invoke(initialized)
     }
 
     /**
@@ -106,7 +122,11 @@ object MemoryUtil {
     fun dump(
         hprofPath: String,
         timeout: Long = DEFAULT_TASK_TIMEOUT
-    ): Boolean = initSafe(false) {
+    ): Boolean = initSafe { exception ->
+        if (exception != null) {
+            error("", exception)
+            return@initSafe false
+        }
         return when (val pid = forkDump(hprofPath, timeout)) {
             -1 -> run {
                 error("Failed to fork task executing process.")
@@ -115,52 +135,46 @@ object MemoryUtil {
             else -> run { // current process
                 info("Wait for task process [${pid}] complete executing.")
                 val result = waitTask(pid)
-                info("Complete task with error: ${result.errorMessage}.")
-                result.success
+                result.exception?.let {
+                    info("Task process [${pid}] complete with error: ${it.message}.")
+                } ?: info("Task process [${pid}] complete without error.")
+                return result.exception == null
             }
         }
     }
 
     private external fun forkDump(hprofPath: String, timeout: Long): Int
 
-    private val initializeFailedResult
-        get() = ActivityLeakResult.failure(RuntimeException("Initialize failed."), 0)
-
-    private fun createAnalyzeDeserializeTask(
+    private fun createTask(
         hprofPath: String,
         referenceKey: String,
         timeout: Long,
-        keepResult: Boolean,
         forkTask: (String, String, String, Long) -> Int
-    ): ActivityLeakResult = initSafe(initializeFailedResult) {
-        val analyzeStart = System.currentTimeMillis()
-        val resultFile = createAnalyzeFile()
+    ): ActivityLeakResult = initSafe { exception ->
+        if (exception != null) return@initSafe ActivityLeakResult.failure(exception, 0)
+        val analyzeStart = currentTime
+        val resultFile = createResultFile()
             ?: return ActivityLeakResult.failure(
-                RuntimeException("Failed to create temporary analyze result file"), 0
+                RuntimeException("Failed to create temporary analyze result file."), 0
             )
         val resultPath = resultFile.absolutePath
-        return when (val pid =
-            forkTask(hprofPath, resultPath, referenceKey, timeout)) {
-            -1 -> run {
-                ActivityLeakResult.failure(
-                    RuntimeException("Failed to fork task executing process."),
-                    0
-                )
-            }
+        val leakResult = when (val pid = forkTask(hprofPath, resultPath, referenceKey, timeout)) {
+            -1 -> ActivityLeakResult.failure(ForkException(), 0)
             else -> run { // current process
                 info("Wait for task process [${pid}] complete executing.")
                 val result = waitTask(pid)
-                info("Complete task with error: ${result.errorMessage}.")
-                if (!result.success) {
-                    return ActivityLeakResult.failure(
-                        RuntimeException("Analyze failed with error message: ${result.errorMessage}. Last task state: ${result.lastState}."),
-                        System.currentTimeMillis() - analyzeStart
+                if (result.exception != null) {
+                    info("Task process [${pid}] complete with error: ${result.exception!!.message}.")
+                    return@run ActivityLeakResult.failure(
+                        result.exception, currentTime - analyzeStart
                     )
+                } else {
+                    info("Task process [${pid}] complete without error.")
                 }
-                return try {
+                return@run try {
                     val chains = deserialize(resultFile)
                     if (chains.isEmpty()) {
-                        ActivityLeakResult.noLeak(System.currentTimeMillis() - analyzeStart)
+                        ActivityLeakResult.noLeak(currentTime - analyzeStart)
                     } else {
                         // TODO: support reporting multiple leak chain.
                         chains.first().run {
@@ -168,21 +182,17 @@ object MemoryUtil {
                                 false,
                                 nodes.last().objectName,
                                 convertToReferenceChain(),
-                                System.currentTimeMillis() - analyzeStart
+                                currentTime - analyzeStart
                             )
                         }
                     }
-                } catch (exception: Exception) {
-                    ActivityLeakResult.failure(
-                        exception, System.currentTimeMillis() - analyzeStart
-                    )
-                } finally {
-                    if (!keepResult) {
-                        if (resultFile.exists()) resultFile.delete()
-                    }
+                } catch (throwable: Throwable) {
+                    ActivityLeakResult.failure(throwable, currentTime - analyzeStart)
                 }
             }
         }
+        if (resultFile.exists()) resultFile.delete()
+        return@initSafe leakResult
     }
 
     /**
@@ -190,9 +200,6 @@ object MemoryUtil {
      *
      * Object referring from [DestroyedActivityInfo] instance with key [referenceKey] will be marked
      * as leak object while analyzing.
-     *
-     * The function creates a binary file containing analyze result, the result file will be saved
-     * if [keepResult] is true, and it can be deserialized by function [deserializeAnalyzeResult].
      *
      * The function may cause jank and garbage collection, and will not throw exceptions but return
      * a failure result if error happened, see [ActivityLeakResult.failure].
@@ -203,12 +210,8 @@ object MemoryUtil {
         hprofPath: String,
         referenceKey: String,
         timeout: Long = DEFAULT_TASK_TIMEOUT,
-        keepResult: Boolean = false
     ): ActivityLeakResult =
-        createAnalyzeDeserializeTask(
-            hprofPath, referenceKey,
-            timeout, keepResult, ::forkAnalyze
-        )
+        createTask(hprofPath, referenceKey, timeout, ::forkAnalyze)
 
     private external fun forkAnalyze(
         hprofPath: String, resultPath: String, referenceKey: String,
@@ -225,9 +228,6 @@ object MemoryUtil {
      * The task will be cancelled in [timeout] seconds. If [timeout] is zero, the task will be
      * executed without time limitation.
      *
-     * The function creates a binary file containing analyze result, the result file will be saved
-     * if [keepResult] is true, and it can be deserialized by function [deserializeAnalyzeResult].
-     *
      * The function may cause jank and garbage collection, and will not throw exceptions but return
      * a failure result if error happened, see [ActivityLeakResult.failure].
      */
@@ -237,29 +237,25 @@ object MemoryUtil {
         hprofPath: String,
         referenceKey: String,
         timeout: Long = DEFAULT_TASK_TIMEOUT,
-        keepResult: Boolean = false
     ): ActivityLeakResult =
-        createAnalyzeDeserializeTask(
-            hprofPath, referenceKey,
-            timeout, keepResult, ::forkDumpAndAnalyze
-        )
+        createTask(hprofPath, referenceKey, timeout, ::forkDumpAndAnalyze)
 
     private external fun forkDumpAndAnalyze(
         hprofPath: String, resultPath: String, referenceKey: String,
         timeout: Long
     ): Int
 
-    private val analyzeResultDir by lazy {
-        File(storageDir, "analyze").apply {
+    private val resultDir: File
+        get() = File(storageDir, "result").apply {
             assureIsDirectory()
         }
-    }
 
-    private val analyzeFileTimeFormat = SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", Locale.US)
+    private val analyzeFileTimeFormat =
+        SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", Locale.US)
 
-    private fun createAnalyzeFile(): File? {
+    private fun createResultFile(): File? {
         val time = analyzeFileTimeFormat.format(Calendar.getInstance().time)
-        val result = File(analyzeResultDir, "analyze-${time}.tmp")
+        val result = File(resultDir, "result-${time}.tmp")
         return try {
             result.apply {
                 createNewFile()
@@ -392,26 +388,20 @@ object MemoryUtil {
         }
     }
 
-    /**
-     * Deserializes analyze result file generated from analyze functions.
-     */
-    @JvmStatic
-    @Throws(IOException::class)
-    fun deserializeAnalyzeResult(file: File): List<ReferenceChain> =
-        deserialize(file).map { it.convertToReferenceChain() }
-
     private object TaskState {
         const val DUMP: Byte = 1
         const val ANALYZER_CREATE: Byte = 2
         const val ANALYZER_INITIALIZE: Byte = 3
         const val ANALYZER_EXECUTE: Byte = 4
-        const val SERIALIZE_RESULT: Byte = 5
+        const val CREATE_RESULT_FILE: Byte = 5
+        const val SERIALIZE: Byte = 6
     }
 
     private class TaskResult(
         private val type: Int,
         private val code: Int,
-        private val last: Byte
+        private val stateRaw: Byte,
+        val error: String
     ) {
         companion object {
             private const val TYPE_WAIT_FAILED = -1
@@ -419,31 +409,31 @@ object MemoryUtil {
             private const val TYPE_SIGNALED = 1
         }
 
-        val success: Boolean
-            get() = type == TYPE_EXIT && code == 0
-
-        val errorMessage: String?
+        private val state: String
             get() {
-                if (success) return null
-                return when (type) {
-                    TYPE_WAIT_FAILED -> "invoke waitpid() failed with errno $code"
-                    TYPE_EXIT -> "task process exit with status $code"
-                    TYPE_SIGNALED -> "task process was terminated by signal $code"
-                    else -> "unknown error"
-                }
-            }
-
-        val lastState: String
-            get() {
-                return when (last) {
+                return when (stateRaw) {
                     TaskState.DUMP -> "dump"
                     TaskState.ANALYZER_CREATE -> "analyzer_create"
                     TaskState.ANALYZER_INITIALIZE -> "analyzer_initialize"
                     TaskState.ANALYZER_EXECUTE -> "analyzer_execute"
-                    TaskState.SERIALIZE_RESULT -> "serialize_result"
+                    TaskState.CREATE_RESULT_FILE -> "create_result_file"
+                    TaskState.SERIALIZE -> "serialize"
                     else -> "unknown"
                 }
             }
+
+        private val success: Boolean
+            get() = type == TYPE_EXIT && code == 0
+
+        val exception by lazy {
+            if (success) return@lazy null
+            return@lazy when (type) {
+                TYPE_WAIT_FAILED -> WaitException(code)
+                TYPE_EXIT -> UnexpectedExitException(code, state, error)
+                TYPE_SIGNALED -> TerminateException(code, state, error)
+                else -> UnknownAnalyzeException(type, code, state, error)
+            }
+        }
     }
 
     /**
@@ -453,37 +443,22 @@ object MemoryUtil {
      * See [man wait](https://man7.org/linux/man-pages/man2/wait.2.html).
      */
     private external fun waitTask(pid: Int): TaskResult
-}
 
-private fun File.assureIsDirectory() {
-    if (!isDirectory) {
-        if (exists())
-            throw IllegalStateException("Path $absolutePath is pointed to an existing element but it is not a directory.")
-        mkdirs()
-    }
-}
+    private class InitializeException(throwable: Throwable) :
+        RuntimeException("Initialization failed due to: $throwable")
 
-private class OrderedStreamWrapper(
-    private val order: ByteOrder,
-    private val stream: InputStream
-) {
+    private class ForkException :
+        RuntimeException("Failed to fork task process")
 
-    fun readOrderedInt(): Int {
-        val buffer = ByteBuffer.allocate(4)
-            .apply {
-                order(order)
-            }
-        stream.read(buffer.array(), 0, 4)
-        return buffer.getInt(0)
-    }
+    private class WaitException(errno: Int) :
+        RuntimeException("Failed to wait task process with errno $errno")
 
-    fun readString(length: Int): String {
-        val buffer = ByteArray(length)
-        stream.read(buffer)
-        return String(buffer, Charsets.UTF_8)
-    }
+    private class UnexpectedExitException(code: Int, state: String, error: String) :
+        RuntimeException("Task process exited with code $code unexpectedly (state: ${state}, error: ${error})")
 
-    fun close() {
-        stream.close()
-    }
+    private class TerminateException(signal: Int, state: String, error: String) :
+        RuntimeException("Task process was terminated by signal $signal (state: ${state}, error: ${error})")
+
+    private class UnknownAnalyzeException(type: Int, code: Int, state: String, error: String) :
+        RuntimeException("Unknown error with type $type returned from task process (code: ${code}, state: ${state}, error: ${error})")
 }
