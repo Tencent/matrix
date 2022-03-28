@@ -21,12 +21,6 @@ const val LRU_KILL_CANCELED = 3
 const val LRU_KILL_NOT_FOUND = 4
 
 /**
- * supervisorProcess:
- *
- * Disabled by default.
- *
- * usage: TODO
- *
  * Created by Yves on 2021/10/22
  */
 data class SupervisorConfig(
@@ -41,9 +35,37 @@ data class SupervisorConfig(
 )
 
 // @formatter:off
-object AppUIForegroundOwner: IStatefulOwner by ProcessSupervisor.appUIForegroundOwner
+/**
+ * Usage:
+ *  similar to [ProcessUIStartedStateOwner]
+ *
+ * State-ON:
+ *  [ProcessUIStartedStateOwner] of ANY process is active, in other words, at least one processes is in foreground
+ */
+object AppUIForegroundOwner: IForegroundStatefulOwner by ProcessSupervisor.appUIForegroundOwner
+
+/**
+ * Usage:
+ *  similar to [ProcessExplicitBackgroundOwner]
+ *
+ * State-ON:
+ *  [ProcessExplicitBackgroundOwner] of ALL process is active, in other words, ALL processes are in background
+ */
 object AppExplicitBackgroundOwner: IBackgroundStatefulOwner by ProcessSupervisor.appExplicitBackgroundOwner
+
+/**
+ * Usage:
+ *  similar to [ProcessDeepBackgroundOwner]
+ *
+ * State-ON:
+ *  [ProcessDeepBackgroundOwner] of ALL process is active, in other words, ALL processes are in deep background.
+ */
 object AppDeepBackgroundOwner: IBackgroundStatefulOwner by ProcessSupervisor.appDeepBackgroundOwner
+
+/**
+ * State-ON:
+ *  [ProcessStagedBackgroundOwner] of ANY process is active, in other words, at least one process has AppTask in the recent screen
+ */
 object AppStagedBackgroundOwner: IBackgroundStatefulOwner by ProcessSupervisor.appStagedBackgroundOwner
 // @formatter:on
 
@@ -107,7 +129,7 @@ object ProcessSupervisor : IProcessListener by ProcessSubordinate.processListene
     internal const val DEEP_BACKGROUND_OWNER = "DeepBackgroundOwner"
 
     // @formatter:off
-    internal val appUIForegroundOwner: StatefulOwner = DispatcherStateOwner(ReduceOperators.OR, ProcessUILifecycleOwner.startedStateOwner, STARTED_STATE_OWNER)
+    internal val appUIForegroundOwner: IForegroundStatefulOwner = object : DispatcherStateOwner(ReduceOperators.OR, ProcessUILifecycleOwner.startedStateOwner, STARTED_STATE_OWNER), IForegroundStatefulOwner {}
     internal val appExplicitBackgroundOwner: IBackgroundStatefulOwner = object : DispatcherStateOwner(ReduceOperators.AND, ProcessExplicitBackgroundOwner, EXPLICIT_BACKGROUND_OWNER), IBackgroundStatefulOwner {}
     internal val appDeepBackgroundOwner: IBackgroundStatefulOwner = object : DispatcherStateOwner(ReduceOperators.AND, ProcessDeepBackgroundOwner, DEEP_BACKGROUND_OWNER), IBackgroundStatefulOwner {}
     // @formatter:on
@@ -123,11 +145,11 @@ object ProcessSupervisor : IProcessListener by ProcessSubordinate.processListene
     internal val appStagedBackgroundOwner: IBackgroundStatefulOwner = AppStagedBackgroundOwner()
 
     fun init(app: Application, config: SupervisorConfig?): Boolean {
-        if (config == null || !config.enable) {
+        this.config = config
+        if (true != config?.enable) {
             MatrixLog.i(TAG, "Supervisor is disabled")
             return false
         }
-        this.config = config
         application = app
         if (isSupervisor) {
             initSupervisor(app)

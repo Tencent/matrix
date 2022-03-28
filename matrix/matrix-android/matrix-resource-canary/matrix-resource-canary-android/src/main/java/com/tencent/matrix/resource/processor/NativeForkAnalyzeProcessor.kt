@@ -230,4 +230,3 @@ class NativeForkAnalyzeProcessor(watcher: ActivityRefWatcher) : BaseLeakProcesso
         return true
     }
 }
-

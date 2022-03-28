@@ -76,7 +76,7 @@ internal object SupervisorPacemaker : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
         when (intent?.action) {
             TELL_SUPERVISOR_FOREGROUND -> {
-                if (false == ProcessSupervisor.config?.enable) {
+                if (true != ProcessSupervisor.config?.enable) {
                     MatrixLog.e(ProcessSupervisor.tag, "supervisor was disabled")
                     return
                 }
