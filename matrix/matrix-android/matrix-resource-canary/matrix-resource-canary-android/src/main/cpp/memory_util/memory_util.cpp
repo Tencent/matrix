@@ -8,6 +8,7 @@
 #include <sstream>
 #include <sys/stat.h>
 #include <endian.h>
+#include <fstream>
 
 #include "excludes/excludes.h"
 #include "log.h"
@@ -28,6 +29,14 @@ static std::string extract_string(JNIEnv *env, jstring string) {
     return result;
 }
 
+static void log_and_throw_runtime_exception(JNIEnv *env, const char *message) {
+    _error_log(TAG, "exception: %s", message);
+    jclass runtime_exception_class = env->FindClass("java/lang/RuntimeException");
+    if (runtime_exception_class != nullptr) {
+        env->ThrowNew(runtime_exception_class, message);
+    }
+}
+
 // These values need to be updated synchronously with constants in object TaskState. ***************
 #define TS_UNKNOWN (-1)
 #define TS_DUMP 1
@@ -35,26 +44,26 @@ static std::string extract_string(JNIEnv *env, jstring string) {
 #define TS_ANALYZER_INITIALIZE 3
 #define TS_ANALYZER_EXECUTE 4
 #define TS_CREATE_RESULT_FILE 5
-#define TS_SERIALIZE 5
+#define TS_SERIALIZE 6
 // *************************************************************************************************
 
 static std::string task_state_dir;
 
 static void update_task_state(int8_t state) {
     if (!task_process) return;
-    _info_log(TAG, "Update task %d state to %d.", getpid(), state);
+    _info_log(TAG, "update_state: task %d state -> %d.", getpid(), state);
     std::stringstream task_path;
     task_path << task_state_dir << "/" << getpid();
     int task_fd = open(task_path.str().c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
     if (task_fd == -1) {
-        _error_log(TAG, "Failed to open task state file while updating (errno: %d).", errno);
+        _error_log(TAG, "update_state: invoke open() failed with errno %d", errno);
         return;
     }
     if (write(task_fd, &state, sizeof(int8_t)) != sizeof(int8_t)) {
-        _error_log(TAG, "Failed to write task state into file while updating (errno: %d).", errno);
+        _error_log(TAG, "update_state: invoke write() failed with errno %d", errno);
     }
     if (close(task_fd) == -1) {
-        _error_log(TAG, "Failed to close task state info file while updating (errno: %d).", errno);
+        _error_log(TAG, "update_state: invoke close() failed with errno %d", errno);
     }
 }
 
@@ -64,22 +73,59 @@ static int8_t get_task_state_and_cleanup(int pid) {
     int task_fd = open(task_path.str().c_str(), O_RDONLY);
     int8_t result;
     if (task_fd == -1) {
-        _error_log(TAG, "Failed to open task state file while reading (errno: %d).", errno);
+        _error_log(TAG, "get_state: invoke open() failed with errno %d", errno);
         result = TS_UNKNOWN;
         goto cleanup;
     }
     if (read(task_fd, &result, sizeof(int8_t)) != sizeof(int8_t)) {
-        _error_log(TAG, "Failed to write task state into file while reading (errno: %d).",
-                   errno);
+        _error_log(TAG, "get_state: invoke read() failed with errno %d", errno);
         result = TS_UNKNOWN;
     }
     if (close(task_fd)) {
-        _error_log(TAG, "Failed to close task state info file while reading (errno: %d).",
-                   errno);
+        _error_log(TAG, "get_state: invoke close() failed with errno %d", errno);
     }
     cleanup:
-    if (remove(task_path.str().c_str())) {
-        _error_log(TAG, "Failed to delete task state info file (errno: %d).", errno);
+    if (access(task_path.str().c_str(), F_OK) == 0) {
+        if (remove(task_path.str().c_str())) {
+            _error_log(TAG, "get_state: invoke remove() failed with errno %d", errno);
+        }
+    }
+    return result;
+}
+
+static std::string task_error_dir;
+
+static void update_task_error(const std::string &error) {
+    if (!task_process) return;
+    _info_log(TAG, "update_error: task %d error -> %s", getpid(), error.c_str());
+    std::stringstream task_path;
+    task_path << task_error_dir << "/" << getpid();
+    int task_fd = open(task_path.str().c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+    if (task_fd == -1) {
+        _error_log(TAG, "update_error: invoke open() failed with errno %d", errno);
+        return;
+    }
+    if (write(task_fd, error.c_str(), error.length()) != error.length()) {
+        _error_log(TAG, "update_error: invoke write() failed with errno %d", errno);
+    }
+    if (close(task_fd) == -1) {
+        _error_log(TAG, "update_error: invoke close() failed with errno %d", errno);
+    }
+}
+
+static std::string get_task_error_and_cleanup(int pid) {
+    std::stringstream task_path;
+    task_path << task_error_dir << "/" << pid;
+    std::string result;
+    {
+        std::ifstream file(task_path.str());
+        getline(file, result);
+        if (file.fail()) result = "";
+    }
+    if (access(task_path.str().c_str(), F_OK) == 0) {
+        if (remove(task_path.str().c_str())) {
+            _error_log(TAG, "get_task: invoke remove() failed with errno %d", errno);
+        }
     }
     return result;
 }
@@ -88,53 +134,103 @@ static jclass task_result_class = nullptr;
 static jmethodID task_result_constructor = nullptr;
 
 extern "C"
-JNIEXPORT jboolean JNICALL
+JNIEXPORT void JNICALL
 Java_com_tencent_matrix_resource_MemoryUtil_loadJniCache(JNIEnv *env, jobject) {
-    _info_log(TAG, "Load JNI pointer cache.");
+    _info_log(TAG, "initialize: load JNI pointer cache");
     if (task_result_constructor == nullptr) {
         if (task_result_class == nullptr) {
             jclass local = env->FindClass("com/tencent/matrix/resource/MemoryUtil$TaskResult");
             if (local == nullptr) {
-                _error_log(TAG, "Failed to find class TaskResult.");
-                return false;
+                log_and_throw_runtime_exception(env, "Failed to find class TaskResult");
+                return;
             }
             // Make sure the class will not be unloaded.
             // See: https://developer.android.com/training/articles/perf-jni#jclass-jmethodid-and-jfieldid
             task_result_class = reinterpret_cast<jclass>(env->NewGlobalRef(local));
             if (task_result_class == nullptr) {
-                _error_log(TAG, "Failed to create global reference of class TaskResult.");
-                return false;
+                log_and_throw_runtime_exception(env, "Failed to create global reference of class TaskResult");
+                return;
             }
         }
 
-        task_result_constructor = env->GetMethodID(task_result_class, "<init>", "(IIB)V");
+        task_result_constructor =
+                env->GetMethodID(task_result_class, "<init>", "(IIBLjava/lang/String;)V");
         if (task_result_constructor == nullptr) {
-            _error_log(TAG, "Failed to find constructor of class TaskResult.");
-            return false;
+            log_and_throw_runtime_exception(env, "Failed to find constructor of class TaskResult");
+            return;
         }
     }
-    return true;
 }
 
 static jobject
-create_task_result(JNIEnv *env, int32_t type, int32_t code, int8_t task_state) {
-    return env->NewObject(task_result_class, task_result_constructor, type, code, task_state);
+create_task_result(JNIEnv *env, int32_t type, int32_t code,
+                   int8_t task_state, const std::string &task_error) {
+    return env->NewObject(task_result_class, task_result_constructor, type, code,
+                          task_state, env->NewStringUTF(task_error.c_str()));
+}
+
+// ! JNI method
+static void create_directory(JNIEnv *env, const char *path) {
+    if (mkdir(path, S_IRWXU) == 0) return;
+    if (errno != EEXIST) {
+        std::stringstream error_builder;
+        error_builder << "Failed to create directory " << path
+                      << " with errno " << errno;
+        log_and_throw_runtime_exception(env, error_builder.str().c_str());
+        return;
+    }
+    // Check the existing entity is a directory we can access.
+    struct stat s{};
+    if (stat(path, &s)) {
+        std::stringstream error_builder;
+        error_builder << "Failed to check directory " << path
+                      << " state with errno " << errno;
+        log_and_throw_runtime_exception(env, error_builder.str().c_str());
+        return;
+    }
+    if (!S_ISDIR(s.st_mode)) {
+        std::stringstream error_builder;
+        error_builder << "Path " << path << " exists and it is not a directory";
+        log_and_throw_runtime_exception(env, error_builder.str().c_str());
+        return;
+    }
+    if (access(path, R_OK | W_OK)) {
+        std::stringstream error_builder;
+        error_builder << "Directory " << path << " accessibility check failed with errno "
+                      << errno;
+        log_and_throw_runtime_exception(env, error_builder.str().c_str());
+        return;
+    }
 }
 
 extern "C"
-JNIEXPORT jboolean JNICALL
-Java_com_tencent_matrix_resource_MemoryUtil_syncTaskStateDir(JNIEnv *env, jobject, jstring path) {
+JNIEXPORT void JNICALL
+Java_com_tencent_matrix_resource_MemoryUtil_syncTaskDir(JNIEnv *env, jobject, jstring path) {
+    _info_log(TAG, "initialize: sync and create task info directories path");
     const char *value = env->GetStringUTFChars(path, nullptr);
-    task_state_dir = std::string(value, strlen(value));
+    task_state_dir = ({
+        std::stringstream builder;
+        builder << value << "/ts";
+        builder.str();
+    });
+    task_error_dir = ({
+        std::stringstream builder;
+        builder << value << "/err";
+        builder.str();
+    });
     env->ReleaseStringUTFChars(path, value);
-    return !task_state_dir.empty();
+    create_directory(env, task_state_dir.c_str());
+    create_directory(env, task_error_dir.c_str());
 }
 
 extern "C"
-JNIEXPORT jboolean JNICALL
-Java_com_tencent_matrix_resource_MemoryUtil_initializeSymbol(JNIEnv *, jobject) {
-    _info_log(TAG, "Initialize native symbols.");
-    return initialize_symbols();
+JNIEXPORT void JNICALL
+Java_com_tencent_matrix_resource_MemoryUtil_initializeSymbol(JNIEnv *env, jobject) {
+    _info_log(TAG, "initialize: initialize symbol");
+    if (!initialize_symbols()) {
+        log_and_throw_runtime_exception(env, "Failed to initialize symbol");
+        return;
+    }
 }
 
 #define unwrap_optional(optional, nullopt_action)   \
@@ -184,32 +280,47 @@ static int fork_task(const char *task_name, unsigned int timeout) {
     return pid;
 }
 
+static void on_error(const char *error) {
+    _error_log(TAG, "error happened: %s", error);
+    update_task_error(error);
+}
+
+// ! execute on task process
 static void execute_dump(const char *file_name) {
-    _info_log(TAG, "Start dumping in task %d.", getpid());
+    _info_log(TAG, "task_process %d: dump", getpid());
     update_task_state(TS_DUMP);
     dump_heap(file_name);
 }
 
+// ! execute on task process
+static void analyzer_error_listener(const char *message) {
+    on_error(message);
+}
+
+// ! execute on task process
 static std::optional<std::vector<LeakChain>>
 execute_analyze(const char *hprof_path, const char *reference_key) {
-    _info_log(TAG, "Start analyzing in task %d.", getpid());
+    _info_log(TAG, "task_process %d: analyze", getpid());
 
     update_task_state(TS_ANALYZER_CREATE);
     const int hprof_fd = open(hprof_path, O_RDONLY);
     if (hprof_fd == -1) {
-        _error_log(TAG, "Failed to open HPROF file.");
+        std::stringstream error_builder;
+        error_builder << "invoke open() failed on HPROF with errno " << errno;
+        on_error(error_builder.str().c_str());
         return std::nullopt;
     }
+    HprofAnalyzer::SetErrorListener(analyzer_error_listener);
     HprofAnalyzer analyzer(hprof_fd);
 
     update_task_state(TS_ANALYZER_INITIALIZE);
     if (!exclude_default_references(analyzer)) {
-        _error_log(TAG, "Failed to add exclude default references rules.");
+        on_error("exclude default references rules failed");
         return std::nullopt;
     }
 
     update_task_state(TS_ANALYZER_EXECUTE);
-    auto result = analyzer.Analyze([reference_key](const HprofHeap &heap) {
+    return analyzer.Analyze([reference_key](const HprofHeap &heap) {
         const object_id_t leak_ref_class_id = unwrap_optional(
                 heap.FindClassByName(
                         "com.tencent.matrix.resource.analyzer.model.DestroyedActivityInfo"),
@@ -230,32 +341,31 @@ execute_analyze(const char *hprof_path, const char *reference_key) {
         }
         return leaks;
     });
-    if (result.has_value()) {
-        return result.value();
-    } else {
-        _error_log(TAG, HprofAnalyzer::CheckError());
-        return std::nullopt;
-    }
 }
 
+// ! execute on task process
 static bool execute_serialize(const char *result_path, const std::vector<LeakChain> &leak_chains) {
-    _info_log(TAG, "Start serialize analyze result in task %d.", getpid());
+    _info_log(TAG, "task_process %d: serialize", getpid());
 
     update_task_state(TS_CREATE_RESULT_FILE);
     bool result = false;
     int result_fd = open(result_path, O_WRONLY | O_CREAT | O_TRUNC, S_IWUSR);
     if (result_fd == -1) {
-        _error_log(TAG, "Failed to write leak chains to result path (errno: %d).", errno);
+        std::stringstream error_builder;
+        error_builder << "invoke open() failed on result file with errno " << errno;
+        on_error(error_builder.str().c_str());
         return false;
     }
 
     update_task_state(TS_SERIALIZE);
     // See comment documentation of <code>MemoryUtil.deserialize</code> for the file format of
     // result file.
-#define write_data(content, size)                                                               \
-        if (write(result_fd, content, size) == -1) {                                            \
-            _error_log(TAG, "Failed to write content to result path (errno: %d).", errno);  \
-            goto write_leak_chain_done;                                                         \
+#define write_data(content, size)                                                           \
+        if (write(result_fd, content, size) == -1) {                                        \
+            std::stringstream error_builder;                                                \
+            error_builder << "invoke write() failed on result file with errno " << errno;   \
+            on_error(error_builder.str().c_str());                                          \
+            goto write_leak_chain_done;                                                     \
         }
 
     const uint32_t byte_order_magic = 0x1;
@@ -331,16 +441,10 @@ Java_com_tencent_matrix_resource_MemoryUtil_forkDump(JNIEnv *env, jobject,
     if (task_pid != 0) {
         return task_pid;
     } else {
-        /* task process */
-        try {
-            /* dump */
-            execute_dump(hprof_path.c_str());
-            /* end */
-            _exit(TC_NO_ERROR);
-        } catch (const std::exception &exception) {
-            _error_log(TAG, "Exception thrown while executing task: %s.", exception.what());
-            _exit(TC_EXCEPTION);
-        }
+        /* dump */
+        execute_dump(hprof_path.c_str());
+        /* end */
+        _exit(TC_NO_ERROR);
     }
 }
 
@@ -359,21 +463,15 @@ Java_com_tencent_matrix_resource_MemoryUtil_forkAnalyze(JNIEnv *env, jobject,
     if (task_pid != 0) {
         return task_pid;
     } else {
-        /* task process */
-        try {
-            /* analyze */
-            const std::optional<std::vector<LeakChain>> result =
-                    execute_analyze(hprof_path.c_str(), reference_key.c_str());
-            if (!result.has_value()) _exit(TC_ANALYZE_ERROR);
-            /* serialize result */
-            const bool serialized = execute_serialize(result_path.c_str(), result.value());
-            if (!serialized) _exit(TC_SERIALIZE_ERROR);
-            /* end */
-            _exit(TC_NO_ERROR);
-        } catch (const std::exception &exception) {
-            _error_log(TAG, "Exception thrown while executing task: %s.", exception.what());
-            _exit(TC_EXCEPTION);
-        }
+        /* analyze */
+        const std::optional<std::vector<LeakChain>> result =
+                execute_analyze(hprof_path.c_str(), reference_key.c_str());
+        if (!result.has_value()) _exit(TC_ANALYZE_ERROR);
+        /* serialize result */
+        const bool serialized = execute_serialize(result_path.c_str(), result.value());
+        if (!serialized) _exit(TC_SERIALIZE_ERROR);
+        /* end */
+        _exit(TC_NO_ERROR);
     }
 }
 
@@ -392,23 +490,17 @@ Java_com_tencent_matrix_resource_MemoryUtil_forkDumpAndAnalyze(JNIEnv *env, jobj
     if (task_pid != 0) {
         return task_pid;
     } else {
-        /* task process */
-        try {
-            /* dump */
-            execute_dump(hprof_path.c_str());
-            /* analyze */
-            const std::optional<std::vector<LeakChain>> result =
-                    execute_analyze(hprof_path.c_str(), reference_key.c_str());
-            if (!result.has_value()) _exit(TC_ANALYZE_ERROR);
-            /* serialize result */
-            const bool serialized = execute_serialize(result_path.c_str(), result.value());
-            if (!serialized) _exit(TC_SERIALIZE_ERROR);
-            /* end */
-            _exit(TC_NO_ERROR);
-        } catch (const std::exception &exception) {
-            _error_log(TAG, "Exception thrown while executing task: %s.", exception.what());
-            _exit(TC_EXCEPTION);
-        }
+        /* dump */
+        execute_dump(hprof_path.c_str());
+        /* analyze */
+        const std::optional<std::vector<LeakChain>> result =
+                execute_analyze(hprof_path.c_str(), reference_key.c_str());
+        if (!result.has_value()) _exit(TC_ANALYZE_ERROR);
+        /* serialize result */
+        const bool serialized = execute_serialize(result_path.c_str(), result.value());
+        if (!serialized) _exit(TC_SERIALIZE_ERROR);
+        /* end */
+        _exit(TC_NO_ERROR);
     }
 }
 
@@ -423,16 +515,17 @@ extern "C" JNIEXPORT jobject JNICALL
 Java_com_tencent_matrix_resource_MemoryUtil_waitTask(JNIEnv *env, jobject, jint pid) {
     int status;
     if (waitpid(pid, &status, 0) == -1) {
-        _error_log(TAG, "Failed to invoke waitpid().");
-        return create_task_result(env, TR_TYPE_WAIT_FAILED, errno, TS_UNKNOWN);
+        _error_log(TAG, "invoke waitpid failed with errno %d", errno);
+        return create_task_result(env, TR_TYPE_WAIT_FAILED, errno, TS_UNKNOWN, "none");
     }
 
     const int8_t task_state = get_task_state_and_cleanup(pid);
+    const std::string task_error = get_task_error_and_cleanup(pid);
     if (WIFEXITED(status)) {
-        return create_task_result(env, TR_TYPE_EXIT, WEXITSTATUS(status), task_state);
+        return create_task_result(env, TR_TYPE_EXIT, WEXITSTATUS(status), task_state, task_error);
     } else if (WIFSIGNALED(status)) {
-        return create_task_result(env, TR_TYPE_SIGNALED, WTERMSIG(status), task_state);
+        return create_task_result(env, TR_TYPE_SIGNALED, WTERMSIG(status), task_state, task_error);
     } else {
-        return create_task_result(env, TR_TYPE_UNKNOWN, 0, task_state);
+        return create_task_result(env, TR_TYPE_UNKNOWN, 0, task_state, task_error);
     }
 }
