@@ -201,6 +201,8 @@ class NativeForkAnalyzeProcessor(watcher: ActivityRefWatcher) : BaseLeakProcesso
         val activity = destroyedActivityInfo.mActivityName
         val key = destroyedActivityInfo.mKey
 
+        watcher.triggerGc()
+
         val result = MemoryUtil.dumpAndAnalyze(hprof.absolutePath, key, timeout = 600)
         if (result.mFailure != null) {
             // Copies file to retry repository and analyzes it again when the screen is locked.
