@@ -526,7 +526,7 @@ data class MemInfo(
                             processInfo.pid,
                             processInfo.processName,
                         ),
-                        statusInfo = StatusInfo.get(processInfo.pid),
+                        statusInfo = null,
                         javaMemInfo = null,
                         nativeMemInfo = null,
                         systemInfo = systemInfo,

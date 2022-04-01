@@ -343,7 +343,7 @@ object ProcessUILifecycleOwner {
             return true
         }
 
-        return process == componentToProcess.getOrPut(component.className, {
+        return process == componentToProcess.getOrPut(component.className) {
             val info = activityInfoArray!!.find { it.name == component.className }
             if (info == null) {
                 MatrixLog.e(TAG, "got task info not appeared in package manager $info")
@@ -351,7 +351,7 @@ object ProcessUILifecycleOwner {
             } else {
                 info.processName
             }
-        })
+        }
     }
 
     private fun ActivityManager.RecentTaskInfo.belongsTo(processName: String?): Boolean {
