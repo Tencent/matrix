@@ -279,7 +279,7 @@ public class ResRecordManager {
         AutoWrapBuilder result = new AutoWrapBuilder();
         for (OpenGLDumpInfo report : resList) {
             result.append(String.format(" alloc count = %d", report.getAllocCount()))
-                    .append(String.format(" egl is release = %d", report.innerInfo.isEglContextReleased()))
+                    .append(String.format(" egl context is release = %s", report.innerInfo.isEglContextReleased()))
                     .append(String.format(" egl surface is release = %s", report.innerInfo.isEglSurfaceRelease()))
                     .append(String.format(" total size = %s", report.getTotalSize()))
                     .append(String.format(" id = %s", report.getAllocIdList()))

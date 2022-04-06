@@ -15,6 +15,11 @@ extern "C"
 JNIEXPORT jboolean JNICALL Java_com_tencent_matrix_openglleak_hook_OpenGLHook_isEglSurfaceAlive(
         JNIEnv *env, jclass clazz, jlong egl_surface);
 
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_tencent_matrix_openglleak_hook_OpenGLHook_updateCurrActivity(JNIEnv *env, jobject thiz,
+                                                                      jstring activityInfo);
+
 JNIEXPORT void JNICALL Java_com_tencent_matrix_openglleak_hook_OpenGLHook_releaseNative
         (JNIEnv *, jclass thiz, jlong);
 

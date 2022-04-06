@@ -21,21 +21,21 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_tencent_matrix_openglleak_hook_Op
         class_OpenGLHook = (jclass) env->NewGlobalRef(class_OpenGLHook);
 
         method_onGlGenTextures = env->GetStaticMethodID(class_OpenGLHook, "onGlGenTextures",
-                                                        "([ILjava/lang/String;IJJJJI)V");
+                                                        "([ILjava/lang/String;IJJJJLjava/lang/String;)V");
         method_onGlDeleteTextures = env->GetStaticMethodID(class_OpenGLHook, "onGlDeleteTextures",
                                                            "([ILjava/lang/String;J)V");
         method_onGlGenBuffers = env->GetStaticMethodID(class_OpenGLHook, "onGlGenBuffers",
-                                                       "([ILjava/lang/String;IJJJJI)V");
+                                                       "([ILjava/lang/String;IJJJJLjava/lang/String;)V");
         method_onGlDeleteBuffers = env->GetStaticMethodID(class_OpenGLHook, "onGlDeleteBuffers",
                                                           "([ILjava/lang/String;J)V");
         method_onGlGenFramebuffers = env->GetStaticMethodID(class_OpenGLHook, "onGlGenFramebuffers",
-                                                            "([ILjava/lang/String;IJJJJI)V");
+                                                            "([ILjava/lang/String;IJJJJLjava/lang/String;)V");
         method_onGlDeleteFramebuffers = env->GetStaticMethodID(class_OpenGLHook,
                                                                "onGlDeleteFramebuffers",
                                                                "([ILjava/lang/String;J)V");
         method_onGlGenRenderbuffers = env->GetStaticMethodID(class_OpenGLHook,
                                                              "onGlGenRenderbuffers",
-                                                             "([ILjava/lang/String;IJJJJI)V");
+                                                             "([ILjava/lang/String;IJJJJLjava/lang/String;)V");
         method_onGlDeleteRenderbuffers = env->GetStaticMethodID(class_OpenGLHook,
                                                                 "onGlDeleteRenderbuffers",
                                                                 "([ILjava/lang/String;J)V");
@@ -572,4 +572,26 @@ extern "C"
 JNIEXPORT jint JNICALL
 Java_com_tencent_matrix_openglleak_hook_OpenGLHook_getResidualQueueSize(JNIEnv *env, jobject clazz) {
     return messages_containers->get_queue_size();
+}
+
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_tencent_matrix_openglleak_hook_OpenGLHook_updateCurrActivity(JNIEnv *env, jobject thiz,
+                                                                      jstring j_activity_info) {
+    const char *activity_info = env->GetStringUTFChars(j_activity_info, nullptr);
+    if (activity_info) {
+        const size_t info_len = strlen(activity_info);
+        if (curr_activity_info != nullptr) {
+            free(curr_activity_info);
+        }
+        curr_activity_info = static_cast<char *>(malloc(BUF_SIZE));
+        const size_t cpy_len = std::min(info_len, BUF_SIZE - 1);
+        memcpy(curr_activity_info, activity_info, cpy_len);
+        curr_activity_info[cpy_len] = '\0';
+    } else {
+        strncpy(curr_activity_info, "\tget activity info failed", BUF_SIZE);
+    }
+    env->ReleaseStringUTFChars(j_activity_info, activity_info);
+    env->DeleteLocalRef(j_activity_info);
 }

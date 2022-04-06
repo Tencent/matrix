@@ -139,15 +139,17 @@ public class OpenGLHook {
 
     public static native boolean isEglSurfaceAlive(long eglSurface);
 
+    public native void updateCurrActivity(String activityInfo);
+
     public native int getResidualQueueSize();
 
-    public static void onGlGenTextures(int[] ids, final String threadId, final int throwable, final long nativeStackPtr, final long eglContext, final long eglDrawSurface, final long eglReadSurface) {
+    public static void onGlGenTextures(int[] ids, final String threadId, final int throwable, final long nativeStackPtr, final long eglContext, final long eglDrawSurface, final long eglReadSurface, String activityInfo) {
         if (ids.length > 0) {
             final AtomicInteger counter = new AtomicInteger(ids.length);
 
             JavaStacktrace.Trace trace = JavaStacktrace.getBacktraceValue(throwable);
             for (final int id : ids) {
-                final OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.TEXTURE, id, threadId, eglContext, eglDrawSurface, eglReadSurface, trace, nativeStackPtr, ActivityRecorder.getInstance().getCurrentActivityInfo(), counter);
+                final OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.TEXTURE, id, threadId, eglContext, eglDrawSurface, eglReadSurface, trace, nativeStackPtr, ActivityRecorder.revertActivityInfo(activityInfo), counter);
                 ResRecordManager.getInstance().gen(openGLInfo);
 
                 if (getInstance().mResourceListener != null) {
@@ -170,13 +172,13 @@ public class OpenGLHook {
         }
     }
 
-    public static void onGlGenBuffers(int[] ids, String threadId, final int throwable, long nativeStackPtr, final long eglContext, final long eglDrawSurface, final long eglReadSurface) {
+    public static void onGlGenBuffers(int[] ids, String threadId, final int throwable, long nativeStackPtr, final long eglContext, final long eglDrawSurface, final long eglReadSurface, String activityInfo) {
         if (ids.length > 0) {
             AtomicInteger counter = new AtomicInteger(ids.length);
 
             JavaStacktrace.Trace trace = JavaStacktrace.getBacktraceValue(throwable);
             for (int id : ids) {
-                final OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.BUFFER, id, threadId, eglContext, eglDrawSurface, eglReadSurface, trace, nativeStackPtr, ActivityRecorder.getInstance().getCurrentActivityInfo(), counter);
+                final OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.BUFFER, id, threadId, eglContext, eglDrawSurface, eglReadSurface, trace, nativeStackPtr, ActivityRecorder.revertActivityInfo(activityInfo), counter);
                 ResRecordManager.getInstance().gen(openGLInfo);
 
                 if (getInstance().mResourceListener != null) {
@@ -199,13 +201,13 @@ public class OpenGLHook {
         }
     }
 
-    public static void onGlGenFramebuffers(int[] ids, String threadId, final int throwable, long nativeStackPtr, final long eglContext, final long eglDrawSurface, final long eglReadSurface) {
+    public static void onGlGenFramebuffers(int[] ids, String threadId, final int throwable, long nativeStackPtr, final long eglContext, final long eglDrawSurface, final long eglReadSurface, String activityInfo) {
         if (ids.length > 0) {
             AtomicInteger counter = new AtomicInteger(ids.length);
 
             JavaStacktrace.Trace trace = JavaStacktrace.getBacktraceValue(throwable);
             for (int id : ids) {
-                final OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.FRAME_BUFFERS, id, threadId, eglContext, eglDrawSurface, eglReadSurface, trace, nativeStackPtr, ActivityRecorder.getInstance().getCurrentActivityInfo(), counter);
+                final OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.FRAME_BUFFERS, id, threadId, eglContext, eglDrawSurface, eglReadSurface, trace, nativeStackPtr, ActivityRecorder.revertActivityInfo(activityInfo), counter);
                 ResRecordManager.getInstance().gen(openGLInfo);
 
                 if (getInstance().mResourceListener != null) {
@@ -228,13 +230,13 @@ public class OpenGLHook {
         }
     }
 
-    public static void onGlGenRenderbuffers(int[] ids, String threadId, final int throwable, long nativeStackPtr, final long eglContext, final long eglDrawSurface, final long eglReadSurface) {
+    public static void onGlGenRenderbuffers(int[] ids, String threadId, final int throwable, long nativeStackPtr, final long eglContext, final long eglDrawSurface, final long eglReadSurface, String activityInfo) {
         if (ids.length > 0) {
             AtomicInteger counter = new AtomicInteger(ids.length);
 
             JavaStacktrace.Trace trace = JavaStacktrace.getBacktraceValue(throwable);
             for (int id : ids) {
-                final OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.RENDER_BUFFERS, id, threadId, eglContext, eglDrawSurface, eglReadSurface, trace, nativeStackPtr, ActivityRecorder.getInstance().getCurrentActivityInfo(), counter);
+                final OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.RENDER_BUFFERS, id, threadId, eglContext, eglDrawSurface, eglReadSurface, trace, nativeStackPtr, ActivityRecorder.revertActivityInfo(activityInfo), counter);
                 ResRecordManager.getInstance().gen(openGLInfo);
 
                 if (getInstance().mResourceListener != null) {

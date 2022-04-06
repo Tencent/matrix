@@ -74,6 +74,7 @@ static bool is_stacktrace_enabled = true;
 static bool is_javastack_enabled = true;
 
 static matrix::BufferManagement *messages_containers;
+static char* curr_activity_info = nullptr;
 
 void enable_stacktrace(bool enable) {
     is_stacktrace_enabled = enable;
@@ -179,7 +180,8 @@ int get_java_throwable() {
 void
 gen_jni_callback(int alloc_count, GLuint *copy_resource, int throwable, const thread::id thread_id,
                  wechat_backtrace::Backtrace *backtracePtr, EGLContext egl_context,
-                 EGLSurface egl_draw_surface, EGLSurface egl_read_surface, jmethodID jmethodId) {
+                 EGLSurface egl_draw_surface, EGLSurface egl_read_surface,
+                 char* activity_info, jmethodID jmethodId) {
     JNIEnv *env = GET_ENV();
 
     int *result = new int[alloc_count];
@@ -194,6 +196,8 @@ gen_jni_callback(int alloc_count, GLuint *copy_resource, int throwable, const th
     thread_id_to_string(thread_id, thread_id_c_str);
     jstring j_thread_id = env->NewStringUTF(thread_id_c_str);
 
+    jstring j_activity_info = env->NewStringUTF(activity_info);
+
     wechat_backtrace::Backtrace *backtrace = deduplicate_backtrace(backtracePtr);
 
     env->CallStaticVoidMethod(
@@ -205,11 +209,13 @@ gen_jni_callback(int alloc_count, GLuint *copy_resource, int throwable, const th
             (jlong) backtrace,
             (jlong) egl_context,
             (jlong) egl_draw_surface,
-            (jlong) egl_read_surface);
+            (jlong) egl_read_surface,
+            j_activity_info);
 
     delete[] result;
     env->DeleteLocalRef(newArr);
     env->DeleteLocalRef(j_thread_id);
+    env->DeleteLocalRef(j_activity_info);
 
     if (copy_resource != nullptr) {
         free(copy_resource);
@@ -217,6 +223,10 @@ gen_jni_callback(int alloc_count, GLuint *copy_resource, int throwable, const th
 
     if (thread_id_c_str != nullptr) {
         free(thread_id_c_str);
+    }
+
+    if (activity_info != nullptr) {
+        free(activity_info);
     }
 }
 
@@ -276,13 +286,16 @@ GL_APICALL void GL_APIENTRY my_glGenTextures(GLsizei n, GLuint *textures) {
         EGLSurface egl_draw_surface = eglGetCurrentSurface(EGL_DRAW);
         EGLSurface egl_read_surface = eglGetCurrentSurface(EGL_READ);
 
+        char* activity_info = static_cast<char *>(malloc(BUF_SIZE));
+        strcpy(activity_info, curr_activity_info);
+
         messages_containers->
                 enqueue_message((uintptr_t) egl_context,
-                                [n, copy_textures, throwable, thread_id, backtracePrt, egl_context, egl_read_surface, egl_draw_surface]() {
+                                [n, copy_textures, throwable, thread_id, backtracePrt, egl_context, egl_read_surface, egl_draw_surface, activity_info]() {
 
                                     gen_jni_callback(n, copy_textures, throwable, thread_id,
-                                                     backtracePrt, egl_context, egl_draw_surface,
-                                                     egl_read_surface, method_onGlGenTextures);
+                                                     backtracePrt, egl_context, egl_draw_surface, egl_read_surface,
+                                                     activity_info, method_onGlGenTextures);
 
                                 });
     }
@@ -336,13 +349,16 @@ GL_APICALL void GL_APIENTRY my_glGenBuffers(GLsizei n, GLuint *buffers) {
         EGLSurface egl_draw_surface = eglGetCurrentSurface(EGL_DRAW);
         EGLSurface egl_read_surface = eglGetCurrentSurface(EGL_READ);
 
+        char* activity_info = static_cast<char *>(malloc(BUF_SIZE));
+        strcpy(activity_info, curr_activity_info);
+
         messages_containers
                 ->enqueue_message((uintptr_t) egl_context,
-                                  [n, copy_buffers, throwable, thread_id, backtracePrt, egl_context, egl_draw_surface, egl_read_surface]() {
+                                  [n, copy_buffers, throwable, thread_id, backtracePrt, egl_context, egl_draw_surface, egl_read_surface, activity_info]() {
 
                                       gen_jni_callback(n, copy_buffers, throwable, thread_id,
-                                                       backtracePrt, egl_context, egl_draw_surface,
-                                                       egl_read_surface, method_onGlGenBuffers);
+                                                       backtracePrt, egl_context, egl_draw_surface,egl_read_surface,
+                                                       activity_info, method_onGlGenBuffers);
 
                                   });
 
@@ -396,13 +412,16 @@ GL_APICALL void GL_APIENTRY my_glGenFramebuffers(GLsizei n, GLuint *buffers) {
         EGLSurface egl_draw_surface = eglGetCurrentSurface(EGL_DRAW);
         EGLSurface egl_read_surface = eglGetCurrentSurface(EGL_READ);
 
+        char* activity_info = static_cast<char *>(malloc(BUF_SIZE));
+        strcpy(activity_info, curr_activity_info);
+
         messages_containers
                 ->enqueue_message((uintptr_t) egl_context,
-                                  [n, copy_buffers, throwable, thread_id, backtracePrt, egl_context, egl_draw_surface, egl_read_surface]() {
+                                  [n, copy_buffers, throwable, thread_id, backtracePrt, egl_context, egl_draw_surface, egl_read_surface, activity_info]() {
 
                                       gen_jni_callback(n, copy_buffers, throwable, thread_id,
-                                                       backtracePrt, egl_context, egl_draw_surface,
-                                                       egl_read_surface, method_onGlGenFramebuffers);
+                                                       backtracePrt, egl_context, egl_draw_surface,egl_read_surface,
+                                                       activity_info, method_onGlGenFramebuffers);
 
                                   });
 
@@ -456,13 +475,16 @@ GL_APICALL void GL_APIENTRY my_glGenRenderbuffers(GLsizei n, GLuint *buffers) {
         EGLSurface egl_draw_surface = eglGetCurrentSurface(EGL_DRAW);
         EGLSurface egl_read_surface = eglGetCurrentSurface(EGL_READ);
 
+        char* activity_info = static_cast<char *>(malloc(BUF_SIZE));
+        strcpy(activity_info, curr_activity_info);
+
         messages_containers
                 ->enqueue_message((uintptr_t) egl_context,
-                                  [n, copy_buffers, throwable, thread_id, backtracePrt, egl_context, egl_draw_surface, egl_read_surface]() {
+                                  [n, copy_buffers, throwable, thread_id, backtracePrt, egl_context, egl_draw_surface, egl_read_surface, activity_info]() {
 
                                       gen_jni_callback(n, copy_buffers, throwable, thread_id,
-                                                       backtracePrt, egl_context, egl_draw_surface,
-                                                       egl_read_surface, method_onGlGenRenderbuffers);
+                                                       backtracePrt, egl_context, egl_draw_surface,egl_read_surface,
+                                                       activity_info, method_onGlGenRenderbuffers);
 
                                   });
     }
