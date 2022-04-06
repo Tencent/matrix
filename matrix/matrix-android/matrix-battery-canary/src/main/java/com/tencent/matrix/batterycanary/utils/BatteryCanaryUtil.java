@@ -44,6 +44,7 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.regex.Pattern;
 
+import androidx.annotation.IntRange;
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
 
@@ -365,6 +366,30 @@ public final class BatteryCanaryUtil {
             MatrixLog.w(TAG, "get EXTRA_TEMPERATURE failed: " + e.getMessage());
             return 0;
         }
+    }
+
+    public static int getThermalStatImmediately(Context context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            try {
+                PowerManager powerManager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+                return powerManager.getCurrentThermalStatus();
+            } catch (Exception e) {
+                MatrixLog.w(TAG, "getCurrentThermalStatus failed: " + e.getMessage());
+            }
+        }
+        return 0;
+    }
+
+    public static float getThermalHeadroomImmediately(Context context, @IntRange(from = 0, to = 60) int forecastSeconds) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            try {
+                PowerManager powerManager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+                return powerManager.getThermalHeadroom(forecastSeconds);
+            } catch (Exception e) {
+                MatrixLog.w(TAG, "getThermalHeadroom failed: " + e.getMessage());
+            }
+        }
+        return 0f;
     }
 
     @AppStats.AppStatusDef

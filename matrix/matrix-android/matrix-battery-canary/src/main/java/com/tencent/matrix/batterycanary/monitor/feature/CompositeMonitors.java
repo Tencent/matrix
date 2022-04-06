@@ -1,5 +1,6 @@
 package com.tencent.matrix.batterycanary.monitor.feature;
 
+import android.os.Build;
 import android.os.Bundle;
 import android.os.SystemClock;
 import android.text.TextUtils;
@@ -493,6 +494,35 @@ public class CompositeMonitors {
                     }
                 });
                 mSamplers.put(snapshotClass, sampler);
+            }
+            return sampler;
+        }
+        if (snapshotClass == DeviceStatMonitorFeature.ThermalStatSnapshot.class) {
+            final DeviceStatMonitorFeature feature = getFeature(DeviceStatMonitorFeature.class);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && feature != null && mMonitor != null) {
+                sampler = new Snapshot.Sampler(mMonitor.getHandler(), new Callable<Number>() {
+                    @Override
+                    public Number call() {
+                        return BatteryCanaryUtil.getThermalStatImmediately(mMonitor.getContext());
+                    }
+                });
+                mSamplers.put(snapshotClass, sampler);
+            }
+            return sampler;
+        }
+        if (snapshotClass == DeviceStatMonitorFeature.ThermalHeadroomSnapshot.class) {
+            final DeviceStatMonitorFeature feature = getFeature(DeviceStatMonitorFeature.class);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && feature != null && mMonitor != null) {
+                final Long interval = mSampleRegs.get(snapshotClass);
+                if (interval != null && interval >= 1000L) {
+                    sampler = new Snapshot.Sampler(mMonitor.getHandler(), new Callable<Number>() {
+                        @Override
+                        public Number call() {
+                            return BatteryCanaryUtil.getThermalHeadroomImmediately(mMonitor.getContext(), (int) (interval / 1000L));
+                        }
+                    });
+                    mSamplers.put(snapshotClass, sampler);
+                }
             }
             return sampler;
         }

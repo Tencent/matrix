@@ -282,6 +282,38 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
         }
     }
 
+    public static class ThermalStatSnapshot extends Snapshot<ThermalStatSnapshot> {
+        public Entry.DigitEntry<Integer> stat;
+
+        @Override
+        public Delta<ThermalStatSnapshot> diff(ThermalStatSnapshot bgn) {
+            return new Delta<ThermalStatSnapshot>(bgn, this) {
+                @Override
+                protected ThermalStatSnapshot computeDelta() {
+                    ThermalStatSnapshot delta = new ThermalStatSnapshot();
+                    delta.stat = DigitDiffer.globalDiff(bgn.stat, end.stat);
+                    return delta;
+                }
+            };
+        }
+    }
+
+    public static class ThermalHeadroomSnapshot extends Snapshot<ThermalHeadroomSnapshot> {
+        public Entry.DigitEntry<Float> stat;
+
+        @Override
+        public Delta<ThermalHeadroomSnapshot> diff(ThermalHeadroomSnapshot bgn) {
+            return new Delta<ThermalHeadroomSnapshot>(bgn, this) {
+                @Override
+                protected ThermalHeadroomSnapshot computeDelta() {
+                    ThermalHeadroomSnapshot delta = new ThermalHeadroomSnapshot();
+                    delta.stat = DigitDiffer.globalDiff(bgn.stat, end.stat);
+                    return delta;
+                }
+            };
+        }
+    }
+
     public static final class DevStatSnapshot extends Snapshot<DevStatSnapshot> {
         public Entry.DigitEntry<Long> uptime = Entry.DigitEntry.of(0L);
         public Entry.DigitEntry<Long> chargingRatio = Entry.DigitEntry.of(0L);

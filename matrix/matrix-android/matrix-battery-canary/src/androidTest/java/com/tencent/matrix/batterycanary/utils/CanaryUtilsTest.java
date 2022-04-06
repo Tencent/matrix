@@ -28,6 +28,7 @@ import android.os.BatteryManager;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.PowerManager;
 import android.text.TextUtils;
 import android.util.Log;
 import android.widget.Toast;
@@ -341,6 +342,34 @@ public class CanaryUtilsTest {
             Thread.sleep(100);
             Assert.assertTrue(ref.isExpired());
         }
+    }
+
+    @Test
+    public void testGetThermalStatus() throws InterruptedException {
+        int status = BatteryCanaryUtil.getThermalStatImmediately(mContext);
+        Assert.assertTrue(status >= 0);
+
+        final PowerManager powerManager = (PowerManager) mContext.getSystemService(Context.POWER_SERVICE);
+        final AtomicBoolean hasNotify = new AtomicBoolean();
+        powerManager.addThermalStatusListener(new PowerManager.OnThermalStatusChangedListener() {
+            @Override
+            public void onThermalStatusChanged(int status) {
+                float room = BatteryCanaryUtil.getThermalHeadroomImmediately(mContext, 10);
+                Assert.assertTrue(Float.isNaN(room) || room > 0);
+                synchronized (hasNotify) {
+                    hasNotify.notify();
+                    hasNotify.set(true);
+                }
+            }
+        });
+
+        if (!hasNotify.get()) {
+            synchronized (hasNotify) {
+                hasNotify.wait(10000);
+            }
+        }
+        float room = BatteryCanaryUtil.getThermalHeadroomImmediately(mContext, 10);
+        Assert.assertTrue(Float.isNaN(room) || room > 0);
     }
 
     private static boolean diceWithBase(int base) {
