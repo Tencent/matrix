@@ -3,10 +3,8 @@ package com.tencent.matrix.openglleak.statistics;
 import android.app.Application;
 import android.os.Handler;
 
-import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.lifecycle.IStateObserver;
 import com.tencent.matrix.lifecycle.owners.ProcessExplicitBackgroundOwner;
-import com.tencent.matrix.listeners.IAppForeground;
 import com.tencent.matrix.openglleak.statistics.resource.OpenGLInfo;
 import com.tencent.matrix.openglleak.statistics.resource.ResRecordManager;
 import com.tencent.matrix.openglleak.utils.GlLeakHandlerThread;
