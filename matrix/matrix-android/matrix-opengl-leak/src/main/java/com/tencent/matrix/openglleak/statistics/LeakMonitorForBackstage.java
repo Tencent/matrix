@@ -68,9 +68,9 @@ public class LeakMonitorForBackstage extends LeakMonitorDefault implements IStat
                         if (null != mLeakListener) {
                             if (!ResRecordManager.getInstance().isGLInfoRelease(item)) {
                                 mLeakListener.onLeak(item);
+                                allInfos.add(item);
                             }
                         }
-                        allInfos.add(item);
                         it.remove();
                     }
                 }
