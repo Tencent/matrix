@@ -503,7 +503,7 @@ public class CompositeMonitors {
                 sampler = new Snapshot.Sampler(mMonitor.getHandler(), new Callable<Number>() {
                     @Override
                     public Number call() {
-                        return BatteryCanaryUtil.getThermalStatImmediately(mMonitor.getContext());
+                        return BatteryCanaryUtil.getThermalStat(mMonitor.getContext());
                     }
                 });
                 mSamplers.put(snapshotClass, sampler);
@@ -518,11 +518,24 @@ public class CompositeMonitors {
                     sampler = new Snapshot.Sampler(mMonitor.getHandler(), new Callable<Number>() {
                         @Override
                         public Number call() {
-                            return BatteryCanaryUtil.getThermalHeadroomImmediately(mMonitor.getContext(), (int) (interval / 1000L));
+                            return BatteryCanaryUtil.getThermalHeadroom(mMonitor.getContext(), (int) (interval / 1000L));
                         }
                     });
                     mSamplers.put(snapshotClass, sampler);
                 }
+            }
+            return sampler;
+        }
+        if (snapshotClass == DeviceStatMonitorFeature.ChargeWattageSnapshot.class) {
+            final DeviceStatMonitorFeature feature = getFeature(DeviceStatMonitorFeature.class);
+            if (feature != null && mMonitor != null) {
+                sampler = new Snapshot.Sampler(mMonitor.getHandler(), new Callable<Number>() {
+                    @Override
+                    public Number call() {
+                        return BatteryCanaryUtil.getChargingWatt(mMonitor.getContext());
+                    }
+                });
+                mSamplers.put(snapshotClass, sampler);
             }
             return sampler;
         }

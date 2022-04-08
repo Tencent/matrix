@@ -168,6 +168,24 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
         return new ArrayList<>(mStampList);
     }
 
+    public ThermalStatSnapshot currentThermalStat(Context context) {
+        ThermalStatSnapshot snapshot = new ThermalStatSnapshot();
+        snapshot.stat = Snapshot.Entry.DigitEntry.of(BatteryCanaryUtil.getThermalStat(context));
+        return snapshot;
+    }
+
+    public ThermalHeadroomSnapshot currentThermalHeadroom(Context context, int forecastSeconds) {
+        ThermalHeadroomSnapshot snapshot = new ThermalHeadroomSnapshot();
+        snapshot.stat = Snapshot.Entry.DigitEntry.of(BatteryCanaryUtil.getThermalHeadroom(context, forecastSeconds));
+        return snapshot;
+    }
+
+    public ChargeWattageSnapshot currentChargeWattage(Context context) {
+        ChargeWattageSnapshot snapshot = new ChargeWattageSnapshot();
+        snapshot.stat = Snapshot.Entry.DigitEntry.of(BatteryCanaryUtil.getChargingWatt(context));
+        return snapshot;
+    }
+
 
     static final class DevStatListener {
         Consumer<Integer> mListener = new Consumer<Integer>() {
@@ -307,6 +325,22 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
                 @Override
                 protected ThermalHeadroomSnapshot computeDelta() {
                     ThermalHeadroomSnapshot delta = new ThermalHeadroomSnapshot();
+                    delta.stat = DigitDiffer.globalDiff(bgn.stat, end.stat);
+                    return delta;
+                }
+            };
+        }
+    }
+
+    public static class ChargeWattageSnapshot extends Snapshot<ChargeWattageSnapshot> {
+        public Entry.DigitEntry<Integer> stat;
+
+        @Override
+        public Delta<ChargeWattageSnapshot> diff(ChargeWattageSnapshot bgn) {
+            return new Delta<ChargeWattageSnapshot>(bgn, this) {
+                @Override
+                protected ChargeWattageSnapshot computeDelta() {
+                    ChargeWattageSnapshot delta = new ChargeWattageSnapshot();
                     delta.stat = DigitDiffer.globalDiff(bgn.stat, end.stat);
                     return delta;
                 }

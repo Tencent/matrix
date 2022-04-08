@@ -372,6 +372,17 @@ public class CanaryUtilsTest {
         Assert.assertTrue(Float.isNaN(room) || room > 0);
     }
 
+    @Test
+    public void testGetBatteryChargingStatus() {
+        Intent intent = BatteryCanaryUtil.getBatteryStickyIntent(mContext);
+        Assert.assertNotNull(intent);
+        Assert.assertTrue(intent.getIntExtra("max_charging_current", -1) > 0);
+        Assert.assertTrue(intent.getIntExtra("max_charging_voltage", -1) > 0);
+
+        int watt = BatteryCanaryUtil.getChargingWattImmediately(mContext);
+        Assert.assertTrue(watt > 0);
+    }
+
     private static boolean diceWithBase(int base) {
         double dice = Math.random();
         if (base >= 1 && dice < (1 / ((double) base))) {

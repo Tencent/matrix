@@ -368,6 +368,10 @@ public final class BatteryCanaryUtil {
         }
     }
 
+    public static int getThermalStat(Context context) {
+        return getThermalStatImmediately(context);
+    }
+
     public static int getThermalStatImmediately(Context context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             try {
@@ -380,7 +384,11 @@ public final class BatteryCanaryUtil {
         return 0;
     }
 
-    public static float getThermalHeadroomImmediately(Context context, @IntRange(from = 0, to = 60) int forecastSeconds) {
+    public static float getThermalHeadroom(Context context, @IntRange(from = 0, to = 60) int forecastSeconds) {
+        return getThermalHeadroomImmediately(context, forecastSeconds);
+    }
+
+    public static float getThermalHeadroomImmediately(Context context, int forecastSeconds) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             try {
                 PowerManager powerManager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
@@ -390,6 +398,25 @@ public final class BatteryCanaryUtil {
             }
         }
         return 0f;
+    }
+
+    public static int getChargingWatt(Context context) {
+        return getChargingWattImmediately(context);
+    }
+
+    public static int getChargingWattImmediately(Context context) {
+        // @See com.android.settingslib.fuelgauge.BatteryStatus
+        // Calculating muW = muA * muV / (10^6 mu^2 / mu); splitting up the divisor
+        // to maintain precision equally on both factors.
+        Intent intent = getBatteryStickyIntent(context);
+        if (intent != null) {
+            int maxCurrent = intent.getIntExtra("max_charging_current", -1);
+            int maxVoltage = intent.getIntExtra("max_charging_voltage", -1);
+            if (maxCurrent > 0 && maxVoltage > 0) {
+                return (maxCurrent / 1000) * (maxVoltage / 1000) / 1000000;
+            }
+        }
+        return 0;
     }
 
     @AppStats.AppStatusDef
