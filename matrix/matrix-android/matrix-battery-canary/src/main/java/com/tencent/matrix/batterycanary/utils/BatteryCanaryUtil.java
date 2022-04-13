@@ -44,6 +44,7 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.regex.Pattern;
 
+import androidx.annotation.IntRange;
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
 
@@ -223,10 +224,13 @@ public final class BatteryCanaryUtil {
     }
 
     public static String stackTraceToString(final StackTraceElement[] arr) {
+        return stackTraceToString(arr, false);
+    }
+
+    public static String stackTraceToString(final StackTraceElement[] arr, boolean trim) {
         if (arr == null) {
             return "";
         }
-
         ArrayList<StackTraceElement> stacks = new ArrayList<>(arr.length);
         for (StackTraceElement traceElement : arr) {
             String className = traceElement.getClassName();
@@ -241,21 +245,24 @@ public final class BatteryCanaryUtil {
             stacks.add(traceElement);
         }
         // stack still too large
-        String pkg = getPackageName();
-        if (stacks.size() > DEFAULT_MAX_STACK_LAYER && !TextUtils.isEmpty(pkg)) {
-            ListIterator<StackTraceElement> iterator = stacks.listIterator(stacks.size());
-            // from backward to forward
-            while (iterator.hasPrevious()) {
-                StackTraceElement stack = iterator.previous();
-                String className = stack.getClassName();
-                if (!className.contains(pkg)) {
-                    iterator.remove();
-                }
-                if (stacks.size() <= DEFAULT_MAX_STACK_LAYER) {
-                    break;
+        if (trim) {
+            String pkg = getPackageName();
+            if (stacks.size() > DEFAULT_MAX_STACK_LAYER && !TextUtils.isEmpty(pkg)) {
+                ListIterator<StackTraceElement> iterator = stacks.listIterator(stacks.size());
+                // from backward to forward
+                while (iterator.hasPrevious()) {
+                    StackTraceElement stack = iterator.previous();
+                    String className = stack.getClassName();
+                    if (!className.contains(pkg)) {
+                        iterator.remove();
+                    }
+                    if (stacks.size() <= DEFAULT_MAX_STACK_LAYER) {
+                        break;
+                    }
                 }
             }
         }
+
         StringBuilder sb = new StringBuilder();
         for (StackTraceElement traceElement : stacks) {
             sb.append("\n").append("at ").append(traceElement);
@@ -267,7 +274,7 @@ public final class BatteryCanaryUtil {
         if (throwable == null) {
             return "";
         }
-        return stackTraceToString(throwable.getStackTrace());
+        return stackTraceToString(throwable.getStackTrace(), true);
     }
 
     public static long getUTCTriggerAtMillis(final long triggerAtMillis, final int type) {
@@ -359,6 +366,57 @@ public final class BatteryCanaryUtil {
             MatrixLog.w(TAG, "get EXTRA_TEMPERATURE failed: " + e.getMessage());
             return 0;
         }
+    }
+
+    public static int getThermalStat(Context context) {
+        return getThermalStatImmediately(context);
+    }
+
+    public static int getThermalStatImmediately(Context context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            try {
+                PowerManager powerManager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+                return powerManager.getCurrentThermalStatus();
+            } catch (Exception e) {
+                MatrixLog.w(TAG, "getCurrentThermalStatus failed: " + e.getMessage());
+            }
+        }
+        return 0;
+    }
+
+    public static float getThermalHeadroom(Context context, @IntRange(from = 0, to = 60) int forecastSeconds) {
+        return getThermalHeadroomImmediately(context, forecastSeconds);
+    }
+
+    public static float getThermalHeadroomImmediately(Context context, int forecastSeconds) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            try {
+                PowerManager powerManager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+                return powerManager.getThermalHeadroom(forecastSeconds);
+            } catch (Exception e) {
+                MatrixLog.w(TAG, "getThermalHeadroom failed: " + e.getMessage());
+            }
+        }
+        return 0f;
+    }
+
+    public static int getChargingWatt(Context context) {
+        return getChargingWattImmediately(context);
+    }
+
+    public static int getChargingWattImmediately(Context context) {
+        // @See com.android.settingslib.fuelgauge.BatteryStatus
+        // Calculating muW = muA * muV / (10^6 mu^2 / mu); splitting up the divisor
+        // to maintain precision equally on both factors.
+        Intent intent = getBatteryStickyIntent(context);
+        if (intent != null) {
+            int maxCurrent = intent.getIntExtra("max_charging_current", -1);
+            int maxVoltage = intent.getIntExtra("max_charging_voltage", -1);
+            if (maxCurrent > 0 && maxVoltage > 0) {
+                return (maxCurrent / 1000) * (maxVoltage / 1000) / 1000000;
+            }
+        }
+        return 0;
     }
 
     @AppStats.AppStatusDef

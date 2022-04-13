@@ -145,47 +145,61 @@ public final class BatteryEventDelegate {
         }
 
         mContext.registerReceiver(new BroadcastReceiver() {
+            long mLastBatteryChangedHandleMs = -1;
             @Override
             public void onReceive(Context context, final Intent intent) {
                 String action = intent.getAction();
                 if (action != null) {
                     if (action.equals(Intent.ACTION_BATTERY_CHANGED)) {
-                        // Received 'ACTION_BATTERY_CHANGED' frequently, should be handled with worker thread
                         // 1. Check battery power & temperature changed
+                        // Received 'ACTION_BATTERY_CHANGED' frequently,
+                        // should be frequency-controlled & handled with worker thread
                         if (mCore != null) {
-                            mCore.getHandler().post(new Runnable() {
-                                @Override
-                                public void run() {
-                                    // Power percentage
-                                    int currPct = BatteryCanaryUtil.getBatteryPercentage(mContext);
-                                    if (Math.abs(currPct - mLastBatteryPowerPct) >= BATTERY_POWER_GRADUATION) {
-                                        mLastBatteryPowerPct = currPct;
-                                        if (mCore != null) {
-                                            BatteryStatsFeature feat = mCore.getMonitorFeature(BatteryStatsFeature.class);
-                                            if (feat != null) {
-                                                feat.statsBatteryEvent(currPct);
+                            boolean limited = false;
+                            long currMs = System.currentTimeMillis();
+                            if (mLastBatteryChangedHandleMs > 0 && currMs - mLastBatteryChangedHandleMs < ONE_MIN) {
+                                limited = true;
+                            }
+                            if (!limited) {
+                                mLastBatteryChangedHandleMs = currMs;
+                                mCore.getHandler().post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        // Power percentage
+                                        int currPct = BatteryCanaryUtil.getBatteryPercentage(mContext);
+                                        if (currPct >= 0 && currPct <= 1000) {
+                                            if (Math.abs(currPct - mLastBatteryPowerPct) >= BATTERY_POWER_GRADUATION) {
+                                                mLastBatteryPowerPct = currPct;
+                                                if (mCore != null) {
+                                                    BatteryStatsFeature feat = mCore.getMonitorFeature(BatteryStatsFeature.class);
+                                                    if (feat != null) {
+                                                        feat.statsBatteryEvent(currPct);
+                                                    }
+                                                }
+                                                onBatteryPowerChanged(currPct);
                                             }
                                         }
-                                        onBatteryPowerChanged(currPct);
-                                    }
-                                    // Battery temperature
-                                    try {
-                                        int currTemp = intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1);
-                                        if (currTemp != -1 && Math.abs(currTemp - mLastBatteryTemp) >= BATTERY_TEMPERATURE_GRADUATION) {
-                                            mLastBatteryTemp = currTemp;
-                                            if (mCore != null) {
-                                                BatteryStatsFeature feat = mCore.getMonitorFeature(BatteryStatsFeature.class);
-                                                if (feat != null) {
-                                                    feat.statsBatteryTempEvent(currTemp);
+                                        // Battery temperature
+                                        try {
+                                            int currTemp = intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1);
+                                            if (currTemp >= 0 && currPct <= 1000) {
+                                                if (Math.abs(currTemp - mLastBatteryTemp) >= BATTERY_TEMPERATURE_GRADUATION) {
+                                                    mLastBatteryTemp = currTemp;
+                                                    if (mCore != null) {
+                                                        BatteryStatsFeature feat = mCore.getMonitorFeature(BatteryStatsFeature.class);
+                                                        if (feat != null) {
+                                                            feat.statsBatteryTempEvent(currTemp);
+                                                        }
+                                                    }
+                                                    onBatteryTemperatureChanged(currTemp);
                                                 }
                                             }
-                                            onBatteryTemperatureChanged(currTemp);
+                                        } catch (Exception e) {
+                                            MatrixLog.w(TAG, "get EXTRA_TEMPERATURE failed: " + e.getMessage());
                                         }
-                                    } catch (Exception e) {
-                                        MatrixLog.w(TAG, "get EXTRA_TEMPERATURE failed: " + e.getMessage());
                                     }
-                                }
-                            });
+                                });
+                            }
                         }
 
                     } else {
