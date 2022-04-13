@@ -10,7 +10,6 @@ import android.os.Handler
 import android.os.Message
 import android.os.Process
 import android.util.ArrayMap
-import com.tencent.matrix.lifecycle.MatrixLifecycleThread
 import com.tencent.matrix.lifecycle.StatefulOwner
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.safeApply
@@ -18,8 +17,8 @@ import com.tencent.matrix.util.safeLetOrNull
 import java.lang.reflect.InvocationHandler
 import java.lang.reflect.Method
 import java.lang.reflect.Proxy
-import java.util.*
-import kotlin.collections.HashSet
+
+private val SDK_GUARD = 31
 
 /**
  * Created by Yves on 2021/11/30
@@ -43,7 +42,7 @@ object ForegroundServiceLifecycleOwner : StatefulOwner() {
     private var fgServiceHandler: FgServiceHandler? = null
 
     fun init(context: Context) {
-        if (Build.VERSION.SDK_INT > 31) { // for safety
+        if (Build.VERSION.SDK_INT > SDK_GUARD) { // for safety
             MatrixLog.e(TAG, "NOT support for api-level ${Build.VERSION.SDK_INT} yet!!!")
             return
         }
@@ -153,7 +152,7 @@ object ForegroundServiceLifecycleOwner : StatefulOwner() {
 
                 if (method?.name == "setServiceForeground") {
                     MatrixLog.d(TAG, "real invoked setServiceForeground")
-                    if (args.size == 6 && args[5] == 0) {
+                    if (args.size == 6 && args[3] == null) {
                         onStopForeground(args[0] as ComponentName)
                     } else {
                         onStartForeground(args[0] as ComponentName)
@@ -167,7 +166,7 @@ object ForegroundServiceLifecycleOwner : StatefulOwner() {
             }
         }
 
-        fun onStartForeground(componentName: ComponentName) {
+        fun onStartForeground(componentName: ComponentName) = synchronized(fgServiceRecord) {
             MatrixLog.i(TAG, "hack onStartForeground: $componentName")
             if (fgServiceRecord.isEmpty()) {
                 MatrixLog.i(TAG, "turn ON")
@@ -176,7 +175,7 @@ object ForegroundServiceLifecycleOwner : StatefulOwner() {
             fgServiceRecord.add(componentName)
         }
 
-        fun onStopForeground(componentName: ComponentName) {
+        fun onStopForeground(componentName: ComponentName) = synchronized(fgServiceRecord){
             MatrixLog.i(TAG, "hack onStopForeground: $componentName")
             fgServiceRecord.remove(componentName)
             if (fgServiceRecord.isEmpty()) {

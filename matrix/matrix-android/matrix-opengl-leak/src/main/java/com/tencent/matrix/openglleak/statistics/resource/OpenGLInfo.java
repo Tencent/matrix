@@ -11,7 +11,7 @@ public class OpenGLInfo {
     private String threadId = "";
     private final int id;
     private String nativeStack = "";
-    private int backtraceKey;
+    private JavaStacktrace.Trace javatrace;
     private long nativeStackPtr = 0L;
     private final TYPE type;
     private MemoryInfo memoryInfo;
@@ -29,7 +29,7 @@ public class OpenGLInfo {
         this.threadId = clone.threadId;
         this.id = clone.id;
         this.eglContext = clone.eglContext;
-        this.backtraceKey = clone.backtraceKey;
+        this.javatrace = clone.javatrace;
         this.nativeStack = clone.nativeStack;
         this.nativeStackPtr = clone.nativeStackPtr;
         this.type = clone.type;
@@ -44,9 +44,9 @@ public class OpenGLInfo {
         this.type = type;
     }
 
-    public OpenGLInfo(TYPE type, int id, String threadId, long eglContext, int throwable, long nativeStackPtr, ActivityRecorder.ActivityInfo activityInfo, AtomicInteger counter) {
+    public OpenGLInfo(TYPE type, int id, String threadId, long eglContext, JavaStacktrace.Trace javatrace, long nativeStackPtr, ActivityRecorder.ActivityInfo activityInfo, AtomicInteger counter) {
         this.threadId = threadId;
-        this.backtraceKey = throwable;
+        this.javatrace = javatrace;
         this.nativeStackPtr = nativeStackPtr;
         this.type = type;
         this.activityInfo = activityInfo;
@@ -83,11 +83,10 @@ public class OpenGLInfo {
     }
 
     public String getJavaStack() {
-        return JavaStacktrace.getBacktraceValue(backtraceKey);
-    }
-
-    public int getJavaStacktraceKey() {
-        return backtraceKey;
+        if (javatrace == null) {
+            return "";
+        }
+        return javatrace.getContent();
     }
 
     public String getNativeStack() {
@@ -108,6 +107,13 @@ public class OpenGLInfo {
 
     public boolean isEglContextReleased() {
         return ResRecordManager.getInstance().isEglContextReleased(this);
+    }
+
+    public void releaseJavaStacktrace() {
+        if (javatrace != null) {
+            this.javatrace.reduceReference();
+            this.javatrace = null;
+        }
     }
 
     @Override

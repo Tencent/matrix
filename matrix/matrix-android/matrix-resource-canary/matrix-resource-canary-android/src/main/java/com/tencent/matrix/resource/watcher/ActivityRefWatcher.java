@@ -250,8 +250,6 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher {
 
 //            final WeakReference<Object[]> sentinelRef = new WeakReference<>(new Object[1024 * 1024]); // alloc big object
             triggerGc();
-            triggerGc();
-            triggerGc();
 //            if (sentinelRef.get() != null) {
 //                // System ignored our gc request, we will retry later.
 //                MatrixLog.d(TAG, "system ignore our gc request, wait for next detection.");
@@ -296,14 +294,12 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher {
                     throw new NullPointerException("LeakProcessor not found!!!");
                 }
 
-                triggerGc();
                 if (mLeakProcessor.process(destroyedActivityInfo)) {
                     MatrixLog.i(TAG, "the leaked activity [%s] with key [%s] has been processed. stop polling", destroyedActivityInfo.mActivityName, destroyedActivityInfo.mKey);
                     infoIt.remove();
                 }
             }
 
-            triggerGc();
             return Status.RETRY;
         }
     };
@@ -320,7 +316,16 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher {
         return mDestroyedActivityInfos;
     }
 
+    private long lastTriggeredTime = 0;
+
     public void triggerGc() {
+        long current = System.currentTimeMillis();
+        if (mDumpHprofMode == ResourceConfig.DumpMode.NO_DUMP
+                && current - lastTriggeredTime < getResourcePlugin().getConfig().getScanIntervalMillis() / 2 - 100) {
+            MatrixLog.v(TAG, "skip triggering gc for frequency");
+            return;
+        }
+        lastTriggeredTime = current;
         MatrixLog.v(TAG, "triggering gc...");
         Runtime.getRuntime().gc();
         try {

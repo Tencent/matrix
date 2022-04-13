@@ -13,18 +13,65 @@ import android.os.Bundle
 import android.os.Process
 import android.text.TextUtils
 import androidx.lifecycle.*
-import com.tencent.matrix.lifecycle.ISerialObserver
-import com.tencent.matrix.lifecycle.IStatefulOwner
-import com.tencent.matrix.lifecycle.MatrixLifecycleThread
-import com.tencent.matrix.lifecycle.StatefulOwner
+import com.tencent.matrix.lifecycle.*
 import com.tencent.matrix.listeners.IAppForeground
 import com.tencent.matrix.util.*
 import java.util.*
-import kotlin.collections.HashMap
 
-object ProcessUICreatedStateOwner: IStatefulOwner by ProcessUILifecycleOwner.createdStateOwner
-object ProcessUIStartedStateOwner: IStatefulOwner by ProcessUILifecycleOwner.startedStateOwner
-object ProcessUIResumedStateOwner: IStatefulOwner by ProcessUILifecycleOwner.resumedStateOwner
+/**
+ * Usage:
+ * recommended readable APIs:
+ *      ProcessUIStartedStateOwner.isForeground()
+ *      ProcessUIStartedStateOwner.addLifecycleCallback(object : IMatrixLifecycleCallback() {
+ *           override fun onForeground() {}
+ *           override fun onBackground() {}
+ *      })
+ *      // auto remove callback when lifecycle destroyed
+ *      ProcessUIStartedStateOwner.addLifecycleCallback(lifecycleOwner, object : IMatrixLifecycleCallback() {
+ *           override fun onForeground() {}
+ *           override fun onBackground() {}
+ *      })
+ *
+ * the origin abstract APIs are also available:
+ *      ProcessUIStartedStateOwner.active() // return true when state ON, in other words, it is foreground now
+ *      ProcessUIStartedStateOwner.observeForever(object : IStateObserver {
+ *          override fun on() {} // entered the state, in other words, turned foreground
+ *          override fun off() {} // exit the state, in other words, turned background
+ *      })
+ *      // auto remove callback when lifecycle destroyed
+ *      ProcessUIStartedStateOwner.observeForeverWithLifecycle(lifecycleOwner, object : IStateObserver {
+ *          override fun on() {}
+ *          override fun off() {}
+ *      })
+ *
+ * State-ON:
+ *  any Activity started
+ * State-OFF:
+ *  all Activity stopped
+ */
+object ProcessUIStartedStateOwner: IForegroundStatefulOwner by ProcessUILifecycleOwner.startedStateOwner
+
+/**
+ * API:
+ * similar to [ProcessUIStartedStateOwner]
+ *
+ * State-ON:
+ *  any Activity created
+ * State-OFF:
+ *  all Activity destroyed
+ */
+object ProcessUICreatedStateOwner: IForegroundStatefulOwner by ProcessUILifecycleOwner.createdStateOwner
+
+/**
+ * API:
+ * similar to [ProcessUIStartedStateOwner]
+ *
+ * State-ON:
+ *  any Activity resumed
+ * State-OFF:
+ *  all Activity paused
+ */
+object ProcessUIResumedStateOwner: IForegroundStatefulOwner by ProcessUILifecycleOwner.resumedStateOwner
 
 /**
  * multi process version of [androidx.lifecycle.ProcessLifecycleOwner]
@@ -34,7 +81,9 @@ object ProcessUIResumedStateOwner: IStatefulOwner by ProcessUILifecycleOwner.res
  *
  * Activity's lifecycle callback is not always reliable and compatible. onStop might be called
  * without calling onStart or onResume, or onResume might be called more than once but stop once
- * only. For these wired cases we don't use simple counter here.
+ * only. And for some tabs or special devices, It is possible to show more than two Activity
+ * at the same time.
+ * For these unusual cases we don't use simple counter here.
  *
  * Created by Yves on 2021/9/14
  */
@@ -86,7 +135,7 @@ object ProcessUILifecycleOwner {
     private var pauseSent = true
     private var stopSent = true
 
-    private open class AsyncOwner : StatefulOwner() {
+    private open class AsyncOwner : StatefulOwner(), IForegroundStatefulOwner {
         open fun turnOnAsync() = turnOn()
         open fun turnOffAsync() = turnOff()
     }
@@ -97,9 +146,9 @@ object ProcessUILifecycleOwner {
         }
     }
 
-    internal val createdStateOwner: StatefulOwner = CreatedStateOwner()
-    internal val resumedStateOwner: StatefulOwner = AsyncOwner()
-    internal val startedStateOwner: StatefulOwner = AsyncOwner()
+    internal val createdStateOwner: IForegroundStatefulOwner = CreatedStateOwner()
+    internal val resumedStateOwner: IForegroundStatefulOwner = AsyncOwner()
+    internal val startedStateOwner: IForegroundStatefulOwner = AsyncOwner()
 
     internal interface OnSceneChangedListener {
         fun onSceneChanged(newScene: String, origin: String)
@@ -268,6 +317,7 @@ object ProcessUILifecycleOwner {
             throw IllegalStateException("NOT initialized yet")
         }
         return safeLet(TAG, defVal = false) {
+            @Suppress("DEPRECATION")
             activityManager!!.getRunningServices(Int.MAX_VALUE)
                 .filter {
                     it.uid == Process.myUid() && it.pid == Process.myPid()
@@ -293,7 +343,7 @@ object ProcessUILifecycleOwner {
             return true
         }
 
-        return process == componentToProcess.getOrPut(component.className, {
+        return process == componentToProcess.getOrPut(component.className) {
             val info = activityInfoArray!!.find { it.name == component.className }
             if (info == null) {
                 MatrixLog.e(TAG, "got task info not appeared in package manager $info")
@@ -301,7 +351,7 @@ object ProcessUILifecycleOwner {
             } else {
                 info.processName
             }
-        })
+        }
     }
 
     private fun ActivityManager.RecentTaskInfo.belongsTo(processName: String?): Boolean {
@@ -347,6 +397,7 @@ object ProcessUILifecycleOwner {
                                 it.taskInfo.numActivities > 0
                             }
                             else -> {
+                                @Suppress("DEPRECATION")
                                 it.taskInfo.id == -1 // // If it is not running, this will be -1
                             }
                         }

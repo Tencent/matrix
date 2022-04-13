@@ -1,9 +1,8 @@
 package com.tencent.matrix.memory.canary.monitor
 
+import com.tencent.matrix.lifecycle.IBackgroundStatefulOwner
 import com.tencent.matrix.lifecycle.IStateObserver
-import com.tencent.matrix.lifecycle.owners.IBackgroundStatefulOwner
 import com.tencent.matrix.lifecycle.supervisor.AppStagedBackgroundOwner
-import com.tencent.matrix.lifecycle.supervisor.ProcessSupervisor
 import com.tencent.matrix.memory.canary.MemInfo
 import com.tencent.matrix.util.MatrixHandlerThread
 import com.tencent.matrix.util.MatrixLog

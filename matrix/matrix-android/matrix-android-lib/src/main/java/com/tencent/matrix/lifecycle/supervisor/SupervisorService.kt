@@ -31,6 +31,10 @@ class SupervisorService : Service() {
                 MatrixLog.e(TAG, "duplicated start")
                 return@safeApply
             }
+            if (true != ProcessSupervisor.config?.enable) {
+                MatrixLog.e(TAG, "supervisor was disabled")
+                return@safeApply
+            }
             val intent = Intent(context, SupervisorService::class.java)
             context.startService(intent)
         }
@@ -74,13 +78,18 @@ class SupervisorService : Service() {
         ) {
             val pid = Binder.getCallingPid()
 
+            if (true != ProcessSupervisor.config?.enable) {
+                MatrixLog.e(TAG, "supervisor was disabled")
+                return
+            }
+
             runningHandler.post {
                 MatrixLog.d(
                     TAG,
                     "supervisor called register, tokens(${tokens.size}): ${tokens.contentToString()}"
                 )
 
-                tokens.first().apply {
+                tokens.first().safeApply(TAG) {
                     tokenRecord.addToken(this)
                     ProcessSubordinate.manager.addProxy(this, subordinateProxy)
                     backgroundProcessLru.moveOrAddFirst(this)
@@ -89,25 +98,23 @@ class SupervisorService : Service() {
                         "CREATED: [${this.pid}-${name}] -> [${backgroundProcessLru.size}]${backgroundProcessLru.contentToString()}"
                     )
 
-                    safeApply(TAG) {
-                        linkToDeath {
-                            safeApply(TAG) {
-                                val dead = tokenRecord.removeToken(pid)
-                                val lruRemoveSuccess = backgroundProcessLru.remove(dead)
-                                ProcessSubordinate.manager.removeProxy(dead)
-                                val proxyRemoveSuccess =
-                                    RemoteProcessLifecycleProxy.removeProxy(dead)
-                                ProcessSubordinate.manager.dispatchDeath(
-                                    recentScene,
-                                    dead.name,
-                                    dead.pid,
-                                    !lruRemoveSuccess && !proxyRemoveSuccess
-                                )
-                                MatrixLog.i(
-                                    TAG,
-                                    "$pid-$dead was dead. is LRU kill? ${!lruRemoveSuccess && !proxyRemoveSuccess}"
-                                )
-                            }
+                    linkToDeath {
+                        safeApply(TAG) {
+                            val dead = tokenRecord.removeToken(pid)
+                            val lruRemoveSuccess = backgroundProcessLru.remove(dead)
+                            ProcessSubordinate.manager.removeProxy(dead)
+                            val proxyRemoveSuccess =
+                                RemoteProcessLifecycleProxy.removeProxy(dead)
+                            ProcessSubordinate.manager.dispatchDeath(
+                                recentScene,
+                                dead.name,
+                                dead.pid,
+                                !lruRemoveSuccess && !proxyRemoveSuccess
+                            )
+                            MatrixLog.i(
+                                TAG,
+                                "$pid-$dead was dead. is LRU kill? ${!lruRemoveSuccess && !proxyRemoveSuccess}"
+                            )
                         }
                     }
                 }
@@ -132,6 +139,10 @@ class SupervisorService : Service() {
         }
 
         override fun onStateChanged(token: ProcessToken) {
+            if (true != ProcessSupervisor.config?.enable) {
+                MatrixLog.e(TAG, "supervisor was disabled")
+                return
+            }
             runningHandler.post {
                 MatrixLog.i(
                     TAG,
@@ -143,6 +154,10 @@ class SupervisorService : Service() {
         }
 
         private fun onProcessStateChanged(token: ProcessToken) {
+            if (true != ProcessSupervisor.config?.enable) {
+                MatrixLog.e(TAG, "supervisor was disabled")
+                return
+            }
             if (ProcessSupervisor.EXPLICIT_BACKGROUND_OWNER == token.statefulName) {
                 if (token.state) {
                     backgroundProcessLru.moveOrAddFirst(token)
@@ -161,10 +176,18 @@ class SupervisorService : Service() {
         }
 
         override fun onSceneChanged(scene: String) {
+            if (true != ProcessSupervisor.config?.enable) {
+                MatrixLog.e(TAG, "supervisor was disabled")
+                return
+            }
             SupervisorService.recentScene = scene
         }
 
         override fun onProcessKilled(token: ProcessToken) {
+            if (true != ProcessSupervisor.config?.enable) {
+                MatrixLog.e(TAG, "supervisor was disabled")
+                return
+            }
             runningHandler.post {
                 safeApply(TAG) {
                     targetKilledCallback?.invoke(LRU_KILL_SUCCESS, token.name, token.pid)
@@ -179,6 +202,10 @@ class SupervisorService : Service() {
         }
 
         override fun onProcessRescuedFromKill(token: ProcessToken) {
+            if (true != ProcessSupervisor.config?.enable) {
+                MatrixLog.e(TAG, "supervisor was disabled")
+                return
+            }
             runningHandler.post {
                 safeApply(TAG) {
                     targetKilledCallback?.invoke(LRU_KILL_RESCUED, token.name, token.pid)
@@ -187,6 +214,10 @@ class SupervisorService : Service() {
         }
 
         override fun onProcessKillCanceled(token: ProcessToken) {
+            if (true != ProcessSupervisor.config?.enable) {
+                MatrixLog.e(TAG, "supervisor was disabled")
+                return
+            }
             runningHandler.post {
                 safeApply(TAG) {
                     targetKilledCallback?.invoke(LRU_KILL_CANCELED, token.name, token.pid)
@@ -194,7 +225,12 @@ class SupervisorService : Service() {
             }
         }
 
-        override fun getRecentScene() = SupervisorService.recentScene
+        override fun getRecentScene() = if (true != ProcessSupervisor.config?.enable) {
+            MatrixLog.e(TAG, "supervisor was disabled")
+            ""
+        } else {
+            SupervisorService.recentScene
+        }
     }
 
     override fun onCreate() {
@@ -204,6 +240,10 @@ class SupervisorService : Service() {
         isSupervisor = true
         instance = this
 
+        if (true != ProcessSupervisor.config?.enable) {
+            MatrixLog.e(TAG, "supervisor was disabled")
+            return
+        }
 
         DispatcherStateOwner.observe { stateName, state ->
             if (tokenRecord.isEmpty()) {
@@ -230,6 +270,10 @@ class SupervisorService : Service() {
     internal fun backgroundLruKill(
         killedCallback: (result: Int, process: String?, pid: Int) -> Unit
     ) {
+        if (true != ProcessSupervisor.config?.enable) {
+            MatrixLog.e(TAG, "supervisor was disabled")
+            return
+        }
         if (!isSupervisor) {
             throw IllegalStateException("backgroundLruKill should only be called in supervisor")
         }
