@@ -26,6 +26,7 @@ public class ResRecordManager {
     private final List<Callback> mCallbackList = new LinkedList<>();
     private final List<OpenGLInfo> mInfoList = new LinkedList<>();
     private final List<Long> mReleaseContext = new LinkedList<>();
+    private final List<Long> mReleaseSurface = new LinkedList<>();
 
     private ResRecordManager() {
 
@@ -197,6 +198,50 @@ public class ResRecordManager {
         }
     }
 
+    public boolean isEglSurfaceReleased(OpenGLInfo info) {
+        synchronized (mReleaseSurface) {
+            long eglDrawSurface = info.getEglDrawSurface();
+            long eglReadSurface = info.getEglReadSurface();
+
+            boolean drawRelease = false;
+            boolean readRelease = false;
+
+            if (eglReadSurface == 0L || eglDrawSurface == 0L) {
+                return true;
+            }
+
+            for (long item : mReleaseSurface) {
+                if (item == eglReadSurface) {
+                    readRelease = true;
+                }
+
+                if (item == eglDrawSurface) {
+                    drawRelease = true;
+                }
+            }
+
+            if (readRelease && drawRelease) {
+                return true;
+            }
+
+            if (!readRelease) {
+                readRelease = !OpenGLHook.isEglSurfaceAlive(eglReadSurface);
+            }
+
+            if (!drawRelease) {
+                drawRelease = !OpenGLHook.isEglSurfaceAlive(eglDrawSurface);
+            }
+
+            if (readRelease) {
+                mReleaseSurface.add(eglReadSurface);
+            }
+            if (drawRelease) {
+                mReleaseSurface.add(eglDrawSurface);
+            }
+            return readRelease && drawRelease;
+        }
+    }
+
     public List<OpenGLInfo> getAllItem() {
         List<OpenGLInfo> retList = new LinkedList<>();
 
@@ -234,6 +279,8 @@ public class ResRecordManager {
         AutoWrapBuilder result = new AutoWrapBuilder();
         for (OpenGLDumpInfo report : resList) {
             result.append(String.format(" alloc count = %d", report.getAllocCount()))
+                    .append(String.format(" egl context is release = %s", report.innerInfo.isEglContextReleased()))
+                    .append(String.format(" egl surface is release = %s", report.innerInfo.isEglSurfaceRelease()))
                     .append(String.format(" total size = %s", report.getTotalSize()))
                     .append(String.format(" id = %s", report.getAllocIdList()))
                     .append(String.format(" activity = %s", report.innerInfo.getActivityInfo().name))
@@ -268,8 +315,10 @@ public class ResRecordManager {
             int memoryJavaHash = memoryInfo == null ? 0 : memoryInfo.getJavaStack().hashCode();
             int memoryNativeHash = memoryInfo == null ? 0 : memoryInfo.getNativeStack().hashCode();
 
+            int isEGLRelease = info.isEglContextReleased() ? 1 : 0;
+
             long infoHash = javaHash + nativeHash + memoryNativeHash + memoryJavaHash
-                    + info.getEglContextNativeHandle() + info.getActivityInfo().hashCode() + info.getThreadId().hashCode();
+                    + info.getEglContextNativeHandle() + info.getActivityInfo().hashCode() + info.getThreadId().hashCode() + isEGLRelease;
 
             OpenGLDumpInfo oldInfo = infoMap.get(infoHash);
             if (oldInfo == null) {
@@ -281,8 +330,9 @@ public class ResRecordManager {
                 boolean isSameThread = info.getThreadId().equals(oldInfo.innerInfo.getThreadId());
                 boolean isSameEglContext = info.getEglContextNativeHandle() == oldInfo.innerInfo.getEglContextNativeHandle();
                 boolean isSameActivity = info.getActivityInfo().equals(oldInfo.innerInfo.getActivityInfo());
+                boolean isSameEGLStatus = info.isEglContextReleased() == oldInfo.innerInfo.isEglContextReleased();
 
-                if (isSameType && isSameThread && isSameEglContext && isSameActivity) {
+                if (isSameType && isSameThread && isSameEglContext && isSameActivity && isSameEGLStatus) {
                     oldInfo.incAllocRecord(info.getId());
                     if (oldInfo.innerInfo.getMemoryInfo() != null) {
                         oldInfo.appendParamsInfos(info.getMemoryInfo());
