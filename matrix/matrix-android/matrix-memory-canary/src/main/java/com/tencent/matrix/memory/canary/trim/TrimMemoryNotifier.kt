@@ -147,41 +147,52 @@ object TrimMemoryNotifier {
         })
     }
 
-    @Synchronized
     fun addProcessBackgroundTrimCallback(callback: TrimCallback) {
-        procTrimCallbacks.add(callback)
+        synchronized(procTrimCallbacks) {
+            procTrimCallbacks.add(callback)
+        }
     }
 
-    @Synchronized
     fun addProcessBackgroundTrimCallback(lifecycleOwner: LifecycleOwner, callback: TrimCallback) {
-        procTrimCallbacks.add(callback)
+        synchronized(procTrimCallbacks) {
+            procTrimCallbacks.add(callback)
+        }
         lifecycleOwner.lifecycle.addObserver(object : LifecycleObserver {
             @OnLifecycleEvent(Lifecycle.Event.ON_DESTROY)
             fun release() {
-                procTrimCallbacks.remove(callback)
+                synchronized(procTrimCallbacks) {
+                    procTrimCallbacks.remove(callback)
+                }
             }
         })
     }
 
-    @Synchronized
     fun addAppBackgroundTrimCallback(callback: TrimCallback) {
-        appTrimCallbacks.add(callback)
+        synchronized(appTrimCallbacks) {
+            appTrimCallbacks.add(callback)
+        }
     }
 
-    @Synchronized
     fun addAppBackgroundTrimCallback(lifecycleOwner: LifecycleOwner, callback: TrimCallback) {
-        appTrimCallbacks.add(callback)
+        synchronized(appTrimCallbacks) {
+            appTrimCallbacks.add(callback)
+        }
         lifecycleOwner.lifecycle.addObserver(object : LifecycleObserver {
             @OnLifecycleEvent(Lifecycle.Event.ON_DESTROY)
             fun release() {
-                appTrimCallbacks.remove(callback)
+                synchronized(appTrimCallbacks) {
+                    appTrimCallbacks.remove(callback)
+                }
             }
         })
     }
 
-    @Synchronized
     fun removeTrimCallback(callback: TrimCallback) {
-        procTrimCallbacks.remove(callback)
-        appTrimCallbacks.remove(callback)
+        synchronized(procTrimCallbacks) {
+            procTrimCallbacks.remove(callback)
+        }
+        synchronized(appTrimCallbacks) {
+            appTrimCallbacks.remove(callback)
+        }
     }
 }
