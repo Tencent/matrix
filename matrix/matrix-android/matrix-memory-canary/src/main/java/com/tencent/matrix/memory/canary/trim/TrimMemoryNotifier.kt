@@ -70,16 +70,22 @@ object TrimMemoryNotifier {
 
         Matrix.with().application.registerComponentCallbacks(object : ComponentCallbacks2 {
             override fun onLowMemory() {
-                MatrixLog.e(TAG, "onLowMemory")
-                procTrimCallbacks.systemTrim(ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL)
-                appTrimCallbacks.systemTrim(ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL)
+                MatrixLog.e(TAG, "onLowMemory post")
+                MatrixHandlerThread.getDefaultHandler().post {
+                    MatrixLog.e(TAG, "onLowMemory")
+                    procTrimCallbacks.systemTrim(ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL)
+                    appTrimCallbacks.systemTrim(ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL)
+                }
             }
 
             override fun onTrimMemory(level: Int) {
                 if (level <= ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL) {
-                    MatrixLog.e(TAG, "onTrimMemory: $level")
-                    procTrimCallbacks.systemTrim(level)
-                    appTrimCallbacks.systemTrim(level)
+                    MatrixLog.e(TAG, "onTrimMemory post: $level")
+                    MatrixHandlerThread.getDefaultHandler().post {
+                        MatrixLog.e(TAG, "onTrimMemory: $level")
+                        procTrimCallbacks.systemTrim(level)
+                        appTrimCallbacks.systemTrim(level)
+                    }
                 }
             }
 
