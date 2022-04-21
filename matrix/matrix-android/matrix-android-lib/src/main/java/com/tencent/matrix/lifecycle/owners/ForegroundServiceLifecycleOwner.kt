@@ -146,13 +146,12 @@ object ForegroundServiceLifecycleOwner : StatefulOwner() {
         private val fgServiceRecord by lazy { HashSet<ComponentName>() }
 
         override fun invoke(proxy: Any?, method: Method?, vararg args: Any?): Any? {
-            MatrixLog.d(TAG, "hack invoked : ${method?.name}, ${args.contentToString()}")
             return try {
                 val ret = method?.invoke(origin, *args)
 
                 if (method?.name == "setServiceForeground") {
                     MatrixLog.i(TAG, "real invoked setServiceForeground: ${args.contentToString()}")
-                    if (args.size == 6 && args[3] == null) {
+                    if (args.size > 3 && args[3] == null) {
                         onStopForeground(args[0] as ComponentName)
                     } else {
                         onStartForeground(args[0] as ComponentName)
