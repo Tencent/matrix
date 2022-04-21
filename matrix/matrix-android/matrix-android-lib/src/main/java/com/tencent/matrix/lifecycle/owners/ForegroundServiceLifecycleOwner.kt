@@ -151,7 +151,7 @@ object ForegroundServiceLifecycleOwner : StatefulOwner() {
                 val ret = method?.invoke(origin, *args)
 
                 if (method?.name == "setServiceForeground") {
-                    MatrixLog.d(TAG, "real invoked setServiceForeground")
+                    MatrixLog.i(TAG, "real invoked setServiceForeground: ${args.contentToString()}")
                     if (args.size == 6 && args[3] == null) {
                         onStopForeground(args[0] as ComponentName)
                     } else {
