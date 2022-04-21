@@ -60,6 +60,7 @@ public class ActivityRecorder implements Application.ActivityLifecycleCallbacks 
     @Override
     public void onActivityResumed(@NonNull Activity activity) {
         currentActivityInfo = new ActivityInfo(activity.hashCode(), activity.getLocalClassName());
+        OpenGLHook.getInstance().updateCurrActivity(currentActivityInfo.toString());
     }
 
     @Override
