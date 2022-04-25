@@ -149,12 +149,15 @@ class NativeForkAnalyzeProcessor(watcher: ActivityRefWatcher) : BaseLeakProcesso
                         }
                         if (result.mLeakFound) {
                             watcher.markPublished(activity, false)
-                            publishIssue(
-                                SharePluginInfo.IssueType.LEAK_FOUND,
-                                ResourceConfig.DumpMode.FORK_ANALYSE,
-                                activity, key, result.toString(),
-                                result.mAnalysisDurationMs.toString(), retryCount
-                            )
+                            result.toString().let {
+                                publishIssue(
+                                    SharePluginInfo.IssueType.LEAK_FOUND,
+                                    ResourceConfig.DumpMode.FORK_ANALYSE,
+                                    activity, key, it,
+                                    result.mAnalysisDurationMs.toString(), retryCount
+                                )
+                                MatrixLog.i(TAG, "retry leak found: $it")
+                            }
                         } else if (result.mFailure != null) {
                             historyFailure.add(result.mFailure.toString())
                             publishIssue(
@@ -219,11 +222,14 @@ class NativeForkAnalyzeProcessor(watcher: ActivityRefWatcher) : BaseLeakProcesso
         } else {
             if (result.mLeakFound) {
                 watcher.markPublished(activity, false)
-                publishIssue(
-                    SharePluginInfo.IssueType.LEAK_FOUND,
-                    ResourceConfig.DumpMode.FORK_ANALYSE,
-                    activity, key, result.toString(), result.mAnalysisDurationMs.toString()
-                )
+                result.toString().let {
+                    publishIssue(
+                        SharePluginInfo.IssueType.LEAK_FOUND,
+                        ResourceConfig.DumpMode.FORK_ANALYSE,
+                        activity, key, it, result.mAnalysisDurationMs.toString()
+                    )
+                    MatrixLog.i(TAG, "leak found: $it")
+                }
             }
         }
 
