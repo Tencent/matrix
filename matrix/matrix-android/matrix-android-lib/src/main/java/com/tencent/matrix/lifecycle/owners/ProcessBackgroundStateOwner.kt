@@ -12,14 +12,14 @@ private const val MAX_CHECK_TIMES = 20
  * Usage:
  *  recommended readable APIs:
  *      ProcessExplicitBackgroundOwner.isBackground()
- *      ProcessExplicitBackgroundOwner.addLifecycleCallback(object : IMatrixLifecycleCallback() {
- *           override fun onForeground() {}
- *           override fun onBackground() {}
+ *      ProcessExplicitBackgroundOwner.addLifecycleCallback(object : IMatrixBackgroundCallback() {
+ *           override fun onExitBackground() {}
+ *           override fun onEnterBackground() {}
  *      })
  *      // auto remove callback when lifecycle destroyed
- *      ProcessExplicitBackgroundOwner.addLifecycleCallback(lifecycleOwner, object : IMatrixLifecycleCallback() {
- *           override fun onForeground() {}
- *           override fun onBackground() {}
+ *      ProcessExplicitBackgroundOwner.addLifecycleCallback(lifecycleOwner, object : IMatrixBackgroundCallback() {
+ *           override fun onExitBackground() {}
+ *           override fun onEnterBackground() {}
  *      })
  *
  *  the origin abstract APIs are also available:

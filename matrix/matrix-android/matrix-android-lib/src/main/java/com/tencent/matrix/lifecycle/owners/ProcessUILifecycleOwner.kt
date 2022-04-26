@@ -22,14 +22,14 @@ import java.util.*
  * Usage:
  * recommended readable APIs:
  *      ProcessUIStartedStateOwner.isForeground()
- *      ProcessUIStartedStateOwner.addLifecycleCallback(object : IMatrixLifecycleCallback() {
- *           override fun onForeground() {}
- *           override fun onBackground() {}
+ *      ProcessUIStartedStateOwner.addLifecycleCallback(object : IMatrixForegroundCallback() {
+ *           override fun onEnterForeground() {}
+ *           override fun onExitForeground() {}
  *      })
  *      // auto remove callback when lifecycle destroyed
- *      ProcessUIStartedStateOwner.addLifecycleCallback(lifecycleOwner, object : IMatrixLifecycleCallback() {
- *           override fun onForeground() {}
- *           override fun onBackground() {}
+ *      ProcessUIStartedStateOwner.addLifecycleCallback(lifecycleOwner, object : IMatrixForegroundCallback() {
+ *           override fun onEnterForeground() {}
+ *           override fun onExitForeground() {}
  *      })
  *
  * the origin abstract APIs are also available:
