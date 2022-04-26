@@ -6,6 +6,7 @@ import android.os.DeadObjectException
 import android.os.Process
 import android.text.TextUtils
 import com.tencent.matrix.lifecycle.MatrixLifecycleThread
+import com.tencent.matrix.lifecycle.owners.ForegroundServiceLifecycleOwner
 import com.tencent.matrix.lifecycle.owners.OverlayWindowLifecycleOwner
 import com.tencent.matrix.lifecycle.owners.ProcessUILifecycleOwner
 import com.tencent.matrix.util.*
@@ -198,7 +199,7 @@ internal object ProcessSubordinate {
 
                     MatrixLifecycleThread.handler.postDelayed({
                         if (!ProcessUILifecycleOwner.startedStateOwner.active()
-                            && !ProcessUILifecycleOwner.hasForegroundService()
+                            && !ForegroundServiceLifecycleOwner.hasForegroundService()
                             && !OverlayWindowLifecycleOwner.hasVisibleWindow()
                         ) {
                             safeApply(TAG) {

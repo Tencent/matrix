@@ -67,7 +67,7 @@ object ProcessExplicitBackgroundOwner : StatefulOwner(), IBackgroundStatefulOwne
     private val checkTask = object : TimerChecker(TAG, maxCheckInterval) {
         override fun action(): Boolean {
             val uiForeground by lazy { ProcessUIStartedStateOwner.active() }
-            val fgService by lazy { ProcessUILifecycleOwner.hasForegroundService() }
+            val fgService by lazy { ForegroundServiceLifecycleOwner.hasForegroundService() }
             val visibleWindow by lazy { OverlayWindowLifecycleOwner.hasVisibleWindow() }
 
             if (uiForeground) {

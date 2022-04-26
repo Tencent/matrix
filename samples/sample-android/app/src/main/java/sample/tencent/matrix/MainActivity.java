@@ -181,8 +181,16 @@ public class MainActivity extends AppCompatActivity {
         startService(intent);
     }
 
+    private boolean startedFgService = false;
+
     public void testFgService(View view) {
-        TestFgService.test(this);
+        if (!startedFgService) {
+            TestFgService.testStart(this);
+            startedFgService = true;
+        } else {
+            TestFgService.testStop(this);
+            startedFgService = false;
+        }
     }
 
     public void testOverlayWindow(View view) {

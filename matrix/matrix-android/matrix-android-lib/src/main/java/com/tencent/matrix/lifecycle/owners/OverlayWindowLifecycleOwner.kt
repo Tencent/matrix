@@ -7,9 +7,10 @@ import android.os.Looper
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
-import com.tencent.matrix.lifecycle.MatrixLifecycleThread
 import com.tencent.matrix.lifecycle.StatefulOwner
 import com.tencent.matrix.util.*
+
+private const val SDK_GUARD = 32
 
 /**
  * Created by Yves on 2021/12/30
@@ -33,8 +34,12 @@ object OverlayWindowLifecycleOwner : StatefulOwner() {
         }
     }
 
-    internal fun init() {
-        if (Build.VERSION.SDK_INT > 31) { // for safety
+    internal fun init(enable: Boolean) {
+        if (!enable) {
+            MatrixLog.i(TAG, "disabled")
+            return
+        }
+        if (Build.VERSION.SDK_INT > SDK_GUARD) { // for safety
             MatrixLog.e(TAG, "NOT support for api-level ${Build.VERSION.SDK_INT} yet!!!")
             return
         }

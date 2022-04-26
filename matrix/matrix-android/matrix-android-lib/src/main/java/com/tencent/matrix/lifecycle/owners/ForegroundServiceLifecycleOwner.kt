@@ -13,12 +13,13 @@ import android.util.ArrayMap
 import com.tencent.matrix.lifecycle.StatefulOwner
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.safeApply
+import com.tencent.matrix.util.safeLet
 import com.tencent.matrix.util.safeLetOrNull
 import java.lang.reflect.InvocationHandler
 import java.lang.reflect.Method
 import java.lang.reflect.Proxy
 
-private val SDK_GUARD = 31
+private const val SDK_GUARD = 32
 
 /**
  * Created by Yves on 2021/11/30
@@ -28,6 +29,7 @@ object ForegroundServiceLifecycleOwner : StatefulOwner() {
     private const val TAG = "Matrix.lifecycle.FgService"
 
     private const val CREATE_SERVICE = 114
+    private const val STOP_SERVICE = 116
 
     @SuppressLint("DiscouragedPrivateApi")
     private val fieldServicemActivityManager = safeLetOrNull(TAG) {
@@ -41,12 +43,16 @@ object ForegroundServiceLifecycleOwner : StatefulOwner() {
 
     private var fgServiceHandler: FgServiceHandler? = null
 
-    fun init(context: Context) {
+    fun init(context: Context, enable: Boolean) {
+        activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        if (!enable) {
+            MatrixLog.i(TAG, "disabled")
+            return
+        }
         if (Build.VERSION.SDK_INT > SDK_GUARD) { // for safety
             MatrixLog.e(TAG, "NOT support for api-level ${Build.VERSION.SDK_INT} yet!!!")
             return
         }
-        activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
         inject()
     }
 
@@ -82,6 +88,25 @@ object ForegroundServiceLifecycleOwner : StatefulOwner() {
         }
     }
 
+    fun hasForegroundService(): Boolean {
+        if (activityManager == null) {
+            throw IllegalStateException("NOT initialized yet")
+        }
+        return safeLet(TAG, defVal = false) {
+            @Suppress("DEPRECATION")
+            activityManager!!.getRunningServices(Int.MAX_VALUE)
+                .filter {
+                    it.uid == Process.myUid() && it.pid == Process.myPid()
+                }.any {
+                    it.foreground
+                }
+        }.also {
+            if (!it) {
+                fgServiceHandler?.clear()
+            }
+        }
+    }
+
     private class HHCallback(private val mHCallback: Handler.Callback?) : Handler.Callback {
 
         private var reentrantFence = false
@@ -97,6 +122,13 @@ object ForegroundServiceLifecycleOwner : StatefulOwner() {
                     ActivityThreadmH?.post {
                         safeApply(TAG) {
                             injectAmIfNeeded()
+                        }
+                    }
+                }
+                STOP_SERVICE -> {
+                    ActivityThreadmH?.post {
+                        safeApply(TAG) {
+                            hasForegroundService()
                         }
                     }
                 }
@@ -165,20 +197,49 @@ object ForegroundServiceLifecycleOwner : StatefulOwner() {
             }
         }
 
-        fun onStartForeground(componentName: ComponentName) = synchronized(fgServiceRecord) {
-            MatrixLog.i(TAG, "hack onStartForeground: $componentName")
-            if (fgServiceRecord.isEmpty()) {
-                MatrixLog.i(TAG, "turn ON")
-                turnOn()
+        fun onStartForeground(componentName: ComponentName) {
+            var shouldTurnOn = false
+            synchronized(fgServiceRecord) {
+                MatrixLog.i(TAG, "hack onStartForeground: $componentName")
+                if (fgServiceRecord.isEmpty()) {
+                    MatrixLog.i(TAG, "should turn ON")
+                    shouldTurnOn = true
+                }
+                fgServiceRecord.add(componentName)
             }
-            fgServiceRecord.add(componentName)
+            if (shouldTurnOn) {
+                MatrixLog.i(TAG, "do turn ON")
+                turnOn() // avoid holding lock of fgServiceRecord
+            }
         }
 
-        fun onStopForeground(componentName: ComponentName) = synchronized(fgServiceRecord){
-            MatrixLog.i(TAG, "hack onStopForeground: $componentName")
-            fgServiceRecord.remove(componentName)
-            if (fgServiceRecord.isEmpty()) {
-                MatrixLog.i(TAG, "turn OFF")
+        fun onStopForeground(componentName: ComponentName) {
+            var shouldTurnOff = false
+            synchronized(fgServiceRecord){
+                MatrixLog.i(TAG, "hack onStopForeground: $componentName")
+                fgServiceRecord.remove(componentName)
+                if (fgServiceRecord.isEmpty()) {
+                    MatrixLog.i(TAG, "should turn OFF")
+                    shouldTurnOff = true
+                }
+            }
+            if (shouldTurnOff) {
+                MatrixLog.i(TAG, "do turn OFF")
+                turnOff()
+            }
+        }
+
+        fun clear() {
+            var needTurnOff = false
+            synchronized(fgServiceRecord) {
+                if (fgServiceRecord.isNotEmpty()) {
+                    fgServiceRecord.clear()
+                    needTurnOff = true
+                    MatrixLog.i(TAG, "clear done, should turn OFF")
+                }
+            }
+            if (needTurnOff) {
+                MatrixLog.i(TAG, "fix clear: do turn OFF")
                 turnOff()
             }
         }

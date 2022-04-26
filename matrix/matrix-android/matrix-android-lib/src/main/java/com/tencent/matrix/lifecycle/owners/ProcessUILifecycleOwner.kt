@@ -311,22 +311,6 @@ object ProcessUILifecycleOwner {
         })
     }
 
-    @JvmStatic
-    fun hasForegroundService(): Boolean {
-        if (activityManager == null) {
-            throw IllegalStateException("NOT initialized yet")
-        }
-        return safeLet(TAG, defVal = false) {
-            @Suppress("DEPRECATION")
-            activityManager!!.getRunningServices(Int.MAX_VALUE)
-                .filter {
-                    it.uid == Process.myUid() && it.pid == Process.myPid()
-                }.any {
-                    it.foreground
-                }
-        }
-    }
-
     private val componentToProcess by lazy { HashMap<String, String>() }
 
     private fun isComponentOfProcess(component: ComponentName?, process: String?): Boolean {

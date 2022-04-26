@@ -59,12 +59,8 @@ class MatrixLifecycleOwnerInitializer {
             }
             MatrixLifecycleThread.init(config.lifecycleThreadConfig)
             ProcessUILifecycleOwner.init(app)
-            if (config.enableFgServiceMonitor) {
-                ForegroundServiceLifecycleOwner.init(app)
-            }
-            if (config.enableOverlayWindowMonitor) {
-                OverlayWindowLifecycleOwner.init()
-            }
+            ForegroundServiceLifecycleOwner.init(app, config.enableFgServiceMonitor)
+            OverlayWindowLifecycleOwner.init(config.enableOverlayWindowMonitor)
         }
 
         @SuppressLint("PrivateApi", "DiscouragedPrivateApi")
