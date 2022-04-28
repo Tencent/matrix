@@ -81,7 +81,7 @@ object ProcessExplicitBackgroundOwner : StatefulOwner(), IBackgroundStatefulOwne
                 turnOn()
                 return false
             }
-            MatrixLog.i(TAG, "turn OFF: fgService=$fgService, visibleView=$visibleWindow")
+            MatrixLog.i(TAG, "turn OFF: fgService=$fgService, visibleView=$visibleWindow, overlay=${OverlayWindowLifecycleOwner.hasOverlayWindow()}")
             turnOff()
             return true
         }
