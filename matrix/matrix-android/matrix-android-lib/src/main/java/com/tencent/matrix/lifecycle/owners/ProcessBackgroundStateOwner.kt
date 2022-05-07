@@ -12,14 +12,14 @@ private const val MAX_CHECK_TIMES = 20
  * Usage:
  *  recommended readable APIs:
  *      ProcessExplicitBackgroundOwner.isBackground()
- *      ProcessExplicitBackgroundOwner.addLifecycleCallback(object : IMatrixLifecycleCallback() {
- *           override fun onForeground() {}
- *           override fun onBackground() {}
+ *      ProcessExplicitBackgroundOwner.addLifecycleCallback(object : IMatrixBackgroundCallback() {
+ *           override fun onExitBackground() {}
+ *           override fun onEnterBackground() {}
  *      })
  *      // auto remove callback when lifecycle destroyed
- *      ProcessExplicitBackgroundOwner.addLifecycleCallback(lifecycleOwner, object : IMatrixLifecycleCallback() {
- *           override fun onForeground() {}
- *           override fun onBackground() {}
+ *      ProcessExplicitBackgroundOwner.addLifecycleCallback(lifecycleOwner, object : IMatrixBackgroundCallback() {
+ *           override fun onExitBackground() {}
+ *           override fun onEnterBackground() {}
  *      })
  *
  *  the origin abstract APIs are also available:
@@ -67,7 +67,7 @@ object ProcessExplicitBackgroundOwner : StatefulOwner(), IBackgroundStatefulOwne
     private val checkTask = object : TimerChecker(TAG, maxCheckInterval) {
         override fun action(): Boolean {
             val uiForeground by lazy { ProcessUIStartedStateOwner.active() }
-            val fgService by lazy { ProcessUILifecycleOwner.hasForegroundService() }
+            val fgService by lazy { ForegroundServiceLifecycleOwner.hasForegroundService() }
             val visibleWindow by lazy { OverlayWindowLifecycleOwner.hasVisibleWindow() }
 
             if (uiForeground) {
@@ -81,7 +81,7 @@ object ProcessExplicitBackgroundOwner : StatefulOwner(), IBackgroundStatefulOwne
                 turnOn()
                 return false
             }
-            MatrixLog.i(TAG, "turn OFF: fgService=$fgService, visibleView=$visibleWindow")
+            MatrixLog.i(TAG, "turn OFF: fgService=$fgService, visibleView=$visibleWindow, overlay=${OverlayWindowLifecycleOwner.hasOverlayWindow()}")
             turnOff()
             return true
         }

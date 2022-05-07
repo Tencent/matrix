@@ -1,5 +1,7 @@
 package sample.tencent.matrix.kt.lifecycle
 
+import com.tencent.matrix.lifecycle.IMatrixBackgroundCallback
+import com.tencent.matrix.lifecycle.IMatrixForegroundCallback
 import com.tencent.matrix.lifecycle.IMatrixLifecycleCallback
 import com.tencent.matrix.lifecycle.IStateObserver
 import com.tencent.matrix.lifecycle.owners.*
@@ -13,50 +15,49 @@ object MatrixLifecycleLogger {
     fun start() {
 
         /********************************* readable api ***************************************/
-
-        ProcessUIResumedStateOwner.addLifecycleCallback(object : IMatrixLifecycleCallback() {
-            override fun onBackground() = MatrixLog.i(TAG, "ProcessUIResumedStateOwner: onBackground")
-            override fun onForeground() = MatrixLog.i(TAG, "ProcessUIResumedStateOwner: onForeground")
+        ProcessUIResumedStateOwner.addLifecycleCallback(object : IMatrixForegroundCallback() {
+            override fun onEnterForeground() = MatrixLog.i(TAG, "ON_PROCESS_UI_RESUMED")
+            override fun onExitForeground() = MatrixLog.i(TAG, "ON_PROCESS_UI_PAUSED")
         })
 
-        ProcessUIStartedStateOwner.addLifecycleCallback(object : IMatrixLifecycleCallback() {
-            override fun onBackground() = MatrixLog.i(TAG, "ProcessUIStartedStateOwner: onBackground")
-            override fun onForeground() = MatrixLog.i(TAG, "ProcessUIStartedStateOwner: onForeground")
+        ProcessUIStartedStateOwner.addLifecycleCallback(object : IMatrixForegroundCallback() {
+            override fun onEnterForeground() = MatrixLog.i(TAG, "ON_PROCESS_UI_STARTED scene: ${ProcessUILifecycleOwner.recentScene}")
+            override fun onExitForeground() = MatrixLog.i(TAG, "ON_PROCESS_UI_STOPPED scene: ${ProcessUILifecycleOwner.recentScene}")
         })
 
-        ProcessExplicitBackgroundOwner.addLifecycleCallback(object : IMatrixLifecycleCallback() {
-            override fun onBackground() = MatrixLog.i(TAG, "ProcessExplicitBackgroundOwner: onBackground")
-            override fun onForeground() = MatrixLog.i(TAG, "ProcessExplicitBackgroundOwner: onForeground")
+        ProcessExplicitBackgroundOwner.addLifecycleCallback(object : IMatrixBackgroundCallback() {
+            override fun onEnterBackground() = MatrixLog.i(TAG, "ON_PROCESS_ENTER_EXPLICIT_BACKGROUND")
+            override fun onExitBackground() = MatrixLog.i(TAG, "ON_PROCESS_EXIT_EXPLICIT_BACKGROUND")
         })
 
-        ProcessStagedBackgroundOwner.addLifecycleCallback(object : IMatrixLifecycleCallback() {
-            override fun onBackground() = MatrixLog.i(TAG, "ProcessStagedBackgroundOwner: onBackground")
-            override fun onForeground() = MatrixLog.i(TAG, "ProcessStagedBackgroundOwner: onForeground")
+        ProcessStagedBackgroundOwner.addLifecycleCallback(object : IMatrixBackgroundCallback() {
+            override fun onEnterBackground() = MatrixLog.i(TAG, "ON_PROCESS_ENTER_STAGED_BACKGROUND")
+            override fun onExitBackground() = MatrixLog.i(TAG, "ON_PROCESS_EXIT_STAGED_BACKGROUND")
         })
 
-        ProcessDeepBackgroundOwner.addLifecycleCallback(object : IMatrixLifecycleCallback() {
-            override fun onBackground() = MatrixLog.i(TAG, "ProcessDeepBackgroundOwner: onBackground")
-            override fun onForeground() = MatrixLog.i(TAG, "ProcessDeepBackgroundOwner: onForeground")
+        ProcessDeepBackgroundOwner.addLifecycleCallback(object : IMatrixBackgroundCallback() {
+            override fun onEnterBackground() = MatrixLog.i(TAG, "ON_PROCESS_ENTER_STAGED_BACKGROUND")
+            override fun onExitBackground() = MatrixLog.i(TAG, "ON_PROCESS_EXIT_STAGED_BACKGROUND")
         })
 
-        AppUIForegroundOwner.addLifecycleCallback(object : IMatrixLifecycleCallback() {
-            override fun onBackground() = MatrixLog.i(TAG, "AppUIForegroundOwner: onBackground")
-            override fun onForeground() = MatrixLog.i(TAG, "AppUIForegroundOwner: onForeground")
+        AppUIForegroundOwner.addLifecycleCallback(object : IMatrixForegroundCallback() {
+            override fun onEnterForeground() = MatrixLog.i(TAG, "ON_APP_UI_ENTER_FOREGROUND scene: ${ProcessSupervisor.getRecentScene()}")
+            override fun onExitForeground() = MatrixLog.i(TAG, "ON_APP_UI_EXIT_FOREGROUND scene: ${ProcessSupervisor.getRecentScene()}")
         })
 
-        AppExplicitBackgroundOwner.addLifecycleCallback(object : IMatrixLifecycleCallback() {
-            override fun onBackground() = MatrixLog.i(TAG, "AppExplicitBackgroundOwner: onBackground")
-            override fun onForeground() = MatrixLog.i(TAG, "AppExplicitBackgroundOwner: onForeground")
+        AppExplicitBackgroundOwner.addLifecycleCallback(object : IMatrixBackgroundCallback() {
+            override fun onExitBackground() = MatrixLog.i(TAG, "ON_APP_EXIT_EXPLICIT_BACKGROUND")
+            override fun onEnterBackground() = MatrixLog.i(TAG, "ON_APP_ENTER_EXPLICIT_BACKGROUND")
         })
 
-        AppDeepBackgroundOwner.addLifecycleCallback(object : IMatrixLifecycleCallback() {
-            override fun onBackground() = MatrixLog.i(TAG, "AppDeepBackgroundOwner: onBackground")
-            override fun onForeground() = MatrixLog.i(TAG, "AppDeepBackgroundOwner: onForeground")
+        AppStagedBackgroundOwner.addLifecycleCallback(object : IMatrixBackgroundCallback() {
+            override fun onExitBackground() = MatrixLog.i(TAG, "ON_APP_EXIT_STAGED_BACKGROUND")
+            override fun onEnterBackground() = MatrixLog.i(TAG, "ON_APP_ENTER_STAGED_BACKGROUND")
         })
 
-        AppStagedBackgroundOwner.addLifecycleCallback(object : IMatrixLifecycleCallback() {
-            override fun onBackground() = MatrixLog.i(TAG, "AppStagedBackgroundOwner: onBackground")
-            override fun onForeground() = MatrixLog.i(TAG, "AppStagedBackgroundOwner: onForeground")
+        AppDeepBackgroundOwner.addLifecycleCallback(object : IMatrixBackgroundCallback() {
+            override fun onExitBackground() = MatrixLog.i(TAG, "ON_APP_EXIT_DEEP_BACKGROUND")
+            override fun onEnterBackground() = MatrixLog.i(TAG, "ON_APP_ENTER_DEEP_BACKGROUND")
         })
 
         /********************************* abstract api ***************************************/
