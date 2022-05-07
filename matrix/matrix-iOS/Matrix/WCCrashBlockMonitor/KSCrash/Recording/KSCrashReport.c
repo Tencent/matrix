@@ -107,6 +107,7 @@ static const char *g_userInfoJSON;
 static KSCrash_IntrospectionRules g_introspectionRules;
 static KSReportWriteCallback g_userSectionWriteCallback;
 static KSReportWritePointThreadCallback g_pointThreadWriteCallback;
+static KSReportWritePointThreadProfileCallback g_pointThreadWriteProfileCallback;
 static KSReportWritePointThreadRepeatNumberCallback g_pointThreadRepeatNumberWriteCallback;
 static KSReportWritePointCpuHighThreadCallback g_pointCpuHighThreadCallback;
 static KSReportWritePointCpuHighThreadCountCallback g_pointCpuHighThreadCountCallback;
@@ -774,14 +775,9 @@ static void writeBacktraceWithCount(const KSCrashReportWriter *const writer, con
                 writer->beginObject(writer, NULL);
                 {
                     if (stackCursor->symbolicate(stackCursor)) {
-                        if (stackCursor->stackEntry.imageName != NULL) {
-                            writer->addStringElement(writer, KSCrashField_ObjectName, ksfu_lastPathEntry(stackCursor->stackEntry.imageName));
-                        }
-                        writer->addUIntegerElement(writer, KSCrashField_ObjectAddr, stackCursor->stackEntry.imageAddress);
                         if (stackCursor->stackEntry.symbolName != NULL) {
                             writer->addStringElement(writer, KSCrashField_SymbolName, stackCursor->stackEntry.symbolName);
                         }
-                        writer->addUIntegerElement(writer, KSCrashField_SymbolAddr, stackCursor->stackEntry.symbolAddress);
                     }
                     writer->addUIntegerElement(writer, KSCrashField_InstructionAddr, stackCursor->stackEntry.address);
                     if (isRepeatCount) {
@@ -1013,22 +1009,31 @@ static void writeThread(const KSCrashReportWriter *const writer,
                         const char *const key,
                         const KSCrash_MonitorContext *const crash,
                         const struct KSMachineContext *const machineContext,
+                        struct KSStackCursor *const pStackCursor,
                         const int threadIndex,
-                        const bool shouldWriteNotableAddresses) {
+                        const bool shouldWriteNotableAddresses,
+                        const bool shouldWriteCpuUsage) {
     bool isCrashedThread = ksmc_isCrashedContext(machineContext);
     KSThread thread = ksmc_getThreadFromContext(machineContext);
     KSLOG_DEBUG("Writing thread %x (index %d). is crashed: %d", thread, threadIndex, isCrashedThread);
 
     KSStackCursor stackCursor;
-    bool hasBacktrace = getStackCursor(crash, machineContext, &stackCursor);
+    if (pStackCursor == NULL) {
+        getStackCursor(crash, machineContext, &stackCursor);
+    } else {
+        stackCursor = *pStackCursor;
+    }
 
     writer->beginObject(writer, key);
     {
-        if (hasBacktrace) {
-            writeBacktrace(writer, KSCrashField_Backtrace, &stackCursor);
-        }
+        writeBacktrace(writer, KSCrashField_Backtrace, &stackCursor);
         if (ksmc_canHaveCPUState(machineContext)) {
             writeRegisters(writer, KSCrashField_Registers, machineContext);
+        }
+        if (shouldWriteCpuUsage) {
+            writer->addFloatingPointElement(writer,
+                                            KSCrashFiled_CPUUsage,
+                                            ksmc_getThreadCpuUsageByIndex(crash->offendingMachineContext, threadIndex));
         }
         writer->addIntegerElement(writer, KSCrashField_Index, threadIndex);
         const char *name = ksccd_getThreadName(thread);
@@ -1120,19 +1125,57 @@ static void writeAllThreads(const KSCrashReportWriter *const writer,
                 writer->endContainer(writer);
             }
         }
-        int threadIndex = 0;
+
         for (int i = 0; i < threadCount; i++) {
             KSThread thread = ksmc_getThreadAtIndex(context, i);
             if (thread == offendingThread) {
-                writeThread(writer, NULL, crash, context, threadIndex, writeNotableAddresses);
+                writeThread(writer, NULL, crash, context, NULL, i, writeNotableAddresses, crash->userException.writeCpuUsage);
             } else {
-                ksmc_getContextForThread(thread, machineContext, false);
-                writeThread(writer, NULL, crash, machineContext, threadIndex, writeNotableAddresses);
+                KSSnapshotStatus snapshotStatus = crash->userException.snapshotStatus;
+                if (snapshotStatus == KSSnapshotSucceeded) {
+                    KSStackCursor stackCursor;
+                    snapshotStatus = kssnapshot_restore(crash->userException.snapshot, i, machineContext, &stackCursor);
+                    if (snapshotStatus == KSSnapshotSucceeded) {
+                        writeThread(writer, NULL, crash, machineContext, &stackCursor, i, writeNotableAddresses, crash->userException.writeCpuUsage);
+                    }
+                }
+
+                if (snapshotStatus != KSSnapshotSucceeded) {
+                    ksmc_getContextForThread(thread, machineContext, false);
+                    writeThread(writer, NULL, crash, machineContext, NULL, i, writeNotableAddresses, crash->userException.writeCpuUsage);
+                }
             }
-            threadIndex++;
         }
     }
     writer->endContainer(writer);
+}
+
+/** Write information about a thread profile to the report.
+ *
+ * @param writer The writer.
+ *
+ * @param key The object key, if needed.
+ *
+ * @param crash The crash handler context.
+ */
+static void writeThreadsProfile(const KSCrashReportWriter *const writer,
+                                const char *const key,
+                                const KSCrash_MonitorContext *const crash) {
+    if (g_pointThreadWriteProfileCallback) {
+        writer->beginArray(writer, key);
+        {
+            writer->beginObject(writer, NULL);
+            {
+                const char *data = g_pointThreadWriteProfileCallback();
+                if (data != NULL) {
+                    writer->addJSONElement(writer, KSCrashField_Profile, data, true);
+                    writer->addIntegerElement(writer, KSCrashField_Index, 0);
+                }
+            }
+            writer->endContainer(writer);
+        }
+        writer->endContainer(writer);
+    }
 }
 
 #pragma mark Global Report Data
@@ -1297,6 +1340,8 @@ static void writeError(const KSCrashReportWriter *const writer, const char *cons
                     if (crash->userException.customStackTrace != NULL) {
                         writer->addJSONElement(writer, KSCrashField_Backtrace, crash->userException.customStackTrace, true);
                     }
+                    writer->addBooleanElement(writer, KSCrashField_SuspendAllThreads, crash->userException.suspendAllThreads);
+                    writer->addIntegerElement(writer, KSCrashField_SnapshotStatus, crash->userException.snapshotStatus);
                 }
                 writer->endContainer(writer);
                 break;
@@ -1441,7 +1486,6 @@ void kscrashreport_writeRecrashReport(const KSCrash_MonitorContext *const monito
     ksccd_freeze();
 
     KSJSONEncodeContext jsonContext;
-    jsonContext.userData = &bufferedWriter;
     KSCrashReportWriter concreteWriter;
     KSCrashReportWriter *writer = &concreteWriter;
     prepareReportWriter(writer, &jsonContext);
@@ -1464,7 +1508,7 @@ void kscrashreport_writeRecrashReport(const KSCrash_MonitorContext *const monito
             ksfu_flushBufferedWriter(&bufferedWriter);
             int threadIndex =
             ksmc_indexOfThread(monitorContext->offendingMachineContext, ksmc_getThreadFromContext(monitorContext->offendingMachineContext));
-            writeThread(writer, KSCrashField_CrashedThread, monitorContext, monitorContext->offendingMachineContext, threadIndex, false);
+            writeThread(writer, KSCrashField_CrashedThread, monitorContext, monitorContext->offendingMachineContext, NULL, threadIndex, false, false);
             ksfu_flushBufferedWriter(&bufferedWriter);
         }
         writer->endContainer(writer);
@@ -1541,7 +1585,6 @@ void kscrashreport_writeStandardReport(const KSCrash_MonitorContext *const monit
     ksccd_freeze();
 
     KSJSONEncodeContext jsonContext;
-    jsonContext.userData = &bufferedWriter;
     KSCrashReportWriter concreteWriter;
     KSCrashReportWriter *writer = &concreteWriter;
     prepareReportWriter(writer, &jsonContext);
@@ -1567,6 +1610,8 @@ void kscrashreport_writeStandardReport(const KSCrash_MonitorContext *const monit
             writeError(writer, KSCrashField_Error, monitorContext);
             ksfu_flushBufferedWriter(&bufferedWriter);
             writeAllThreads(writer, KSCrashField_Threads, monitorContext, g_introspectionRules.enabled);
+            ksfu_flushBufferedWriter(&bufferedWriter);
+            writeThreadsProfile(writer, KSCrashField_ThreadsProfile, monitorContext);
             ksfu_flushBufferedWriter(&bufferedWriter);
         }
         writer->endContainer(writer);
@@ -1651,6 +1696,11 @@ void kscrashreport_setUserSectionWriteCallback(const KSReportWriteCallback userS
 void kscrashreport_setPointThreadWriteCallback(const KSReportWritePointThreadCallback pointThreadWriteCallback) {
     KSLOG_TRACE("Set pointThreadWriteCallback to %p", pointThreadWriteCallback);
     g_pointThreadWriteCallback = pointThreadWriteCallback;
+}
+
+void kscrashreport_setPointThreadWriteProfileCallback(const KSReportWritePointThreadProfileCallback pointThreadWriteProfileCallback) {
+    KSLOG_TRACE("Set pointThreadWriteProfileCallback to %p", pointThreadWriteProfileCallback);
+    g_pointThreadWriteProfileCallback = pointThreadWriteProfileCallback;
 }
 
 void kscrashreport_setPointThreadRepeatNumberWriteCallback(const KSReportWritePointThreadRepeatNumberCallback pointThreadRepeatNumberWriteCallback) {

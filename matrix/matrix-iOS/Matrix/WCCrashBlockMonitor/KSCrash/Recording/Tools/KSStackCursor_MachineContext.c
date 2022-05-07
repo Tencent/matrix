@@ -29,7 +29,7 @@
 
 #include <stdlib.h>
 
-#define KSLogger_LocalLevel TRACE
+//#define KSLogger_LocalLevel TRACE
 #include "KSLogger.h"
 
 /** Represents an entry in a frame list.
@@ -99,35 +99,28 @@ static bool advanceCursor(KSStackCursor *cursor) {
 
     if (cursor->state.currentDepth >= KSSC_STACK_OVERFLOW_THRESHOLD) {
         cursor->state.hasGivenUp = true;
+        KSLOG_DEBUG("context overflow %d", cursor->state.currentDepth);
     }
 
     if (cursor->state.currentDepth >= context->maxStackDepth) {
         cursor->state.hasGivenUp = true;
+        KSLOG_DEBUG("context too deep %d", cursor->state.currentDepth);
         return false;
     }
-    
-    if (context->instructionAddress == 0 && cursor->state.currentDepth == 0) {
-        // Link register, if available, is the second address in the trace.
+
+    if (context->instructionAddress == 0) {
         context->instructionAddress = kscpu_instructionAddress(context->machineContext);
-        if (context->instructionAddress == 0) {
-            return false;
-        }
         nextAddress = context->instructionAddress;
-        goto successfulExit;
-    }
-    
-    if (context->linkRegister == 0 && !context->isPastFramePointer)
-    {
-        context->linkRegister = kscpu_linkRegister(context->machineContext);
-        if (context->linkRegister != 0)
-        {
-            nextAddress = context->linkRegister;
-            goto successfulExit;
+        if (context->instructionAddress == 0) {
+            // 1 is a mark , mark that it had get the first intruction.
+            context->instructionAddress = 1;
         }
+        goto successfulExit;
     }
 
     if (context->currentFrame.previous == NULL) {
         if (context->isPastFramePointer) {
+            KSLOG_DEBUG("context isPastFramePointer %d", cursor->state.currentDepth);
             return false;
         }
         context->currentFrame.previous = (struct FrameEntry *)kscpu_framePointer(context->machineContext);
@@ -135,9 +128,11 @@ static bool advanceCursor(KSStackCursor *cursor) {
     }
 
     if (!ksmem_copySafely(context->currentFrame.previous, &context->currentFrame, sizeof(context->currentFrame))) {
+        KSLOG_DEBUG("context copy failed %d", cursor->state.currentDepth);
         return false;
     }
     if (context->currentFrame.previous == 0 || context->currentFrame.return_address == 0) {
+        KSLOG_DEBUG("context previous %d return address %d deep %d", context->currentFrame.previous, context->currentFrame.return_address, cursor->state.currentDepth);
         return false;
     }
 

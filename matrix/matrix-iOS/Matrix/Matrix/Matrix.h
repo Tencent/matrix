@@ -21,6 +21,7 @@
 #import "WCCrashBlockMonitorPlugin.h"
 #import "WCCrashBlockMonitorPlugin+Upload.h"
 #import "WCMemoryStatPlugin.h"
+#import "WCFPSMonitorPlugin.h"
 
 @class MatrixPlugin;
 @protocol MatrixPluginListenerDelegate;

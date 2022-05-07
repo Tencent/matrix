@@ -15,7 +15,7 @@
  */
 
 #import "ViewController.h"
-#import <matrix-wechat/MatrixTester.h>
+#import <Matrix/MatrixTester.h>
 #import "MacMatrixManager.h"
 
 @interface TestContact : NSObject
@@ -84,7 +84,6 @@
     NSLog(@"Make OOM");
     
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        [[[MacMatrixManager sharedInstance] getMemoryStatPlugin] addTagToCurrentThread:@"com.wechat.memdemo1"];
         NSMutableArray *array = [NSMutableArray array];
         while (1) {
             TestContact *contact = [[TestContact alloc] init];

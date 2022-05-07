@@ -27,7 +27,9 @@
 - (void)onCrashBlockMonitorEnterNextCheckWithDumpType:(EDumpType)dumpType;
 
 /// begin to dump the lag file.
-- (void)onCrashBlockMonitorBeginDump:(EDumpType)dumpType blockTime:(uint64_t)blockTime;
+- (void)onCrashBlockMonitorBeginDump:(EDumpType)dumpType blockTime:(uint64_t)blockTime runloopThreshold:(useconds_t)runloopThreshold;
+
+- (void)onCrashBlockMonitorBeginDump:(EDumpType)dumpType blockTime:(uint64_t)blockTime __deprecated_msg("use onCrashBlockMonitorBeginDump:blockTime:runloopThreshold: instead");
 
 /// get a lag file
 - (void)onCrashBlockMonitorGetDumpFile:(NSString *)dumpFile withDumpType:(EDumpType)dumpType;
@@ -35,12 +37,26 @@
 /// detect a lag event, but have been filtered.
 - (void)onCrashBlockMonitorDumpType:(EDumpType)dumpType filter:(EFilterType)filterType;
 
+/// detect cpu too high
 - (void)onCrashBlockMonitorCurrentCPUTooHigh;
 
+/// detect power consume
 - (void)onCrashBlockMonitorIntervalCPUTooHigh;
+
+/// detect when the device gets hotter
+- (void)onCrashBlockMonitorThermalStateElevated;
+
+/// detect when the main thread hangs
+- (void)onCrashBlockMonitorMainThreadBlock;
+
+/// detect when using excessive memory
+- (void)onCrashBlockMonitorMemoryExcessive;
 
 /// get extra info for FrameDropDump file.
 - (NSDictionary *)onCrashBlockMonitorGetCustomUserInfoForDumpType:(EDumpType)dumpType;
+
+/// detect when the main thread hangs (sensitive)
+- (void)onCrashBlockMonitorRunloopHangDetected:(uint64_t)duration;
 
 @end
 

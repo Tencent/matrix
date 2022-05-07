@@ -27,6 +27,7 @@
 #include "KSID.h"
 #include "KSThread.h"
 #include "KSStackCursor_SelfThread.h"
+#include "KSSnapshot.h"
 
 //#define KSLogger_LocalLevel TRACE
 #include "KSLogger.h"
@@ -38,29 +39,58 @@
 
 static volatile bool g_isEnabled = false;
 
-void kscm_reportUserExceptionSelfDefinePath(const char *name,
-                                            const char *reason,
-                                            const char *language,
-                                            const char *lineOfCode,
-                                            const char *stackTrace,
-                                            bool logAllThreads,
-                                            bool terminateProgram,
-                                            const char *dumpFilePath,
-                                            int dumpType) {
+void kscm_reportUserException(const char *name,
+                              const char *reason,
+                              const char *language,
+                              const char *lineOfCode,
+                              const char *stackTrace,
+                              bool logAllThreads,
+                              bool enableSnapshot,
+                              bool terminateProgram,
+                              bool writeCpuUsage,
+                              const char *dumpFilePath,
+                              int dumpType) {
     if (!g_isEnabled) {
         KSLOG_WARN("User-reported exception monitor is not installed. Exception has not been recorded.");
     } else {
-        if (logAllThreads) {
-            ksmc_suspendEnvironment();
+        char eventID[37];
+        // 在ksmc_suspendEnvironment()之后调用sprintf()系列函数，可能导致死锁，因此把这一步提前
+        ksid_generate(eventID);
+
+        KSMC_NEW_CONTEXT(machineContext);
+        KSMC_NEW_CONTEXT(machineContext_cpuUsage);
+        ksmc_getContextForThread(ksthread_self(), machineContext, true);
+        if (writeCpuUsage) {
+            ksmc_getCpuUsage(machineContext_cpuUsage);
         }
+
+        KSSnapshot snapshot;
+        KSSnapshotStatus snapshotStatus = KSSnapshotTurnedOff;
+
+        if (logAllThreads) {
+            if (enableSnapshot) {
+                snapshotStatus = kssnapshot_initWithMachineContext(&snapshot, machineContext);
+            }
+
+            ksmc_suspendEnvironment();
+
+            if (snapshotStatus == KSSnapshotSucceeded) {
+                snapshotStatus = kssnapshot_takeSnapshot(&snapshot);
+            }
+            if (snapshotStatus == KSSnapshotSucceeded) {
+                // 快照成功，提前恢复其他线程
+                ksmc_resumeEnvironment();
+            }
+        }
+
         if (terminateProgram) {
             kscm_notifyFatalExceptionCaptured(false);
         }
 
-        char eventID[37];
-        ksid_generate(eventID);
-        KSMC_NEW_CONTEXT(machineContext);
-        ksmc_getContextForThread(ksthread_self(), machineContext, true);
+        if (writeCpuUsage) {
+            ksmc_setCpuUsage(machineContext, machineContext_cpuUsage);
+        }
+
         KSStackCursor stackCursor;
         kssc_initSelfThread(&stackCursor, 0);
 
@@ -77,61 +107,26 @@ void kscm_reportUserExceptionSelfDefinePath(const char *name,
         context.userException.lineOfCode = lineOfCode;
         context.userException.customStackTrace = stackTrace;
         context.userException.userDumpType = dumpType;
+        context.userException.writeCpuUsage = writeCpuUsage;
+        context.userException.suspendAllThreads = logAllThreads;
+        context.userException.snapshotStatus = snapshotStatus;
+        context.userException.snapshot = &snapshot;
         context.stackCursor = &stackCursor;
 
-        kscm_handleUserDump(&context, dumpFilePath);
+        if (dumpFilePath == NULL) {
+            kscm_handleException(&context);
+        } else {
+            kscm_handleUserDump(&context, dumpFilePath);
+        }
 
         if (logAllThreads) {
-            ksmc_resumeEnvironment();
-        }
-        if (terminateProgram) {
-            abort();
-        }
-    }
-}
+            if (snapshotStatus != KSSnapshotSucceeded) {
+                ksmc_resumeEnvironment();
+            }
 
-void kscm_reportUserException(const char *name,
-                              const char *reason,
-                              const char *language,
-                              const char *lineOfCode,
-                              const char *stackTrace,
-                              bool logAllThreads,
-                              bool terminateProgram) {
-    if (!g_isEnabled) {
-        KSLOG_WARN("User-reported exception monitor is not installed. Exception has not been recorded.");
-    } else {
-        if (logAllThreads) {
-            ksmc_suspendEnvironment();
-        }
-        if (terminateProgram) {
-            kscm_notifyFatalExceptionCaptured(false);
-        }
-
-        char eventID[37];
-        ksid_generate(eventID);
-        KSMC_NEW_CONTEXT(machineContext);
-        ksmc_getContextForThread(ksthread_self(), machineContext, true);
-        KSStackCursor stackCursor;
-        kssc_initSelfThread(&stackCursor, 0);
-
-        KSLOG_DEBUG("Filling out context.");
-        KSCrash_MonitorContext context;
-        memset(&context, 0, sizeof(context));
-        context.crashType = KSCrashMonitorTypeUserReported;
-        context.eventID = eventID;
-        context.offendingMachineContext = machineContext;
-        context.registersAreValid = false;
-        context.crashReason = reason;
-        context.userException.name = name;
-        context.userException.language = language;
-        context.userException.lineOfCode = lineOfCode;
-        context.userException.customStackTrace = stackTrace;
-        context.stackCursor = &stackCursor;
-
-        kscm_handleException(&context);
-
-        if (logAllThreads) {
-            ksmc_resumeEnvironment();
+            if (enableSnapshot) {
+                kssnapshot_deinit(&snapshot);
+            }
         }
         if (terminateProgram) {
             abort();

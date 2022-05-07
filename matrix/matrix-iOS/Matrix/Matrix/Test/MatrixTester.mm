@@ -228,4 +228,68 @@ static bool g_testCPUOrNot = false;
     });
 }
 
+- (void)writeMassData {
+    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES);
+    auto libraryPath = (NSString *)[paths firstObject];
+    auto filePath = [libraryPath stringByAppendingFormat:@"/bigdata_%d", 0];
+    size_t fileSize = 250 * 1024 * 1024;
+    auto raw = [NSMutableData dataWithLength:fileSize];
+
+    dispatch_async(dispatch_get_global_queue(0, 0), ^{
+        NSDate *lastDate = [NSDate date];
+        int i = 1;
+        while (1) {
+            i++;
+            NSDate *currentDate = [NSDate date];
+            if (([currentDate timeIntervalSince1970] - [lastDate timeIntervalSince1970]) > 5.) {
+                break;
+            }
+            int fd = open(filePath.UTF8String, O_RDWR | O_CREAT | O_TRUNC, S_IRWXU);
+            if (fd >= 0) {
+                write(fd, raw.bytes, raw.length);
+                close(fd);
+            }
+            sleep(3);
+        }
+    });
+}
+
+- (void)readMassData {
+    NSArray *paths = NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES);
+    auto libraryPath = (NSString *)[paths firstObject];
+    auto filePath = [libraryPath stringByAppendingFormat:@"/bigdata_%d", 1];
+    size_t fileSize = 1000 * 1024 * 1024;
+    @autoreleasepool {
+        auto raw = [NSMutableData dataWithLength:fileSize];
+        int fd = open(filePath.UTF8String, O_RDWR | O_CREAT | O_TRUNC, S_IRWXU);
+        if (fd >= 0) {
+            write(fd, raw.bytes, raw.length);
+            close(fd);
+        }
+    }
+
+    dispatch_async(dispatch_get_global_queue(0, 0), ^{
+        NSDate *lastDate = [NSDate date];
+        int i = 1;
+        while (1) {
+            @autoreleasepool {
+                i++;
+                NSDate *currentDate = [NSDate date];
+                if (([currentDate timeIntervalSince1970] - [lastDate timeIntervalSince1970]) > 5.) {
+                    break;
+                }
+
+                int fd = open(filePath.UTF8String, O_RDWR | O_CREAT, S_IRWXU);
+                auto buffer = [NSMutableData dataWithLength:1024 * 1024 * 500];
+                size_t totalPages = fileSize / buffer.length;
+                size_t pageNumber = random() % totalPages;
+                lseek(fd, pageNumber * buffer.length, SEEK_SET);
+                read(fd, buffer.mutableBytes, buffer.length);
+                close(fd);
+            }
+            sleep(2);
+        }
+    });
+}
+
 @end

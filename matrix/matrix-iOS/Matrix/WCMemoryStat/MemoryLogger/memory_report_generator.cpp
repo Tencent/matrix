@@ -45,7 +45,7 @@ struct allocation_stack {
             return;
         }
 
-        unwind_stack_from_table_index(stack_frames_reader, stack_identifier, frames, &fcount, STACK_LOGGING_MAX_STACK_SIZE);
+        stack_frames_db_unwind_stack(stack_frames_reader, stack_identifier, frames, &fcount, STACK_LOGGING_MAX_STACK_SIZE);
         if (fcount <= 0) {
             return;
         }

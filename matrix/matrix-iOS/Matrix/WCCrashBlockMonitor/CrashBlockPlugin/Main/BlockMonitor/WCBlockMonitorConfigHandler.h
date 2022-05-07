@@ -22,19 +22,31 @@
 - (void)setConfiguration:(WCBlockMonitorConfiguration *)monitorConfig;
 
 - (useconds_t)getRunloopTimeOut;
-- (useconds_t)getCheckPeriodTime;
+- (useconds_t)getRunloopLowThreshold;
+- (BOOL)getRunloopDynamicThresholdEnabled;
+- (useconds_t)getCheckPeriodTime DEPRECATED_MSG_ATTRIBUTE("depends on runloopTimeOut");
 - (BOOL)getMainThreadHandle;
 - (useconds_t)getPerStackInterval;
-- (int)getMainThreadCount;
+- (int)getMainThreadCount DEPRECATED_MSG_ATTRIBUTE("depends on runloopTimeOut");
+- (BOOL)getMainThreadProfile;
 - (float)getCPUUsagePercent;
 - (BOOL)getShouldPrintCPUUsage;
 - (BOOL)getShouldGetCPUHighLog;
 - (BOOL)getShouldGetPowerConsumeStack;
 - (float)getPowerConsumeCPULimit;
-- (BOOL)getShouldFilterSameStack;
-- (uint32_t)getTriggerFilterCount;
+- (BOOL)getShouldFilterSameStack DEPRECATED_MSG_ATTRIBUTE("use dumpDailyLimit instead");
+- (uint32_t)getTriggerFilterCount DEPRECATED_MSG_ATTRIBUTE("use dumpDailyLimit instead");
+- (uint32_t)getDumpDailyLimit;
 - (BOOL)getShouldPrintMemoryUse;
-
-- (BOOL)getEnableLocalSymbolicate;
+- (BOOL)getShouldGetDiskIOStack DEPRECATED_MSG_ATTRIBUTE("feature removed");
+- (size_t)getSingleReadLimit DEPRECATED_MSG_ATTRIBUTE("feature removed");
+- (size_t)getSingleWriteLimit DEPRECATED_MSG_ATTRIBUTE("feature removed");
+- (size_t)getTotalReadLimit DEPRECATED_MSG_ATTRIBUTE("feature removed");
+- (size_t)getTotalWriteLimit DEPRECATED_MSG_ATTRIBUTE("feature removed");
+- (BOOL)getShouldPrintCPUFrequency;
+- (uint32_t)getMemoryWarningThresholdInMB;
+- (BOOL)getSensitiveRunloopHangDetection;
+- (BOOL)getShouldSuspendAllThreads;
+- (BOOL)getShouldEnableSnapshot;
 
 @end

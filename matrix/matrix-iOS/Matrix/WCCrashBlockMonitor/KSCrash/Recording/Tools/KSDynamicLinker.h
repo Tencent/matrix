@@ -98,6 +98,7 @@ const uint8_t *ksdl_imageUUID(const char *const imageName, bool exactMatch);
  * @return true if at least some information was found.
  */
 bool ksdl_dladdr(const uintptr_t address, Dl_info *const info);
+bool ksdl_dladdr_use_cache(const uintptr_t address, Dl_info *const info);
 
 #ifdef __cplusplus
 }

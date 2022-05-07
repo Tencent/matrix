@@ -1,10 +1,18 @@
-//
-//  KSCrash_BinaryImageHandler.m
-//  MatrixiOS
-//
-//  Created by alanllwang on 2020/5/27.
-//  Copyright © 2020 wechat. All rights reserved.
-//
+/*
+ * Tencent is pleased to support the open source community by making wechat-matrix available.
+ * Copyright (C) 2022 THL A29 Limited, a Tencent company. All rights reserved.
+ * Licensed under the BSD 3-Clause License (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://opensource.org/licenses/BSD-3-Clause
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #import <Foundation/Foundation.h>
 #import "KSCrash_BinaryImageHandler.h"
@@ -92,10 +100,10 @@ const struct mach_header *__ks_dyld_get_image_header(uint32_t image_index) {
         UNLOCK_THREAD
         return NULL;
     }
-    struct ks_dyld_image_info image_info = image_list[image_index];
-    const struct mach_header *image_mach_header = image_info.image_header;
+    struct ks_dyld_image_info &image_info = image_list[image_index];
     UNLOCK_THREAD
-    return image_mach_header;
+
+    return image_info.image_header;
 }
 
 intptr_t __ks_dyld_get_image_vmaddr_slide(uint32_t image_index) {
@@ -104,10 +112,10 @@ intptr_t __ks_dyld_get_image_vmaddr_slide(uint32_t image_index) {
         UNLOCK_THREAD
         return 0;
     }
-    struct ks_dyld_image_info image_info = image_list[image_index];
-    intptr_t image_vmaddr_slide = image_info.vmaddr_slide;
+    struct ks_dyld_image_info &image_info = image_list[image_index];
     UNLOCK_THREAD
-    return image_vmaddr_slide;
+
+    return image_info.vmaddr_slide;
 }
 
 const char *__ks_dyld_get_image_name(uint32_t image_index) {
@@ -116,8 +124,22 @@ const char *__ks_dyld_get_image_name(uint32_t image_index) {
         UNLOCK_THREAD
         return NULL;
     }
-    struct ks_dyld_image_info image_info = image_list[image_index];
-    const char *image_name = image_info.image_name;
+    struct ks_dyld_image_info &image_info = image_list[image_index];
     UNLOCK_THREAD
-    return image_name;
+
+    return image_info.image_name;
+}
+
+uintptr_t __ks_first_cmd_after_header(const struct mach_header *const header) {
+    switch (header->magic) {
+        case MH_MAGIC:
+        case MH_CIGAM:
+            return (uintptr_t)(header + 1);
+        case MH_MAGIC_64:
+        case MH_CIGAM_64:
+            return (uintptr_t)(((struct mach_header_64 *)header) + 1);
+        default:
+            // Header is corrupt
+            return 0;
+    }
 }

@@ -23,6 +23,7 @@
 #define CustomFrameStack "frame_stack"
 #define CustomStackString "stack_string"
 #define CustomReportField "scene"
+#define CustomExtraInfo "custom_info"
 
 static NSString *g_bundleName = nil;
 
@@ -37,113 +38,6 @@ static NSString *getBundleName() {
 }
 
 @implementation WCGetCallStackReportHandler
-
-+ (NSData *)getReportJsonDataWithCallStackArray:(KSStackCursor **)stackCursorArray
-                                 callStackCount:(NSUInteger)stackCount
-                                   withReportID:(NSString *)reportID
-                                   withDumpType:(EDumpType)dumpType {
-    return [WCGetCallStackReportHandler getReportJsonDataWithCallStackArray:stackCursorArray
-                                                             callStackCount:stackCount
-                                                               withReportID:reportID
-                                                               withDumpType:dumpType
-                                                                  withScene:@""];
-}
-
-+ (NSData *)getReportJsonDataWithCallStackArray:(KSStackCursor **)stackCursorArray
-                                 callStackCount:(NSUInteger)stackCount
-                                   withReportID:(NSString *)reportID
-                                   withDumpType:(EDumpType)dumpType
-                                      withScene:(NSString *)scene {
-    NSMutableDictionary *reportDictionary = [[NSMutableDictionary alloc] init];
-
-    NSMutableArray *topStackAddressArray = [[NSMutableArray alloc] init];
-    NSMutableArray *stackArray = [[NSMutableArray alloc] init];
-    for (NSUInteger index = 0; index < stackCount; index++) {
-        KSStackCursor *stackCursor = stackCursorArray[index];
-        NSMutableArray *framePointerArray = [[NSMutableArray alloc] init];
-        NSUInteger currentDepth = 0;
-        while (stackCursor->advanceCursor(stackCursor)) {
-            NSMutableDictionary *pointInfoDic = [[NSMutableDictionary alloc] init];
-            if (stackCursor->symbolicate(stackCursor)) {
-                if (stackCursor->stackEntry.imageName != NULL) {
-                    [pointInfoDic setObject:[NSString stringWithUTF8String:wxg_lastPathEntry(stackCursor->stackEntry.imageName)]
-                                     forKey:@KSCrashField_ObjectName];
-                }
-                [pointInfoDic setValue:[NSNumber numberWithUnsignedInteger:stackCursor->stackEntry.imageAddress] forKey:@KSCrashField_ObjectAddr];
-                if (stackCursor->stackEntry.symbolName != NULL) {
-                    [pointInfoDic setObject:[NSString stringWithUTF8String:stackCursor->stackEntry.symbolName] forKey:@KSCrashField_SymbolName];
-                }
-                [pointInfoDic setValue:[NSNumber numberWithUnsignedInteger:stackCursor->stackEntry.symbolAddress] forKey:@KSCrashField_SymbolAddr];
-            }
-            NSNumber *stackAddress = [NSNumber numberWithUnsignedInteger:stackCursor->stackEntry.address];
-            [pointInfoDic setValue:stackAddress forKey:@KSCrashField_InstructionAddr];
-            if (currentDepth == 0) {
-                [topStackAddressArray addObject:stackAddress];
-            }
-            currentDepth += 1;
-            [framePointerArray addObject:pointInfoDic];
-        }
-        if ([framePointerArray count] > 0) {
-            [stackArray addObject:framePointerArray];
-        }
-    }
-
-    NSUInteger checkcount = 5;
-    if ([stackArray count] > checkcount) {
-        NSMutableArray *topRepeatArray = [[NSMutableArray alloc] init];
-        NSUInteger maxValue = 0;
-        for (NSUInteger index = 0; index < checkcount; index++) {
-            if (index == (checkcount - 1)) {
-                break;
-            }
-            NSNumber *topAddress = topStackAddressArray[index];
-            NSUInteger repeatCount = 0;
-            NSUInteger beginIndex = index + 1;
-            for (NSUInteger j = beginIndex; j < checkcount; j++) {
-                NSNumber *secTopAddress = topStackAddressArray[j];
-                if ([topAddress unsignedIntegerValue] == [secTopAddress unsignedIntegerValue]) {
-                    repeatCount++;
-                } else {
-                    break;
-                }
-            }
-            if (maxValue < repeatCount) {
-                maxValue = repeatCount;
-            }
-            [topRepeatArray addObject:[NSNumber numberWithUnsignedInteger:repeatCount]];
-        }
-        for (NSUInteger index = 0; index < topRepeatArray.count; index++) {
-            NSUInteger currentCount = [(NSNumber *)topRepeatArray[index] unsignedIntegerValue];
-            if (currentCount == maxValue) {
-                NSArray *framePointArray = [stackArray[index] copy];
-                if ([framePointArray count] > 10) {
-                    [stackArray insertObject:framePointArray atIndex:0];
-                }
-                break;
-            }
-        }
-    }
-
-    if ([stackArray count] > 0) {
-        [reportDictionary setValue:stackArray forKey:@CustomFrameStack];
-    } else {
-        return nil;
-    }
-
-    [reportDictionary setValue:[WCGetCallStackReportHandler getCustomReportInfoWithReportID:reportID] forKey:@KSCrashField_Report];
-    [reportDictionary setValue:[[WCCrashReportInfoUtil sharedInstance] getSystemInfo] forKey:@KSCrashField_System];
-    [reportDictionary setValue:[[WCCrashReportInfoUtil sharedInstance] getBinaryImages] forKey:@KSCrashField_BinaryImages];
-
-    NSDictionary *userDic = [[WCBlockMonitorMgr shareInstance] getUserInfoForCurrentDumpForDumpType:dumpType];
-    [reportDictionary setValue:userDic forKey:@KSCrashExcType_User];
-
-    if (scene != nil && [scene length] > 0) {
-        [reportDictionary setValue:scene forKey:@CustomReportField];
-    }
-
-    NSData *jsonData = [WCCrashBlockJsonUtil jsonEncode:reportDictionary withError:nil];
-    return jsonData;
-}
 
 + (NSDictionary *)getCustomReportInfoWithReportID:(NSString *)reportID {
     long timestamp = time(NULL);
@@ -189,9 +83,61 @@ static NSString *getBundleName() {
     [reportDictionary setValue:[[WCCrashReportInfoUtil sharedInstance] getSystemInfo] forKey:@KSCrashField_System];
     NSDictionary *userDic = [[WCBlockMonitorMgr shareInstance] getUserInfoForCurrentDumpForDumpType:dumpType];
     [reportDictionary setValue:userDic forKey:@KSCrashExcType_User];
-    [reportDictionary setValue:[NSNumber numberWithUnsignedInteger:dumpType] forKey:@KSCrashField_DumpType];
+    [reportDictionary setValue:[NSNumber numberWithInt:(int)dumpType] forKey:@KSCrashField_DumpType];
     [reportDictionary setValue:PowerConsumeStackArray forKey:@CustomStackString];
     NSData *jsonData = [WCCrashBlockJsonUtil jsonEncode:reportDictionary withError:nil];
+    return jsonData;
+}
+
++ (NSData *)getReportJsonDataWithDiskIOStack:(NSArray<NSDictionary *> *)stackArray
+                              withCustomInfo:(NSDictionary *)customInfo
+                                withReportID:(NSString *)reportID
+                                withDumpType:(EDumpType)dumpType {
+    if (stackArray == nil || [stackArray count] == 0) {
+        return nil;
+    }
+    NSMutableDictionary *reportDictionary = [NSMutableDictionary dictionary];
+    [reportDictionary setValue:[WCGetCallStackReportHandler getCustomReportInfoWithReportID:reportID] forKey:@KSCrashField_Report];
+    [reportDictionary setValue:[[WCCrashReportInfoUtil sharedInstance] getBinaryImages] forKey:@KSCrashField_BinaryImages];
+    [reportDictionary setValue:[[WCCrashReportInfoUtil sharedInstance] getSystemInfo] forKey:@KSCrashField_System];
+    NSDictionary *userDic = [[WCBlockMonitorMgr shareInstance] getUserInfoForCurrentDumpForDumpType:dumpType];
+    [reportDictionary setValue:userDic forKey:@KSCrashExcType_User];
+    [reportDictionary setValue:[NSNumber numberWithInt:(int)dumpType] forKey:@KSCrashField_DumpType];
+    [reportDictionary setValue:stackArray forKey:@CustomStackString];
+    [reportDictionary setValue:customInfo forKey:@CustomExtraInfo];
+    NSData *jsonData = [WCCrashBlockJsonUtil jsonEncode:reportDictionary withError:nil];
+    return jsonData;
+}
+
++ (NSData *)getReportJsonDataWithFPSStack:(NSArray<NSDictionary *> *)stackArray
+                           withCustomInfo:(NSDictionary *)customInfo
+                             withReportID:(NSString *)reportID
+                             withDumpType:(EDumpType)dumpType {
+    if (stackArray == nil || [stackArray count] == 0) {
+        return nil;
+    }
+    NSMutableDictionary *reportDictionary = [NSMutableDictionary dictionary];
+    [reportDictionary setValue:[WCGetCallStackReportHandler getCustomReportInfoWithReportID:reportID] forKey:@KSCrashField_Report];
+    [reportDictionary setValue:[[WCCrashReportInfoUtil sharedInstance] getBinaryImages] forKey:@KSCrashField_BinaryImages];
+    [reportDictionary setValue:[[WCCrashReportInfoUtil sharedInstance] getSystemInfo] forKey:@KSCrashField_System];
+    NSDictionary *userDic = [[WCBlockMonitorMgr shareInstance] getUserInfoForCurrentDumpForDumpType:dumpType];
+    [reportDictionary setValue:userDic forKey:@KSCrashExcType_User];
+    [reportDictionary setValue:[NSNumber numberWithInt:(int)dumpType] forKey:@KSCrashField_DumpType];
+    [reportDictionary setValue:stackArray forKey:@CustomStackString];
+    [reportDictionary setValue:customInfo forKey:@CustomExtraInfo];
+    NSData *jsonData = [WCCrashBlockJsonUtil jsonEncode:reportDictionary withError:nil];
+
+    return jsonData;
+}
+
++ (NSData *)getReportJsonDataWithLagProfileStack:(NSArray<NSDictionary *> *)stackArray {
+    if (stackArray == nil || [stackArray count] == 0) {
+        return nil;
+    }
+    NSMutableDictionary *reportDictionary = [NSMutableDictionary dictionary];
+    [reportDictionary setValue:stackArray forKey:@CustomStackString];
+    NSData *jsonData = [WCCrashBlockJsonUtil jsonEncode:reportDictionary withError:nil];
+
     return jsonData;
 }
 

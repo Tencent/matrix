@@ -38,5 +38,7 @@
 - (void)generateMainThreadLagLog;
 - (void)generateMainThreadBlockToBeKilledLog;
 - (void)costCPUALot;
+- (void)writeMassData;
+- (void)readMassData;
 
 @end

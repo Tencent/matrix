@@ -1,8 +1,8 @@
 /*
- * Tencent is pleased to support the open source community by making wechat-matrix available.
- * Copyright (C) 2019 THL A29 Limited, a Tencent company. All rights reserved.
- * Licensed under the BSD 3-Clause License (the "License");
- * you may not use this file except in compliance with the License.
+ * Tencent is pleased to support the open source community by making
+ * wechat-matrix available. Copyright (C) 2019 THL A29 Limited, a Tencent
+ * company. All rights reserved. Licensed under the BSD 3-Clause License (the
+ * "License"); you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *      https://opensource.org/licenses/BSD-3-Clause
@@ -16,16 +16,17 @@
 
 #include <assert.h>
 #include <dlfcn.h>
-#include <unistd.h>
 #include <mach-o/dyld.h>
 #include <mach-o/nlist.h>
+#include <pthread/pthread.h>
+#include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/sysctl.h>
-#include <sys/mman.h>
+#include <unistd.h>
 
+#include "bundle_name_helper.h"
 #include "dyld_image_info.h"
 #include "logger_internal.h"
-#include "bundle_name_helper.h"
 
 #pragma mark -
 #pragma mark Defines
@@ -33,7 +34,7 @@
 #pragma mark -
 #pragma mark Types
 
-#define DYLD_IMAGE_MACOUNT (512 + 256)
+#define DYLD_IMAGE_MACOUNT (512 + 512)
 
 struct dyld_image_info_mem {
     uint64_t vm_str; /* the start address of this segment */
@@ -41,10 +42,7 @@ struct dyld_image_info_mem {
     char uuid[33]; /* the 128-bit uuid */
     char image_name[30]; /* name of shared object */
     bool is_app_image; /* whether this image is belong to the APP */
-
-    dyld_image_info_mem(uint64_t _vs = 0, uint64_t _ve = 0) : vm_str(_vs), vm_end(_ve) {}
-
-    inline bool operator==(const dyld_image_info_mem &another) const { return another.vm_str >= vm_str && another.vm_str < vm_end; }
+    const struct mach_header *header;
 
     inline bool operator>(const dyld_image_info_mem &another) const { return another.vm_str < vm_str; }
 };
@@ -54,14 +52,14 @@ struct dyld_image_info_db {
     int fs;
     int count;
     void *buff;
-    malloc_lock_s lock = __malloc_lock_init();
+    malloc_lock_s lock;
     dyld_image_info_mem list[DYLD_IMAGE_MACOUNT];
 };
 
 #pragma mark -
 #pragma mark Constants/Globals
 
-static dyld_image_info_db s_image_info_db;
+static dyld_image_info_db *s_image_info_db = NULL;
 
 int skip_max_stack_depth;
 int skip_min_malloc_size;
@@ -69,8 +67,8 @@ int skip_min_malloc_size;
 static dyld_image_info_mem app_image_info = { 0 }; // Infos of all app images including embeded frameworks
 static dyld_image_info_mem mmap_func_info = { 0 };
 
-static const char *g_app_bundle_name = bundleHelperGetAppBundleName();
-static const char *g_app_name = bundleHelperGetAppName();
+static char g_app_bundle_name[128];
+static char g_app_name[128];
 
 #pragma mark -
 #pragma mark DYLD
@@ -90,23 +88,24 @@ typedef struct nlist nlist_t;
 #endif
 
 static void __save_to_file() {
-    if (s_image_info_db.fd < 0) {
+    if (s_image_info_db->fd < 0) {
         return;
     }
 
-    memcpy(s_image_info_db.buff, &s_image_info_db, sizeof(dyld_image_info_db));
-    msync(s_image_info_db.buff, s_image_info_db.fs, MS_SYNC);
+    memcpy(s_image_info_db->buff, s_image_info_db, sizeof(dyld_image_info_db));
+    msync(s_image_info_db->buff, s_image_info_db->fs, MS_SYNC);
 }
 
 static void __add_info_for_image(const struct mach_header *header, intptr_t slide) {
-    __malloc_lock_lock(&s_image_info_db.lock);
+    __malloc_lock_lock(&s_image_info_db->lock);
 
-    if (s_image_info_db.count >= DYLD_IMAGE_MACOUNT) {
-        __malloc_lock_unlock(&s_image_info_db.lock);
+    if (s_image_info_db->count >= DYLD_IMAGE_MACOUNT) {
+        __malloc_lock_unlock(&s_image_info_db->lock);
         return;
     }
 
     dyld_image_info_mem image_info = { 0 };
+    image_info.header = header;
     bool is_current_app_image = false;
 
     segment_command_t *cur_seg_cmd = NULL;
@@ -139,7 +138,7 @@ static void __add_info_for_image(const struct mach_header *header, intptr_t slid
                     is_current_app_image = true;
                 }
                 if (strrchr(info.dli_fname, '/') != NULL) {
-                    strncpy(image_info.image_name, strrchr(info.dli_fname, '/'), sizeof(image_info.image_name));
+                    strncpy(image_info.image_name, strrchr(info.dli_fname, '/') + 1, sizeof(image_info.image_name));
                 }
 
                 image_info.is_app_image = (strstr(info.dli_fname, g_app_bundle_name) != NULL);
@@ -151,19 +150,20 @@ static void __add_info_for_image(const struct mach_header *header, intptr_t slid
 
     // Sort list
     int i = 0;
-    for (; i < s_image_info_db.count; ++i) {
-        if (s_image_info_db.list[i] == image_info) {
-            __malloc_lock_unlock(&s_image_info_db.lock);
+    for (; i < s_image_info_db->count; ++i) {
+        if (s_image_info_db->list[i].header == header) {
+            s_image_info_db->list[i] = image_info;
+            __malloc_lock_unlock(&s_image_info_db->lock);
             return;
-        } else if (s_image_info_db.list[i] > image_info) {
-            for (int j = s_image_info_db.count - 1; j >= i; --j) {
-                s_image_info_db.list[j + 1] = s_image_info_db.list[j];
+        } else if (s_image_info_db->list[i] > image_info) {
+            for (int j = s_image_info_db->count - 1; j >= i; --j) {
+                s_image_info_db->list[j + 1] = s_image_info_db->list[j];
             }
             break;
         }
     }
-    s_image_info_db.list[i] = image_info;
-    s_image_info_db.count++;
+    s_image_info_db->list[i] = image_info;
+    s_image_info_db->count++;
 
     if (image_info.is_app_image) {
         app_image_info.vm_str = (app_image_info.vm_str == 0 ? image_info.vm_str : MIN(app_image_info.vm_str, image_info.vm_str));
@@ -175,30 +175,58 @@ static void __add_info_for_image(const struct mach_header *header, intptr_t slid
 
     __save_to_file();
 
-    __malloc_lock_unlock(&s_image_info_db.lock);
+    __malloc_lock_unlock(&s_image_info_db->lock);
+}
+
+static void __remove_info_for_image(const struct mach_header *header, intptr_t slide) {
+    __malloc_lock_lock(&s_image_info_db->lock);
+
+    // Sort list
+    int i = 0;
+    for (; i < s_image_info_db->count; ++i) {
+        if (s_image_info_db->list[i].header == header) {
+            for (int j = i; j < s_image_info_db->count - 1; ++j) {
+                s_image_info_db->list[j] = s_image_info_db->list[j + 1];
+            }
+            break;
+        }
+    }
+    s_image_info_db->count--;
+
+    __save_to_file();
+
+    __malloc_lock_unlock(&s_image_info_db->lock);
 }
 
 static void __dyld_image_add_callback(const struct mach_header *header, intptr_t slide) {
     __add_info_for_image(header, slide);
 }
 
+static void __dyld_image_remove_callback(const struct mach_header *header, intptr_t slide) {
+    __remove_info_for_image(header, slide);
+}
+
 static void __init_image_info_list() {
-    static bool static_isInit = false;
+    if (s_image_info_db == NULL) {
+        if (pthread_main_np() == 0) {
+            // memory logging shoule be enable in main thread
+            abort();
+        }
 
-    __malloc_lock_lock(&s_image_info_db.lock);
+        bundleHelperGetAppBundleName(g_app_bundle_name, sizeof(g_app_bundle_name));
+        bundleHelperGetAppName(g_app_name, sizeof(g_app_name));
+        // force load 'strstr' symbol
+        strstr(g_app_name, g_app_bundle_name);
 
-    if (!static_isInit) {
-        static_isInit = true;
+        s_image_info_db = (dyld_image_info_db *)inter_malloc(sizeof(dyld_image_info_db));
 
-        s_image_info_db.fd = -1;
-        s_image_info_db.buff = NULL;
-        s_image_info_db.count = 0;
-
-        __malloc_lock_unlock(&s_image_info_db.lock);
+        s_image_info_db->fd = -1;
+        s_image_info_db->buff = NULL;
+        s_image_info_db->count = 0;
+        s_image_info_db->lock = __malloc_lock_init();
 
         _dyld_register_func_for_add_image(__dyld_image_add_callback);
-    } else {
-        __malloc_lock_unlock(&s_image_info_db.lock);
+        _dyld_register_func_for_remove_image(__dyld_image_remove_callback);
     }
 }
 
@@ -237,40 +265,128 @@ dyld_image_info_db *prepare_dyld_image_logger(const char *event_dir) {
 
     dyld_image_info_db *db_context = dyld_image_info_db_open_or_create(event_dir);
     if (db_context != NULL) {
-        s_image_info_db.fd = db_context->fd;
-        s_image_info_db.fs = db_context->fs;
-        s_image_info_db.buff = db_context->buff;
+        s_image_info_db->fd = db_context->fd;
+        s_image_info_db->fs = db_context->fs;
+        s_image_info_db->buff = db_context->buff;
 
-        __malloc_lock_lock(&s_image_info_db.lock);
+        __malloc_lock_lock(&s_image_info_db->lock);
         __save_to_file();
-        __malloc_lock_unlock(&s_image_info_db.lock);
+        __malloc_lock_unlock(&s_image_info_db->lock);
 
         inter_free(db_context);
 
-        return &s_image_info_db;
+        return s_image_info_db;
     } else {
         return NULL;
     }
 }
 
-bool is_stack_frames_should_skip(uintptr_t *frames, int32_t count, uint64_t malloc_size) {
-    if (count < 2) {
-        return true;
+#if __has_feature(ptrauth_calls)
+#include <ptrauth.h>
+#endif
+//#include <pthread/stack_np.h> // iOS 12+ only
+
+__attribute__((noinline, not_tail_called)) unsigned
+thread_stack_pcs(pthread_stack_info *stack_info, uintptr_t *buffer, unsigned max, int skip, bool should_check, uint64_t *out_hash) {
+    uintptr_t frame, next;
+    pthread_t self;
+    uintptr_t stacktop;
+    uintptr_t stackbot;
+    unsigned nb = 0;
+    unsigned check_depth = (should_check ? skip_max_stack_depth : 0);
+    size_t seed = 131; // 31 131 1313 13131 131313 etc..
+    uint64_t hash = 0;
+
+    if (stack_info) {
+        self = stack_info->p_self;
+        stacktop = stack_info->stacktop;
+        stackbot = stack_info->stackbot;
+    } else {
+        self = pthread_self();
+        stacktop = (uintptr_t)pthread_get_stackaddr_np(self);
+        stackbot = stacktop - pthread_get_stacksize_np(self);
     }
 
-    if (malloc_size >= skip_min_malloc_size) {
-        return false;
+    // Rely on the fact that our caller has an empty stackframe (no local vars)
+    // to determine the minimum size of a stackframe (frame ptr & return addr)
+    frame = (uintptr_t)__builtin_frame_address(1);
+
+#define INSTACK(a) ((a) >= stackbot && (a) < stacktop)
+
+#if defined(__x86_64__)
+#define ISALIGNED(a) ((((uintptr_t)(a)) & 0xf) == 0)
+#elif defined(__i386__)
+#define ISALIGNED(a) ((((uintptr_t)(a)) & 0xf) == 8)
+#elif defined(__arm__) || defined(__arm64__)
+#define ISALIGNED(a) ((((uintptr_t)(a)) & 0x1) == 0)
+#endif
+
+    if (!INSTACK(frame) || !ISALIGNED(frame)) {
+        goto fail;
     }
 
-    // check whether there's any symbol not in this APP
-    for (int i = MIN(count - 1, skip_max_stack_depth); i >= 1; --i) {
-        if (frames[i] >= app_image_info.vm_str && frames[i] < app_image_info.vm_end) {
-            return false;
+    // skip itself and caller
+    while (skip--) {
+        next = *(uintptr_t *)frame;
+        frame = next;
+        if (!INSTACK(frame) /* || !ISALIGNED(frame)*/) {
+            goto fail;
         }
     }
 
-    // skip this stack
-    return true;
+    while (max--) {
+        next = *(uintptr_t *)frame;
+        uintptr_t retaddr = *((uintptr_t *)frame + 1);
+        // uintptr_t retaddr2 = 0;
+        // uintptr_t next2 = pthread_stack_frame_decode_np(frame, &retaddr2);
+        if (retaddr == 0) {
+            goto success;
+        }
+
+        if (check_depth > 0 && nb >= 1) {
+            check_depth--;
+            if (retaddr >= app_image_info.vm_str && retaddr < app_image_info.vm_end) {
+                check_depth = 0;
+            } else if (check_depth == 0) {
+                goto fail;
+            }
+        }
+
+#if __has_feature(ptrauth_calls)
+        // buffer[nb++] = (uintptr_t)ptrauth_strip((void *)retaddr,
+        // ptrauth_key_return_address); // PAC strip
+        buffer[nb++] = (retaddr & 0x0fffffffff); // PAC strip
+#elif defined(__arm__) || defined(__arm64__)
+        buffer[nb++] = (retaddr & 0x0fffffffff); // PAC strip
+#else
+        buffer[nb++] = retaddr;
+#endif
+
+        hash = hash * seed + retaddr;
+
+        if (!INSTACK(next) /* || !ISALIGNED(next) || next <= frame*/) {
+            goto success;
+        }
+
+        frame = next;
+    }
+
+#undef INSTACK
+#undef ISALIGNED
+
+success:
+    if (check_depth > 0) {
+        goto fail;
+    }
+    if (out_hash) {
+        //*out_hash = ((hash << 6) | nb);
+        *out_hash = hash;
+    }
+    return nb;
+
+fail:
+    *out_hash = 0;
+    return 0;
 }
 
 const char *app_uuid() {
@@ -328,6 +444,7 @@ dyld_image_info_db *dyld_image_info_db_open_or_create(const char *event_dir) {
             }
         }
     }
+    db_context->lock = __malloc_lock_init();
 
     return db_context;
 
@@ -343,9 +460,18 @@ void dyld_image_info_db_close(dyld_image_info_db *db_context) {
         return;
     }
 
-    inter_munmap(db_context->buff, db_context->fs);
-    close(db_context->fd);
-    inter_free(db_context);
+    if (db_context->fd >= 0) {
+        close(db_context->fd);
+        inter_munmap(db_context->buff, db_context->fs);
+    }
+
+    if (db_context == s_image_info_db) {
+        // should not free s_image_info_db
+        s_image_info_db->fd = -1;
+        s_image_info_db->buff = NULL;
+    } else {
+        inter_free(db_context);
+    }
 }
 
 void dyld_image_info_db_transform_frames(dyld_image_info_db *db_context,
@@ -358,7 +484,7 @@ void dyld_image_info_db_transform_frames(dyld_image_info_db *db_context,
     dyld_image_info_mem *last_info = NULL; // cache
     while (count--) {
         uint64_t address = src_frames[count];
-        if (last_info && *last_info == address) {
+        if (last_info && last_info->vm_str <= address && address < last_info->vm_end) {
             out_offsets[count] = address - last_info->vm_str;
             out_uuids[count] = last_info->uuid;
             out_image_names[count] = last_info->image_name;

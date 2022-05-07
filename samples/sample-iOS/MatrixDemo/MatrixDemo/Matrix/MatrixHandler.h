@@ -15,7 +15,7 @@
  */
 
 #import <Foundation/Foundation.h>
-#import <matrix-wechat/Matrix.h>
+#import <Matrix/Matrix.h>
 
 @interface MatrixHandler : NSObject
 

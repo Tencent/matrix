@@ -33,7 +33,7 @@ typedef NS_ENUM(NSUInteger, EDumpType) {
     EDumpType_BackgroundMainThreadBlock = 2002, // background main thread block
     EDumpType_CPUBlock = 2003, // CPU too high
     //EDumpType_FrameDropBlock = 2004,             // frame drop too much,no use currently
-    //EDumpType_SelfDefinedDump = 2005,             // no use currently
+    EDumpType_SelfDefinedDump = 2005, // no use currently
     //EDumpType_B2FBlock = 2006,                   // no use currently
     EDumpType_LaunchBlock = 2007, // main thread block during the launch of the app
     //EDumpType_CPUIntervalHigh = 2008,            // CPU too high within a time period
@@ -41,6 +41,8 @@ typedef NS_ENUM(NSUInteger, EDumpType) {
     EDumpType_BlockAndBeKilled = 2010, // main thread block and killed by the system
     //EDumpType_JSStack = 2011,                    // no use currently
     EDumpType_PowerConsume = 2011, // battery cost stack report
+    EDumpType_DiskIO = 2013, // disk io too much
+    EDumpType_FPS = 2014, // FPS
     EDumpType_Test = 10000,
 };
 

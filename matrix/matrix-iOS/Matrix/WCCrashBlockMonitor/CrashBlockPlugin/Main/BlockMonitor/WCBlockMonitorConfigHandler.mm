@@ -17,10 +17,10 @@
 #import "WCBlockMonitorConfigHandler.h"
 #import <sys/sysctl.h>
 #import "MatrixLogDef.h"
+#import "MatrixDeviceInfo.h"
 #import "WCCrashBlockFileHandler.h"
 
 @interface WCBlockMonitorConfigHandler () {
-    int m_cpuCount;
     WCBlockMonitorConfiguration *m_currentConfiguration;
 }
 
@@ -31,7 +31,6 @@
 - (id)init {
     self = [super init];
     if (self) {
-        m_cpuCount = [WCBlockMonitorConfigHandler getDeviceCPUCount];
         m_currentConfiguration = [WCBlockMonitorConfiguration defaultConfig];
     }
     return self;
@@ -46,8 +45,16 @@
     return m_currentConfiguration.runloopTimeOut;
 }
 
+- (useconds_t)getRunloopLowThreshold {
+    return m_currentConfiguration.runloopLowThreshold;
+}
+
+- (BOOL)getRunloopDynamicThresholdEnabled {
+    return m_currentConfiguration.bRunloopDynamicThreshold;
+}
+
 - (float)getCPUUsagePercent {
-    return m_currentConfiguration.limitCPUPercent * m_cpuCount;
+    return m_currentConfiguration.limitCPUPercent * [MatrixDeviceInfo cpuCount];
 }
 
 - (BOOL)getMainThreadHandle {
@@ -60,6 +67,10 @@
 
 - (useconds_t)getPerStackInterval {
     return m_currentConfiguration.perStackInterval;
+}
+
+- (BOOL)getMainThreadProfile {
+    return m_currentConfiguration.bMainThreadProfile;
 }
 
 - (int)getMainThreadCount {
@@ -101,12 +112,54 @@
     return m_currentConfiguration.triggerToBeFilteredCount;
 }
 
+- (uint32_t)getDumpDailyLimit {
+    return m_currentConfiguration.dumpDailyLimit;
+}
+
 - (BOOL)getShouldPrintMemoryUse {
     return m_currentConfiguration.bPrintMemomryUse;
 }
 
-- (BOOL)getEnableLocalSymbolicate {
-    return m_currentConfiguration.bEnableLocalSymbolicate;
+- (BOOL)getShouldPrintCPUFrequency {
+    return m_currentConfiguration.bPrintCPUFrequency;
+}
+
+#pragma mark - Disk IO
+
+- (BOOL)getShouldGetDiskIOStack {
+    return m_currentConfiguration.bGetDiskIOStack;
+}
+
+- (size_t)getSingleReadLimit {
+    return m_currentConfiguration.singleReadLimit;
+}
+
+- (size_t)getSingleWriteLimit {
+    return m_currentConfiguration.singleWriteLimit;
+}
+
+- (size_t)getTotalReadLimit {
+    return m_currentConfiguration.totalReadLimit;
+}
+
+- (size_t)getTotalWriteLimit {
+    return m_currentConfiguration.totalWriteLimit;
+}
+
+- (uint32_t)getMemoryWarningThresholdInMB {
+    return m_currentConfiguration.memoryWarningThresholdInMB;
+}
+
+- (BOOL)getSensitiveRunloopHangDetection {
+    return m_currentConfiguration.bSensitiveRunloopHangDetection;
+}
+
+- (BOOL)getShouldSuspendAllThreads {
+    return m_currentConfiguration.bSuspendAllThreads;
+}
+
+- (BOOL)getShouldEnableSnapshot {
+    return m_currentConfiguration.bEnableSnapshot;
 }
 
 @end

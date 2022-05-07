@@ -26,6 +26,7 @@ struct memory_logging_event_buffer {
     int16_t buffer_size;
 
     bool is_from_buffer_pool;
+    bool need_free;
 
     malloc_lock_s lock;
     volatile thread_id t_id;
@@ -40,14 +41,23 @@ void memory_logging_event_buffer_compress(memory_logging_event_buffer *event_buf
 void memory_logging_event_buffer_lock(memory_logging_event_buffer *event_buffer);
 void memory_logging_event_buffer_unlock(memory_logging_event_buffer *event_buffer);
 
-bool memory_logging_event_buffer_is_full(memory_logging_event_buffer *event_buffer, bool is_dump_call_stacks = false);
+bool memory_logging_event_buffer_is_full(memory_logging_event_buffer *event_buffer);
+bool memory_logging_event_buffer_is_full_for_alloc(memory_logging_event_buffer *event_buffer, bool is_dump_call_stacks = false);
 memory_logging_event *memory_logging_event_buffer_new_event(memory_logging_event_buffer *event_buffer);
 memory_logging_event *memory_logging_event_buffer_last_event(memory_logging_event_buffer *event_buffer);
 
 memory_logging_event *memory_logging_event_buffer_begin(memory_logging_event_buffer *event_buffer);
+memory_logging_event *memory_logging_event_buffer_end(memory_logging_event_buffer *event_buffer);
 memory_logging_event *memory_logging_event_buffer_next(memory_logging_event_buffer *event_buffer, memory_logging_event *curr_event);
+void memory_logging_event_buffer_enumerate(memory_logging_event_buffer *event_buffer, void (^callback)(memory_logging_event *curr_event));
 
-void memory_logging_event_buffer_update_write_index_with_size(memory_logging_event_buffer *event_buffer, size_t write_size);
-void memory_logging_event_buffer_update_to_last_write_index(memory_logging_event_buffer *event_buffer);
+inline void memory_logging_event_buffer_update_write_index_with_size(memory_logging_event_buffer *event_buffer, size_t write_size) {
+    event_buffer->last_write_index = event_buffer->write_index;
+    event_buffer->write_index += write_size;
+}
+
+inline void memory_logging_event_buffer_update_to_last_write_index(memory_logging_event_buffer *event_buffer) {
+    event_buffer->write_index = event_buffer->last_write_index;
+}
 
 #endif /* memory_logging_event_buffer_h */
