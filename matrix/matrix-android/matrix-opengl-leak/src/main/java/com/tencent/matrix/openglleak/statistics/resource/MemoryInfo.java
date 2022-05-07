@@ -10,6 +10,8 @@ import static android.opengl.GLES20.GL_TEXTURE_CUBE_MAP_POSITIVE_Z;
 import static android.opengl.GLES30.GL_TEXTURE_2D_ARRAY;
 import static android.opengl.GLES30.GL_TEXTURE_3D;
 
+import com.tencent.matrix.openglleak.hook.OpenGLHook;
+import com.tencent.matrix.openglleak.utils.JavaStacktrace;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.Arrays;
@@ -30,9 +32,9 @@ public class MemoryInfo {
 
     private int usage;
 
-    private String javaStack = "";
+    private JavaStacktrace.Trace javatrace;
 
-    private long nativeStackPtr;
+    private long nativeStackPtr = 0;
 
     private final OpenGLInfo.TYPE resType;
 
@@ -76,7 +78,7 @@ public class MemoryInfo {
         nativeStackPtr = 0;
     }
 
-    public void setTexturesInfo(int target, int level, int internalFormat, int width, int height, int depth, int border, int format, int type, int id, long eglContextId, long size, String javaStack, long nativeStackPtr) {
+    public void setTexturesInfo(int target, int level, int internalFormat, int width, int height, int depth, int border, int format, int type, int id, long eglContextId, long size, JavaStacktrace.Trace javatrace, long nativeStackPtr) {
         int faceId = getFaceId(target);
         if (faceId == -1) {
             MatrixLog.e("MicroMsg.OpenGLHook", "setTexturesInfo faceId = -1, target = " + target);
@@ -84,10 +86,14 @@ public class MemoryInfo {
         }
 
         if (this.nativeStackPtr != 0) {
-            ResRecordManager.releaseNative(this.nativeStackPtr);
+            OpenGLHook.releaseNative(this.nativeStackPtr);
         }
 
-        this.javaStack = javaStack;
+        if (this.javatrace != null) {
+            javatrace.reduceReference();
+        }
+
+        this.javatrace = javatrace;
         this.nativeStackPtr = nativeStackPtr;
 
         FaceInfo faceInfo = faces[faceId];
@@ -116,11 +122,11 @@ public class MemoryInfo {
     }
 
     public String getJavaStack() {
-        return javaStack;
+        return javatrace == null ? "" : javatrace.getContent();
     }
 
     public String getNativeStack() {
-        return nativeStackPtr != 0 ? ResRecordManager.dumpNativeStack(nativeStackPtr) : "";
+        return nativeStackPtr != 0 ? OpenGLHook.dumpNativeStack(nativeStackPtr) : "";
     }
 
     public long getNativeStackPtr() {
@@ -174,17 +180,26 @@ public class MemoryInfo {
     }
 
 
-    public void setBufferInfo(int target, int usage, int id, long eglContextId, long size, String javaStack, long nativeStackPtr) {
+    public void setBufferInfo(int target, int usage, int id, long eglContextId, long size, JavaStacktrace.Trace backtrace, long nativeStackPtr) {
         this.target = target;
         this.usage = usage;
         this.id = id;
         this.eglContextId = eglContextId;
         this.size = size;
-        this.javaStack = javaStack;
+
+        if (this.javatrace != null) {
+            this.javatrace.reduceReference();
+        }
+
+        if (this.nativeStackPtr != 0) {
+            OpenGLHook.releaseNative(this.nativeStackPtr);
+        }
+
+        this.javatrace = backtrace;
         this.nativeStackPtr = nativeStackPtr;
     }
 
-    public void setRenderbufferInfo(int target, int width, int height, int internalFormat, int id, long eglContextId, long size, String javaStack, long nativeStackPtr) {
+    public void setRenderbufferInfo(int target, int width, int height, int internalFormat, int id, long eglContextId, long size, JavaStacktrace.Trace backtrace, long nativeStackPtr) {
         this.target = target;
         this.width = width;
         this.height = height;
@@ -192,8 +207,24 @@ public class MemoryInfo {
         this.id = id;
         this.eglContextId = eglContextId;
         this.size = size;
-        this.javaStack = javaStack;
+
+        if (this.javatrace != null) {
+            this.javatrace.reduceReference();
+        }
+
+        if (this.nativeStackPtr != 0) {
+            OpenGLHook.releaseNative(this.nativeStackPtr);
+        }
+
+        this.javatrace = backtrace;
         this.nativeStackPtr = nativeStackPtr;
+    }
+
+    public void releaseJavaStacktrace() {
+        if (javatrace != null) {
+            this.javatrace.reduceReference();
+            this.javatrace = null;
+        }
     }
 
     @Override
@@ -206,11 +237,12 @@ public class MemoryInfo {
                 ", id=" + id +
                 ", eglContextId=" + eglContextId +
                 ", usage=" + usage +
-                ", javaStack='" + javaStack + '\'' +
+                ", javaStack='" + getJavaStack() + '\'' +
                 ", nativeStack='" + getNativeStack() + '\'' +
                 ", resType=" + resType +
                 ", size=" + getSize() +
                 ", faces=" + Arrays.toString(faces) +
                 '}';
     }
+
 }

@@ -1,17 +1,14 @@
 package com.tencent.matrix.batterycanary.monitor.feature;
 
+import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.Process;
 import android.os.SystemClock;
 import android.text.TextUtils;
 
-import androidx.annotation.AnyThread;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.annotation.RestrictTo;
-import androidx.annotation.WorkerThread;
-
 import com.tencent.matrix.Matrix;
-import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
+import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore.Callback;
+import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.DigitEntry;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.ListEntry;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
@@ -25,6 +22,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+
+import androidx.annotation.AnyThread;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.RestrictTo;
+import androidx.annotation.WorkerThread;
 
 @SuppressWarnings("NotNullFieldNotInitialized")
 public final class JiffiesMonitorFeature extends AbsMonitorFeature {
@@ -75,8 +78,13 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
         return JiffiesSnapshot.currentJiffiesSnapshot(ProcessInfo.getProcessInfo(), mCore.getConfig().isStatPidProc);
     }
 
+    @WorkerThread
+    public JiffiesSnapshot currentJiffiesSnapshot(int pid) {
+        return JiffiesSnapshot.currentJiffiesSnapshot(ProcessInfo.getProcessInfo(pid), mCore.getConfig().isStatPidProc);
+    }
+
     @AnyThread
-    public void currentJiffiesSnapshot(@NonNull final BatteryMonitorCore.Callback<JiffiesSnapshot> callback) {
+    public void currentJiffiesSnapshot(@NonNull final Callback<JiffiesSnapshot> callback) {
         mCore.getHandler().post(new Runnable() {
             @Override
             public void run() {
@@ -85,12 +93,36 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
         });
     }
 
+    @AnyThread
+    public void currentJiffiesSnapshot(final int pid, @NonNull final Callback<JiffiesSnapshot> callback) {
+        mCore.getHandler().post(new Runnable() {
+            @Override
+            public void run() {
+                callback.onGetJiffies(currentJiffiesSnapshot(pid));
+            }
+        });
+    }
+
+
     @SuppressWarnings("SpellCheckingInspection")
     @RestrictTo(RestrictTo.Scope.LIBRARY)
     public static class ProcessInfo {
         static ProcessInfo getProcessInfo() {
             ProcessInfo processInfo = new ProcessInfo();
             processInfo.pid = Process.myPid();
+            processInfo.name = Matrix.isInstalled() ? MatrixUtil.getProcessName(Matrix.with().getApplication()) : "default";
+            processInfo.threadInfo = ThreadInfo.parseThreadsInfo(processInfo.pid);
+            processInfo.upTime = SystemClock.uptimeMillis();
+            processInfo.time = System.currentTimeMillis();
+            return processInfo;
+        }
+
+        static ProcessInfo getProcessInfo(int pid) {
+            if (pid == Process.myPid()) {
+                return getProcessInfo();
+            }
+            ProcessInfo processInfo = new ProcessInfo();
+            processInfo.pid = pid;
             processInfo.name = Matrix.isInstalled() ? MatrixUtil.getProcessName(Matrix.with().getApplication()) : "default";
             processInfo.threadInfo = ThreadInfo.parseThreadsInfo(processInfo.pid);
             processInfo.upTime = SystemClock.uptimeMillis();
@@ -323,6 +355,8 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
             public boolean isNewAdded;
             @NonNull
             public String stat;
+            @Nullable
+            public String stack;
 
             public ThreadJiffiesEntry(Long value) {
                 super(value);
@@ -338,6 +372,7 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
     class ThreadWatchDog implements Runnable {
         private long duringMillis;
         private final List<ProcessInfo.ThreadInfo> mWatchingThreads = new ArrayList<>();
+        @Nullable private Handler mWatchHandler;
 
         @Override
         public void run() {
@@ -361,14 +396,20 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
             }
 
             // next loop
-            if (duringMillis <= 5 * 60 * 1000L) {
-                mCore.getHandler().postDelayed(this, setNext(5 * 60 * 1000L));
-            } else if (duringMillis <= 10 * 60 * 1000L) {
-                mCore.getHandler().postDelayed(this, setNext(10 * 60 * 1000L));
-            } else {
-                // done
-                synchronized (mWatchingThreads) {
-                    mWatchingThreads.clear();
+            synchronized (mWatchingThreads) {
+                if (duringMillis <= 5 * 60 * 1000L) {
+                    if (mWatchHandler != null) {
+                        mWatchHandler.postDelayed(this, setNext(5 * 60 * 1000L));
+                    }
+                } else if (duringMillis <= 10 * 60 * 1000L) {
+                    if (mWatchHandler != null) {
+                        mWatchHandler.postDelayed(this, setNext(10 * 60 * 1000L));
+                    }
+                } else {
+                    // done
+                    synchronized (mWatchingThreads) {
+                        mWatchingThreads.clear();
+                    }
                 }
             }
         }
@@ -389,13 +430,22 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
             synchronized (mWatchingThreads) {
                 MatrixLog.i(TAG, "ThreadWatchDog start watching, count = " + mWatchingThreads.size());
                 if (!mWatchingThreads.isEmpty()) {
-                    mCore.getHandler().postDelayed(this, reset());
+                    HandlerThread handlerThread = new HandlerThread("matrix_watchdog");
+                    handlerThread.start();
+                    mWatchHandler = new Handler(handlerThread.getLooper());
+                    mWatchHandler.postDelayed(this, reset());
                 }
             }
         }
 
         void stop() {
-            mCore.getHandler().removeCallbacks(this);
+            synchronized (mWatchingThreads) {
+                if (mWatchHandler != null) {
+                    mWatchHandler.removeCallbacks(this);
+                    mWatchHandler.getLooper().quit();
+                    mWatchHandler = null;
+                }
+            }
         }
 
         private long reset() {

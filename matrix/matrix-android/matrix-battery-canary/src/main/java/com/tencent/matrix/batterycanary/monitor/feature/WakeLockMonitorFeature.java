@@ -4,19 +4,19 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.SystemClock;
 import android.os.WorkSource;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.annotation.VisibleForTesting;
 
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.BeanEntry;
-import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.PowerManagerServiceHooker;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.VisibleForTesting;
 
 @SuppressWarnings("NotNullFieldNotInitialized")
 public final class WakeLockMonitorFeature extends AbsMonitorFeature {
@@ -58,7 +58,7 @@ public final class WakeLockMonitorFeature extends AbsMonitorFeature {
             mListener = new PowerManagerServiceHooker.IListener() {
                 @Override
                 public void onAcquireWakeLock(IBinder token, int flags, String tag, String packageName, @Nullable WorkSource workSource, @Nullable String historyTag) {
-                    String stack = shouldTracing(tag) ? BatteryCanaryUtil.stackTraceToString(new Throwable().getStackTrace()) : "";
+                    String stack = shouldTracing(tag) ? mCore.getConfig().callStackCollector.collectCurr() : "";
                     MatrixLog.i(TAG, "[onAcquireWakeLock] token=%s flags=%s tag=%s historyTag=%s packageName=%s workSource=%s stack=%s",
                             String.valueOf(token), flags, tag, historyTag, packageName, workSource, stack);
 
@@ -111,7 +111,7 @@ public final class WakeLockMonitorFeature extends AbsMonitorFeature {
                         wakeLockTrace.finish(mCore.getHandler());
                         mWakeLockTracing.add(wakeLockTrace.record);
                         String tag = wakeLockTrace.record.tag;
-                        String stack = shouldTracing(tag) ? BatteryCanaryUtil.stackTraceToString(new Throwable().getStackTrace()) : "";
+                        String stack = shouldTracing(tag) ? mCore.getConfig().callStackCollector.collectCurr() : "";
                         MatrixLog.i(TAG, "[onReleaseWakeLock] tag = " + tag + ", stack = " + stack);
 
                         // dump tracing info

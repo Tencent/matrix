@@ -105,7 +105,7 @@ public final class ActivityLeakResult extends AnalyzeResult {
         StringBuilder sb = new StringBuilder("Leak Reference:");
         if (referenceChain != null) {
             for (ReferenceTraceElement element : referenceChain.elements) {
-                sb.append(element.toString()).append(";");
+                sb.append(element.toCollectableString()).append(";");
             }
         }
 

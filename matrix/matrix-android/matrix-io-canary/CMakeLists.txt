@@ -33,4 +33,5 @@ find_library(log-lib
 
 target_link_libraries(io-canary
         PRIVATE ${log-lib}
-        PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/libxhook.a)
+        PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/libxhook.a
+        PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/libsemi_dlfcn.a)

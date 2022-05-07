@@ -419,6 +419,7 @@ public interface MonitorFeature {
 
         public static class Sampler {
             private static final String TAG = "Matrix.battery.Sampler";
+            public static final Number INVALID = Integer.MIN_VALUE;
 
             final Handler mHandler;
             final Callable<? extends Number> mSamplingBlock;
@@ -428,19 +429,21 @@ public interface MonitorFeature {
                 public void run() {
                     try {
                         Number currSample = mSamplingBlock.call();
-                        mSampleLst = currSample.doubleValue();
-                        mCount++;
-                        mSampleAvg = (mSampleAvg * (mCount - 1) + mSampleLst) / mCount;
-                        if (mSampleFst == Double.MIN_VALUE) {
-                            mSampleFst = mSampleLst;
-                            mSampleMax = mSampleLst;
-                            mSampleMin = mSampleLst;
-                        } else {
-                            if (mSampleLst > mSampleMax) {
+                        if (currSample != INVALID) {
+                            mSampleLst = currSample.doubleValue();
+                            mCount++;
+                            mSampleAvg = (mSampleAvg * (mCount - 1) + mSampleLst) / mCount;
+                            if (mSampleFst == Double.MIN_VALUE) {
+                                mSampleFst = mSampleLst;
                                 mSampleMax = mSampleLst;
-                            }
-                            if (mSampleLst < mSampleMin) {
                                 mSampleMin = mSampleLst;
+                            } else {
+                                if (mSampleLst > mSampleMax) {
+                                    mSampleMax = mSampleLst;
+                                }
+                                if (mSampleLst < mSampleMin) {
+                                    mSampleMin = mSampleLst;
+                                }
                             }
                         }
                     } catch (Exception e) {

@@ -33,9 +33,9 @@ import android.view.WindowManager;
 import android.view.animation.AccelerateInterpolator;
 import android.widget.TextView;
 
-import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.Matrix;
-import com.tencent.matrix.listeners.IAppForeground;
+import com.tencent.matrix.lifecycle.IStateObserver;
+import com.tencent.matrix.lifecycle.owners.ProcessUIResumedStateOwner;
 import com.tencent.matrix.trace.R;
 import com.tencent.matrix.trace.TracePlugin;
 import com.tencent.matrix.trace.constants.Constants;
@@ -48,7 +48,7 @@ import com.tencent.matrix.util.MatrixLog;
 import java.util.Objects;
 import java.util.concurrent.Executor;
 
-public class FrameDecorator extends IDoFrameListener implements IAppForeground {
+public class FrameDecorator extends IDoFrameListener {
     private static final String TAG = "Matrix.FrameDecorator";
     private WindowManager windowManager;
     private WindowManager.LayoutParams layoutParam;
@@ -71,6 +71,17 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
     private int highColor;
     private int frozenColor;
 
+    private IStateObserver mProcessForegroundListener = new IStateObserver() {
+        @Override
+        public void on() {
+            onForeground(true);
+        }
+
+        @Override
+        public void off() {
+            onForeground(false);
+        }
+    };
 
     @SuppressLint("ClickableViewAccessibility")
     private FrameDecorator(Context context, final FloatFrameView view) {
@@ -84,7 +95,8 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
         this.highColor = context.getResources().getColor(R.color.level_high_color);
         this.frozenColor = context.getResources().getColor(R.color.level_frozen_color);
 
-        AppActiveMatrixDelegate.INSTANCE.addListener(this);
+        ProcessUIResumedStateOwner.INSTANCE.observeForever(mProcessForegroundListener);
+
         view.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
             @Override
             public void onViewAttachedToWindow(View v) {
@@ -418,7 +430,6 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
                 if (!isShowing) {
                     isShowing = true;
                     windowManager.addView(view, layoutParam);
-
                 }
             }
         });
@@ -452,8 +463,7 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
         return isShowing;
     }
 
-    @Override
-    public void onForeground(final boolean isForeground) {
+    private void onForeground(final boolean isForeground) {
         MatrixLog.i(TAG, "[onForeground] isForeground:%s", isForeground);
         if (!isEnable) {
             return;

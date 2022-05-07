@@ -21,4 +21,9 @@ TARGET_INCLUDE_DIRECTORIES(SqliteLint-lib PRIVATE ${EXT_DEP}/include)
 
 # link the log
 find_library( log-lib log )
-target_link_libraries(SqliteLint-lib ${log-lib} ${EXT_DEP}/lib/${ANDROID_ABI}/libxhook.a)
+target_link_libraries(
+  SqliteLint-lib
+  PRIVATE ${log-lib}
+  PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/libxhook.a
+  PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/libsemi_dlfcn.a
+)

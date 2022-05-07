@@ -24,13 +24,11 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.os.BatteryManager;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
-
-import androidx.core.app.NotificationCompat;
-import androidx.test.platform.app.InstrumentationRegistry;
-import androidx.test.ext.junit.runners.AndroidJUnit4;
+import android.os.PowerManager;
 import android.text.TextUtils;
 import android.util.Log;
 import android.widget.Toast;
@@ -49,9 +47,14 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import androidx.core.app.NotificationCompat;
+import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.platform.app.InstrumentationRegistry;
 
 import static android.content.Context.ACTIVITY_SERVICE;
 
@@ -209,6 +212,51 @@ public class CanaryUtilsTest {
     }
 
     @Test
+    public void testGetBatteryPercentage() {
+        int pct = BatteryCanaryUtil.getBatteryPercentageImmediately(mContext);
+        Assert.assertTrue(pct > 0);
+    }
+
+    @Test
+    public void testGetBatteryCapacity() throws Exception {
+        int capacity0 = BatteryCanaryUtil.getBatteryCapacityImmediately(mContext);
+        Assert.assertTrue(capacity0 > 0);
+
+        PowerProfile powerProfile = PowerProfile.init(mContext);
+        Assert.assertNotNull(powerProfile);
+        Assert.assertTrue(powerProfile.isSupported());
+        double capacity1 = powerProfile.getBatteryCapacity();
+        Assert.assertEquals(capacity0, capacity1, 1000);
+
+        Class<?> profileClass = Class.forName("com.android.internal.os.PowerProfile");
+        Object profileObject = profileClass.getConstructor(Context.class).newInstance(mContext);
+        Method method = profileClass.getMethod("getAveragePower", String.class);
+        double capacity2 = (double) method.invoke(profileObject, "battery.capacity");
+        method = profileClass.getMethod("getBatteryCapacity");
+        double capacity3 = (double) method.invoke(profileObject);
+
+        Assert.assertEquals(capacity1, capacity2, 1d);
+        Assert.assertEquals(capacity2, capacity3, 1d);
+
+        BatteryManager batteryManager = (BatteryManager) mContext.getSystemService(Context.BATTERY_SERVICE);
+        int chargeCounter = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER);
+        int capacity = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
+
+        double capacity4 = ((chargeCounter / (float) capacity) * 100) / 1000d;
+        Assert.assertEquals(capacity3, capacity4, 1000d);
+    }
+
+    @Test
+    public void testCheckIfLowBattery() {
+        Intent intent = BatteryCanaryUtil.getBatteryStickyIntent(mContext);
+        Assert.assertNotNull(intent);
+        int level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+
+        boolean lowBattery = BatteryCanaryUtil.isLowBattery(mContext);
+        Assert.assertEquals(level <= 2, lowBattery);
+    }
+
+    @Test
     public void testCheckAppForeGroundService() {
         boolean hasRunningService = false;
         ActivityManager am = (ActivityManager) mContext.getSystemService(ACTIVITY_SERVICE);
@@ -294,6 +342,45 @@ public class CanaryUtilsTest {
             Thread.sleep(100);
             Assert.assertTrue(ref.isExpired());
         }
+    }
+
+    @Test
+    public void testGetThermalStatus() throws InterruptedException {
+        int status = BatteryCanaryUtil.getThermalStatImmediately(mContext);
+        Assert.assertTrue(status >= 0);
+
+        final PowerManager powerManager = (PowerManager) mContext.getSystemService(Context.POWER_SERVICE);
+        final AtomicBoolean hasNotify = new AtomicBoolean();
+        powerManager.addThermalStatusListener(new PowerManager.OnThermalStatusChangedListener() {
+            @Override
+            public void onThermalStatusChanged(int status) {
+                float room = BatteryCanaryUtil.getThermalHeadroomImmediately(mContext, 10);
+                Assert.assertTrue(Float.isNaN(room) || room > 0);
+                synchronized (hasNotify) {
+                    hasNotify.notify();
+                    hasNotify.set(true);
+                }
+            }
+        });
+
+        if (!hasNotify.get()) {
+            synchronized (hasNotify) {
+                hasNotify.wait(10000);
+            }
+        }
+        float room = BatteryCanaryUtil.getThermalHeadroomImmediately(mContext, 10);
+        Assert.assertTrue(Float.isNaN(room) || room > 0);
+    }
+
+    @Test
+    public void testGetBatteryChargingStatus() {
+        Intent intent = BatteryCanaryUtil.getBatteryStickyIntent(mContext);
+        Assert.assertNotNull(intent);
+        Assert.assertTrue(intent.getIntExtra("max_charging_current", -1) > 0);
+        Assert.assertTrue(intent.getIntExtra("max_charging_voltage", -1) > 0);
+
+        int watt = BatteryCanaryUtil.getChargingWattImmediately(mContext);
+        Assert.assertTrue(watt > 0);
     }
 
     private static boolean diceWithBase(int base) {

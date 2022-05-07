@@ -35,6 +35,7 @@ import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature.Alar
 import com.tencent.matrix.batterycanary.monitor.feature.AppStatMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.BlueToothMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.BlueToothMonitorFeature.BlueToothSnapshot;
+import com.tencent.matrix.batterycanary.monitor.feature.CompositeMonitors;
 import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot;
@@ -133,42 +134,19 @@ public class ApisTest {
                     }
 
                     @Override
-                    protected void onCanaryDump(AppStats appStats) {
+                    protected void onCanaryDump(CompositeMonitors monitors) {
                         // Dump battery stats data periodically
+                        AppStats appStats = monitors.getAppStats();
                         long statMinute = appStats.getMinute();
                         boolean foreground = appStats.isForeground();
                         boolean charging = appStats.isCharging();
-                        super.onCanaryDump(appStats);
+                        super.onCanaryDump(monitors);
                     }
 
                     @Override
-                    protected void onReportJiffies(@NonNull Delta<JiffiesSnapshot> delta) {
-                        // Report all threads jiffies consumed during the statMinute time
-                    }
-
-                    @Override
-                    protected void onReportAlarm(@NonNull Delta<AlarmSnapshot> delta) {
-                        // Report all alarm set during the statMinute time
-                    }
-
-                    @Override
-                    protected void onReportWakeLock(@NonNull Delta<WakeLockSnapshot> delta) {
-                        // Report all wakelock acquired during the statMinute time
-                    }
-
-                    @Override
-                    protected void onReportBlueTooth(@NonNull Delta<BlueToothSnapshot> delta) {
-                        // Report all bluetooth scanned during the statMinute time
-                    }
-
-                    @Override
-                    protected void onReportWifi(@NonNull Delta<WifiSnapshot> delta) {
-                        // Report all wifi scanned during the statMinute time
-                    }
-
-                    @Override
-                    protected void onReportLocation(@NonNull Delta<LocationSnapshot> delta) {
-                        // Report all gps scanned during the statMinute time
+                    protected void onCanaryReport(CompositeMonitors monitors) {
+                        super.onCanaryReport(monitors);
+                        // Report all battery canary data wrapped within CompositeMonitors
                     }
                 })
                 .build();

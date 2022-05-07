@@ -35,7 +35,6 @@ public class EGLHelper {
                 EGL14.EGL_RED_SIZE, 8,
                 EGL14.EGL_GREEN_SIZE, 8,
                 EGL14.EGL_BLUE_SIZE, 8,
-                EGL14.EGL_ALPHA_SIZE, 8,
                 EGL14.EGL_NONE
         };
         int[] numEglConfigs = new int[1];
@@ -74,22 +73,6 @@ public class EGLHelper {
         }
 
         GLES20.glFlush();
-    }
-
-    public static boolean isEglContextAlive(EGLContext context) {
-        int[] eglContextAttribList = new int[]{
-                EGL14.EGL_CONTEXT_CLIENT_VERSION, 2,
-                EGL14.EGL_NONE
-        };
-
-        EGLContext testContext = EGL14.eglCreateContext(mEGLDisplay, mEglConfig, context, eglContextAttribList, 0);
-        if (testContext == EGL14.EGL_NO_CONTEXT) {
-            return false;
-        }
-
-        EGL14.eglDestroyContext(mEGLDisplay, testContext);
-
-        return true;
     }
 
 }

@@ -24,5 +24,10 @@
 #include <android/log.h>
 #include "xh_log.h"
 
-android_LogPriority xh_log_priority = ANDROID_LOG_WARN;
+#ifdef EnableLOG
+int enable_log = 1;
+#else
 int enable_log = 0;
+#endif
+
+android_LogPriority xh_log_priority = ANDROID_LOG_DEBUG;

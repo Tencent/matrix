@@ -61,7 +61,7 @@ Java_com_tencent_matrix_openglleak_detector_FuncSeeker_getTargetFuncIndex(JNIEnv
         *replaceMethod = (void *) _my_glNormal;
 
         // 验证是否已经拿到偏移值
-        HOOK_O_FUNC(target_func, 0, NULL);
+        HOOK_O_FUNC(target_func, 0, 0);
     }
 
     if (i_glGenNormal == 500) {
@@ -175,7 +175,7 @@ Java_com_tencent_matrix_openglleak_detector_FuncSeeker_getBindFuncIndex(JNIEnv *
         *replaceMethod = (void *) _my_glBind;
 
         // 验证是否已经拿到偏移值
-        HOOK_O_FUNC(bind_func, 0, NULL);
+        HOOK_O_FUNC(bind_func, 0, 0);
     }
 
     if (i_glBind == 500) {

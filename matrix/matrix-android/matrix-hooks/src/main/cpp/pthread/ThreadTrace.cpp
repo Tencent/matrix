@@ -385,7 +385,32 @@ static inline void pthread_dump_impl(FILE *log_file) {
             continue;
         }
 
-        if (meta.unwind_mode == wechat_backtrace::FramePointer) {
+        if (meta.unwind_mode == wechat_backtrace::Quicken) {
+
+            LOGD(TAG, "native stacktrace:");
+            flogger0(log_file, "native stacktrace:\n");
+
+            size_t                         elements_size = 0;
+            const size_t                   max_elements  = PTHREAD_BACKTRACE_FRAME_ELEMENTS_MAX_SIZE;
+            wechat_backtrace::FrameElement stacktrace_elements[max_elements];
+
+            get_stacktrace_elements(meta.native_backtrace.frames.get(),
+                                    meta.native_backtrace.frame_size,
+                                    true, stacktrace_elements,
+                                    max_elements, elements_size);
+
+            for (size_t j = 0; j < elements_size; j++) {
+                std::string data;
+                wechat_backtrace::quicken_frame_format(stacktrace_elements[j], j, data);
+                LOGD(TAG, "%s", data.c_str());
+                flogger0(log_file, data.c_str());
+
+            }
+
+            LOGD(TAG, "java stacktrace:\n%s", meta.java_stacktrace.load(std::memory_order_acquire));
+            flogger0(log_file, "java stacktrace:\n%s\n",
+                     meta.java_stacktrace.load(std::memory_order_acquire));
+        } else {
             LOGD(TAG, "native stacktrace:");
             flogger0(log_file, "native stacktrace:\n");
 
@@ -409,31 +434,6 @@ static inline void pthread_dump_impl(FILE *log_file) {
             wechat_backtrace::restore_frame_detail(meta.native_backtrace.frames.get(),
                                                    meta.native_backtrace.frame_size,
                                                    frame_detail_lambda);
-
-            LOGD(TAG, "java stacktrace:\n%s", meta.java_stacktrace.load(std::memory_order_acquire));
-            flogger0(log_file, "java stacktrace:\n%s\n",
-                     meta.java_stacktrace.load(std::memory_order_acquire));
-        } else if (meta.unwind_mode == wechat_backtrace::Quicken) {
-
-            LOGD(TAG, "native stacktrace:");
-            flogger0(log_file, "native stacktrace:\n");
-
-            size_t                         elements_size = 0;
-            const size_t                   max_elements  = PTHREAD_BACKTRACE_FRAME_ELEMENTS_MAX_SIZE;
-            wechat_backtrace::FrameElement stacktrace_elements[max_elements];
-
-            get_stacktrace_elements(meta.native_backtrace.frames.get(),
-                                    meta.native_backtrace.frame_size,
-                                    true, stacktrace_elements,
-                                    max_elements, elements_size);
-
-            for (size_t j = 0; j < elements_size; j++) {
-                std::string data;
-                wechat_backtrace::quicken_frame_format(stacktrace_elements[j], j, data);
-                LOGD(TAG, "%s", data.c_str());
-                flogger0(log_file, data.c_str());
-
-            }
 
             LOGD(TAG, "java stacktrace:\n%s", meta.java_stacktrace.load(std::memory_order_acquire));
             flogger0(log_file, "java stacktrace:\n%s\n",
