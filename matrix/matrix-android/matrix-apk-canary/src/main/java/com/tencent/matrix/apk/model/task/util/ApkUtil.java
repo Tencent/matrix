@@ -24,7 +24,6 @@ import org.jf.baksmali.Adaptors.ClassDefinition;
 import org.jf.baksmali.BaksmaliOptions;
 import org.jf.baksmali.formatter.BaksmaliWriter;
 import org.jf.dexlib2.iface.ClassDef;
-import org.jf.util.IndentingWriter;
 
 import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
