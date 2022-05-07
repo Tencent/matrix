@@ -23,9 +23,15 @@ class TestFgService : Service() {
         private const val TAG = "Matrix.sample.TestFgService"
 
         @JvmStatic
-        fun test(context: Context) {
+        fun testStart(context: Context) {
             val intent = Intent(context, TestFgService::class.java)
             context.startService(intent)
+        }
+
+        @JvmStatic
+        fun testStop(context: Context) {
+            val intent = Intent(context, TestFgService::class.java)
+            context.stopService(intent)
         }
 
         fun getNotificationChannelIdCompat(context: Context): String? {

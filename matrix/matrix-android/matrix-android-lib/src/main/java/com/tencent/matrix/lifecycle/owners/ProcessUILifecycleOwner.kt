@@ -22,14 +22,14 @@ import java.util.*
  * Usage:
  * recommended readable APIs:
  *      ProcessUIStartedStateOwner.isForeground()
- *      ProcessUIStartedStateOwner.addLifecycleCallback(object : IMatrixLifecycleCallback() {
- *           override fun onForeground() {}
- *           override fun onBackground() {}
+ *      ProcessUIStartedStateOwner.addLifecycleCallback(object : IMatrixForegroundCallback() {
+ *           override fun onEnterForeground() {}
+ *           override fun onExitForeground() {}
  *      })
  *      // auto remove callback when lifecycle destroyed
- *      ProcessUIStartedStateOwner.addLifecycleCallback(lifecycleOwner, object : IMatrixLifecycleCallback() {
- *           override fun onForeground() {}
- *           override fun onBackground() {}
+ *      ProcessUIStartedStateOwner.addLifecycleCallback(lifecycleOwner, object : IMatrixForegroundCallback() {
+ *           override fun onEnterForeground() {}
+ *           override fun onExitForeground() {}
  *      })
  *
  * the origin abstract APIs are also available:
@@ -309,22 +309,6 @@ object ProcessUILifecycleOwner {
                 activityDestroyed(activity)
             }
         })
-    }
-
-    @JvmStatic
-    fun hasForegroundService(): Boolean {
-        if (activityManager == null) {
-            throw IllegalStateException("NOT initialized yet")
-        }
-        return safeLet(TAG, defVal = false) {
-            @Suppress("DEPRECATION")
-            activityManager!!.getRunningServices(Int.MAX_VALUE)
-                .filter {
-                    it.uid == Process.myUid() && it.pid == Process.myPid()
-                }.any {
-                    it.foreground
-                }
-        }
     }
 
     private val componentToProcess by lazy { HashMap<String, String>() }
