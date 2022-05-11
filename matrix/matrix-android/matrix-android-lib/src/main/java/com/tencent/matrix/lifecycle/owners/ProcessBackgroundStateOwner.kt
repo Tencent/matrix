@@ -68,7 +68,7 @@ object ProcessExplicitBackgroundOwner : StatefulOwner(), IBackgroundStatefulOwne
         override fun action(): Boolean {
             val uiForeground by lazy { ProcessUIStartedStateOwner.active() }
             val fgService by lazy { ForegroundServiceLifecycleOwner.hasForegroundService() }
-            val visibleWindow by lazy { OverlayWindowLifecycleOwner.hasVisibleWindow() }
+            val visibleWindow by lazy { OverlayWindowLifecycleOwner.hasOverlayWindow() }
 
             if (uiForeground) {
                 MatrixLog.i(TAG, "turn OFF for UI foreground")
