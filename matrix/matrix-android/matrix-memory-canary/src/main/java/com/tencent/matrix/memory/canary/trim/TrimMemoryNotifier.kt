@@ -45,6 +45,7 @@ object TrimMemoryNotifier {
                 }
             }
         }
+        Runtime.getRuntime().gc()
     }
 
     private fun ArrayList<TrimCallback>.systemTrim(level: Int) {
@@ -55,6 +56,7 @@ object TrimMemoryNotifier {
                 }
             }
         }
+        Runtime.getRuntime().gc()
     }
 
     fun init(config: TrimMemoryConfig) {
