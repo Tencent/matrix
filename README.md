@@ -314,7 +314,7 @@ Matrix gradle plugin could work with Android Gradle Plugin 3.5.0/4.0.0/4.1.0 cur
 
 ``` java 
   Matrix.Builder builder = new Matrix.Builder(application); // build matrix
-  builder.patchListener(new TestPluginListener(this)); // add general pluginListener
+  builder.pluginListener(new TestPluginListener(this)); // add general pluginListener
   DynamicConfigImplDemo dynamicConfig = new DynamicConfigImplDemo(); // dynamic config
   
   // init plugin 
