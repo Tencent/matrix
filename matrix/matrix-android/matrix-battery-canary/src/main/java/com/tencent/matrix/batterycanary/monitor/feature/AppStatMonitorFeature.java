@@ -75,18 +75,26 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
         @Override
         public void on() {
             MatrixLog.i(TAG, "floatView >> on");
-            int appStat = BatteryCanaryUtil.getAppStatImmediately(mCore.getContext(), mCore.isForeground());
+            boolean foreground = mCore.isForeground();
+            int appStat = BatteryCanaryUtil.getAppStatImmediately(mCore.getContext(), foreground);
             if (appStat != APP_STAT_FOREGROUND && appStat != APP_STAT_FOREGROUND_SERVICE) {
+                MatrixLog.i(TAG, "statAppStat: " + APP_STAT_FLOAT_WINDOW);
                 onStatAppStat(APP_STAT_FLOAT_WINDOW);
+            } else {
+                MatrixLog.i(TAG, "skip statAppStat, fg = " + foreground + ", currAppStat = " + appStat);
             }
         }
 
         @Override
         public void off() {
             MatrixLog.i(TAG, "floatView >> off");
-            int appStat = BatteryCanaryUtil.getAppStatImmediately(mCore.getContext(), mCore.isForeground());
+            boolean foreground = mCore.isForeground();
+            int appStat = BatteryCanaryUtil.getAppStatImmediately(mCore.getContext(), foreground);
             if (appStat != APP_STAT_FOREGROUND && appStat != APP_STAT_FOREGROUND_SERVICE) {
+                MatrixLog.i(TAG, "statAppStat: " + APP_STAT_BACKGROUND);
                 onStatAppStat(APP_STAT_BACKGROUND);
+            } else {
+                MatrixLog.i(TAG, "skip statAppStat, fg = " + foreground + ", currAppStat = " + appStat);
             }
         }
     };
