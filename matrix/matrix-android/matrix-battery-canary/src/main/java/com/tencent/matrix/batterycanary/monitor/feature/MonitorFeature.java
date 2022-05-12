@@ -469,7 +469,7 @@ public interface MonitorFeature {
             double mSampleMin = Double.MIN_VALUE;
             double mSampleAvg = Double.MIN_VALUE;
 
-            public Sampler( Handler handler, Callable<? extends Number> onSampling) {
+            public Sampler(Handler handler, Callable<? extends Number> onSampling) {
                 this("default", handler, onSampling);
             }
 
