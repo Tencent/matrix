@@ -78,6 +78,7 @@ object TrimMemoryNotifier {
         fun init() {
             backgroundOwner.addLifecycleCallback(object : IMatrixBackgroundCallback() {
                 override fun onEnterBackground() {
+                    delayIndex = 0
                     val delay = config.delayMillis[delayIndex]
                     runningHandler.removeCallbacksAndMessages(null)
                     if (immediate) {
