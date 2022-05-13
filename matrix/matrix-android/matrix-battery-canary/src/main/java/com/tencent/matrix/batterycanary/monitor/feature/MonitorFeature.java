@@ -421,6 +421,7 @@ public interface MonitorFeature {
             private static final String TAG = "Matrix.battery.Sampler";
             public static final Number INVALID = Integer.MIN_VALUE;
 
+            final String mTag;
             final Handler mHandler;
             final Callable<? extends Number> mSamplingBlock;
 
@@ -428,6 +429,7 @@ public interface MonitorFeature {
                 @Override
                 public void run() {
                     try {
+                        MatrixLog.i(TAG, "onSampling, count = " + mCount);
                         Number currSample = mSamplingBlock.call();
                         if (currSample != INVALID) {
                             mSampleLst = currSample.doubleValue();
@@ -468,6 +470,11 @@ public interface MonitorFeature {
             double mSampleAvg = Double.MIN_VALUE;
 
             public Sampler(Handler handler, Callable<? extends Number> onSampling) {
+                this("default", handler, onSampling);
+            }
+
+            public Sampler(String tag, Handler handler, Callable<? extends Number> onSampling) {
+                mTag = tag;
                 mHandler = handler;
                 mSamplingBlock = onSampling;
             }

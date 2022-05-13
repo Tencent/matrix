@@ -295,7 +295,10 @@ public class CompositeMonitors {
 
     protected void configureBgnSnapshots() {
         for (Class<? extends Snapshot<?>> item : mMetrics) {
-            statCurrSnapshot(item);
+            Snapshot<?> currSnapshot = statCurrSnapshot(item);
+            if (currSnapshot != null) {
+                mBgnSnapshots.put(item, currSnapshot);
+            }
         }
     }
 
@@ -352,7 +355,6 @@ public class CompositeMonitors {
             AlarmMonitorFeature feature = getFeature(AlarmMonitorFeature.class);
             if (feature != null) {
                 snapshot = feature.currentAlarms();
-                mBgnSnapshots.put(snapshotClass, snapshot);
             }
             return snapshot;
         }
@@ -360,7 +362,6 @@ public class CompositeMonitors {
             BlueToothMonitorFeature feature = getFeature(BlueToothMonitorFeature.class);
             if (feature != null) {
                 snapshot = feature.currentSnapshot();
-                mBgnSnapshots.put(snapshotClass, snapshot);
             }
             return snapshot;
         }
@@ -368,7 +369,6 @@ public class CompositeMonitors {
             DeviceStatMonitorFeature feature = getFeature(DeviceStatMonitorFeature.class);
             if (feature != null) {
                 snapshot = feature.currentCpuFreq();
-                mBgnSnapshots.put(snapshotClass, snapshot);
             }
             return snapshot;
         }
@@ -376,7 +376,6 @@ public class CompositeMonitors {
             DeviceStatMonitorFeature feature = getFeature(DeviceStatMonitorFeature.class);
             if (feature != null && mMonitor != null) {
                 snapshot = feature.currentBatteryTemperature(mMonitor.getContext());
-                mBgnSnapshots.put(snapshotClass, snapshot);
             }
             return snapshot;
         }
@@ -384,7 +383,6 @@ public class CompositeMonitors {
             JiffiesMonitorFeature feature = getFeature(JiffiesMonitorFeature.class);
             if (feature != null) {
                 snapshot = feature.currentJiffiesSnapshot();
-                mBgnSnapshots.put(snapshotClass, snapshot);
             }
             return snapshot;
         }
@@ -392,7 +390,6 @@ public class CompositeMonitors {
             LocationMonitorFeature feature = getFeature(LocationMonitorFeature.class);
             if (feature != null) {
                 snapshot = feature.currentSnapshot();
-                mBgnSnapshots.put(snapshotClass, snapshot);
             }
             return snapshot;
         }
@@ -400,7 +397,6 @@ public class CompositeMonitors {
             TrafficMonitorFeature feature = getFeature(TrafficMonitorFeature.class);
             if (feature != null && mMonitor != null) {
                 snapshot = feature.currentRadioSnapshot(mMonitor.getContext());
-                mBgnSnapshots.put(snapshotClass, snapshot);
             }
             return snapshot;
         }
@@ -408,7 +404,6 @@ public class CompositeMonitors {
             WakeLockMonitorFeature feature = getFeature(WakeLockMonitorFeature.class);
             if (feature != null) {
                 snapshot = feature.currentWakeLocks();
-                mBgnSnapshots.put(snapshotClass, snapshot);
             }
             return snapshot;
         }
@@ -416,7 +411,6 @@ public class CompositeMonitors {
             WifiMonitorFeature feature = getFeature(WifiMonitorFeature.class);
             if (feature != null) {
                 snapshot = feature.currentSnapshot();
-                mBgnSnapshots.put(snapshotClass, snapshot);
             }
             return snapshot;
         }
@@ -424,7 +418,6 @@ public class CompositeMonitors {
             CpuStatFeature feature = getFeature(CpuStatFeature.class);
             if (feature != null && feature.isSupported()) {
                 snapshot = feature.currentCpuStateSnapshot();
-                mBgnSnapshots.put(snapshotClass, snapshot);
             }
             return snapshot;
         }
@@ -432,7 +425,6 @@ public class CompositeMonitors {
             AppStatMonitorFeature feature = getFeature(AppStatMonitorFeature.class);
             if (feature != null) {
                 snapshot = feature.currentAppStatSnapshot();
-                mBgnSnapshots.put(snapshotClass, snapshot);
             }
             return snapshot;
         }
@@ -465,7 +457,7 @@ public class CompositeMonitors {
         if (snapshotClass == DeviceStatMonitorFeature.CpuFreqSnapshot.class) {
             final DeviceStatMonitorFeature feature = getFeature(DeviceStatMonitorFeature.class);
             if (feature != null && mMonitor != null) {
-                sampler = new Snapshot.Sampler(mMonitor.getHandler(), new Callable<Number>() {
+                sampler = new Snapshot.Sampler("cpufreq", mMonitor.getHandler(), new Callable<Number>() {
                     @Override
                     public Number call() {
                         DeviceStatMonitorFeature.CpuFreqSnapshot snapshot = feature.currentCpuFreq();
@@ -486,7 +478,7 @@ public class CompositeMonitors {
         if (snapshotClass == DeviceStatMonitorFeature.BatteryTmpSnapshot.class) {
             final DeviceStatMonitorFeature feature = getFeature(DeviceStatMonitorFeature.class);
             if (feature != null && mMonitor != null) {
-                sampler = new Snapshot.Sampler(mMonitor.getHandler(), new Callable<Number>() {
+                sampler = new Snapshot.Sampler("batt-temp", mMonitor.getHandler(), new Callable<Number>() {
                     @Override
                     public Number call() {
                         DeviceStatMonitorFeature.BatteryTmpSnapshot snapshot = feature.currentBatteryTemperature(mMonitor.getContext());
@@ -500,7 +492,7 @@ public class CompositeMonitors {
         if (snapshotClass == DeviceStatMonitorFeature.ThermalStatSnapshot.class) {
             final DeviceStatMonitorFeature feature = getFeature(DeviceStatMonitorFeature.class);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && feature != null && mMonitor != null) {
-                sampler = new Snapshot.Sampler(mMonitor.getHandler(), new Callable<Number>() {
+                sampler = new Snapshot.Sampler("thermal-stat", mMonitor.getHandler(), new Callable<Number>() {
                     @Override
                     public Number call() {
                         return BatteryCanaryUtil.getThermalStat(mMonitor.getContext());
@@ -515,7 +507,7 @@ public class CompositeMonitors {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && feature != null && mMonitor != null) {
                 final Long interval = mSampleRegs.get(snapshotClass);
                 if (interval != null && interval >= 1000L) {
-                    sampler = new Snapshot.Sampler(mMonitor.getHandler(), new Callable<Number>() {
+                    sampler = new Snapshot.Sampler("thermal-headroom", mMonitor.getHandler(), new Callable<Number>() {
                         @Override
                         public Number call() {
                             return BatteryCanaryUtil.getThermalHeadroom(mMonitor.getContext(), (int) (interval / 1000L));
@@ -529,7 +521,7 @@ public class CompositeMonitors {
         if (snapshotClass == DeviceStatMonitorFeature.ChargeWattageSnapshot.class) {
             final DeviceStatMonitorFeature feature = getFeature(DeviceStatMonitorFeature.class);
             if (feature != null && mMonitor != null) {
-                sampler = new Snapshot.Sampler(mMonitor.getHandler(), new Callable<Number>() {
+                sampler = new Snapshot.Sampler("batt-temp", mMonitor.getHandler(), new Callable<Number>() {
                     @Override
                     public Number call() {
                         return BatteryCanaryUtil.getChargingWatt(mMonitor.getContext());
