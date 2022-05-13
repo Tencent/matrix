@@ -88,7 +88,7 @@ object TrimMemoryNotifier {
                     runningHandler.postDelayed(this@TrimTask, delay)
                     MatrixLog.i(
                         TAG,
-                        "[$name] trim delay[$delayIndex/${config.delayMillis.size}] $delay"
+                        "[$name] trim delay[${delayIndex+1}/${config.delayMillis.size}] $delay"
                     )
                 }
 
@@ -102,7 +102,7 @@ object TrimMemoryNotifier {
         override fun run() {
             MatrixLog.i(
                 TAG,
-                "[$name] trim timeout [$delayIndex/${config.delayMillis.size}] ${config.delayMillis[delayIndex]}"
+                "[$name] trim timeout [${delayIndex+1}/${config.delayMillis.size}] ${config.delayMillis[delayIndex]}"
             )
             delayIndex++
             trimCallback.backgroundTrim()
@@ -111,7 +111,7 @@ object TrimMemoryNotifier {
                 runningHandler.postDelayed(this, delay)
                 MatrixLog.i(
                     TAG,
-                    "[$name] trim delay[$delayIndex/${config.delayMillis.size}] $delay"
+                    "[$name] trim delay[${delayIndex+1}/${config.delayMillis.size}] $delay"
                 )
             }
         }
