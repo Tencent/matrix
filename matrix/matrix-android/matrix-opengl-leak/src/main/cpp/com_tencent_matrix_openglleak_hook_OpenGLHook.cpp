@@ -560,10 +560,11 @@ Java_com_tencent_matrix_openglleak_hook_OpenGLHook_isEglContextAlive(
             EGL_NONE
     };
     auto origin_context = (EGLContext) egl_context;
-    eglCreateContext(display, eglConfig, origin_context, attrib_ctx_list);
+    EGLContext test_context = eglCreateContext(display, eglConfig, origin_context, attrib_ctx_list);
     if (eglGetError() == EGL_BAD_CONTEXT) {
         return false;
     }
+    eglDestroyContext(display, test_context);
 
     return true;
 }

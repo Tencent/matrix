@@ -287,7 +287,11 @@ GL_APICALL void GL_APIENTRY my_glGenTextures(GLsizei n, GLuint *textures) {
         EGLSurface egl_read_surface = eglGetCurrentSurface(EGL_READ);
 
         char* activity_info = static_cast<char *>(malloc(BUF_SIZE));
-        strcpy(activity_info, curr_activity_info);
+        if (curr_activity_info != nullptr) {
+            strcpy(activity_info, curr_activity_info);
+        } else {
+            strcpy(activity_info, "null");
+        }
 
         messages_containers->
                 enqueue_message((uintptr_t) egl_context,
@@ -350,8 +354,11 @@ GL_APICALL void GL_APIENTRY my_glGenBuffers(GLsizei n, GLuint *buffers) {
         EGLSurface egl_read_surface = eglGetCurrentSurface(EGL_READ);
 
         char* activity_info = static_cast<char *>(malloc(BUF_SIZE));
-        strcpy(activity_info, curr_activity_info);
-
+        if (curr_activity_info != nullptr) {
+            strcpy(activity_info, curr_activity_info);
+        } else {
+            strcpy(activity_info, "null");
+        }
         messages_containers
                 ->enqueue_message((uintptr_t) egl_context,
                                   [n, copy_buffers, throwable, thread_id, backtracePrt, egl_context, egl_draw_surface, egl_read_surface, activity_info]() {
@@ -413,7 +420,11 @@ GL_APICALL void GL_APIENTRY my_glGenFramebuffers(GLsizei n, GLuint *buffers) {
         EGLSurface egl_read_surface = eglGetCurrentSurface(EGL_READ);
 
         char* activity_info = static_cast<char *>(malloc(BUF_SIZE));
-        strcpy(activity_info, curr_activity_info);
+        if (curr_activity_info != nullptr) {
+            strcpy(activity_info, curr_activity_info);
+        } else {
+            strcpy(activity_info, "null");
+        }
 
         messages_containers
                 ->enqueue_message((uintptr_t) egl_context,
@@ -476,7 +487,11 @@ GL_APICALL void GL_APIENTRY my_glGenRenderbuffers(GLsizei n, GLuint *buffers) {
         EGLSurface egl_read_surface = eglGetCurrentSurface(EGL_READ);
 
         char* activity_info = static_cast<char *>(malloc(BUF_SIZE));
-        strcpy(activity_info, curr_activity_info);
+        if (curr_activity_info != nullptr) {
+            strcpy(activity_info, curr_activity_info);
+        } else {
+            strcpy(activity_info, "null");
+        }
 
         messages_containers
                 ->enqueue_message((uintptr_t) egl_context,
