@@ -49,13 +49,17 @@ import java.io.FileInputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.Field;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 public class SignalAnrTracer extends Tracer {
     private static final String TAG = "SignalAnrTracer";
 
     private static final String CHECK_ANR_STATE_THREAD_NAME = "Check-ANR-State-Thread";
+    private static final String ANR_DUMP_THREAD_NAME = "ANR-Dump-Thread";
     private static final int CHECK_ERROR_STATE_INTERVAL = 500;
     private static final int ANR_DUMP_MAX_TIME = 20000;
+    private static long anrReportTimeout = ANR_DUMP_MAX_TIME;
     private static final int CHECK_ERROR_STATE_COUNT =
             ANR_DUMP_MAX_TIME / CHECK_ERROR_STATE_INTERVAL;
     private static final long FOREGROUND_MSG_THRESHOLD = -2000;
@@ -114,6 +118,10 @@ public class SignalAnrTracer extends Tracer {
         sApplication = application;
     }
 
+    public static void setAnrReportTimeout(long timeout) {
+        anrReportTimeout = timeout;
+    }
+
     public void setSignalAnrDetectedListener(SignalAnrDetectedListener listener) {
         sSignalAnrDetectedListener = listener;
     }
@@ -150,15 +158,28 @@ public class SignalAnrTracer extends Tracer {
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Keep
     private synchronized static void onANRDumped() {
-        onAnrDumpedTimeStamp = System.currentTimeMillis();
-        MatrixLog.i(TAG, "onANRDumped");
-        stackTrace = Utils.getMainThreadJavaStackTrace();
-        MatrixLog.i(TAG, "onANRDumped, stackTrace = %s, duration = %d", stackTrace, (System.currentTimeMillis() - onAnrDumpedTimeStamp));
-        cgroup = readCgroup();
-        MatrixLog.i(TAG, "onANRDumped, read cgroup duration = %d", (System.currentTimeMillis() - onAnrDumpedTimeStamp));
-        currentForeground = AppForegroundUtil.isInterestingToUser();
-        MatrixLog.i(TAG, "onANRDumped, isInterestingToUser duration = %d", (System.currentTimeMillis() - onAnrDumpedTimeStamp));
-        confirmRealAnr(true);
+        final CountDownLatch anrDumpLatch = new CountDownLatch(1);
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                onAnrDumpedTimeStamp = System.currentTimeMillis();
+                MatrixLog.i(TAG, "onANRDumped");
+                stackTrace = Utils.getMainThreadJavaStackTrace();
+                MatrixLog.i(TAG, "onANRDumped, stackTrace = %s, duration = %d", stackTrace, (System.currentTimeMillis() - onAnrDumpedTimeStamp));
+                cgroup = readCgroup();
+                MatrixLog.i(TAG, "onANRDumped, read cgroup duration = %d", (System.currentTimeMillis() - onAnrDumpedTimeStamp));
+                currentForeground = AppForegroundUtil.isInterestingToUser();
+                MatrixLog.i(TAG, "onANRDumped, isInterestingToUser duration = %d", (System.currentTimeMillis() - onAnrDumpedTimeStamp));
+                confirmRealAnr(true);
+                anrDumpLatch.countDown();
+            }
+        }, ANR_DUMP_THREAD_NAME).start();
+
+        try {
+            anrDumpLatch.await(anrReportTimeout, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            //empty here
+        }
     }
 
     @Keep
