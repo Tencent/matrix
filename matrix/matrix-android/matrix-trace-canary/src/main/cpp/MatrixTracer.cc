@@ -253,6 +253,7 @@ void makeNativeStack(wechat_backtrace::Backtrace* backtrace, char *&stack) {
         std::string so_name = it.map_name;
 
         char *demangled_name = nullptr;
+        int status = 0;
 
         demangled_name = abi::__cxa_demangle(it.function_name, nullptr, 0, &status);
 
