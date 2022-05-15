@@ -87,6 +87,14 @@ public class Utils {
         return stackTrace.toString();
     }
 
+    public static String getJavaStackTrace() {
+        StringBuilder stackTrace = new StringBuilder();
+        for (StackTraceElement stackTraceElement : Thread.currentThread().getStackTrace()) {
+            stackTrace.append(stackTraceElement.toString()).append("\n");
+        }
+        return stackTrace.toString();
+    }
+
     public static String calculateCpuUsage(long threadMs, long ms) {
         if (threadMs <= 0) {
             return ms > 1000 ? "0%" : "100%";

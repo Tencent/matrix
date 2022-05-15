@@ -32,7 +32,6 @@ import com.tencent.matrix.trace.tracer.IdleHandlerLagTracer;
 import com.tencent.matrix.trace.tracer.LooperAnrTracer;
 import com.tencent.matrix.trace.tracer.SignalAnrTracer;
 import com.tencent.matrix.trace.tracer.StartupTracer;
-import com.tencent.matrix.trace.tracer.ThreadPriorityTracer;
 import com.tencent.matrix.trace.tracer.TouchEventLagTracer;
 import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
@@ -51,7 +50,6 @@ public class TracePlugin extends Plugin {
     private SignalAnrTracer signalAnrTracer;
     private IdleHandlerLagTracer idleHandlerLagTracer;
     private TouchEventLagTracer touchEventLagTracer;
-    private ThreadPriorityTracer threadPriorityTracer;
     private static boolean supportFrameMetrics;
 
     public TracePlugin(TraceConfig config) {
@@ -132,11 +130,6 @@ public class TracePlugin extends Plugin {
                     }
                 }
 
-                if (traceConfig.isMainThreadPriorityTraceEnable()) {
-                    threadPriorityTracer = new ThreadPriorityTracer();
-                    threadPriorityTracer.onStartTrace();
-                }
-
                 if (traceConfig.isFPSEnable()) {
                     frameTracer.onStartTrace();
                 }
@@ -192,11 +185,6 @@ public class TracePlugin extends Plugin {
                 if (idleHandlerLagTracer != null) {
                     idleHandlerLagTracer.onCloseTrace();
                 }
-
-                if (threadPriorityTracer != null) {
-                    threadPriorityTracer.onCloseTrace();
-                }
-
             }
         };
 
