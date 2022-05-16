@@ -87,6 +87,7 @@ public final class BatteryCanaryUtil {
         void updateDevStat(int value);
         int getBatteryPercentage(Context context);
         int getBatteryCapacity(Context context);
+        int getCpuCoreNum();
 
         final class ExpireRef {
             final int value;
@@ -114,6 +115,7 @@ public final class BatteryCanaryUtil {
         private ExpireRef mLastDevStat;
         private ExpireRef mLastBattPct;
         private ExpireRef mLastBattCap;
+        private ExpireRef mLastCpuCoreNum;
 
         @Override
         public String getProcessName() {
@@ -204,6 +206,19 @@ public final class BatteryCanaryUtil {
             int val = getBatteryCapacityImmediately(context);
             mLastBattCap = new ExpireRef(val, ONE_MIN);
             return mLastBattCap.value;
+        }
+
+        @Override
+        public int getCpuCoreNum() {
+            if (mLastCpuCoreNum != null && !mLastCpuCoreNum.isExpired()) {
+                return mLastCpuCoreNum.value;
+            }
+            int val = getCpuCoreNumImmediately();
+            if (val <= 1) {
+                return val;
+            }
+            mLastCpuCoreNum = new ExpireRef(val, ONE_HOR);
+            return mLastCpuCoreNum.value;
         }
     };
 
@@ -307,8 +322,9 @@ public final class BatteryCanaryUtil {
     }
 
     public static int[] getCpuCurrentFreq() {
-        int[] output = new int[getCpuCoreNum()];
-        for (int i = 0; i < getCpuCoreNum(); i++) {
+        int cpuCoreNum = getCpuCoreNum();
+        int[] output = new int[cpuCoreNum];
+        for (int i = 0; i < cpuCoreNum; i++) {
             output[i] = 0;
             String path = "/sys/devices/system/cpu/cpu" + i + "/cpufreq/scaling_cur_freq";
             String cat = cat(path);
@@ -324,6 +340,10 @@ public final class BatteryCanaryUtil {
     }
 
     public static int getCpuCoreNum() {
+        return sCacheStub.getCpuCoreNum();
+    }
+
+    public static int getCpuCoreNumImmediately() {
         try {
             // Get directory containing CPU info
             File dir = new File("/sys/devices/system/cpu/");
@@ -335,6 +355,7 @@ public final class BatteryCanaryUtil {
                 }
             });
             // Return the number of cores (virtual CPU devices)
+            // noinspection ConstantConditions
             return files.length;
         } catch (Exception ignored) {
             // Default to return 1 core
