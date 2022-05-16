@@ -88,7 +88,7 @@ object TrimMemoryNotifier {
                     runningHandler.postDelayed(this@TrimTask, delay)
                     MatrixLog.i(
                         TAG,
-                        "[$name] trim delay[${delayIndex + 1}/${config.delayMillis.size}] $delay"
+                        "...[$name] trim delay[${delayIndex + 1}/${config.delayMillis.size}] $delay"
                     )
                 }
 
@@ -100,18 +100,24 @@ object TrimMemoryNotifier {
         }
 
         override fun run() {
-            if (delayIndex < config.delayMillis.size) {
-                MatrixLog.i(
-                    TAG,
-                    "[$name] trim timeout [${delayIndex + 1}/${config.delayMillis.size}] ${config.delayMillis[delayIndex]}"
-                )
-                delayIndex++
-                trimCallback.backgroundTrim()
-                val delay = config.delayMillis[delayIndex]
+            val currIndex = delayIndex
+            if (currIndex >= config.delayMillis.size) {
+                MatrixLog.e(TAG, "index[$currIndex] out of bounds[${config.delayMillis.size}]")
+                return
+            }
+            MatrixLog.i(
+                TAG,
+                "!!![$name] trim timeout [${currIndex + 1}/${config.delayMillis.size}] ${config.delayMillis[currIndex]}"
+            )
+            trimCallback.backgroundTrim()
+            val nextIndex = currIndex + 1
+            if (nextIndex < config.delayMillis.size) {
+                delayIndex = nextIndex
+                val delay = config.delayMillis[nextIndex]
                 runningHandler.postDelayed(this, delay)
                 MatrixLog.i(
                     TAG,
-                    "[$name] trim delay[${delayIndex + 1}/${config.delayMillis.size}] $delay"
+                    "...[$name] trim delay[${nextIndex + 1}/${config.delayMillis.size}] $delay"
                 )
             }
         }
