@@ -46,7 +46,7 @@ public class EvilMethodTracer extends Tracer {
     private static final String TAG = "Matrix.EvilMethodTracer";
     private final TraceConfig config;
     private AppMethodBeat.IndexRecord indexRecord;
-    private long[] queueTypeCosts = new long[3];
+    private long[] queueTypeCosts = new long[5];
     private long evilThresholdMs;
     private boolean isEvilMethodTraceEnable;
 
@@ -82,10 +82,13 @@ public class EvilMethodTracer extends Tracer {
 
 
     @Override
-    public void doFrame(String focusedActivity, long startNs, long endNs, boolean isVsyncFrame, long intendedFrameTimeNs, long inputCostNs, long animationCostNs, long traversalCostNs) {
+    public void doFrame(String focusedActivity, long startNs, long endNs, boolean isVsyncFrame, long intendedFrameTimeNs,
+                        long inputCostNs, long animationCostNs, long insetsAnimationCostNs, long traversalCostNs, long commitCostNs) {
         queueTypeCosts[0] = inputCostNs;
         queueTypeCosts[1] = animationCostNs;
-        queueTypeCosts[2] = traversalCostNs;
+        queueTypeCosts[2] = insetsAnimationCostNs;
+        queueTypeCosts[3] = traversalCostNs;
+        queueTypeCosts[4] = commitCostNs;
     }
 
     @Override
@@ -96,8 +99,8 @@ public class EvilMethodTracer extends Tracer {
         try {
             if (dispatchCost >= evilThresholdMs) {
                 long[] data = AppMethodBeat.getInstance().copyData(indexRecord);
-                long[] queueCosts = new long[3];
-                System.arraycopy(queueTypeCosts, 0, queueCosts, 0, 3);
+                long[] queueCosts = new long[queueTypeCosts.length];
+                System.arraycopy(queueTypeCosts, 0, queueCosts, 0, queueCosts.length);
                 String scene = AppActiveMatrixDelegate.INSTANCE.getVisibleScene();
                 MatrixHandlerThread.getDefaultHandler().post(new AnalyseTask(isForeground(), scene, data, queueCosts, cpuEndMs - cpuBeginMs, dispatchCost, endNs / Constants.TIME_MILLIS_TO_NANO));
             }
@@ -171,7 +174,7 @@ public class EvilMethodTracer extends Tracer {
             long stackCost = Math.max(cost, TraceDataUtils.stackToString(stack, reportBuilder, logcatBuilder));
             String stackKey = TraceDataUtils.getTreeKey(stack, stackCost);
 
-            MatrixLog.w(TAG, "%s", printEvil(scene, processStat, isForeground, logcatBuilder, stack.size(), stackKey, usage, queueCost[0], queueCost[1], queueCost[2], cost)); // for logcat
+            MatrixLog.w(TAG, "%s", printEvil(scene, processStat, isForeground, logcatBuilder, stack.size(), stackKey, usage, queueCost[0], queueCost[1], queueCost[2], queueCost[3], queueCost[4], cost)); // for logcat
 
             // report
             try {
@@ -205,8 +208,9 @@ public class EvilMethodTracer extends Tracer {
             analyse();
         }
 
-        private String printEvil(String scene, int[] processStat, boolean isForeground, StringBuilder stack, long stackSize, String stackKey, String usage, long inputCost,
-                                 long animationCost, long traversalCost, long allCost) {
+        private String printEvil(String scene, int[] processStat, boolean isForeground, StringBuilder stack, long stackSize, String stackKey, String usage,
+                                 long inputCost, long animationCost, long insetsAnimationCost, long traversalCost, long commitCost,
+                                 long allCost) {
             StringBuilder print = new StringBuilder();
             print.append(String.format("-\n>>>>>>>>>>>>>>>>>>>>> maybe happens Jankiness!(%sms) <<<<<<<<<<<<<<<<<<<<<\n", allCost));
             print.append("|* [Status]").append("\n");
@@ -216,8 +220,8 @@ public class EvilMethodTracer extends Tracer {
             print.append("|*\t\tis64BitRuntime: ").append(DeviceUtil.is64BitRuntime()).append("\n");
             print.append("|*\t\tCPU: ").append(usage).append("\n");
             print.append("|* [doFrame]").append("\n");
-            print.append("|*\t\tinputCost:animationCost:traversalCost").append("\n");
-            print.append("|*\t\t").append(inputCost).append(":").append(animationCost).append(":").append(traversalCost).append("\n");
+            print.append("|*\t\tinputCost:animationCost:insetsAnimationCost:traversalCost:commitCost").append("\n");
+            print.append("|*\t\t").append(inputCost).append(":").append(animationCost).append(":").append(insetsAnimationCost).append(":").append(traversalCost).append(":").append(commitCost).append("\n");
             if (stackSize > 0) {
                 print.append("|*\t\tStackKey: ").append(stackKey).append("\n");
                 print.append(stack.toString());

@@ -50,41 +50,139 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
 
     /**
      * Callback type: Input callback.  Runs first.
-     *
      * @hide
      */
-    public static final int CALLBACK_INPUT = 0;
+    public static final int CALLBACK_INPUT_16_22 = 0;
 
     /**
      * Callback type: Animation callback.  Runs before traversals.
-     *
      * @hide
      */
-    public static final int CALLBACK_ANIMATION = 1;
+    public static final int CALLBACK_ANIMATION_16_22 = 1;
+
+    /**
+     * Callback type: Traversal callback.  Handles layout and draw.  Runs last
+     * after all other asynchronous messages have been handled.
+     * @hide
+     */
+    public static final int CALLBACK_TRAVERSAL_16_22 = 2;
+
+    /**
+     * Callback type: Input callback.  Runs first.
+     * @hide
+     */
+    public static final int CALLBACK_INPUT_23_28 = 0;
+
+    /**
+     * Callback type: Animation callback.  Runs before traversals.
+     * @hide
+     */
+    public static final int CALLBACK_ANIMATION_23_28 = 1;
+
+    /**
+     * Callback type: Traversal callback.  Handles layout and draw.  Runs
+     * after all other asynchronous messages have been handled.
+     * @hide
+     */
+    public static final int CALLBACK_TRAVERSAL_23_28 = 2;
 
     /**
      * Callback type: Commit callback.  Handles post-draw operations for the frame.
-     * Runs after traversal completes.
-     *
+     * Runs after traversal completes.  The {@link #getFrameTime() frame time} reported
+     * during this callback may be updated to reflect delays that occurred while
+     * traversals were in progress in case heavy layout operations caused some frames
+     * to be skipped.  The frame time reported during this callback provides a better
+     * estimate of the start time of the frame in which animations (and other updates
+     * to the view hierarchy state) actually took effect.
      * @hide
      */
-    public static final int CALLBACK_TRAVERSAL = 2;
+    public static final int CALLBACK_COMMIT_23_28 = 3;
+
+    /**
+     * Callback type: Input callback.  Runs first.
+     * @hide
+     */
+    public static final int CALLBACK_INPUT_29_ = 0;
+
+    /**
+     * Callback type: Animation callback.  Runs before {@link #CALLBACK_INSETS_ANIMATION}.
+     * @hide
+     */
+    public static final int CALLBACK_ANIMATION_29_ = 1;
+
+    /**
+     * Callback type: Animation callback to handle inset updates. This is separate from
+     * {@link #CALLBACK_ANIMATION} as we need to "gather" all inset animation updates via
+     * {@link WindowInsetsAnimationController#changeInsets} for multiple ongoing animations but then
+     * update the whole view system with a single callback to {@link View#dispatchWindowInsetsAnimationProgress}
+     * that contains all the combined updated insets.
+     * <p>
+     * Both input and animation may change insets, so we need to run this after these callbacks, but
+     * before traversals.
+     * <p>
+     * Runs before traversals.
+     * @hide
+     */
+    public static final int CALLBACK_INSETS_ANIMATION_29_ = 2;
+
+    /**
+     * Callback type: Traversal callback.  Handles layout and draw.  Runs
+     * after all other asynchronous messages have been handled.
+     * @hide
+     */
+    public static final int CALLBACK_TRAVERSAL_29_ = 3;
+
+    /**
+     * Callback type: Commit callback.  Handles post-draw operations for the frame.
+     * Runs after traversal completes.  The {@link #getFrameTime() frame time} reported
+     * during this callback may be updated to reflect delays that occurred while
+     * traversals were in progress in case heavy layout operations caused some frames
+     * to be skipped.  The frame time reported during this callback provides a better
+     * estimate of the start time of the frame in which animations (and other updates
+     * to the view hierarchy state) actually took effect.
+     * @hide
+     */
+    public static final int CALLBACK_COMMIT_29_ = 4;
+
 
     /**
      * never do queue end code
      */
     public static final int DO_QUEUE_END_ERROR = -100;
 
-    private static final int CALLBACK_LAST = CALLBACK_TRAVERSAL;
+    private static int getCallbackFirst() {
+        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.LOLLIPOP_MR1) {
+            return CALLBACK_INPUT_16_22;
+        } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
+            return CALLBACK_INPUT_23_28;
+        } else {
+            return CALLBACK_INPUT_29_;
+        }
+    }
+
+    private static int getCallbackLast() {
+        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.LOLLIPOP_MR1) {
+            return CALLBACK_TRAVERSAL_16_22;
+        } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
+            return CALLBACK_COMMIT_23_28;
+        } else {
+            return CALLBACK_COMMIT_29_;
+        }
+    }
+
+    private static final int CALLBACK_FIRST = getCallbackFirst();
+    private static final int CALLBACK_LAST = getCallbackLast();
 
     private final static UIThreadMonitor sInstance = new UIThreadMonitor();
     private TraceConfig config;
     private static boolean useFrameMetrics;
     private Object callbackQueueLock;
     private Object[] callbackQueues;
-    private Method addTraversalQueue;
     private Method addInputQueue;
     private Method addAnimationQueue;
+    private Method addInsetsAnimationQueue;
+    private Method addTraversalQueue;
+    private Method addCommitQueue;
     private Choreographer choreographer;
     private Object vsyncReceiver;
     private long frameIntervalNanos = 16666666;
@@ -141,21 +239,38 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
             callbackQueueLock = ReflectUtils.reflectObject(choreographer, "mLock", new Object());
             callbackQueues = ReflectUtils.reflectObject(choreographer, "mCallbackQueues", null);
             if (null != callbackQueues) {
-                addInputQueue = ReflectUtils.reflectMethod(callbackQueues[CALLBACK_INPUT], ADD_CALLBACK, long.class, Object.class, Object.class);
-                addAnimationQueue = ReflectUtils.reflectMethod(callbackQueues[CALLBACK_ANIMATION], ADD_CALLBACK, long.class, Object.class, Object.class);
-                addTraversalQueue = ReflectUtils.reflectMethod(callbackQueues[CALLBACK_TRAVERSAL], ADD_CALLBACK, long.class, Object.class, Object.class);
+                if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.LOLLIPOP_MR1) {
+                    addInputQueue = ReflectUtils.reflectMethod(callbackQueues[CALLBACK_INPUT_16_22], ADD_CALLBACK, long.class, Object.class, Object.class);
+                    addAnimationQueue = ReflectUtils.reflectMethod(callbackQueues[CALLBACK_ANIMATION_16_22], ADD_CALLBACK, long.class, Object.class, Object.class);
+                    addTraversalQueue = ReflectUtils.reflectMethod(callbackQueues[CALLBACK_TRAVERSAL_16_22], ADD_CALLBACK, long.class, Object.class, Object.class);
+                } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
+                    addInputQueue = ReflectUtils.reflectMethod(callbackQueues[CALLBACK_INPUT_23_28], ADD_CALLBACK, long.class, Object.class, Object.class);
+                    addAnimationQueue = ReflectUtils.reflectMethod(callbackQueues[CALLBACK_ANIMATION_23_28], ADD_CALLBACK, long.class, Object.class, Object.class);
+                    addTraversalQueue = ReflectUtils.reflectMethod(callbackQueues[CALLBACK_TRAVERSAL_23_28], ADD_CALLBACK, long.class, Object.class, Object.class);
+                    addCommitQueue = ReflectUtils.reflectMethod(callbackQueues[CALLBACK_COMMIT_23_28], ADD_CALLBACK, long.class, Object.class, Object.class);
+                } else {
+                    addInputQueue = ReflectUtils.reflectMethod(callbackQueues[CALLBACK_INPUT_29_], ADD_CALLBACK, long.class, Object.class, Object.class);
+                    addAnimationQueue = ReflectUtils.reflectMethod(callbackQueues[CALLBACK_ANIMATION_29_], ADD_CALLBACK, long.class, Object.class, Object.class);
+                    addInsetsAnimationQueue = ReflectUtils.reflectMethod(callbackQueues[CALLBACK_INSETS_ANIMATION_29_], ADD_CALLBACK, long.class, Object.class, Object.class);
+                    addTraversalQueue = ReflectUtils.reflectMethod(callbackQueues[CALLBACK_TRAVERSAL_29_], ADD_CALLBACK, long.class, Object.class, Object.class);
+                    addCommitQueue = ReflectUtils.reflectMethod(callbackQueues[CALLBACK_COMMIT_29_], ADD_CALLBACK, long.class, Object.class, Object.class);
+                }
+
             }
             vsyncReceiver = ReflectUtils.reflectObject(choreographer, "mDisplayEventReceiver", null);
 
-            MatrixLog.i(TAG, "[UIThreadMonitor] %s %s %s %s %s %s frameIntervalNanos:%s", callbackQueueLock == null, callbackQueues == null,
-                    addInputQueue == null, addTraversalQueue == null, addAnimationQueue == null, vsyncReceiver == null, frameIntervalNanos);
+            MatrixLog.i(TAG, "[UIThreadMonitor] %s %s %s %s %s %s %s %s frameIntervalNanos:%s", callbackQueueLock == null, callbackQueues == null,
+                    addInputQueue == null, addAnimationQueue == null, addInsetsAnimationQueue == null, addTraversalQueue == null, addCommitQueue == null,
+                    vsyncReceiver == null, frameIntervalNanos);
 
             if (config.isDevEnv()) {
                 addObserver(new LooperObserver() {
                     @Override
-                    public void doFrame(String focusedActivity, long startNs, long endNs, boolean isVsyncFrame, long intendedFrameTimeNs, long inputCostNs, long animationCostNs, long traversalCostNs) {
-                        MatrixLog.i(TAG, "focusedActivity[%s] frame cost:%sms isVsyncFrame=%s intendedFrameTimeNs=%s [%s|%s|%s]ns",
-                                focusedActivity, (endNs - startNs) / Constants.TIME_MILLIS_TO_NANO, isVsyncFrame, intendedFrameTimeNs, inputCostNs, animationCostNs, traversalCostNs);
+                    public void doFrame(String focusedActivity, long startNs, long endNs, boolean isVsyncFrame, long intendedFrameTimeNs,
+                                        long inputCostNs, long animationCostNs, long insetsAnimationCostNs, long traversalCostNs, long commitCostNs) {
+                        MatrixLog.i(TAG, "focusedActivity[%s] frame cost:%sms isVsyncFrame=%s intendedFrameTimeNs=%s [%s|%s|%s|%s|%s]ns",
+                                focusedActivity, (endNs - startNs) / Constants.TIME_MILLIS_TO_NANO, isVsyncFrame, intendedFrameTimeNs,
+                                inputCostNs, animationCostNs, insetsAnimationCostNs, traversalCostNs, commitCostNs);
                     }
                 });
             }
@@ -168,24 +283,63 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
             return;
         }
 
-        if (!isAlive && type == CALLBACK_INPUT) {
+        if (!isAlive && type == CALLBACK_FIRST) {
             MatrixLog.w(TAG, "[addFrameCallback] UIThreadMonitor is not alive!");
             return;
         }
+
         try {
             synchronized (callbackQueueLock) {
                 Method method = null;
-                switch (type) {
-                    case CALLBACK_INPUT:
-                        method = addInputQueue;
-                        break;
-                    case CALLBACK_ANIMATION:
-                        method = addAnimationQueue;
-                        break;
-                    case CALLBACK_TRAVERSAL:
-                        method = addTraversalQueue;
-                        break;
+
+                if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.LOLLIPOP_MR1) {
+                    switch (type) {
+                        case CALLBACK_INPUT_16_22:
+                            method = addInputQueue;
+                            break;
+                        case CALLBACK_ANIMATION_16_22:
+                            method = addAnimationQueue;
+                            break;
+                        case CALLBACK_TRAVERSAL_16_22:
+                            method = addTraversalQueue;
+                            break;
+                    }
+                } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
+                    switch (type) {
+                        case CALLBACK_INPUT_23_28:
+                            method = addInputQueue;
+                            break;
+                        case CALLBACK_ANIMATION_23_28:
+                            method = addAnimationQueue;
+                            break;
+                        case CALLBACK_TRAVERSAL_23_28:
+                            method = addTraversalQueue;
+                            break;
+                        case CALLBACK_COMMIT_23_28:
+                            method = addCommitQueue;
+                            break;
+                    }
+
+                } else {
+                    switch (type) {
+                        case CALLBACK_INPUT_29_:
+                            method = addInputQueue;
+                            break;
+                        case CALLBACK_ANIMATION_29_:
+                            method = addAnimationQueue;
+                            break;
+                        case CALLBACK_INSETS_ANIMATION_29_:
+                            method = addInsetsAnimationQueue;
+                            break;
+                        case CALLBACK_TRAVERSAL_29_:
+                            method = addTraversalQueue;
+                            break;
+                        case CALLBACK_COMMIT_29_:
+                            method = addCommitQueue;
+                            break;
+                    }
                 }
+
                 if (null != method) {
                     method.invoke(callbackQueues[type], !isAddHeader ? SystemClock.uptimeMillis() : -1, callback, null);
                     callbackExist[type] = true;
@@ -242,7 +396,8 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
 
     private void doFrameEnd(long token) {
 
-        doQueueEnd(CALLBACK_TRAVERSAL);
+        doQueueEnd(CALLBACK_LAST);
+
 
         for (int i : queueStatus) {
             if (i != DO_QUEUE_END) {
@@ -254,8 +409,7 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
         }
         queueStatus = new int[CALLBACK_LAST + 1];
 
-        addFrameCallback(CALLBACK_INPUT, this, true);
-
+        addFrameCallback(CALLBACK_FIRST, this, true);
     }
 
     private void dispatchEnd() {
@@ -277,7 +431,17 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
             synchronized (observers) {
                 for (LooperObserver observer : observers) {
                     if (observer.isDispatchBegin()) {
-                        observer.doFrame(AppActiveMatrixDelegate.INSTANCE.getVisibleScene(), startNs, endNs, isVsyncFrame, intendedFrameTimeNs, queueCost[CALLBACK_INPUT], queueCost[CALLBACK_ANIMATION], queueCost[CALLBACK_TRAVERSAL]);
+                        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.LOLLIPOP_MR1) {
+                            observer.doFrame(AppActiveMatrixDelegate.INSTANCE.getVisibleScene(), startNs, endNs, isVsyncFrame, intendedFrameTimeNs,
+                                    queueCost[CALLBACK_INPUT_16_22], queueCost[CALLBACK_ANIMATION_16_22], 0, queueCost[CALLBACK_TRAVERSAL_16_22], 0);
+
+                        } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
+                            observer.doFrame(AppActiveMatrixDelegate.INSTANCE.getVisibleScene(), startNs, endNs, isVsyncFrame, intendedFrameTimeNs,
+                                    queueCost[CALLBACK_INPUT_23_28], queueCost[CALLBACK_ANIMATION_23_28], 0, queueCost[CALLBACK_TRAVERSAL_23_28], queueCost[CALLBACK_COMMIT_23_28]);
+                        } else {
+                            observer.doFrame(AppActiveMatrixDelegate.INSTANCE.getVisibleScene(), startNs, endNs, isVsyncFrame, intendedFrameTimeNs,
+                                    queueCost[CALLBACK_INPUT_29_], queueCost[CALLBACK_ANIMATION_29_], queueCost[CALLBACK_INSETS_ANIMATION_29_], queueCost[CALLBACK_TRAVERSAL_29_], queueCost[CALLBACK_COMMIT_29_]);
+                        }
                     }
                 }
             }
@@ -333,7 +497,7 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
             if (!useFrameMetrics) {
                 queueStatus = new int[CALLBACK_LAST + 1];
                 queueCost = new long[CALLBACK_LAST + 1];
-                addFrameCallback(CALLBACK_INPUT, this, true);
+                addFrameCallback(CALLBACK_FIRST, this, true);
             }
         }
     }
@@ -343,25 +507,80 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
         final long start = System.nanoTime();
         try {
             doFrameBegin(token);
-            doQueueBegin(CALLBACK_INPUT);
+            doQueueBegin(CALLBACK_FIRST);
 
-            addFrameCallback(CALLBACK_ANIMATION, new Runnable() {
+            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.LOLLIPOP_MR1) {
+                addFrameCallback(CALLBACK_ANIMATION_16_22, new Runnable() {
 
-                @Override
-                public void run() {
-                    doQueueEnd(CALLBACK_INPUT);
-                    doQueueBegin(CALLBACK_ANIMATION);
-                }
-            }, true);
+                    @Override
+                    public void run() {
+                        doQueueEnd(CALLBACK_FIRST);
+                        doQueueBegin(CALLBACK_ANIMATION_16_22);
+                    }
+                }, true);
 
-            addFrameCallback(CALLBACK_TRAVERSAL, new Runnable() {
+                addFrameCallback(CALLBACK_TRAVERSAL_16_22, new Runnable() {
 
-                @Override
-                public void run() {
-                    doQueueEnd(CALLBACK_ANIMATION);
-                    doQueueBegin(CALLBACK_TRAVERSAL);
-                }
-            }, true);
+                    @Override
+                    public void run() {
+                        doQueueEnd(CALLBACK_ANIMATION_16_22);
+                        doQueueBegin(CALLBACK_TRAVERSAL_16_22);
+                    }
+                }, true);
+
+            } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
+                addFrameCallback(CALLBACK_ANIMATION_23_28, new Runnable() {
+                    @Override
+                    public void run() {
+                        doQueueEnd(CALLBACK_FIRST);
+                        doQueueBegin(CALLBACK_ANIMATION_23_28);
+                    }
+                }, true);
+                addFrameCallback(CALLBACK_TRAVERSAL_23_28, new Runnable() {
+                    @Override
+                    public void run() {
+                        doQueueEnd(CALLBACK_ANIMATION_23_28);
+                        doQueueBegin(CALLBACK_TRAVERSAL_23_28);
+                    }
+                }, true);
+                addFrameCallback(CALLBACK_COMMIT_23_28, new Runnable() {
+                    @Override
+                    public void run() {
+                        doQueueEnd(CALLBACK_TRAVERSAL_23_28);
+                        doQueueBegin(CALLBACK_COMMIT_23_28);
+                    }
+                }, true);
+
+            } else {
+                addFrameCallback(CALLBACK_ANIMATION_29_, new Runnable() {
+                    @Override
+                    public void run() {
+                        doQueueEnd(CALLBACK_FIRST);
+                        doQueueBegin(CALLBACK_ANIMATION_29_);
+                    }
+                }, true);
+                addFrameCallback(CALLBACK_INSETS_ANIMATION_29_, new Runnable() {
+                    @Override
+                    public void run() {
+                        doQueueEnd(CALLBACK_ANIMATION_29_);
+                        doQueueBegin(CALLBACK_INSETS_ANIMATION_29_);
+                    }
+                }, true);
+                addFrameCallback(CALLBACK_TRAVERSAL_29_, new Runnable() {
+                    @Override
+                    public void run() {
+                        doQueueEnd(CALLBACK_INSETS_ANIMATION_29_);
+                        doQueueBegin(CALLBACK_TRAVERSAL_29_);
+                    }
+                }, true);
+                addFrameCallback(CALLBACK_COMMIT_29_, new Runnable() {
+                    @Override
+                    public void run() {
+                        doQueueEnd(CALLBACK_TRAVERSAL_29_);
+                        doQueueBegin(CALLBACK_COMMIT_29_);
+                    }
+                }, true);
+            }
 
         } finally {
             if (config.isDevEnv()) {

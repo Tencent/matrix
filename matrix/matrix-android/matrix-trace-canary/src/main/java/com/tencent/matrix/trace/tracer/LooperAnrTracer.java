@@ -16,6 +16,7 @@
 
 package com.tencent.matrix.trace.tracer;
 
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Process;
@@ -189,9 +190,27 @@ public class LooperAnrTracer extends Tracer {
 
             // frame
             UIThreadMonitor monitor = UIThreadMonitor.getMonitor();
-            long inputCost = monitor.getQueueCost(UIThreadMonitor.CALLBACK_INPUT, token);
-            long animationCost = monitor.getQueueCost(UIThreadMonitor.CALLBACK_ANIMATION, token);
-            long traversalCost = monitor.getQueueCost(UIThreadMonitor.CALLBACK_TRAVERSAL, token);
+            long inputCost = 0;
+            long animationCost = 0;
+            long insetsAnimationCost = 0;
+            long traversalCost = 0;
+            long commitCost = 0;
+            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.LOLLIPOP_MR1) {
+                inputCost = monitor.getQueueCost(UIThreadMonitor.CALLBACK_INPUT_16_22, token);
+                animationCost = monitor.getQueueCost(UIThreadMonitor.CALLBACK_ANIMATION_16_22, token);
+                traversalCost = monitor.getQueueCost(UIThreadMonitor.CALLBACK_TRAVERSAL_16_22, token);
+            } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
+                inputCost = monitor.getQueueCost(UIThreadMonitor.CALLBACK_INPUT_23_28, token);
+                animationCost = monitor.getQueueCost(UIThreadMonitor.CALLBACK_ANIMATION_23_28, token);
+                traversalCost = monitor.getQueueCost(UIThreadMonitor.CALLBACK_TRAVERSAL_23_28, token);
+                commitCost = monitor.getQueueCost(UIThreadMonitor.CALLBACK_COMMIT_23_28, token);
+            } else {
+                inputCost = monitor.getQueueCost(UIThreadMonitor.CALLBACK_INPUT_29_, token);
+                animationCost = monitor.getQueueCost(UIThreadMonitor.CALLBACK_ANIMATION_29_, token);
+                insetsAnimationCost = monitor.getQueueCost(UIThreadMonitor.CALLBACK_INSETS_ANIMATION_29_, token);
+                traversalCost = monitor.getQueueCost(UIThreadMonitor.CALLBACK_TRAVERSAL_29_, token);
+                commitCost = monitor.getQueueCost(UIThreadMonitor.CALLBACK_COMMIT_29_, token);
+            }
 
             // trace
             LinkedList<MethodItem> stack = new LinkedList();
@@ -228,7 +247,7 @@ public class LooperAnrTracer extends Tracer {
             String stackKey = TraceDataUtils.getTreeKey(stack, stackCost);
             MatrixLog.w(TAG, "%s \npostTime:%s curTime:%s",
                     printAnr(scene, processStat, memoryInfo, status, logcatBuilder, isForeground, stack.size(),
-                            stackKey, dumpStack, inputCost, animationCost, traversalCost, stackCost),
+                            stackKey, dumpStack, inputCost, animationCost, insetsAnimationCost, traversalCost, commitCost, stackCost),
                     token / Constants.TIME_MILLIS_TO_NANO, curTime); // for logcat
 
             if (stackCost >= Constants.DEFAULT_ANR_INVALID) {
@@ -278,7 +297,9 @@ public class LooperAnrTracer extends Tracer {
 
 
         private String printAnr(String scene, int[] processStat, long[] memoryInfo, Thread.State state, StringBuilder stack, boolean isForeground,
-                                long stackSize, String stackKey, String dumpStack, long inputCost, long animationCost, long traversalCost, long stackCost) {
+                                long stackSize, String stackKey, String dumpStack,
+                                long inputCost, long animationCost, long insetsAnimationCost, long traversalCost, long commitCost,
+                                long stackCost) {
             StringBuilder print = new StringBuilder();
             print.append(String.format("-\n>>>>>>>>>>>>>>>>>>>>>>> maybe happens ANR(%s ms)! <<<<<<<<<<<<<<<<<<<<<<<\n", stackCost));
             print.append("|* [Status]").append("\n");
@@ -292,8 +313,8 @@ public class LooperAnrTracer extends Tracer {
             print.append("|*\t\tNativeHeap: ").append(memoryInfo[1]).append("kb\n");
             print.append("|*\t\tVmSize: ").append(memoryInfo[2]).append("kb\n");
             print.append("|* [doFrame]").append("\n");
-            print.append("|*\t\tinputCost:animationCost:traversalCost").append("\n");
-            print.append("|*\t\t").append(inputCost).append(":").append(animationCost).append(":").append(traversalCost).append("\n");
+            print.append("|*\t\tinputCost:animationCost:insetsAnimationCost:traversalCost:commitCost").append("\n");
+            print.append("|*\t\t").append(inputCost).append(":").append(animationCost).append(":").append(insetsAnimationCost).append(":").append(traversalCost).append(":").append(commitCost).append("\n");
             print.append("|* [Thread]").append("\n");
             print.append(String.format("|*\t\tStack(%s): ", state)).append(dumpStack);
             print.append("|* [Trace]").append("\n");
