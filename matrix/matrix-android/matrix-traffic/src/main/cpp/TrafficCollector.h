@@ -31,9 +31,6 @@
 #include <map>
 #include <mutex>
 
-#define MSG_TYPE_INIT 0
-#define MSG_TYPE_CONNECT 1
-
 #define MSG_TYPE_READ 10
 #define MSG_TYPE_RECV 11
 #define MSG_TYPE_RECVFROM 12
@@ -70,10 +67,6 @@ public :
     static void startLoop(bool dumpStackTrace);
 
     static void stopLoop();
-
-    static void enQueueInit(int fd, int domain, int type);
-
-    static void enQueueConnect(int fd, sockaddr *addr, socklen_t __addr_length);
 
     static void enQueueClose(int fd);
 

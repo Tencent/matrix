@@ -145,29 +145,6 @@ string saveFdInfo(int fd) {
     }
 }
 
-void TrafficCollector::enQueueInit(int fd, int domain, int type) {
-    if (type == SOCK_DGRAM && domain != AF_LOCAL) {
-        saveFdInfo(fd);
-        shared_ptr<TrafficMsg> msg = make_shared<TrafficMsg>(MSG_TYPE_INIT, fd, 0);
-    }
-}
-
-void TrafficCollector::enQueueConnect(int fd, sockaddr *addr, socklen_t addr_length) {
-    if (!loopRunning) {
-        return;
-    }
-
-    if (addr->sa_family == AF_LOCAL) {
-        return;
-    }
-
-    saveFdInfo(fd);
-    shared_ptr<TrafficMsg> msg = make_shared<TrafficMsg>(MSG_TYPE_CONNECT, fd, 0);
-
-    msgQueue.push(msg);
-    queueMutex.unlock();
-}
-
 void TrafficCollector::enQueueClose(int fd) {
     if (!loopRunning) {
         return;
@@ -223,7 +200,7 @@ void loop() {
             shared_ptr<TrafficMsg> msg = msgQueue.front();
             int fd = msg->fd;
             int type = msg->type;
-            if (type != MSG_TYPE_INIT && type != MSG_TYPE_CLOSE) {
+            if (type != MSG_TYPE_CLOSE) {
                 if (activeFdSet.count(fd) == 0 && invalidFdSet.count(fd) == 0) {
                     if (!isNetworkSocketFd(fd)) {
                         invalidFdSet.insert(fd);
@@ -236,9 +213,7 @@ void loop() {
                 }
             }
 
-            if (type == MSG_TYPE_CONNECT || type == MSG_TYPE_INIT) {
-                activeFdSet.insert(fd);
-            } else if (type >= MSG_TYPE_READ && type <= MSG_TYPE_RECVMSG) {
+            if (type >= MSG_TYPE_READ && type <= MSG_TYPE_RECVMSG) {
                 if (activeFdSet.count(fd) > 0 && invalidFdSet.count(fd) == 0) {
                     appendRxTraffic(fd, msg->len);
                 }
