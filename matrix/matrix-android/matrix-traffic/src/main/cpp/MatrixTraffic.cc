@@ -137,19 +137,6 @@ static char* getNativeBacktrace(string keyString) {
     }
 }
 
-int (*original_socket)(int domain, int type, int protocol);
-int my_socket(int domain, int type, int protocol) {
-    int ret = original_socket(domain, type, protocol);
-    TrafficCollector::enQueueInit(ret, domain, type);
-    return ret;
-}
-
-int (*original_connect)(int fd, const struct sockaddr* addr, socklen_t addr_length);
-int my_connect(int fd, sockaddr *addr, socklen_t addr_length) {
-    TrafficCollector::enQueueConnect(fd, addr, addr_length);
-    return original_connect(fd, addr, addr_length);
-}
-
 ssize_t (*original_read)(int fd, void *buf, size_t count);
 ssize_t my_read(int fd, void *buf, size_t count) {
     ssize_t ret = original_read(fd, buf, count);
@@ -256,12 +243,6 @@ static void hookSocket(bool rxHook, bool txHook) {
     if (HOOKED) {
         return;
     }
-
-    xhook_grouped_register(HOOK_REQUEST_GROUPID_TRAFFIC, ".*\\.so$", "socket",
-                           (void *) my_socket, (void **) (&original_socket));
-
-    xhook_grouped_register(HOOK_REQUEST_GROUPID_TRAFFIC, ".*\\.so$", "connect",
-                           (void *) my_connect, (void **) (&original_connect));
 
     xhook_grouped_register(HOOK_REQUEST_GROUPID_TRAFFIC, ".*\\.so$", "close",
                            (void *) my_close, (void **) (&original_close));
