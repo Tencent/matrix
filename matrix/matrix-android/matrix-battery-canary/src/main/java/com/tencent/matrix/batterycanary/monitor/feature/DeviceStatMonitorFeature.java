@@ -228,7 +228,7 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
                                 break;
                             case Intent.ACTION_SCREEN_ON:
                                 if (!mIsCharging) {
-                                    mListener.accept(AppStats.DEV_STAT_CHARGING);
+                                    mListener.accept(AppStats.DEV_STAT_SCREEN_ON);
                                 }
                                 break;
                             case Intent.ACTION_SCREEN_OFF:
