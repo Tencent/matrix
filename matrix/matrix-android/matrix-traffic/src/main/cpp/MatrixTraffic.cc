@@ -66,11 +66,6 @@ void makeNativeStack(wechat_backtrace::Backtrace* backtrace, char *&stack) {
     auto _callback = [&](wechat_backtrace::FrameDetail it) {
         std::string so_name = it.map_name;
 
-        char *demangled_name = nullptr;
-        int status = 0;
-
-        demangled_name = abi::__cxa_demangle(it.function_name, nullptr, 0, &status);
-
         if (strstr(it.map_name, "libmatrix-traffic.so") || strstr(it.map_name, "libwechatbacktrace.so")) {
             return;
         }
@@ -79,9 +74,6 @@ void makeNativeStack(wechat_backtrace::Backtrace* backtrace, char *&stack) {
                 << "#" << std::dec << (index++)
                 << " pc " << std::hex << it.rel_pc << " "
                 << it.map_name
-                << " ("
-                << (demangled_name ? demangled_name : "null")
-                << ")"
                 << std::endl;
         if (last_so_name != it.map_name) {
             last_so_name = it.map_name;
@@ -89,10 +81,6 @@ void makeNativeStack(wechat_backtrace::Backtrace* backtrace, char *&stack) {
         }
 
         brief_stack_builder << std::hex << it.rel_pc << ";";
-
-        if (demangled_name) {
-            free(demangled_name);
-        }
     };
 
     wechat_backtrace::restore_frame_detail(backtrace->frames.get(), backtrace->frame_size,
@@ -217,6 +205,7 @@ static jstring nativeGetNativeBackTraceByKey(JNIEnv *env, jclass, jstring key) {
     string keyString(cKey);
     char* ret = getNativeBacktrace(keyString);
     jstring jRet = env->NewStringUTF(ret);
+    delete[] ret;
     return jRet;
 }
 
