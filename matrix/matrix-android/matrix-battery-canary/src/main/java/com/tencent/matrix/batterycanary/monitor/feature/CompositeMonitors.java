@@ -156,7 +156,6 @@ public class CompositeMonitors {
             MatrixLog.w(TAG, "AppStats should not be null to get CpuLoad");
             return -1;
         }
-
         Delta<JiffiesSnapshot> appJiffies = getDelta(JiffiesSnapshot.class);
         if (appJiffies == null) {
             MatrixLog.w(TAG, JiffiesSnapshot.class + " should be metrics to get CpuLoad");
@@ -166,6 +165,23 @@ public class CompositeMonitors {
         long appJiffiesDelta = appJiffies.dlt.totalJiffies.get();
         long cpuUptimeDelta = mAppStats.duringMillis;
         float cpuLoad = cpuUptimeDelta > 0 ? (float) (appJiffiesDelta * 10) / cpuUptimeDelta : 0;
+        return (int) (cpuLoad * 100);
+    }
+
+    public int getDevCpuLoad() {
+        if (mAppStats == null) {
+            MatrixLog.w(TAG, "AppStats should not be null to get CpuLoad");
+            return -1;
+        }
+        Delta<CpuStatFeature.CpuStateSnapshot> cpuJiffies = getDelta(CpuStatFeature.CpuStateSnapshot.class);
+        if (cpuJiffies == null) {
+            MatrixLog.w(TAG, "Configure CpuLoad by uptime");
+            return -1;
+        }
+
+        long cpuJiffiesDelta = cpuJiffies.dlt.totalCpuJiffies();
+        long devJiffiesDelta = mAppStats.duringMillis;
+        float cpuLoad = devJiffiesDelta > 0 ? (float) (cpuJiffiesDelta * 10) / devJiffiesDelta : 0;
         return (int) (cpuLoad * 100);
     }
 
