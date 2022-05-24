@@ -163,19 +163,10 @@ public class CompositeMonitors {
             return -1;
         }
 
-        Delta<CpuStatFeature.CpuStateSnapshot> cpuJiffies = getDelta(CpuStatFeature.CpuStateSnapshot.class);
-        if (cpuJiffies == null) {
-            MatrixLog.w(TAG, "Configure CpuLoad by uptime");
-            long appJiffiesDelta = appJiffies.dlt.totalJiffies.get();
-            long cpuUptimeDelta = mAppStats.duringMillis;
-            float cpuLoad = cpuUptimeDelta > 0 ? (float) (appJiffiesDelta * 10) / cpuUptimeDelta : 0;
-            return (int) (cpuLoad * 100);
-        }
-
         long appJiffiesDelta = appJiffies.dlt.totalJiffies.get();
-        long cpuJiffiesDelta = cpuJiffies.dlt.totalCpuJiffies();
-        float cpuLoad = cpuJiffiesDelta > 0 ? (float) appJiffiesDelta / cpuJiffiesDelta : 0;
-        return (int) (cpuLoad * BatteryCanaryUtil.getCpuCoreNum() * 100);
+        long cpuUptimeDelta = mAppStats.duringMillis;
+        float cpuLoad = cpuUptimeDelta > 0 ? (float) (appJiffiesDelta * 10) / cpuUptimeDelta : 0;
+        return (int) (cpuLoad * 100);
     }
 
     public <T extends Snapshot<T>> boolean isOverHeat(Class<T> snapshotClass) {
