@@ -168,6 +168,10 @@ public class CompositeMonitors {
         return (int) (cpuLoad * 100);
     }
 
+
+    /**
+     * Work in progress
+     */
     public int getDevCpuLoad() {
         if (mAppStats == null) {
             MatrixLog.w(TAG, "AppStats should not be null to get CpuLoad");

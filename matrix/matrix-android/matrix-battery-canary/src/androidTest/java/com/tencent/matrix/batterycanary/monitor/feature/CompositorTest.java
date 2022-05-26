@@ -198,10 +198,10 @@ public class CompositorTest {
         compositeMonitor.start();
         Thread.sleep(1000L);
         compositeMonitor.finish();
-        int cpuLoad = compositeMonitor.getCpuLoad();
-        Assert.assertTrue(cpuLoad >= 0 && cpuLoad <= BatteryCanaryUtil.getCpuCoreNum() * 100);
+        int devCpuLoad = compositeMonitor.getDevCpuLoad();
+        Assert.assertTrue("devCpuLoad: " + devCpuLoad, devCpuLoad >= 0 && devCpuLoad <= BatteryCanaryUtil.getCpuCoreNum() * 100);
 
-        Assert.assertEquals(cpuLoad, cpuLoadR, 10);
+        Assert.assertEquals(devCpuLoad, cpuLoadR, 10);
 
         compositeMonitor = new CompositeMonitors(monitor);
         Assert.assertFalse(compositeMonitor.mMetrics.contains(JiffiesSnapshot.class));
@@ -214,8 +214,8 @@ public class CompositorTest {
         compositeMonitor.finish();
         long wallTimeEnd = System.currentTimeMillis();
         long upTimeEnd = SystemClock.uptimeMillis();
-        cpuLoad = compositeMonitor.getCpuLoad();
-        Assert.assertTrue(cpuLoad >= 0 && cpuLoad <= BatteryCanaryUtil.getCpuCoreNum() * 100);
+        devCpuLoad = compositeMonitor.getDevCpuLoad();
+        Assert.assertTrue("devCpuLoad: " + devCpuLoad,devCpuLoad >= 0 && devCpuLoad <= BatteryCanaryUtil.getCpuCoreNum() * 100);
 
         long wallTimeDelta = wallTimeEnd - wallTimeBgn;
         long uptimeDelta = upTimeEnd - upTimeBgn;
@@ -229,7 +229,7 @@ public class CompositorTest {
 
         cpuLoadR = (int) ((appJiffies.dlt.totalJiffies.get() / (uptimeDelta / 10f)) * 100);
         Assert.assertTrue("cpuLoadR: " + cpuLoadR, cpuLoadR >= 0 && cpuLoadR <= BatteryCanaryUtil.getCpuCoreNum() * 100);
-        Assert.assertEquals(cpuLoad, cpuLoadR, 10);
+        Assert.assertEquals(devCpuLoad, cpuLoadR, 10);
     }
 
     @Test

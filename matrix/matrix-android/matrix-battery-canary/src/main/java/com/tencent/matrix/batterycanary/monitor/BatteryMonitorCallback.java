@@ -408,7 +408,7 @@ public interface BatteryMonitorCallback extends
                 }
             }
 
-            protected boolean onWritingSectionContent(@NonNull Delta<?> sessionDelta, CompositeMonitors monitors, final Printer printer) {
+            protected boolean onWritingSectionContent(@NonNull Delta<?> sessionDelta, final CompositeMonitors monitors, final Printer printer) {
                 if (monitors.getMonitor() == null || monitors.getAppStats() == null) {
                     return false;
                 }
@@ -546,45 +546,33 @@ public interface BatteryMonitorCallback extends
                 if (sessionDelta.dlt instanceof CpuStateSnapshot) {
                     //noinspection unchecked
                     final Delta<CpuStateSnapshot> delta = (Delta<CpuStateSnapshot>) sessionDelta;
+                    final long minute = Math.max(1, delta.during / ONE_MIN);
                     // Cpu Usage
-                    printer.createSubSection("cpu_load");
+                    printer.createSubSection("dev_cpu_load");
                     printer.writeLine(delta.during + "(mls)\t" + (delta.during / ONE_MIN) + "(min)");
                     final CpuStatFeature cpuStatFeature = monitors.getFeature(CpuStatFeature.class);
                     if (cpuStatFeature != null) {
-                        monitors.getDelta(JiffiesSnapshot.class, new Consumer<Delta<JiffiesSnapshot>>() {
-                            @Override
-                            public void accept(Delta<JiffiesSnapshot> jiffiesDelta) {
-                                long appJiffiesDelta = jiffiesDelta.dlt.totalJiffies.get();
-                                long cpuJiffiesDelta = delta.dlt.totalCpuJiffies();
-                                float cpuLoad = (float) appJiffiesDelta / cpuJiffiesDelta;
-                                float cpuLoadAvg = cpuLoad * cpuStatFeature.getPowerProfile().getCpuCoreNum();
-                                printer.writeLine("usage", (int) (cpuLoadAvg * 100) + "%");
-                            }
-                        });
+                        printer.writeLine("usage", monitors.getDevCpuLoad() + "%");
                     }
                     for (int i = 0; i < delta.dlt.cpuCoreStates.size(); i++) {
                         ListEntry<DigitEntry<Long>> listEntry = delta.dlt.cpuCoreStates.get(i);
                         printer.writeLine("cpu" + i, Arrays.toString(listEntry.getList().toArray()));
                     }
-                    // BatterySip
-                    if (cpuStatFeature != null) {
+                    // Cpu BatterySip
+                    if (cpuStatFeature != null && cpuStatFeature.isSupported()) {
                         printer.createSubSection("cpu_sip");
                         // Cpu battery sip - CPU State
                         final PowerProfile powerProfile = cpuStatFeature.getPowerProfile();
-                        printer.writeLine("inc_cpu_sip", String.format(Locale.US, "%.2f(mAh)", delta.dlt.configureCpuSip(powerProfile)));
+                        printer.writeLine("inc_cpu_sip", String.format(Locale.US, "%.2f(mAh)/min", delta.dlt.configureCpuSip(powerProfile) / minute));
                         printer.writeLine("cur_cpu_sip", String.format(Locale.US, "%.2f(mAh)", delta.end.configureCpuSip(powerProfile)));
                         // Cpu battery sip - Proc State
                         monitors.getDelta(JiffiesSnapshot.class, new Consumer<Delta<JiffiesSnapshot>>() {
                             @Override
                             public void accept(Delta<JiffiesSnapshot> jiffiesDelta) {
-                                double procSipDelta = delta.dlt.configureProcSip(powerProfile, jiffiesDelta.dlt.totalJiffies.get());
+                                double procSipBgn = delta.bgn.configureProcSip(powerProfile, jiffiesDelta.bgn.totalJiffies.get());
                                 double procSipEnd = delta.end.configureProcSip(powerProfile, jiffiesDelta.end.totalJiffies.get());
-                                printer.writeLine("inc_prc_sip", String.format(Locale.US, "%.2f(mAh)", procSipDelta));
+                                printer.writeLine("inc_prc_sip", String.format(Locale.US, "%.2f(mAh)/min", (procSipEnd - procSipBgn) / minute));
                                 printer.writeLine("cur_prc_sip", String.format(Locale.US, "%.2f(mAh)", procSipEnd));
-                                if (Double.isNaN(procSipDelta)) {
-                                    double procSipBgn = delta.bgn.configureProcSip(powerProfile, jiffiesDelta.bgn.totalJiffies.get());
-                                    printer.writeLine("inc_prc_sipr", String.format(Locale.US, "%.2f(mAh)", procSipEnd - procSipBgn));
-                                }
                             }
                         });
                     }
