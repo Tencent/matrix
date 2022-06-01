@@ -473,6 +473,7 @@ public class CompositeMonitors {
                     public Number call() {
                         DeviceStatMonitorFeature.CpuFreqSnapshot snapshot = feature.currentCpuFreq();
                         List<DigitEntry<Integer>> list = snapshot.cpuFreqs.getList();
+                        MatrixLog.i(TAG, "onSampling, cpufreq = " + list);
                         Collections.sort(list, new Comparator<DigitEntry<Integer>>() {
                             @Override
                             public int compare(DigitEntry<Integer> o1, DigitEntry<Integer> o2) {
@@ -493,7 +494,9 @@ public class CompositeMonitors {
                     @Override
                     public Number call() {
                         DeviceStatMonitorFeature.BatteryTmpSnapshot snapshot = feature.currentBatteryTemperature(mMonitor.getContext());
-                        return snapshot.temp.get();
+                        Integer value = snapshot.temp.get();
+                        MatrixLog.i(TAG, "onSampling, batt-temp = " + value);
+                        return value;
                     }
                 });
                 mSamplers.put(snapshotClass, sampler);
@@ -506,7 +509,9 @@ public class CompositeMonitors {
                 sampler = new Snapshot.Sampler("thermal-stat", mMonitor.getHandler(), new Callable<Number>() {
                     @Override
                     public Number call() {
-                        return BatteryCanaryUtil.getThermalStat(mMonitor.getContext());
+                        int value = BatteryCanaryUtil.getThermalStat(mMonitor.getContext());
+                        MatrixLog.i(TAG, "onSampling, thermal-stat = " + value);
+                        return value;
                     }
                 });
                 mSamplers.put(snapshotClass, sampler);
@@ -521,7 +526,9 @@ public class CompositeMonitors {
                     sampler = new Snapshot.Sampler("thermal-headroom", mMonitor.getHandler(), new Callable<Number>() {
                         @Override
                         public Number call() {
-                            return BatteryCanaryUtil.getThermalHeadroom(mMonitor.getContext(), (int) (interval / 1000L));
+                            float value = BatteryCanaryUtil.getThermalHeadroom(mMonitor.getContext(), (int) (interval / 1000L));
+                            MatrixLog.i(TAG, "onSampling, thermal-headroom = " + value);
+                            return value;
                         }
                     });
                     mSamplers.put(snapshotClass, sampler);
@@ -532,10 +539,34 @@ public class CompositeMonitors {
         if (snapshotClass == DeviceStatMonitorFeature.ChargeWattageSnapshot.class) {
             final DeviceStatMonitorFeature feature = getFeature(DeviceStatMonitorFeature.class);
             if (feature != null && mMonitor != null) {
-                sampler = new Snapshot.Sampler("batt-temp", mMonitor.getHandler(), new Callable<Number>() {
+                sampler = new Snapshot.Sampler("batt-watt", mMonitor.getHandler(), new Callable<Number>() {
                     @Override
                     public Number call() {
-                        return BatteryCanaryUtil.getChargingWatt(mMonitor.getContext());
+                        int value = BatteryCanaryUtil.getChargingWatt(mMonitor.getContext());
+                        MatrixLog.i(TAG, "onSampling, batt-watt = " + value);
+                        return value;
+                    }
+                });
+                mSamplers.put(snapshotClass, sampler);
+            }
+            return sampler;
+        }
+        if (snapshotClass == CpuStatFeature.CpuStateSnapshot.class) {
+            final CpuStatFeature feature = getFeature(CpuStatFeature.class);
+            if (feature != null && feature.isSupported() && mMonitor != null) {
+                sampler = new Snapshot.Sampler("cpu-stat", mMonitor.getHandler(), new Callable<Number>() {
+                    @Override
+                    public Number call() {
+                        CpuStatFeature.CpuStateSnapshot snapshot = feature.currentCpuStateSnapshot();
+                        for (int i = 0; i < snapshot.cpuCoreStates.size(); i++) {
+                            Snapshot.Entry.ListEntry<DigitEntry<Long>> item = snapshot.cpuCoreStates.get(i);
+                            MatrixLog.i(TAG, "onSampling, cpuCore" + i + " = " + item.getList());
+                        }
+                        for (int i = 0; i < snapshot.procCpuCoreStates.size(); i++) {
+                            Snapshot.Entry.ListEntry<DigitEntry<Long>> item = snapshot.procCpuCoreStates.get(i);
+                            MatrixLog.i(TAG, "onSampling, procCpuCluster" + i + " = " + item.getList());
+                        }
+                        return snapshot.totalProcCpuJiffies();
                     }
                 });
                 mSamplers.put(snapshotClass, sampler);

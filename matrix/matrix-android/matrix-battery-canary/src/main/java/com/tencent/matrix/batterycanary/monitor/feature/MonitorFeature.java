@@ -431,7 +431,7 @@ public interface MonitorFeature {
                     try {
                         MatrixLog.i(TAG, "onSampling, count = " + mCount);
                         Number currSample = mSamplingBlock.call();
-                        if (currSample != INVALID) {
+                        if (!currSample.equals(INVALID)) {
                             mSampleLst = currSample.doubleValue();
                             mCount++;
                             mSampleAvg = (mSampleAvg * (mCount - 1) + mSampleLst) / mCount;

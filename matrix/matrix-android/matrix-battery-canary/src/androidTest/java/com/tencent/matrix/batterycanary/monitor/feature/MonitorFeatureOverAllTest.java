@@ -81,6 +81,7 @@ public class MonitorFeatureOverAllTest {
                         BatteryPrinter core = super.attach(monitorCore);
                         mCompositeMonitors.sample(DeviceStatMonitorFeature.BatteryTmpSnapshot.class, 100L);
                         mCompositeMonitors.sample(DeviceStatMonitorFeature.CpuFreqSnapshot.class, 100L);
+                        mCompositeMonitors.sample(CpuStatFeature.CpuStateSnapshot.class, 100L);
                         return core;
                     }
                 })
