@@ -82,10 +82,13 @@ public class MonitorFeatureOverAllTest {
                         mCompositeMonitors.sample(DeviceStatMonitorFeature.BatteryTmpSnapshot.class, 100L);
                         mCompositeMonitors.sample(DeviceStatMonitorFeature.CpuFreqSnapshot.class, 100L);
                         mCompositeMonitors.sample(CpuStatFeature.CpuStateSnapshot.class, 100L);
+                        mCompositeMonitors.sample(JiffiesMonitorFeature.UidJiffiesSnapshot.class, 100L);
                         return core;
                     }
                 })
                 .build();
+
+
         return new BatteryMonitorCore(config);
     }
 

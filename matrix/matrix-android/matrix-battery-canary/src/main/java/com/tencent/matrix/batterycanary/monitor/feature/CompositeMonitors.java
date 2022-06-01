@@ -573,6 +573,34 @@ public class CompositeMonitors {
             }
             return sampler;
         }
+        if (snapshotClass == JiffiesMonitorFeature.UidJiffiesSnapshot.class) {
+            final JiffiesMonitorFeature feature = getFeature(JiffiesMonitorFeature.class);
+            if (feature != null && mMonitor != null) {
+                sampler = new Snapshot.Sampler("uid-jiffies", mMonitor.getHandler(), new Callable<Number>() {
+                    JiffiesMonitorFeature.UidJiffiesSnapshot mLastSnapshot;
+                    @Override
+                    public Number call() {
+                        JiffiesMonitorFeature.UidJiffiesSnapshot curr = feature.currentUidJiffiesSnapshot();
+                        if (mLastSnapshot != null) {
+                            Delta<JiffiesMonitorFeature.UidJiffiesSnapshot> delta = curr.diff(mLastSnapshot);
+                            long minute = Math.max(1, delta.during / BatteryCanaryUtil.ONE_MIN);
+                            long avgUidJiffies = delta.dlt.totalUidJiffies.get() / minute;
+                            MatrixLog.i(TAG, "onSampling, avgUidJiffies = " + avgUidJiffies + ", minute = " + minute);
+                            for (Delta<JiffiesSnapshot> item : delta.dlt.pidDeltaJiffiesList) {
+                                long avgPidJiffies = item.dlt.totalJiffies.get() / minute;
+                                MatrixLog.i(TAG, "onSampling, avgPidJiffies = " + avgPidJiffies + ", minute = " + minute + ", name = " + item.dlt.name);
+                            }
+                            return avgUidJiffies;
+                        } else {
+                            mLastSnapshot = curr;
+                        }
+                        return 0;
+                    }
+                });
+                mSamplers.put(snapshotClass, sampler);
+            }
+            return sampler;
+        }
         return null;
     }
 
