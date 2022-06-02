@@ -44,6 +44,7 @@ public abstract class BaseLeakProcessor {
 
     public abstract boolean process(DestroyedActivityInfo destroyedActivityInfo);
 
+    @Deprecated
     public DumpStorageManager getDumpStorageManager() {
         if (mDumpStorageManager == null) {
             mDumpStorageManager = new DumpStorageManager(mWatcher.getContext());

@@ -194,7 +194,7 @@ class NativeForkAnalyzeProcessor(watcher: ActivityRefWatcher) : BaseLeakProcesso
 
         val hprof = dumpStorageManager.newHprofFile() ?: run {
             publishIssue(
-                SharePluginInfo.IssueType.LEAK_FOUND,
+                SharePluginInfo.IssueType.LEAK_FOUND, // ? should be ERR_FILE_NOT_FOUND
                 ResourceConfig.DumpMode.FORK_ANALYSE,
                 "[unknown]", "[unknown]", "Failed to create hprof file.", "0"
             )

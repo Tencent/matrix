@@ -33,7 +33,7 @@ import java.util.Locale;
  * <p>
  * This class is ported from LeakCanary.
  */
-
+@Deprecated
 public class DumpStorageManager {
     private static final String TAG = "Matrix.DumpStorageManager";
 
