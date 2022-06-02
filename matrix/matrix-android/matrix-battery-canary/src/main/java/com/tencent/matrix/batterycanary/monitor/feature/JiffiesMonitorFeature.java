@@ -271,12 +271,14 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
         }
 
         public int pid;
+        public boolean isNewAdded;
         public String name;
         public DigitEntry<Long> totalJiffies;
         public ListEntry<ThreadJiffiesSnapshot> threadEntries;
         public DigitEntry<Integer> threadNum;
 
         private JiffiesSnapshot() {
+            isNewAdded = false;
         }
 
         @Override
@@ -286,6 +288,7 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
                 protected JiffiesSnapshot computeDelta() {
                     JiffiesSnapshot delta = new JiffiesSnapshot();
                     delta.pid = end.pid;
+                    delta.isNewAdded = end.isNewAdded;
                     delta.name = end.name;
                     delta.totalJiffies = Differ.DigitDiffer.globalDiff(bgn.totalJiffies, end.totalJiffies);
                     delta.threadNum = Differ.DigitDiffer.globalDiff(bgn.threadNum, end.threadNum);
@@ -476,10 +479,14 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
             long sum = 0;
             for (Pair<Integer, String> item : procList) {
                 //noinspection ConstantConditions
-                JiffiesSnapshot snapshot = JiffiesSnapshot.currentJiffiesSnapshot(ProcessInfo.getProcessInfo(item.first), isStatPidProc);
-                snapshot.name = TopThreadIndicator.getProcSuffix(item.second);
-                sum += snapshot.totalJiffies.get();
-                curr.pidCurrJiffiesList.add(snapshot);
+                int pid = item.first;
+                String procName = String.valueOf(item.second);
+                if (ProcStatUtil.exists(pid)) {
+                    JiffiesSnapshot snapshot = JiffiesSnapshot.currentJiffiesSnapshot(ProcessInfo.getProcessInfo(pid), isStatPidProc);
+                    snapshot.name = TopThreadIndicator.getProcSuffix(procName);
+                    sum += snapshot.totalJiffies.get();
+                    curr.pidCurrJiffiesList.add(snapshot);
+                }
             }
             curr.totalUidJiffies = DigitEntry.of(sum);
             return curr;
@@ -496,17 +503,30 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
                 protected UidJiffiesSnapshot computeDelta() {
                     UidJiffiesSnapshot delta = new UidJiffiesSnapshot();
                     delta.totalUidJiffies = Differ.DigitDiffer.globalDiff(bgn.totalUidJiffies, end.totalUidJiffies);
-                    if (bgn.pidCurrJiffiesList.size() > 0) {
+                    if (end.pidCurrJiffiesList.size() > 0) {
                         delta.pidDeltaJiffiesList = new ArrayList<>();
-                        for (JiffiesSnapshot bgn : bgn.pidCurrJiffiesList) {
-                            for (JiffiesSnapshot end : end.pidCurrJiffiesList) {
+                        for (JiffiesSnapshot end : end.pidCurrJiffiesList) {
+                            JiffiesSnapshot last = null;
+                            for (JiffiesSnapshot bgn : bgn.pidCurrJiffiesList) {
                                 if (bgn.pid == end.pid) {
-                                    Delta<JiffiesSnapshot> deltaPidJiffies = end.diff(bgn);
-                                    delta.pidDeltaJiffiesList.add(deltaPidJiffies);
+                                    last = bgn;
                                     break;
                                 }
                             }
+                            if (last == null) {
+                                // newAdded Pid
+                                end.isNewAdded = true;
+                                JiffiesSnapshot empty = new JiffiesSnapshot();
+                                empty.pid = end.pid;
+                                empty.name = end.name;
+                                empty.totalJiffies = DigitEntry.of(0L);
+                                empty.threadEntries = ListEntry.ofEmpty();
+                                empty.threadNum = DigitEntry.of(0);
+                            }
+                            Delta<JiffiesSnapshot> deltaPidJiffies = end.diff(last);
+                            delta.pidDeltaJiffiesList.add(deltaPidJiffies);
                         }
+
                         Collections.sort(delta.pidDeltaJiffiesList, new Comparator<Delta<JiffiesSnapshot>>() {
                             @Override
                             public int compare(Delta<JiffiesSnapshot> o1, Delta<JiffiesSnapshot> o2) {

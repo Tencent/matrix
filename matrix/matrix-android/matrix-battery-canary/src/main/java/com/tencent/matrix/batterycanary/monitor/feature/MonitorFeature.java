@@ -429,7 +429,7 @@ public interface MonitorFeature {
                 @Override
                 public void run() {
                     try {
-                        MatrixLog.i(TAG, "onSampling, count = " + mCount);
+                        MatrixLog.i(TAG, "onSampling" + mTag + ", count = " + mCount);
                         Number currSample = mSamplingBlock.call();
                         if (!currSample.equals(INVALID)) {
                             mSampleLst = currSample.doubleValue();
@@ -470,7 +470,7 @@ public interface MonitorFeature {
             double mSampleAvg = Double.MIN_VALUE;
 
             public Sampler(Handler handler, Callable<? extends Number> onSampling) {
-                this("default", handler, onSampling);
+                this("dft", handler, onSampling);
             }
 
             public Sampler(String tag, Handler handler, Callable<? extends Number> onSampling) {
