@@ -432,22 +432,31 @@ public interface BatteryMonitorCallback extends
                     printer.writeLine("desc", "(status)name(tid)\tavg/total");
                     printer.writeLine("inc_thread_num", String.valueOf(delta.dlt.threadNum.get()));
                     printer.writeLine("cur_thread_num", String.valueOf(delta.end.threadNum.get()));
-                    for (ThreadJiffiesEntry threadJiffies : delta.dlt.threadEntries.getList().subList(0, Math.min(delta.dlt.threadEntries.getList().size(), 8))) {
+                    int toppingCount = 8;
+                    long remainJffies = 0;
+                    for (int i = 0; i < delta.dlt.threadEntries.getList().size(); i++) {
+                        ThreadJiffiesEntry threadJiffies = delta.dlt.threadEntries.getList().get(0);
                         long entryJffies = threadJiffies.get();
-                        printer.append("|   -> (").append(threadJiffies.isNewAdded ? "+" : "~").append("/").append(threadJiffies.stat).append(")")
-                                .append(threadJiffies.name).append("(").append(threadJiffies.tid).append(")\t")
-                                .append(entryJffies / minute).append("/").append(entryJffies).append("\tjiffies")
-                                .append("\n");
-
-                        // List<LooperTaskMonitorFeature.TaskTraceInfo> threadTasks = tasks.get(threadJiffies.tid);
-                        // if (null != threadTasks && !threadTasks.isEmpty()) {
-                        //     for (LooperTaskMonitorFeature.TaskTraceInfo task : threadTasks.subList(0, Math.min(3, threadTasks.size()))) {
-                        //         printer.append("|\t\t").append(task).append("\n");
-                        //     }
-                        // }
+                        if (i < toppingCount) {
+                            printer.append("|   -> (").append(threadJiffies.isNewAdded ? "+" : "~").append("/").append(threadJiffies.stat).append(")")
+                                    .append(threadJiffies.name).append("(").append(threadJiffies.tid).append(")\t")
+                                    .append(entryJffies / minute).append("/").append(entryJffies).append("\tjiffies")
+                                    .append("\n");
+                        } else {
+                            remainJffies += entryJffies;
+                        }
                     }
                     printer.append("|\t\t......\n");
+                    if (remainJffies > 0) {
+                        printer.append("|   -> R/R)")
+                                .append("REMAINS").append("(").append(delta.dlt.threadEntries.getList().size() - toppingCount).append(")\t")
+                                .append(remainJffies / minute).append("/").append(remainJffies).append("\tjiffies")
+                                .append("\n");
+                    }
                     if (avgJiffies > 1000L || !delta.isValid()) {
+                        // Proc CPU Load = avgJiffies / 6000L
+                        // 1000L -> 16.6%
+                        // 1200L -> 20.0%
                         printer.append("|  ").append(avgJiffies > 1000L ? " #overHeat" : "").append(!delta.isValid() ? " #invalid" : "").append("\n");
                     }
                     return true;

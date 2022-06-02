@@ -566,7 +566,7 @@ public class CompositeMonitors {
                             Snapshot.Entry.ListEntry<DigitEntry<Long>> item = snapshot.procCpuCoreStates.get(i);
                             MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + " procCpuCluster" + i + ", val = " + item.getList());
                         }
-                        return snapshot.totalProcCpuJiffies();
+                        return 0;
                     }
                 });
                 mSamplers.put(snapshotClass, sampler);
@@ -585,11 +585,11 @@ public class CompositeMonitors {
                             Delta<JiffiesMonitorFeature.UidJiffiesSnapshot> delta = curr.diff(mLastSnapshot);
                             long minute = Math.max(1, delta.during / BatteryCanaryUtil.ONE_MIN);
                             long avgUidJiffies = delta.dlt.totalUidJiffies.get() / minute;
-                            MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + " avgUidJiffies" + ", val = " + avgUidJiffies + ", minute = " + minute);
+                            MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + " avgUidJiffies, val = " + avgUidJiffies + ", minute = " + minute);
 
                             for (Delta<JiffiesSnapshot> item : delta.dlt.pidDeltaJiffiesList) {
                                 long avgPidJiffies = item.dlt.totalJiffies.get() / minute;
-                                MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + " avgPidJiffies" + ", val = " + avgUidJiffies + ", minute = " + minute + ", name = " + item.dlt.name);
+                                MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + " avgPidJiffies, val = " + avgUidJiffies + ", minute = " + minute + ", name = " + item.dlt.name);
                             }
                             return avgUidJiffies;
                         } else {
