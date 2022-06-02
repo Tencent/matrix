@@ -495,6 +495,14 @@ public interface MonitorFeature {
                 mSamplingBlock = onSampling;
             }
 
+            public String getTag() {
+                return mTag;
+            }
+
+            public int getCount() {
+                return mCount;
+            }
+
             public void setInterval(long interval) {
                 if (interval > 0) {
                     mInterval = interval;
