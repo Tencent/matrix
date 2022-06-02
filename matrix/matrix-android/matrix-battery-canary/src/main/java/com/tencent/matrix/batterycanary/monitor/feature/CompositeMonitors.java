@@ -586,14 +586,33 @@ public class CompositeMonitors {
                             long minute = Math.max(1, delta.during / BatteryCanaryUtil.ONE_MIN);
                             long avgUidJiffies = delta.dlt.totalUidJiffies.get() / minute;
                             MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + " avgUidJiffies, val = " + avgUidJiffies + ", minute = " + minute);
-
                             for (Delta<JiffiesSnapshot> item : delta.dlt.pidDeltaJiffiesList) {
                                 long avgPidJiffies = item.dlt.totalJiffies.get() / minute;
-                                MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + " avgPidJiffies, val = " + avgUidJiffies + ", minute = " + minute + ", name = " + item.dlt.name);
+                                MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + " avgPidJiffies, val = " + avgPidJiffies + ", minute = " + minute + ", name = " + item.dlt.name);
                             }
                             return avgUidJiffies;
                         } else {
                             mLastSnapshot = curr;
+                        }
+                        return 0;
+                    }
+                });
+                mSamplers.put(snapshotClass, sampler);
+            }
+            return sampler;
+        }
+        if (snapshotClass == TrafficMonitorFeature.RadioStatSnapshot.class) {
+            final TrafficMonitorFeature feature = getFeature(TrafficMonitorFeature.class);
+            if (feature != null && mMonitor != null) {
+                sampler = new MonitorFeature.Snapshot.Sampler("traffic", mMonitor.getHandler(), new Function<Snapshot.Sampler, Number>() {
+                    @Override
+                    public Number apply(Snapshot.Sampler sampler) {
+                        TrafficMonitorFeature.RadioStatSnapshot snapshot = feature.currentRadioSnapshot(mMonitor.getContext());
+                        if (snapshot != null) {
+                            MatrixLog.i(TAG, "onSampling " + sampler.getCount() + " " + sampler.getTag() + "wifiRx, val = " + snapshot.wifiRxBytes);
+                            MatrixLog.i(TAG, "onSampling " + sampler.getCount() + " " + sampler.getTag() + "wifiTx, val = " + snapshot.wifiTxBytes);
+                            MatrixLog.i(TAG, "onSampling " + sampler.getCount() + " " + sampler.getTag() + "mobileRx, val = " + snapshot.mobileRxBytes);
+                            MatrixLog.i(TAG, "onSampling " + sampler.getCount() + " " + sampler.getTag() + "mobileTx, val = " + snapshot.mobileTxBytes);
                         }
                         return 0;
                     }

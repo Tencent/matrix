@@ -84,6 +84,7 @@ public class MonitorFeatureOverAllTest {
                         mCompositeMonitors.sample(DeviceStatMonitorFeature.ChargeWattageSnapshot.class, 100L);
                         mCompositeMonitors.sample(CpuStatFeature.CpuStateSnapshot.class, 100L);
                         mCompositeMonitors.sample(JiffiesMonitorFeature.UidJiffiesSnapshot.class, 100L);
+                        mCompositeMonitors.sample(TrafficMonitorFeature.RadioStatSnapshot.class, 100L);
                         return core;
                     }
                 })
