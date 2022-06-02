@@ -14,6 +14,7 @@ import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.DigitEntry;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.Consumer;
+import com.tencent.matrix.batterycanary.utils.Function;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.ArrayList;
@@ -22,7 +23,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Callable;
 
 import androidx.annotation.CallSuper;
 import androidx.annotation.NonNull;
@@ -468,12 +468,12 @@ public class CompositeMonitors {
         if (snapshotClass == DeviceStatMonitorFeature.CpuFreqSnapshot.class) {
             final DeviceStatMonitorFeature feature = getFeature(DeviceStatMonitorFeature.class);
             if (feature != null && mMonitor != null) {
-                sampler = new Snapshot.Sampler("cpufreq", mMonitor.getHandler(), new Callable<Number>() {
+                sampler = new Snapshot.Sampler("cpufreq", mMonitor.getHandler(), new Function<Snapshot.Sampler, Number>() {
                     @Override
-                    public Number call() {
+                    public Number apply(Snapshot.Sampler sampler) {
                         DeviceStatMonitorFeature.CpuFreqSnapshot snapshot = feature.currentCpuFreq();
                         List<DigitEntry<Integer>> list = snapshot.cpuFreqs.getList();
-                        MatrixLog.i(TAG, "onSampling, cpufreq = " + list);
+                        MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + ", val = " + list);
                         Collections.sort(list, new Comparator<DigitEntry<Integer>>() {
                             @Override
                             public int compare(DigitEntry<Integer> o1, DigitEntry<Integer> o2) {
@@ -490,12 +490,12 @@ public class CompositeMonitors {
         if (snapshotClass == DeviceStatMonitorFeature.BatteryTmpSnapshot.class) {
             final DeviceStatMonitorFeature feature = getFeature(DeviceStatMonitorFeature.class);
             if (feature != null && mMonitor != null) {
-                sampler = new Snapshot.Sampler("batt-temp", mMonitor.getHandler(), new Callable<Number>() {
+                sampler = new Snapshot.Sampler("batt-temp", mMonitor.getHandler(), new Function<Snapshot.Sampler, Number>() {
                     @Override
-                    public Number call() {
+                    public Number apply(Snapshot.Sampler sampler) {
                         DeviceStatMonitorFeature.BatteryTmpSnapshot snapshot = feature.currentBatteryTemperature(mMonitor.getContext());
                         Integer value = snapshot.temp.get();
-                        MatrixLog.i(TAG, "onSampling, batt-temp = " + value);
+                        MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + ", val = " + value);
                         return value;
                     }
                 });
@@ -506,11 +506,11 @@ public class CompositeMonitors {
         if (snapshotClass == DeviceStatMonitorFeature.ThermalStatSnapshot.class) {
             final DeviceStatMonitorFeature feature = getFeature(DeviceStatMonitorFeature.class);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && feature != null && mMonitor != null) {
-                sampler = new Snapshot.Sampler("thermal-stat", mMonitor.getHandler(), new Callable<Number>() {
+                sampler = new Snapshot.Sampler("thermal-stat", mMonitor.getHandler(), new Function<Snapshot.Sampler, Number>() {
                     @Override
-                    public Number call() {
+                    public Number apply(Snapshot.Sampler sampler) {
                         int value = BatteryCanaryUtil.getThermalStat(mMonitor.getContext());
-                        MatrixLog.i(TAG, "onSampling, thermal-stat = " + value);
+                        MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + ", val = " + value);
                         return value;
                     }
                 });
@@ -523,11 +523,11 @@ public class CompositeMonitors {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && feature != null && mMonitor != null) {
                 final Long interval = mSampleRegs.get(snapshotClass);
                 if (interval != null && interval >= 1000L) {
-                    sampler = new Snapshot.Sampler("thermal-headroom", mMonitor.getHandler(), new Callable<Number>() {
+                    sampler = new Snapshot.Sampler("thermal-headroom", mMonitor.getHandler(), new Function<Snapshot.Sampler, Number>() {
                         @Override
-                        public Number call() {
+                        public Number apply(Snapshot.Sampler sampler) {
                             float value = BatteryCanaryUtil.getThermalHeadroom(mMonitor.getContext(), (int) (interval / 1000L));
-                            MatrixLog.i(TAG, "onSampling, thermal-headroom = " + value);
+                            MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + ", val = " + value);
                             return value;
                         }
                     });
@@ -539,11 +539,11 @@ public class CompositeMonitors {
         if (snapshotClass == DeviceStatMonitorFeature.ChargeWattageSnapshot.class) {
             final DeviceStatMonitorFeature feature = getFeature(DeviceStatMonitorFeature.class);
             if (feature != null && mMonitor != null) {
-                sampler = new Snapshot.Sampler("batt-watt", mMonitor.getHandler(), new Callable<Number>() {
+                sampler = new Snapshot.Sampler("batt-watt", mMonitor.getHandler(), new Function<Snapshot.Sampler, Number>() {
                     @Override
-                    public Number call() {
+                    public Number apply(Snapshot.Sampler sampler) {
                         int value = BatteryCanaryUtil.getChargingWatt(mMonitor.getContext());
-                        MatrixLog.i(TAG, "onSampling, batt-watt = " + value);
+                        MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + ", val = " + value);
                         return value;
                     }
                 });
@@ -554,17 +554,17 @@ public class CompositeMonitors {
         if (snapshotClass == CpuStatFeature.CpuStateSnapshot.class) {
             final CpuStatFeature feature = getFeature(CpuStatFeature.class);
             if (feature != null && feature.isSupported() && mMonitor != null) {
-                sampler = new Snapshot.Sampler("cpu-stat", mMonitor.getHandler(), new Callable<Number>() {
+                sampler = new Snapshot.Sampler("cpu-stat", mMonitor.getHandler(), new Function<Snapshot.Sampler, Number>() {
                     @Override
-                    public Number call() {
+                    public Number apply(Snapshot.Sampler sampler) {
                         CpuStatFeature.CpuStateSnapshot snapshot = feature.currentCpuStateSnapshot();
                         for (int i = 0; i < snapshot.cpuCoreStates.size(); i++) {
                             Snapshot.Entry.ListEntry<DigitEntry<Long>> item = snapshot.cpuCoreStates.get(i);
-                            MatrixLog.i(TAG, "onSampling, cpuCore" + i + " = " + item.getList());
+                            MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + " cpuCore" + i  + ", val = " + item.getList());
                         }
                         for (int i = 0; i < snapshot.procCpuCoreStates.size(); i++) {
                             Snapshot.Entry.ListEntry<DigitEntry<Long>> item = snapshot.procCpuCoreStates.get(i);
-                            MatrixLog.i(TAG, "onSampling, procCpuCluster" + i + " = " + item.getList());
+                            MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + " procCpuCluster" + i + ", val = " + item.getList());
                         }
                         return snapshot.totalProcCpuJiffies();
                     }
@@ -576,19 +576,20 @@ public class CompositeMonitors {
         if (snapshotClass == JiffiesMonitorFeature.UidJiffiesSnapshot.class) {
             final JiffiesMonitorFeature feature = getFeature(JiffiesMonitorFeature.class);
             if (feature != null && mMonitor != null) {
-                sampler = new Snapshot.Sampler("uid-jiffies", mMonitor.getHandler(), new Callable<Number>() {
+                sampler = new Snapshot.Sampler("uid-jiffies", mMonitor.getHandler(), new Function<Snapshot.Sampler, Number>() {
                     JiffiesMonitorFeature.UidJiffiesSnapshot mLastSnapshot;
                     @Override
-                    public Number call() {
+                    public Number apply(Snapshot.Sampler sampler) {
                         JiffiesMonitorFeature.UidJiffiesSnapshot curr = feature.currentUidJiffiesSnapshot();
                         if (mLastSnapshot != null) {
                             Delta<JiffiesMonitorFeature.UidJiffiesSnapshot> delta = curr.diff(mLastSnapshot);
                             long minute = Math.max(1, delta.during / BatteryCanaryUtil.ONE_MIN);
                             long avgUidJiffies = delta.dlt.totalUidJiffies.get() / minute;
-                            MatrixLog.i(TAG, "onSampling, avgUidJiffies = " + avgUidJiffies + ", minute = " + minute);
+                            MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + " avgUidJiffies" + ", val = " + avgUidJiffies + ", minute = " + minute);
+
                             for (Delta<JiffiesSnapshot> item : delta.dlt.pidDeltaJiffiesList) {
                                 long avgPidJiffies = item.dlt.totalJiffies.get() / minute;
-                                MatrixLog.i(TAG, "onSampling, avgPidJiffies = " + avgPidJiffies + ", minute = " + minute + ", name = " + item.dlt.name);
+                                MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + " avgPidJiffies" + ", val = " + avgUidJiffies + ", minute = " + minute + ", name = " + item.dlt.name);
                             }
                             return avgUidJiffies;
                         } else {

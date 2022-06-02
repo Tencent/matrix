@@ -276,9 +276,11 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
         public DigitEntry<Long> totalJiffies;
         public ListEntry<ThreadJiffiesSnapshot> threadEntries;
         public DigitEntry<Integer> threadNum;
+        public ListEntry<ThreadJiffiesSnapshot> deadThreadEntries;
 
         private JiffiesSnapshot() {
             isNewAdded = false;
+            deadThreadEntries = ListEntry.ofEmpty();
         }
 
         @Override
@@ -294,6 +296,7 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
                     delta.threadNum = Differ.DigitDiffer.globalDiff(bgn.threadNum, end.threadNum);
                     delta.threadEntries = ListEntry.ofEmpty();
 
+                    // for Existing threads
                     if (end.threadEntries.getList().size() > 0) {
                         List<ThreadJiffiesSnapshot> deltaThreadEntries = new ArrayList<>();
                         for (ThreadJiffiesSnapshot endRecord : end.threadEntries.getList()) {
@@ -328,6 +331,30 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
                             delta.threadEntries = ListEntry.of(deltaThreadEntries);
                         }
                     }
+
+                    // for Dead threads
+                    if (bgn.threadEntries.getList().size() > 0) {
+                        List<ThreadJiffiesSnapshot> deadThreadEntries = Collections.emptyList();
+                        for (ThreadJiffiesSnapshot bgn : bgn.threadEntries.getList()) {
+                            boolean isDead = true;
+                            for (ThreadJiffiesSnapshot exist : delta.threadEntries.getList()) {
+                                if (exist.tid == bgn.tid) {
+                                    isDead = false;
+                                    break;
+                                }
+                            }
+                            if (isDead) {
+                                if (deadThreadEntries.isEmpty()) {
+                                    deadThreadEntries = new ArrayList<>();
+                                }
+                                deadThreadEntries.add(bgn);
+                            }
+                        }
+                        if (!deadThreadEntries.isEmpty()) {
+                            delta.deadThreadEntries = ListEntry.of(deadThreadEntries);
+                        }
+                    }
+
                     return delta;
                 }
             };
