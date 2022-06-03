@@ -82,6 +82,7 @@ public class CompositeMonitors {
 
     @CallSuper
     public void clear() {
+        MatrixLog.i(TAG, hashCode() + " #clear: " + mScope);
         mBgnSnapshots.clear();
         mDeltas.clear();
         mSamplers.clear();
@@ -91,6 +92,7 @@ public class CompositeMonitors {
 
     @CallSuper
     public CompositeMonitors fork() {
+        MatrixLog.i(TAG, hashCode() + " #fork: " + mScope);
         CompositeMonitors that = new CompositeMonitors(mMonitor, mScope);
         that.mBgnMillis = this.mBgnMillis;
         that.mAppStats = this.mAppStats;
@@ -291,6 +293,7 @@ public class CompositeMonitors {
     }
 
     public void start() {
+        MatrixLog.i(TAG, hashCode() + " #start: " + mScope);
         mAppStats = null;
         mBgnMillis = SystemClock.uptimeMillis();
         configureBgnSnapshots();
@@ -298,6 +301,7 @@ public class CompositeMonitors {
     }
 
     public void finish() {
+        MatrixLog.i(TAG, hashCode() + " #finish: " + mScope);
         configureEndDeltas();
         collectStacks();
         configureSampleResults();
@@ -454,6 +458,7 @@ public class CompositeMonitors {
 
     protected void configureSampleResults() {
         for (Map.Entry<Class<? extends Snapshot<?>>, Snapshot.Sampler> item : mSamplers.entrySet()) {
+            MatrixLog.i(TAG, hashCode() + " " + item.getValue().getTag() + " #pause: " + mScope);
             item.getValue().pause();
             Snapshot.Sampler.Result result = item.getValue().getResult();
             if (result != null) {
@@ -473,6 +478,7 @@ public class CompositeMonitors {
                     public Number apply(Snapshot.Sampler sampler) {
                         DeviceStatMonitorFeature.CpuFreqSnapshot snapshot = feature.currentCpuFreq();
                         List<DigitEntry<Integer>> list = snapshot.cpuFreqs.getList();
+                        MatrixLog.i(TAG, CompositeMonitors.this.hashCode() + " #onSampling: " + mScope);
                         MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + ", val = " + list);
                         Collections.sort(list, new Comparator<DigitEntry<Integer>>() {
                             @Override

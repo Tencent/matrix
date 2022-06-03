@@ -509,6 +509,7 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
                 int pid = item.first;
                 String procName = String.valueOf(item.second);
                 if (ProcStatUtil.exists(pid)) {
+                    MatrixLog.i(TAG, " #exits: " + "/proc/" + pid + "/stat");
                     JiffiesSnapshot snapshot = JiffiesSnapshot.currentJiffiesSnapshot(ProcessInfo.getProcessInfo(pid), isStatPidProc);
                     snapshot.name = TopThreadIndicator.getProcSuffix(procName);
                     sum += snapshot.totalJiffies.get();
