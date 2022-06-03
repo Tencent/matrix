@@ -590,6 +590,7 @@ public class CompositeMonitors {
                                 long avgPidJiffies = item.dlt.totalJiffies.get() / minute;
                                 MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + " avgPidJiffies, val = " + avgPidJiffies + ", minute = " + minute + ", name = " + item.dlt.name);
                             }
+                            mLastSnapshot = curr;
                             return avgUidJiffies;
                         } else {
                             mLastSnapshot = curr;
@@ -609,10 +610,10 @@ public class CompositeMonitors {
                     public Number apply(Snapshot.Sampler sampler) {
                         TrafficMonitorFeature.RadioStatSnapshot snapshot = feature.currentRadioSnapshot(mMonitor.getContext());
                         if (snapshot != null) {
-                            MatrixLog.i(TAG, "onSampling " + sampler.getCount() + " " + sampler.getTag() + "wifiRx, val = " + snapshot.wifiRxBytes);
-                            MatrixLog.i(TAG, "onSampling " + sampler.getCount() + " " + sampler.getTag() + "wifiTx, val = " + snapshot.wifiTxBytes);
-                            MatrixLog.i(TAG, "onSampling " + sampler.getCount() + " " + sampler.getTag() + "mobileRx, val = " + snapshot.mobileRxBytes);
-                            MatrixLog.i(TAG, "onSampling " + sampler.getCount() + " " + sampler.getTag() + "mobileTx, val = " + snapshot.mobileTxBytes);
+                            MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + " wifiRx, val = " + snapshot.wifiRxBytes);
+                            MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + " wifiTx, val = " + snapshot.wifiTxBytes);
+                            MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + " mobileRx, val = " + snapshot.mobileRxBytes);
+                            MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + " mobileTx, val = " + snapshot.mobileTxBytes);
                         }
                         return 0;
                     }

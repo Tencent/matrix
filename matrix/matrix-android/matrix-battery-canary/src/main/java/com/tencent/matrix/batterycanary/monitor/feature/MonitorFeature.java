@@ -430,7 +430,6 @@ public interface MonitorFeature {
                 @Override
                 public void run() {
                     try {
-                        MatrixLog.i(TAG, "onSampling" + mTag + ", count = " + mCount);
                         Number currSample = mSamplingBlock.apply(Sampler.this);
                         if (!currSample.equals(INVALID)) {
                             mSampleLst = currSample.doubleValue();

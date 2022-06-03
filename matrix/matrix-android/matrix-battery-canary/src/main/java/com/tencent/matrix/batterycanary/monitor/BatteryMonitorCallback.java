@@ -435,7 +435,7 @@ public interface BatteryMonitorCallback extends
                     int toppingCount = 8;
                     long remainJffies = 0;
                     for (int i = 0; i < delta.dlt.threadEntries.getList().size(); i++) {
-                        ThreadJiffiesEntry threadJiffies = delta.dlt.threadEntries.getList().get(0);
+                        ThreadJiffiesEntry threadJiffies = delta.dlt.threadEntries.getList().get(i);
                         long entryJffies = threadJiffies.get();
                         if (i < toppingCount) {
                             printer.append("|   -> (").append(threadJiffies.isNewAdded ? "+" : "~").append("/").append(threadJiffies.stat).append(")")
