@@ -16,7 +16,6 @@ import com.tencent.matrix.resource.analyzer.model.HeapSnapshot;
 import com.tencent.matrix.resource.config.ResourceConfig;
 import com.tencent.matrix.resource.config.SharePluginInfo;
 import com.tencent.matrix.resource.dumper.AndroidHeapDumper;
-import com.tencent.matrix.resource.dumper.DumpStorageManager;
 import com.tencent.matrix.resource.watcher.ActivityRefWatcher;
 import com.tencent.matrix.util.MatrixLog;
 
@@ -34,7 +33,6 @@ public abstract class BaseLeakProcessor {
 
     private final ActivityRefWatcher mWatcher;
 
-    private DumpStorageManager                mDumpStorageManager;
     private AndroidHeapDumper                 mHeapDumper;
     private AndroidHeapDumper.HeapDumpHandler mHeapDumpHandler;
 
@@ -45,16 +43,9 @@ public abstract class BaseLeakProcessor {
     public abstract boolean process(DestroyedActivityInfo destroyedActivityInfo);
 
     @Deprecated
-    public DumpStorageManager getDumpStorageManager() {
-        if (mDumpStorageManager == null) {
-            mDumpStorageManager = new DumpStorageManager(mWatcher.getContext());
-        }
-        return mDumpStorageManager;
-    }
-
     public AndroidHeapDumper getHeapDumper() {
         if (mHeapDumper == null) {
-            mHeapDumper = new AndroidHeapDumper(mWatcher.getContext(), getDumpStorageManager());
+            mHeapDumper = new AndroidHeapDumper(mWatcher.getContext());
         }
         return mHeapDumper;
     }

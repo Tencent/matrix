@@ -8,9 +8,11 @@ import com.tencent.matrix.resource.MemoryUtil
 import com.tencent.matrix.resource.analyzer.model.DestroyedActivityInfo
 import com.tencent.matrix.resource.config.ResourceConfig
 import com.tencent.matrix.resource.config.SharePluginInfo
+import com.tencent.matrix.resource.dumper.HprofFileManager
 import com.tencent.matrix.resource.watcher.ActivityRefWatcher
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.MatrixUtil
+import com.tencent.matrix.util.safeLetOrNull
 import java.io.File
 import java.util.*
 import java.util.concurrent.Executors
@@ -192,7 +194,7 @@ class NativeForkAnalyzeProcessor(watcher: ActivityRefWatcher) : BaseLeakProcesso
 
     override fun process(destroyedActivityInfo: DestroyedActivityInfo): Boolean {
 
-        val hprof = dumpStorageManager.newHprofFile() ?: run {
+        val hprof = safeLetOrNull { HprofFileManager.prepareHprofFile("NFAP") } ?: run {
             publishIssue(
                 SharePluginInfo.IssueType.LEAK_FOUND, // ? should be ERR_FILE_NOT_FOUND
                 ResourceConfig.DumpMode.FORK_ANALYSE,

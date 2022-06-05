@@ -7,10 +7,12 @@ import com.tencent.matrix.resource.analyzer.model.ActivityLeakResult;
 import com.tencent.matrix.resource.analyzer.model.DestroyedActivityInfo;
 import com.tencent.matrix.resource.config.ResourceConfig;
 import com.tencent.matrix.resource.config.SharePluginInfo;
+import com.tencent.matrix.resource.dumper.HprofFileManager;
 import com.tencent.matrix.resource.watcher.ActivityRefWatcher;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 
 /**
  * HPROF file analysis processor using fork dump.
@@ -57,7 +59,12 @@ public class ForkAnalyseProcessor extends BaseLeakProcessor {
 
         final long dumpStart = System.currentTimeMillis();
 
-        final File hprof = getDumpStorageManager().newHprofFile();
+        File hprof = null;
+        try {
+            hprof = HprofFileManager.INSTANCE.prepareHprofFile("FAP");
+        } catch (FileNotFoundException e) {
+            MatrixLog.printErrStackTrace(TAG, e , "");
+        }
 
         if (hprof != null) {
             if (!MemoryUtil.dump(hprof.getPath(), 600)) {
