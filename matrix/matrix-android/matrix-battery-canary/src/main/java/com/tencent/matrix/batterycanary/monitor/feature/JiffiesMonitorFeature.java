@@ -550,6 +550,7 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
                                 empty.totalJiffies = DigitEntry.of(0L);
                                 empty.threadEntries = ListEntry.ofEmpty();
                                 empty.threadNum = DigitEntry.of(0);
+                                last = empty;
                             }
                             Delta<JiffiesSnapshot> deltaPidJiffies = end.diff(last);
                             delta.pidDeltaJiffiesList.add(deltaPidJiffies);
