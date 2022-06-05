@@ -144,7 +144,7 @@ public class LazyForkAnalyzeProcessor extends BaseLeakProcessor {
         try {
             hprof = HprofFileManager.INSTANCE.prepareHprofFile("LFAP");
         } catch (FileNotFoundException e) {
-            MatrixLog.printErrStackTrace(TAG, e , "");
+            MatrixLog.printErrStackTrace(TAG, e, "");
         }
 
         if (hprof != null) {

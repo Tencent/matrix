@@ -179,7 +179,7 @@ public class ManualDumpProcessor extends BaseLeakProcessor {
         try {
             file = HprofFileManager.INSTANCE.prepareHprofFile("MDP");
         } catch (FileNotFoundException e) {
-            MatrixLog.printErrStackTrace(TAG, e , "");
+            MatrixLog.printErrStackTrace(TAG, e, "");
         }
         final ActivityLeakResult result = MemoryUtil.dumpAndAnalyze(file.getAbsolutePath(), key, 600);
         if (result.mLeakFound) {
