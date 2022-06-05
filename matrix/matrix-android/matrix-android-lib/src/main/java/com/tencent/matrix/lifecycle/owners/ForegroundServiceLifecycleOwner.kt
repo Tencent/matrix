@@ -10,6 +10,7 @@ import android.os.Handler
 import android.os.Message
 import android.os.Process
 import android.util.ArrayMap
+import com.tencent.matrix.lifecycle.MatrixLifecycleThread
 import com.tencent.matrix.lifecycle.StatefulOwner
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.safeApply
@@ -127,8 +128,10 @@ object ForegroundServiceLifecycleOwner : StatefulOwner() {
                 }
                 STOP_SERVICE -> {
                     ActivityThreadmH?.post {
-                        safeApply(TAG) {
-                            hasForegroundService()
+                        MatrixLifecycleThread.handler.post {
+                            safeApply(TAG) {
+                                hasForegroundService()
+                            }
                         }
                     }
                 }
@@ -159,15 +162,17 @@ object ForegroundServiceLifecycleOwner : StatefulOwner() {
         }
 
         private fun checkIfAlreadyForegrounded(componentName: ComponentName) {
-            safeApply(TAG) {
-                activityManager?.getRunningServices(Int.MAX_VALUE)?.filter {
-                    it.pid == Process.myPid()
-                            && it.uid == Process.myUid()
-                            && it.service == componentName
-                            && it.foreground
-                }?.forEach {
-                    MatrixLog.i(TAG, "service turned fg when create: ${it.service}")
-                    fgServiceHandler?.onStartForeground(it.service)
+            MatrixLifecycleThread.handler.post {
+                safeApply(TAG) {
+                    activityManager?.getRunningServices(Int.MAX_VALUE)?.filter {
+                        it.pid == Process.myPid()
+                                && it.uid == Process.myUid()
+                                && it.service == componentName
+                                && it.foreground
+                    }?.forEach {
+                        MatrixLog.i(TAG, "service turned fg when create: ${it.service}")
+                        fgServiceHandler?.onStartForeground(it.service)
+                    }
                 }
             }
         }
