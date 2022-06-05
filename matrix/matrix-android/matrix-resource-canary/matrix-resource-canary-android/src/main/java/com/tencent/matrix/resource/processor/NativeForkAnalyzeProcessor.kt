@@ -12,6 +12,7 @@ import com.tencent.matrix.resource.dumper.HprofFileManager
 import com.tencent.matrix.resource.watcher.ActivityRefWatcher
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.MatrixUtil
+import com.tencent.matrix.util.safeLet
 import com.tencent.matrix.util.safeLetOrNull
 import java.io.File
 import java.util.*
@@ -147,7 +148,12 @@ class NativeForkAnalyzeProcessor(watcher: ActivityRefWatcher) : BaseLeakProcesso
                         if (result.mFailure != null) {
                             historyFailure.add(result.mFailure.toString())
                             retryCount++
-                            result = analyze(hprof, key)
+                            val cpy = HprofFileManager.prepareHprofFile("RETRY") // prevent duplicated analyse after OOM
+                            hprof.copyTo(cpy, true)
+                            hprof.deleteIfExist()
+                            safeLet({
+                                result = analyze(cpy, key) // if crashed, the copied file could be auto-cleared by HprofFileManager later (lru or expired)
+                            }, success = { cpy.deleteIfExist() }, failed = { cpy.deleteIfExist() })
                         }
                         if (result.mLeakFound) {
                             watcher.markPublished(activity, false)
