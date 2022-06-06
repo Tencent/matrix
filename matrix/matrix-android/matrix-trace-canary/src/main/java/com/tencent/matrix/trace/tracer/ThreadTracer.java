@@ -44,7 +44,9 @@ public class ThreadTracer extends Tracer {
     @Override
     protected void onAlive() {
         super.onAlive();
-        nativeInitThreadHook(enableThreadPriorityTracer ? 1 : 0, enablePthreadKeyTracer ? 1 : 0);
+        if (enableThreadPriorityTracer || enablePthreadKeyTracer) {
+            nativeInitThreadHook(enableThreadPriorityTracer ? 1 : 0, enablePthreadKeyTracer ? 1 : 0);
+        }
     }
 
     @Override

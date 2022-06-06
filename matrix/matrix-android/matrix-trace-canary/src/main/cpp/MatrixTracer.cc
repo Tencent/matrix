@@ -455,18 +455,14 @@ static void nativeInitThreadHook(JNIEnv *env, jclass, jint priority, jint pthrea
         xhook_grouped_register(HOOK_REQUEST_GROUPID_THREAD_PTHREAD_KEY_TRACE, ".*\\.so$", "pthread_key_delete",
                                (void *) my_pthread_key_delete, (void **) (&original_pthread_key_delete));
 
-
         xhook_export_symtable_hook("libc.so", "pthread_key_create",
                                    (void *) my_pthread_key_create, (void **) (&original_pthread_key_create));
         xhook_export_symtable_hook("libc.so", "pthread_key_delete",
                                    (void *) my_pthread_key_delete, (void **) (&original_pthread_key_delete));
     }
 
-    if (pthreadKey + pthreadKey > 0) {
-        xhook_enable_sigsegv_protection(0);
-        xhook_refresh(0);
-    }
-
+    xhook_enable_sigsegv_protection(0);
+    xhook_refresh(0);
 }
 
 static void nativeInitTouchEventLagDetective(JNIEnv *env, jclass, jint threshold) {
