@@ -87,14 +87,15 @@ public final class BatteryCanaryUtil {
         void updateDevStat(int value);
         int getBatteryPercentage(Context context);
         int getBatteryCapacity(Context context);
+        long getBatteryCurrency(Context context);
         int getCpuCoreNum();
 
-        final class ExpireRef {
-            final int value;
+        final class ExpireRef<T extends Number> {
+            final T value;
             final long aliveMillis;
             final long lastMillis;
 
-            ExpireRef(int value, long aliveMillis) {
+            ExpireRef(T value, long aliveMillis) {
                 this.value = value;
                 this.aliveMillis = aliveMillis;
                 this.lastMillis = SystemClock.uptimeMillis();
@@ -110,12 +111,13 @@ public final class BatteryCanaryUtil {
     static Proxy sCacheStub = new Proxy() {
         private String mProcessName;
         private String mPackageName;
-        private ExpireRef mBatteryTemp;
-        private ExpireRef mLastAppStat;
-        private ExpireRef mLastDevStat;
-        private ExpireRef mLastBattPct;
-        private ExpireRef mLastBattCap;
-        private ExpireRef mLastCpuCoreNum;
+        private ExpireRef<Integer> mBatteryTemp;
+        private ExpireRef<Integer> mLastAppStat;
+        private ExpireRef<Integer> mLastDevStat;
+        private ExpireRef<Integer> mLastBattPct;
+        private ExpireRef<Integer> mLastBattCap;
+        private ExpireRef<Long>    mLastBattCur;
+        private ExpireRef<Integer> mLastCpuCoreNum;
 
         @Override
         public String getProcessName() {
@@ -149,7 +151,7 @@ public final class BatteryCanaryUtil {
                 return mBatteryTemp.value;
             }
             int tmp = getBatteryTemperatureImmediately(context);
-            mBatteryTemp = new ExpireRef(tmp, DEFAULT_AMS_CACHE_MILLIS);
+            mBatteryTemp = new ExpireRef<>(tmp, DEFAULT_AMS_CACHE_MILLIS);
             return mBatteryTemp.value;
         }
 
@@ -160,7 +162,7 @@ public final class BatteryCanaryUtil {
                 return mLastAppStat.value;
             }
             int value = getAppStatImmediately(context, false);
-            mLastAppStat = new ExpireRef(value, DEFAULT_AMS_CACHE_MILLIS);
+            mLastAppStat = new ExpireRef<>(value, DEFAULT_AMS_CACHE_MILLIS);
             return mLastAppStat.value;
         }
 
@@ -170,21 +172,21 @@ public final class BatteryCanaryUtil {
                 return mLastDevStat.value;
             }
             int value = getDeviceStatImmediately(context);
-            mLastDevStat = new ExpireRef(value, DEFAULT_AMS_CACHE_MILLIS);
+            mLastDevStat = new ExpireRef<>(value, DEFAULT_AMS_CACHE_MILLIS);
             return mLastDevStat.value;
         }
 
         @Override
         public void updateAppStat(int value) {
             synchronized (this) {
-                mLastAppStat = new ExpireRef(value, DEFAULT_AMS_CACHE_MILLIS);
+                mLastAppStat = new ExpireRef<>(value, DEFAULT_AMS_CACHE_MILLIS);
             }
         }
 
         @Override
         public void updateDevStat(int value) {
             synchronized (this) {
-                mLastDevStat = new ExpireRef(value, DEFAULT_AMS_CACHE_MILLIS);
+                mLastDevStat = new ExpireRef<>(value, DEFAULT_AMS_CACHE_MILLIS);
             }
         }
 
@@ -194,7 +196,7 @@ public final class BatteryCanaryUtil {
                 return mLastBattPct.value;
             }
             int val = getBatteryPercentageImmediately(context);
-            mLastBattPct = new ExpireRef(val, ONE_MIN);
+            mLastBattPct = new ExpireRef<>(val, ONE_MIN);
             return mLastBattPct.value;
         }
 
@@ -204,8 +206,18 @@ public final class BatteryCanaryUtil {
                 return mLastBattCap.value;
             }
             int val = getBatteryCapacityImmediately(context);
-            mLastBattCap = new ExpireRef(val, ONE_MIN);
+            mLastBattCap = new ExpireRef<>(val, ONE_MIN);
             return mLastBattCap.value;
+        }
+
+        @Override
+        public long getBatteryCurrency(Context context) {
+            if (mLastBattCur != null && !mLastBattCur.isExpired()) {
+                return mLastBattCur.value;
+            }
+            long val = getBatteryCurrencyImmediately(context);
+            mLastBattCur = new ExpireRef<>(val, ONE_MIN);
+            return mLastBattCur.value;
         }
 
         @Override
@@ -217,7 +229,7 @@ public final class BatteryCanaryUtil {
             if (val <= 1) {
                 return val;
             }
-            mLastCpuCoreNum = new ExpireRef(val, ONE_HOR);
+            mLastCpuCoreNum = new ExpireRef<>(val, ONE_HOR);
             return mLastCpuCoreNum.value;
         }
     };
@@ -623,7 +635,7 @@ public final class BatteryCanaryUtil {
 
     public static int getBatteryCapacity(Context context) {
         return sCacheStub.getBatteryCapacity(context);
-    };
+    }
 
     @SuppressWarnings("ConstantConditions")
     @SuppressLint("PrivateApi")
@@ -655,6 +667,18 @@ public final class BatteryCanaryUtil {
             return (int) method.invoke(profileObject);
         } catch (Throwable e) {
             MatrixLog.w(TAG, "get PowerProfile failed: " + e.getMessage());
+        }
+        return -1;
+    }
+
+    public static long getBatteryCurrency(Context context) {
+        return sCacheStub.getBatteryCurrency(context);
+    }
+
+    public static long getBatteryCurrencyImmediately(Context context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            BatteryManager mBatteryManager = (BatteryManager) context.getSystemService(Context.BATTERY_SERVICE);
+            return mBatteryManager.getLongProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW);
         }
         return -1;
     }

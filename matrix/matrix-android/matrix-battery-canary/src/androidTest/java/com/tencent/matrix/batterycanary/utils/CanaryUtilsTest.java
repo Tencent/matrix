@@ -247,6 +247,21 @@ public class CanaryUtilsTest {
     }
 
     @Test
+    public void testGetBatteryCurrent() {
+        BatteryManager batteryManager = (BatteryManager) mContext.getSystemService(Context.BATTERY_SERVICE);
+        long avgCurrent = 0, currentNow = 0;
+        avgCurrent = batteryManager.getLongProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_AVERAGE);
+        currentNow = batteryManager.getLongProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW);
+        Log.d(TAG, "BATTERY_PROPERTY_CURRENT_AVERAGE = " + avgCurrent + "microA");
+        Log.d(TAG, "BATTERY_PROPERTY_CURRENT_NOW =  " + currentNow + "microA");
+        Assert.assertNotEquals(0, avgCurrent);
+        Assert.assertNotEquals(0, currentNow);
+
+        long value = BatteryCanaryUtil.getBatteryCurrencyImmediately(mContext);
+        Assert.assertNotEquals(0, value);
+    }
+
+    @Test
     public void testCheckIfLowBattery() {
         Intent intent = BatteryCanaryUtil.getBatteryStickyIntent(mContext);
         Assert.assertNotNull(intent);

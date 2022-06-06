@@ -628,6 +628,22 @@ public class CompositeMonitors {
             }
             return sampler;
         }
+        if (snapshotClass == DeviceStatMonitorFeature.BatteryCurrentSnapshot.class) {
+            final DeviceStatMonitorFeature feature = getFeature(DeviceStatMonitorFeature.class);
+            if (feature != null && mMonitor != null) {
+                sampler = new MonitorFeature.Snapshot.Sampler("batt-curr", mMonitor.getHandler(), new Function<Snapshot.Sampler, Number>() {
+                    @Override
+                    public Number apply(Snapshot.Sampler sampler) {
+                        DeviceStatMonitorFeature.BatteryCurrentSnapshot snapshot = feature.currentBatteryCurrency(mMonitor.getContext());
+                        Long value = snapshot.stat.get();
+                        MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + ", val = " + value);
+                        return value;
+                    }
+                });
+                mSamplers.put(snapshotClass, sampler);
+            }
+            return sampler;
+        }
         return null;
     }
 

@@ -186,6 +186,12 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
         return snapshot;
     }
 
+    public BatteryCurrentSnapshot currentBatteryCurrency(Context context) {
+        BatteryCurrentSnapshot snapshot = new BatteryCurrentSnapshot();
+        snapshot.stat = Snapshot.Entry.DigitEntry.of(BatteryCanaryUtil.getBatteryCurrency(context));
+        return snapshot;
+    }
+
 
     static final class DevStatListener {
         Consumer<Integer> mListener = new Consumer<Integer>() {
@@ -341,6 +347,23 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
                 @Override
                 protected ChargeWattageSnapshot computeDelta() {
                     ChargeWattageSnapshot delta = new ChargeWattageSnapshot();
+                    delta.stat = DigitDiffer.globalDiff(bgn.stat, end.stat);
+                    return delta;
+                }
+            };
+        }
+
+    }
+
+    public static class BatteryCurrentSnapshot extends Snapshot<BatteryCurrentSnapshot> {
+        public Entry.DigitEntry<Long> stat;
+
+        @Override
+        public Delta<BatteryCurrentSnapshot> diff(BatteryCurrentSnapshot bgn) {
+            return new Delta<BatteryCurrentSnapshot>(bgn, this) {
+                @Override
+                protected BatteryCurrentSnapshot computeDelta() {
+                    BatteryCurrentSnapshot delta = new BatteryCurrentSnapshot();
                     delta.stat = DigitDiffer.globalDiff(bgn.stat, end.stat);
                     return delta;
                 }
