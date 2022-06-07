@@ -66,6 +66,9 @@ public class TrafficPlugin extends Plugin {
     }
 
     public String getJavaStackTraceByKey(String key) {
+        if (!trafficConfig.willDumpStackTrace()) {
+            return "";
+        }
         String md5 = keyHashMap.get(key);
         if (md5 == null || md5.isEmpty()) {
             return "";
@@ -73,6 +76,9 @@ public class TrafficPlugin extends Plugin {
         return hashStackTraceMap.get(md5);
     }
     public String getNativeBackTraceByKey(String key) {
+        if (!trafficConfig.willDumpNativeBackTrace()) {
+            return "";
+        }
         return nativeGetNativeBackTraceByKey(key);
     }
 

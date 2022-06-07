@@ -182,7 +182,6 @@ public class MatrixApplication extends Application {
                 .enableAnrTrace(traceEnable)
                 .enableStartup(traceEnable)
                 .enableIdleHandlerTrace(traceEnable)                    // Introduced in Matrix 2.0
-                .enableMainThreadPriorityTrace(true)                    // Introduced in Matrix 2.0
                 .enableSignalAnrTrace(signalAnrTraceEnable)             // Introduced in Matrix 2.0
                 .anrTracePath(anrTraceFile.getAbsolutePath())
                 .printTracePath(printTraceFile.getAbsolutePath())
@@ -261,7 +260,7 @@ public class MatrixApplication extends Application {
     }
 
     private MatrixLifecycleConfig configureMatrixLifecycle() {
-        return new MatrixLifecycleConfig(new SupervisorConfig(true, true, new ArrayList<String>()), true, true, new LifecycleThreadConfig());
+        return new MatrixLifecycleConfig(new SupervisorConfig(true, true, new ArrayList<String>()), true, true, new LifecycleThreadConfig(), true);
     }
 
     public static Context getContext() {
