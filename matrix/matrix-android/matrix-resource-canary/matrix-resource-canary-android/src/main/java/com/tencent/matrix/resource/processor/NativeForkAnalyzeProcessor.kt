@@ -202,9 +202,9 @@ class NativeForkAnalyzeProcessor(watcher: ActivityRefWatcher) : BaseLeakProcesso
 
         val hprof = safeLetOrNull { HprofFileManager.prepareHprofFile("NFAP") } ?: run {
             publishIssue(
-                SharePluginInfo.IssueType.LEAK_FOUND, // ? should be ERR_FILE_NOT_FOUND
+                SharePluginInfo.IssueType.LEAK_FOUND,
                 ResourceConfig.DumpMode.FORK_ANALYSE,
-                "[unknown]", "[unknown]", "Failed to create hprof file.", "0"
+                destroyedActivityInfo.mActivityName, "[unknown]", "Failed to create hprof file.", "0"
             )
             return true
         }
