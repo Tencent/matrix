@@ -239,4 +239,16 @@ object ProcessSupervisor : IProcessListener by ProcessSubordinate.processListene
 
         MatrixLog.i(tag, "inCharge")
     }
+
+    fun getAllProcessMemInfo() : Array<MemInfo>? {
+        if (application == null) {
+            MatrixLog.e(tag, "Supervisor NOT initialized yet or Supervisor is disabled!!!")
+            return null
+        }
+        if (!isSupervisor) {
+            MatrixLog.e(tag, "Only support for supervisor process")
+            return null
+        }
+        return ProcessSubordinate.manager.getMemInfo()
+    }
 }
