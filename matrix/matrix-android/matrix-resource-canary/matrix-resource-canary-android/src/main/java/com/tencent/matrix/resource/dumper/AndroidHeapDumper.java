@@ -61,7 +61,7 @@ public class AndroidHeapDumper {
     public File dumpHeap(boolean isShowToast) {
         File hprofFile = null;
         try {
-            hprofFile = HprofFileManager.INSTANCE.prepareHprofFile("");
+            hprofFile = HprofFileManager.INSTANCE.prepareHprofFile("", false);
         } catch (FileNotFoundException e) {
             MatrixLog.printErrStackTrace(TAG, e, "");
         }

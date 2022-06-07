@@ -148,12 +148,15 @@ class NativeForkAnalyzeProcessor(watcher: ActivityRefWatcher) : BaseLeakProcesso
                         if (result.mFailure != null) {
                             historyFailure.add(result.mFailure.toString())
                             retryCount++
-                            val cpy = HprofFileManager.prepareHprofFile("RETRY") // prevent duplicated analyse after OOM
-                            hprof.copyTo(cpy, true)
-                            hprof.deleteIfExist()
-                            safeLet({
-                                result = analyze(cpy, key) // if crashed, the copied file could be auto-cleared by HprofFileManager later (lru or expired)
-                            }, success = { cpy.deleteIfExist() }, failed = { cpy.deleteIfExist() })
+                            safeLetOrNull(TAG) {
+                                HprofFileManager.prepareHprofFile("RETRY", false) // prevent duplicated analyse after OOM
+                            }?.let { cpy ->
+                                hprof.copyTo(cpy, true)
+                                hprof.deleteIfExist()
+                                safeLet({
+                                    result = analyze(cpy, key) // if crashed, the copied file could be auto-cleared by HprofFileManager later (lru or expired)
+                                }, success = { cpy.deleteIfExist() }, failed = { cpy.deleteIfExist() })
+                            }
                         }
                         if (result.mLeakFound) {
                             watcher.markPublished(activity, false)
@@ -200,7 +203,7 @@ class NativeForkAnalyzeProcessor(watcher: ActivityRefWatcher) : BaseLeakProcesso
 
     override fun process(destroyedActivityInfo: DestroyedActivityInfo): Boolean {
 
-        val hprof = safeLetOrNull { HprofFileManager.prepareHprofFile("NFAP") } ?: run {
+        val hprof = safeLetOrNull { HprofFileManager.prepareHprofFile("NFAP", true) } ?: run {
             publishIssue(
                 SharePluginInfo.IssueType.LEAK_FOUND,
                 ResourceConfig.DumpMode.FORK_ANALYSE,

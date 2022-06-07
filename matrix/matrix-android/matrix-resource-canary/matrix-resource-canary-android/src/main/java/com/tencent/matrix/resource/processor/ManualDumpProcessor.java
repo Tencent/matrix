@@ -177,7 +177,7 @@ public class ManualDumpProcessor extends BaseLeakProcessor {
 
         File file = null;
         try {
-            file = HprofFileManager.INSTANCE.prepareHprofFile("MDP");
+            file = HprofFileManager.INSTANCE.prepareHprofFile("MDP", false);
         } catch (FileNotFoundException e) {
             MatrixLog.printErrStackTrace(TAG, e, "");
         }

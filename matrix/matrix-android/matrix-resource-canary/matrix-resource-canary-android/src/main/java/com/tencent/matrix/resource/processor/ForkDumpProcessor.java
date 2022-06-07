@@ -38,7 +38,7 @@ public class ForkDumpProcessor extends BaseLeakProcessor {
 
         File hprof = null;
         try {
-            hprof = HprofFileManager.INSTANCE.prepareHprofFile("FDP");
+            hprof = HprofFileManager.INSTANCE.prepareHprofFile("FDP", true);
         } catch (FileNotFoundException e) {
             MatrixLog.printErrStackTrace(TAG, e, "");
         }

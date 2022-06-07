@@ -19,7 +19,8 @@ object HprofFileManager {
     private const val TAG = "Matrix.HprofFileManager"
 
     private const val MAX_FILE_COUNT = 10
-    private const val MIN_FREE_SPACE = 20 * 1024 * 1024 * 1024L // 20G
+    private const val CLEAN_THRESHOLD = 12 * 1024 * 1024 * 1024L // 12G
+    private const val MIN_FREE_SPACE = 1024 * 1024 * 1024L // 1G
 
     private val EXPIRED_TIME_MILLIS = TimeUnit.DAYS.toMillis(7)
 
@@ -43,8 +44,8 @@ object HprofFileManager {
     }
 
     @Throws(FileNotFoundException::class)
-    fun prepareHprofFile(prefix: String = ""): File {
-        hprofStorageDir.prepare()
+    fun prepareHprofFile(prefix: String = "", deleteSoon: Boolean = false): File {
+        hprofStorageDir.prepare(deleteSoon)
         return File(hprofStorageDir, getHprofFileName(prefix))
     }
 
@@ -52,9 +53,9 @@ object HprofFileManager {
         hprofStorageDir.deleteRecursively()
     }
 
-    private fun File.prepare() {
+    private fun File.prepare(deleteSoon: Boolean) {
         reserve()
-        makeSureEnoughSpace()
+        makeSureEnoughSpace(deleteSoon)
     }
 
     private fun File.reserve() {
@@ -66,16 +67,16 @@ object HprofFileManager {
         }
     }
 
-    private fun File.makeSureEnoughSpace() {
+    private fun File.makeSureEnoughSpace(deleteSoon: Boolean) {
         if (!isDirectory) {
             return
         }
         lru()
-        if (freeSpace < MIN_FREE_SPACE) {
+        if (freeSpace < CLEAN_THRESHOLD) {
             listFiles()?.forEach { it.delete() }
         }
-        if (freeSpace < MIN_FREE_SPACE) {
-            throw FileNotFoundException("free space less than $MIN_FREE_SPACE, skip dump hprof")
+        if (freeSpace < if (deleteSoon) MIN_FREE_SPACE else CLEAN_THRESHOLD) {
+            throw FileNotFoundException("free space($freeSpace) less than $CLEAN_THRESHOLD, skip dump hprof")
         }
     }
 

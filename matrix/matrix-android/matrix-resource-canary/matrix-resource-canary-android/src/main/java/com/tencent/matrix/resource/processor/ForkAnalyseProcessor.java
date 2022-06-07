@@ -61,7 +61,7 @@ public class ForkAnalyseProcessor extends BaseLeakProcessor {
 
         File hprof = null;
         try {
-            hprof = HprofFileManager.INSTANCE.prepareHprofFile("FAP");
+            hprof = HprofFileManager.INSTANCE.prepareHprofFile("FAP", true);
         } catch (FileNotFoundException e) {
             MatrixLog.printErrStackTrace(TAG, e, "");
         }
