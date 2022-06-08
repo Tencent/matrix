@@ -103,9 +103,6 @@ private class RetryRepository(private val dir: File) {
 class NativeForkAnalyzeProcessor(watcher: ActivityRefWatcher) : BaseLeakProcessor(watcher) {
 
     companion object {
-
-        private const val RETRY_THREAD_NAME = "matrix_res_native_analyze_retry"
-
         private const val RETRY_REPO_NAME = "matrix_res_process_retry"
     }
 
