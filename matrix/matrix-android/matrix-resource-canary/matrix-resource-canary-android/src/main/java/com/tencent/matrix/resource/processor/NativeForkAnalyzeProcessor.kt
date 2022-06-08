@@ -217,7 +217,9 @@ class NativeForkAnalyzeProcessor(watcher: ActivityRefWatcher) : BaseLeakProcesso
 
         watcher.triggerGc()
 
+        MatrixLog.i(TAG, "fork dump and analyse")
         val result = MemoryUtil.dumpAndAnalyze(hprof.absolutePath, key, timeout = 600)
+        MatrixLog.i(TAG, "fork dump and analyse done")
         if (result.mFailure != null) {
             // Copies file to retry repository and analyzes it again when the screen is locked.
             MatrixLog.i(TAG, "Process failed, move into retry repository.")
