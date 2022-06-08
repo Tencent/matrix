@@ -16,7 +16,6 @@ import com.tencent.matrix.util.safeLet
 import com.tencent.matrix.util.safeLetOrNull
 import java.io.File
 import java.util.*
-import java.util.concurrent.Executors
 
 private fun File.deleteIfExist() {
     if (exists()) delete()
