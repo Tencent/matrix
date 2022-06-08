@@ -202,6 +202,7 @@ class NativeForkAnalyzeProcessor(watcher: ActivityRefWatcher) : BaseLeakProcesso
     }
 
     override fun process(destroyedActivityInfo: DestroyedActivityInfo): Boolean {
+        publishIssue(SharePluginInfo.IssueType.LEAK_FOUND, ResourceConfig.DumpMode.NO_DUMP, destroyedActivityInfo.mActivityName, destroyedActivityInfo.mKey, "no dump", "0")
 
         val hprof = safeLetOrNull { HprofFileManager.prepareHprofFile("NFAP", true) } ?: run {
             publishIssue(

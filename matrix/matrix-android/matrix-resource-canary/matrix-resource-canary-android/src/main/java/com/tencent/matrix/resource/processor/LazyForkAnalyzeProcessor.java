@@ -113,6 +113,8 @@ public class LazyForkAnalyzeProcessor extends BaseLeakProcessor {
 
     @Override
     public boolean process(DestroyedActivityInfo destroyedActivityInfo) {
+        publishIssue(SharePluginInfo.IssueType.LEAK_FOUND, ResourceConfig.DumpMode.NO_DUMP, destroyedActivityInfo.mActivityName, destroyedActivityInfo.mKey, "no dump", "0");
+
         if (Build.VERSION.SDK_INT > ResourceConfig.FORK_DUMP_SUPPORTED_API_GUARD) {
             MatrixLog.e(TAG, "cannot fork-dump with unsupported API version " + Build.VERSION.SDK_INT);
             publishIssue(
