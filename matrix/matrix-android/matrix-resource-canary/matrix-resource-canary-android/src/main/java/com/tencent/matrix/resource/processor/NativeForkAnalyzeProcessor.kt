@@ -75,7 +75,7 @@ private class RetryRepository(private val dir: File) {
         }
     }
 
-    fun process(action: (File, String, String, String) -> Unit) {
+    fun process(action: (File, File, String, String, String) -> Unit) {
         val hprofs = synchronized(accessLock) {
             hprofDir.listFiles() ?: emptyArray<File>()
         }
@@ -86,7 +86,7 @@ private class RetryRepository(private val dir: File) {
                     val (activity, key, failure) = keyFile.bufferedReader().use {
                         Triple(it.readLine(), it.readLine(), it.readLine())
                     }
-                    action.invoke(hprofFile, activity, key, failure)
+                    action.invoke(hprofFile, keyFile, activity, key, failure)
                 }
             } catch (throwable: Throwable) {
                 MatrixLog.printErrStackTrace(
@@ -133,7 +133,9 @@ class NativeForkAnalyzeProcessor(watcher: ActivityRefWatcher) : BaseLeakProcesso
             override fun onReceive(context: Context?, intent: Intent?) {
                 // run in detector thread to prevent parallel analyzing
                 watcher.detectHandler.post {
-                    retryRepo?.process { hprof, activity, key, failure ->
+                    // fixme : should separate native analyse and java analyse into smaller parts.
+                    //  It is possible to unlock screen and turn foreground when analyzing
+                    retryRepo?.process { hprof, keyFile, activity, key, failure ->
                         MatrixLog.i(TAG, "Found record ${activity}(${hprof.name}).")
                         val historyFailure = mutableListOf<String>().apply {
                             add(failure)
@@ -148,6 +150,7 @@ class NativeForkAnalyzeProcessor(watcher: ActivityRefWatcher) : BaseLeakProcesso
                             }?.let { cpy ->
                                 hprof.copyTo(cpy, true)
                                 hprof.deleteIfExist()
+                                keyFile.deleteIfExist()
                                 safeLet({
                                     result = analyze(cpy, key) // if crashed, the copied file could be auto-cleared by HprofFileManager later (lru or expired)
                                 }, success = { cpy.deleteIfExist() }, failed = { cpy.deleteIfExist() })
