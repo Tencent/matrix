@@ -7,6 +7,7 @@ import android.text.TextUtils;
 
 import com.tencent.matrix.batterycanary.monitor.AppStats;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
+import com.tencent.matrix.batterycanary.monitor.feature.AbsTaskMonitorFeature.TaskJiffiesSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot.ThreadJiffiesEntry;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot;
@@ -21,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -51,7 +53,8 @@ public class CompositeMonitors {
     protected final Map<Class<? extends Snapshot<?>>, Snapshot.Sampler.Result> mSampleResults = new HashMap<>();
 
     // Task Tracing
-    protected final Map<Class<? extends AbsTaskMonitorFeature>, List<Delta<AbsTaskMonitorFeature.TaskJiffiesSnapshot>>> mTaskDeltas = new HashMap<>();
+    protected final Map<Class<? extends AbsTaskMonitorFeature>, List<Delta<TaskJiffiesSnapshot>>> mTaskDeltas = new HashMap<>();
+    protected final Map<String, List<Delta<TaskJiffiesSnapshot>>> mTaskDeltasCollect = new HashMap<>();
 
     // Extra Info
     protected final Bundle mExtras = new Bundle();
@@ -88,6 +91,7 @@ public class CompositeMonitors {
         mSamplers.clear();
         mSampleResults.clear();
         mTaskDeltas.clear();
+        mTaskDeltasCollect.clear();
     }
 
     @CallSuper
@@ -647,32 +651,81 @@ public class CompositeMonitors {
         return null;
     }
 
-    public void configureTaskDeltas(final Class<? extends AbsTaskMonitorFeature> featClass) {
-        AbsTaskMonitorFeature taskFeat = getFeature(featClass);
-        if (taskFeat != null) {
-            List<Delta<AbsTaskMonitorFeature.TaskJiffiesSnapshot>> deltas = taskFeat.currentJiffies();
-            taskFeat.clearFinishedJiffies();
-            putTaskDeltas(featClass, deltas);
+    protected void configureTaskDeltas(final Class<? extends AbsTaskMonitorFeature> featClass) {
+        if (mAppStats != null) {
+            AbsTaskMonitorFeature taskFeat = getFeature(featClass);
+            if (taskFeat != null) {
+                List<Delta<TaskJiffiesSnapshot>> deltas = taskFeat.currentJiffies(mAppStats.duringMillis);
+                // No longer clear here
+                // Clear at BG Scope or OverHeat
+                // taskFeat.clearFinishedJiffies();
+                putTaskDeltas(featClass, deltas);
+            }
         }
     }
 
-    public void putTaskDeltas(Class<? extends AbsTaskMonitorFeature> key, List<Delta<AbsTaskMonitorFeature.TaskJiffiesSnapshot>> deltas) {
+    protected void collectTaskDeltas() {
+        if (!mTaskDeltas.isEmpty()) {
+            for (List<Delta<TaskJiffiesSnapshot>> taskDeltaList : mTaskDeltas.values()) {
+                for (Delta<TaskJiffiesSnapshot> taskDelta : taskDeltaList) {
+                    // FIXME: better windowMillis cfg of Task and AppStats
+                    if (taskDelta.bgn.time >= mBgnMillis) {
+                        List<Delta<TaskJiffiesSnapshot>> collectTaskList = mTaskDeltasCollect.get(taskDelta.dlt.name);
+                        if (collectTaskList == null) {
+                            collectTaskList = new ArrayList<>();
+                            mTaskDeltasCollect.put(taskDelta.dlt.name, collectTaskList);
+                        }
+                        collectTaskList.add(taskDelta);
+                    }
+                }
+            }
+        }
+    }
+
+    public void putTaskDeltas(Class<? extends AbsTaskMonitorFeature> key, List<Delta<TaskJiffiesSnapshot>> deltas) {
         mTaskDeltas.put(key, deltas);
     }
 
-    public List<Delta<AbsTaskMonitorFeature.TaskJiffiesSnapshot>> getTaskDeltas(Class<? extends AbsTaskMonitorFeature> key) {
-        List<Delta<AbsTaskMonitorFeature.TaskJiffiesSnapshot>> deltas = mTaskDeltas.get(key);
+    public List<Delta<TaskJiffiesSnapshot>> getTaskDeltas(Class<? extends AbsTaskMonitorFeature> key) {
+        List<Delta<TaskJiffiesSnapshot>> deltas = mTaskDeltas.get(key);
         if (deltas == null) {
             return Collections.emptyList();
         }
         return deltas;
     }
 
-    public void getTaskDeltas(Class<? extends AbsTaskMonitorFeature> key, Consumer<List<Delta<AbsTaskMonitorFeature.TaskJiffiesSnapshot>>> block) {
-        List<Delta<AbsTaskMonitorFeature.TaskJiffiesSnapshot>> deltas = mTaskDeltas.get(key);
+    public void getTaskDeltas(Class<? extends AbsTaskMonitorFeature> key, Consumer<List<Delta<TaskJiffiesSnapshot>>> block) {
+        List<Delta<TaskJiffiesSnapshot>> deltas = mTaskDeltas.get(key);
         if (deltas != null) {
             block.accept(deltas);
         }
+    }
+
+    public Map<String, List<Delta<TaskJiffiesSnapshot>>> getCollectedTaskDeltas() {
+        if (mTaskDeltasCollect.size() <= 1) {
+            return mTaskDeltasCollect;
+        }
+        // Sorting by jiffies sum
+        return sortMapByValue(mTaskDeltasCollect, new Comparator<Map.Entry<String, List<Delta<TaskJiffiesSnapshot>>>>() {
+            @Override
+            public int compare(Map.Entry<String, List<Delta<TaskJiffiesSnapshot>>> o1, Map.Entry<String, List<Delta<TaskJiffiesSnapshot>>> o2) {
+                long sumLeft = 0, sumRight = 0;
+                for (Delta<TaskJiffiesSnapshot> item : o1.getValue()) {
+                    sumLeft += item.dlt.jiffies.get();
+                }
+                for (Delta<TaskJiffiesSnapshot> item : o2.getValue()) {
+                    sumRight += item.dlt.jiffies.get();
+                }
+                long minus = sumLeft - sumRight;
+                if (minus == 0) return 0;
+                if (minus > 0) return -1;
+                return 1;
+            }
+        });
+    }
+
+    public void getCollectedTaskDeltas(Consumer<Map<String, List<Delta<TaskJiffiesSnapshot>>>> block) {
+        block.accept(getCollectedTaskDeltas());
     }
 
     public Map<String, String> getStacks() {
@@ -698,5 +751,16 @@ public class CompositeMonitors {
                 ", Stacks=" + mStacks + "\n" +
                 ", Extras =" + mExtras + "\n" +
                 '}';
+    }
+
+    static <K, V> Map<K, V> sortMapByValue(Map<K, V> map, Comparator<? super Map.Entry<K, V>> comparator) {
+        List<Map.Entry<K, V>> list = new ArrayList<>(map.entrySet());
+        Collections.sort(list, comparator);
+
+        Map<K, V> result = new LinkedHashMap<>();
+        for (Map.Entry<K, V> entry : list) {
+            result.put(entry.getKey(), entry.getValue());
+        }
+        return result;
     }
 }
