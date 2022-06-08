@@ -108,12 +108,6 @@ class NativeForkAnalyzeProcessor(watcher: ActivityRefWatcher) : BaseLeakProcesso
         private const val RETRY_THREAD_NAME = "matrix_res_native_analyze_retry"
 
         private const val RETRY_REPO_NAME = "matrix_res_process_retry"
-
-        private val retryExecutor by lazy {
-            Executors.newSingleThreadExecutor {
-                Thread(it, RETRY_THREAD_NAME)
-            }
-        }
     }
 
     private val retryRepo: RetryRepository? by lazy {
@@ -137,7 +131,8 @@ class NativeForkAnalyzeProcessor(watcher: ActivityRefWatcher) : BaseLeakProcesso
     private val screenStateReceiver by lazy {
         return@lazy object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
-                retryExecutor.execute {
+                // run in detector thread to prevent parallel analyzing
+                watcher.detectHandler.post {
                     retryRepo?.process { hprof, activity, key, failure ->
                         MatrixLog.i(TAG, "Found record ${activity}(${hprof.name}).")
                         val historyFailure = mutableListOf<String>().apply {
