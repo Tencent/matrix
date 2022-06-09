@@ -29,6 +29,7 @@ import java.util.Map;
 import androidx.annotation.CallSuper;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.util.Pair;
 
 /**
  * @author Kaede
@@ -54,7 +55,7 @@ public class CompositeMonitors {
 
     // Task Tracing
     protected final Map<Class<? extends AbsTaskMonitorFeature>, List<Delta<TaskJiffiesSnapshot>>> mTaskDeltas = new HashMap<>();
-    protected final Map<String, List<Delta<TaskJiffiesSnapshot>>> mTaskDeltasCollect = new HashMap<>();
+    protected final Map<String, List<Pair<Class<? extends AbsTaskMonitorFeature>, Delta<TaskJiffiesSnapshot>>>> mTaskDeltasCollect = new HashMap<>();
 
     // Extra Info
     protected final Bundle mExtras = new Bundle();
@@ -666,16 +667,17 @@ public class CompositeMonitors {
 
     protected void collectTaskDeltas() {
         if (!mTaskDeltas.isEmpty()) {
-            for (List<Delta<TaskJiffiesSnapshot>> taskDeltaList : mTaskDeltas.values()) {
-                for (Delta<TaskJiffiesSnapshot> taskDelta : taskDeltaList) {
+            for (Map.Entry<Class<? extends AbsTaskMonitorFeature>, List<Delta<TaskJiffiesSnapshot>>> entry : mTaskDeltas.entrySet()) {
+                Class<? extends AbsTaskMonitorFeature> key = entry.getKey();
+                for (Delta<TaskJiffiesSnapshot> taskDelta : entry.getValue()) {
                     // FIXME: better windowMillis cfg of Task and AppStats
                     if (taskDelta.bgn.time >= mBgnMillis) {
-                        List<Delta<TaskJiffiesSnapshot>> collectTaskList = mTaskDeltasCollect.get(taskDelta.dlt.name);
-                        if (collectTaskList == null) {
-                            collectTaskList = new ArrayList<>();
-                            mTaskDeltasCollect.put(taskDelta.dlt.name, collectTaskList);
+                        List<Pair<Class<? extends AbsTaskMonitorFeature>, Delta<TaskJiffiesSnapshot>>> pairList = mTaskDeltasCollect.get(taskDelta.dlt.name);
+                        if (pairList == null) {
+                            pairList = new ArrayList<>();
+                            mTaskDeltasCollect.put(taskDelta.dlt.name, pairList);
                         }
-                        collectTaskList.add(taskDelta);
+                        pairList.add(new Pair<Class<? extends AbsTaskMonitorFeature>, Delta<TaskJiffiesSnapshot>>(key, taskDelta));
                     }
                 }
             }
@@ -701,20 +703,21 @@ public class CompositeMonitors {
         }
     }
 
-    public Map<String, List<Delta<TaskJiffiesSnapshot>>> getCollectedTaskDeltas() {
+    public Map<String, List<Pair<Class<? extends AbsTaskMonitorFeature>, Delta<TaskJiffiesSnapshot>>>> getCollectedTaskDeltas() {
         if (mTaskDeltasCollect.size() <= 1) {
             return mTaskDeltasCollect;
         }
         // Sorting by jiffies sum
-        return sortMapByValue(mTaskDeltasCollect, new Comparator<Map.Entry<String, List<Delta<TaskJiffiesSnapshot>>>>() {
+        return sortMapByValue(mTaskDeltasCollect, new Comparator<Map.Entry<String, List<Pair<Class<? extends AbsTaskMonitorFeature>, Delta<TaskJiffiesSnapshot>>>>>() {
+            @SuppressWarnings("ConstantConditions")
             @Override
-            public int compare(Map.Entry<String, List<Delta<TaskJiffiesSnapshot>>> o1, Map.Entry<String, List<Delta<TaskJiffiesSnapshot>>> o2) {
+            public int compare(Map.Entry<String, List<Pair<Class<? extends AbsTaskMonitorFeature>, Delta<TaskJiffiesSnapshot>>>> o1, Map.Entry<String, List<Pair<Class<? extends AbsTaskMonitorFeature>, Delta<TaskJiffiesSnapshot>>>> o2) {
                 long sumLeft = 0, sumRight = 0;
-                for (Delta<TaskJiffiesSnapshot> item : o1.getValue()) {
-                    sumLeft += item.dlt.jiffies.get();
+                for (Pair<Class<? extends AbsTaskMonitorFeature>, Delta<TaskJiffiesSnapshot>> item : o1.getValue()) {
+                    sumLeft += item.second.dlt.jiffies.get();
                 }
-                for (Delta<TaskJiffiesSnapshot> item : o2.getValue()) {
-                    sumRight += item.dlt.jiffies.get();
+                for (Pair<Class<? extends AbsTaskMonitorFeature>, Delta<TaskJiffiesSnapshot>> item : o2.getValue()) {
+                    sumRight += item.second.dlt.jiffies.get();
                 }
                 long minus = sumLeft - sumRight;
                 if (minus == 0) return 0;
@@ -724,7 +727,7 @@ public class CompositeMonitors {
         });
     }
 
-    public void getCollectedTaskDeltas(Consumer<Map<String, List<Delta<TaskJiffiesSnapshot>>>> block) {
+    public void getCollectedTaskDeltas(Consumer<Map<String, List<Pair<Class<? extends AbsTaskMonitorFeature>, Delta<TaskJiffiesSnapshot>>>>> block) {
         block.accept(getCollectedTaskDeltas());
     }
 

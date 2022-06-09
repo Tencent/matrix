@@ -310,6 +310,11 @@ public final class LooperTaskMonitorFeature extends AbsTaskMonitorFeature {
     protected void onParseTaskJiffiesFail(String key, int pid, int tid) {
     }
 
+    @Override
+    protected boolean shouldTraceTask(Snapshot.Delta<TaskJiffiesSnapshot> delta) {
+        return true;
+    }
+
 
     @Deprecated
     public static class TaskTraceInfo {
