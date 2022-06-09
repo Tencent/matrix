@@ -110,9 +110,6 @@ static void saveNativeBackTrace(const char* key) {
 }
 
 static char* getNativeBacktrace(string keyString) {
-    if (!sDumpNativeBackTrace) {
-        return "";
-    }
     if (backtraceMap.count(keyString) > 0) {
         backtraceMapLock.lock_shared();
         wechat_backtrace::Backtrace *backtracePrt = backtraceMap[keyString].get();
@@ -121,7 +118,7 @@ static char* getNativeBacktrace(string keyString) {
         makeNativeStack(backtracePrt, nativeStack);
         return nativeStack;
     } else {
-        return "";
+        return new char;
     }
 }
 
