@@ -166,6 +166,16 @@ public class CpuStatFeature extends  AbsTaskMonitorFeature {
             return sum;
         }
 
+        public long totalProcCpuJiffies() {
+            long sum = 0;
+            for (ListEntry<DigitEntry<Long>> cpuCoreState : procCpuCoreStates) {
+                for (DigitEntry<Long> item : cpuCoreState.getList()) {
+                    sum += item.value;
+                }
+            }
+            return sum;
+        }
+
         public double configureCpuSip(PowerProfile powerProfile) {
             if (!powerProfile.isSupported()) {
                 return 0;

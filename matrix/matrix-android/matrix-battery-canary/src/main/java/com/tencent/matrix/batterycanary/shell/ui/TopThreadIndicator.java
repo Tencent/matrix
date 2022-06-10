@@ -50,6 +50,7 @@ import java.util.Map;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.RestrictTo;
 import androidx.annotation.UiThread;
 import androidx.core.util.Pair;
 
@@ -624,7 +625,8 @@ final public class TopThreadIndicator {
         });
     }
 
-    private static String getProcSuffix(String input) {
+    @RestrictTo(RestrictTo.Scope.LIBRARY)
+    public static String getProcSuffix(String input) {
         String proc = "main";
         if (input.contains(":")) {
             proc = input.substring(input.lastIndexOf(":") + 1);

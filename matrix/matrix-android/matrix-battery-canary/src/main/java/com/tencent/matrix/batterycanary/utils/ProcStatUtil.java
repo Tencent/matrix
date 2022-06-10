@@ -39,6 +39,14 @@ public final class ProcStatUtil {
     ProcStatUtil() {
     }
 
+    public static boolean exists(int pid) {
+        return new File("/proc/" + pid + "/stat").exists();
+    }
+
+    public static boolean exists(int pid, int tid) {
+        return new File("/proc/" + pid + "/task/" + tid + "/stat").exists();
+    }
+
     @Nullable
     public static ProcStat currentPid() {
         return of(Process.myPid());

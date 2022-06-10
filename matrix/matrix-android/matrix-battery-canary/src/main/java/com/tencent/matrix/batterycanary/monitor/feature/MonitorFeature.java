@@ -5,6 +5,7 @@ import android.os.Handler;
 import android.os.SystemClock;
 
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
+import com.tencent.matrix.batterycanary.utils.Function;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.ArrayList;
@@ -423,15 +424,14 @@ public interface MonitorFeature {
 
             final String mTag;
             final Handler mHandler;
-            final Callable<? extends Number> mSamplingBlock;
+            final Function<Sampler, ? extends Number> mSamplingBlock;
 
             private final Runnable mSamplingTask = new Runnable() {
                 @Override
                 public void run() {
                     try {
-                        MatrixLog.i(TAG, "onSampling, count = " + mCount);
-                        Number currSample = mSamplingBlock.call();
-                        if (currSample != INVALID) {
+                        Number currSample = mSamplingBlock.apply(Sampler.this);
+                        if (!currSample.equals(INVALID)) {
                             mSampleLst = currSample.doubleValue();
                             mCount++;
                             mSampleAvg = (mSampleAvg * (mCount - 1) + mSampleLst) / mCount;
@@ -470,13 +470,36 @@ public interface MonitorFeature {
             double mSampleAvg = Double.MIN_VALUE;
 
             public Sampler(Handler handler, Callable<? extends Number> onSampling) {
-                this("default", handler, onSampling);
+                this("dft", handler, onSampling);
             }
 
-            public Sampler(String tag, Handler handler, Callable<? extends Number> onSampling) {
+            public Sampler(String tag, Handler handler, final Callable<? extends Number> onSampling) {
+                mTag = tag;
+                mHandler = handler;
+                mSamplingBlock = new Function<Sampler, Number>() {
+                    @Override
+                    public Number apply(Sampler sampler) {
+                        try {
+                            return onSampling.call();
+                        } catch (Exception e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                };
+            }
+
+            public Sampler(String tag, Handler handler, Function<Sampler, ? extends Number> onSampling) {
                 mTag = tag;
                 mHandler = handler;
                 mSamplingBlock = onSampling;
+            }
+
+            public String getTag() {
+                return mTag;
+            }
+
+            public int getCount() {
+                return mCount;
             }
 
             public void setInterval(long interval) {

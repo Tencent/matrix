@@ -104,7 +104,7 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
         }
     }
 
-    public List<Delta<TaskJiffiesSnapshot>> currentJiffies() {
+    public List<Delta<TaskJiffiesSnapshot>> currentJiffies(long windowMsFromNow) {
         // Report unfinished task:
         // Maybe cause duplicated reporting
         // for (TaskJiffiesSnapshot bgn : mTaskJiffiesTrace.values()) {
@@ -116,7 +116,17 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
 
         ArrayList<Delta<TaskJiffiesSnapshot>> list;
         synchronized (mDeltaList) {
-            list = new ArrayList<>(mDeltaList);
+            if (windowMsFromNow <= 0) {
+                list = new ArrayList<>(mDeltaList);
+            } else {
+                list = new ArrayList<>();
+                long bgnMillis = SystemClock.uptimeMillis() - windowMsFromNow;
+                for (Delta<TaskJiffiesSnapshot> item : mDeltaList) {
+                    if (item.bgn.time >= bgnMillis) {
+                        list.add(item);
+                    }
+                }
+            }
         }
 
         // Sorting by jiffies dec
@@ -408,7 +418,7 @@ public abstract class AbsTaskMonitorFeature extends AbsMonitorFeature {
         // task jiffies list overheat
         if (mDeltaList.size() > mOverHeatCount) {
             MatrixLog.w(TAG, "cooling task jiffies list, before = " + mDeltaList.size());
-            List<Delta<TaskJiffiesSnapshot>> deltas = currentJiffies();
+            List<Delta<TaskJiffiesSnapshot>> deltas = currentJiffies(0);
             clearFinishedJiffies();
             MatrixLog.w(TAG, "cooling task jiffies list, after = " + mDeltaList.size());
 

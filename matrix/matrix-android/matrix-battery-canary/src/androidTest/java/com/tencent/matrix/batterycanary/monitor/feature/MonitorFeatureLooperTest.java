@@ -341,7 +341,7 @@ public class MonitorFeatureLooperTest {
         Assert.assertEquals(1, feature.mDeltaList.size());
         Assert.assertTrue(feature.mDeltaList.get(0).dlt.name.contains(MonitorFeatureLooperTest.class.getName() + "$"));
 
-        List<Delta<TaskJiffiesSnapshot>> deltas = feature.currentJiffies();
+        List<Delta<TaskJiffiesSnapshot>> deltas = feature.currentJiffies(0);
         Assert.assertEquals(1, deltas.size());
         Assert.assertEquals(feature.mDeltaList, deltas);
 
@@ -416,7 +416,7 @@ public class MonitorFeatureLooperTest {
         Assert.assertEquals(1, feature.mDeltaList.size());
         Assert.assertTrue(feature.mDeltaList.get(0).dlt.name.contains(MonitorFeatureLooperTest.class.getName() + "$"));
 
-        List<Delta<TaskJiffiesSnapshot>> deltas = feature.currentJiffies();
+        List<Delta<TaskJiffiesSnapshot>> deltas = feature.currentJiffies(0);
         Assert.assertEquals(1, deltas.size());
         Assert.assertEquals(feature.mDeltaList, deltas);
 
@@ -545,7 +545,7 @@ public class MonitorFeatureLooperTest {
         Assert.assertEquals(1, feature.mDeltaList.size());
         Assert.assertTrue(feature.mDeltaList.get(0).dlt.name.contains(MonitorFeatureLooperTest.class.getName() + "$"));
 
-        List<Delta<TaskJiffiesSnapshot>> deltas = feature.currentJiffies();
+        List<Delta<TaskJiffiesSnapshot>> deltas = feature.currentJiffies(0);
         Assert.assertEquals(1, deltas.size());
         Assert.assertEquals(feature.mDeltaList, deltas);
 

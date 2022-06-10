@@ -1,5 +1,6 @@
 package com.tencent.matrix.batterycanary.monitor.feature;
 
+import android.content.Context;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Process;
@@ -11,6 +12,8 @@ import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore.Callback;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.DigitEntry;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.ListEntry;
+import com.tencent.matrix.batterycanary.shell.TopThreadFeature;
+import com.tencent.matrix.batterycanary.shell.ui.TopThreadIndicator;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.ProcStatUtil;
 import com.tencent.matrix.util.MatrixLog;
@@ -28,6 +31,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
 import androidx.annotation.WorkerThread;
+import androidx.core.util.Pair;
 
 @SuppressWarnings("NotNullFieldNotInitialized")
 public final class JiffiesMonitorFeature extends AbsMonitorFeature {
@@ -81,6 +85,11 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
     @WorkerThread
     public JiffiesSnapshot currentJiffiesSnapshot(int pid) {
         return JiffiesSnapshot.currentJiffiesSnapshot(ProcessInfo.getProcessInfo(pid), mCore.getConfig().isStatPidProc);
+    }
+
+    @WorkerThread
+    public UidJiffiesSnapshot currentUidJiffiesSnapshot() {
+        return UidJiffiesSnapshot.of(mCore.getContext(), mCore.getConfig().isStatPidProc);
     }
 
     @AnyThread
@@ -263,12 +272,16 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
         }
 
         public int pid;
+        public boolean isNewAdded;
         public String name;
         public DigitEntry<Long> totalJiffies;
         public ListEntry<ThreadJiffiesSnapshot> threadEntries;
         public DigitEntry<Integer> threadNum;
+        public ListEntry<ThreadJiffiesSnapshot> deadThreadEntries;
 
         private JiffiesSnapshot() {
+            isNewAdded = false;
+            deadThreadEntries = ListEntry.ofEmpty();
         }
 
         @Override
@@ -278,11 +291,13 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
                 protected JiffiesSnapshot computeDelta() {
                     JiffiesSnapshot delta = new JiffiesSnapshot();
                     delta.pid = end.pid;
+                    delta.isNewAdded = end.isNewAdded;
                     delta.name = end.name;
                     delta.totalJiffies = Differ.DigitDiffer.globalDiff(bgn.totalJiffies, end.totalJiffies);
                     delta.threadNum = Differ.DigitDiffer.globalDiff(bgn.threadNum, end.threadNum);
                     delta.threadEntries = ListEntry.ofEmpty();
 
+                    // for Existing threads
                     if (end.threadEntries.getList().size() > 0) {
                         List<ThreadJiffiesSnapshot> deltaThreadEntries = new ArrayList<>();
                         for (ThreadJiffiesSnapshot endRecord : end.threadEntries.getList()) {
@@ -317,6 +332,30 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
                             delta.threadEntries = ListEntry.of(deltaThreadEntries);
                         }
                     }
+
+                    // for Dead threads
+                    if (bgn.threadEntries.getList().size() > 0) {
+                        List<ThreadJiffiesSnapshot> deadThreadEntries = Collections.emptyList();
+                        for (ThreadJiffiesSnapshot bgn : bgn.threadEntries.getList()) {
+                            boolean isDead = true;
+                            for (ThreadJiffiesSnapshot exist : delta.threadEntries.getList()) {
+                                if (exist.tid == bgn.tid) {
+                                    isDead = false;
+                                    break;
+                                }
+                            }
+                            if (isDead) {
+                                if (deadThreadEntries.isEmpty()) {
+                                    deadThreadEntries = new ArrayList<>();
+                                }
+                                deadThreadEntries.add(bgn);
+                            }
+                        }
+                        if (!deadThreadEntries.isEmpty()) {
+                            delta.deadThreadEntries = ListEntry.of(deadThreadEntries);
+                        }
+                    }
+
                     return delta;
                 }
             };
@@ -457,6 +496,83 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
         private long setNext(long millis) {
             duringMillis += millis;
             return millis;
+        }
+    }
+
+    public static class UidJiffiesSnapshot extends Snapshot<UidJiffiesSnapshot> {
+        public static UidJiffiesSnapshot of(Context context, boolean isStatPidProc) {
+            UidJiffiesSnapshot curr = new UidJiffiesSnapshot();
+            List<Pair<Integer, String>> procList = TopThreadFeature.getProcList(context);
+            curr.pidCurrJiffiesList = new ArrayList<>(procList.size());
+            long sum = 0;
+            MatrixLog.i(TAG, "currProcList: " + procList);
+            for (Pair<Integer, String> item : procList) {
+                //noinspection ConstantConditions
+                int pid = item.first;
+                String procName = String.valueOf(item.second);
+                if (ProcStatUtil.exists(pid)) {
+                    MatrixLog.i(TAG, " exits: " + pid);
+                    JiffiesSnapshot snapshot = JiffiesSnapshot.currentJiffiesSnapshot(ProcessInfo.getProcessInfo(pid), isStatPidProc);
+                    snapshot.name = TopThreadIndicator.getProcSuffix(procName);
+                    sum += snapshot.totalJiffies.get();
+                    curr.pidCurrJiffiesList.add(snapshot);
+                } else {
+                    MatrixLog.i(TAG, " not exits: " + pid);
+                }
+            }
+            curr.totalUidJiffies = DigitEntry.of(sum);
+            return curr;
+        }
+
+        public DigitEntry<Long> totalUidJiffies = DigitEntry.of(0L);
+        public List<JiffiesSnapshot> pidCurrJiffiesList = Collections.emptyList();
+        public List<Delta<JiffiesSnapshot>> pidDeltaJiffiesList = Collections.emptyList();
+
+        @Override
+        public Delta<UidJiffiesSnapshot> diff(UidJiffiesSnapshot bgn) {
+            return new Delta<UidJiffiesSnapshot>(bgn, this) {
+                @Override
+                protected UidJiffiesSnapshot computeDelta() {
+                    UidJiffiesSnapshot delta = new UidJiffiesSnapshot();
+                    delta.totalUidJiffies = Differ.DigitDiffer.globalDiff(bgn.totalUidJiffies, end.totalUidJiffies);
+                    if (end.pidCurrJiffiesList.size() > 0) {
+                        delta.pidDeltaJiffiesList = new ArrayList<>();
+                        for (JiffiesSnapshot end : end.pidCurrJiffiesList) {
+                            JiffiesSnapshot last = null;
+                            for (JiffiesSnapshot bgn : bgn.pidCurrJiffiesList) {
+                                if (bgn.pid == end.pid) {
+                                    last = bgn;
+                                    break;
+                                }
+                            }
+                            if (last == null) {
+                                // newAdded Pid
+                                end.isNewAdded = true;
+                                JiffiesSnapshot empty = new JiffiesSnapshot();
+                                empty.pid = end.pid;
+                                empty.name = end.name;
+                                empty.totalJiffies = DigitEntry.of(0L);
+                                empty.threadEntries = ListEntry.ofEmpty();
+                                empty.threadNum = DigitEntry.of(0);
+                                last = empty;
+                            }
+                            Delta<JiffiesSnapshot> deltaPidJiffies = end.diff(last);
+                            delta.pidDeltaJiffiesList.add(deltaPidJiffies);
+                        }
+
+                        Collections.sort(delta.pidDeltaJiffiesList, new Comparator<Delta<JiffiesSnapshot>>() {
+                            @Override
+                            public int compare(Delta<JiffiesSnapshot> o1, Delta<JiffiesSnapshot> o2) {
+                                long minus = o1.dlt.totalJiffies.get() - o2.dlt.totalJiffies.get();
+                                if (minus == 0) return 0;
+                                if (minus > 0) return -1;
+                                return 1;
+                            }
+                        });
+                    }
+                    return delta;
+                }
+            };
         }
     }
 }
