@@ -25,7 +25,9 @@ data class MatrixLifecycleConfig(
      */
     val enableOverlayWindowMonitor: Boolean = false,
 
-    val lifecycleThreadConfig: LifecycleThreadConfig = LifecycleThreadConfig()
+    val lifecycleThreadConfig: LifecycleThreadConfig = LifecycleThreadConfig(),
+
+    val enableLifecycleLogger: Boolean = false
 )
 
 /**
@@ -61,6 +63,7 @@ class MatrixLifecycleOwnerInitializer {
             ProcessUILifecycleOwner.init(app)
             ForegroundServiceLifecycleOwner.init(app, config.enableFgServiceMonitor)
             OverlayWindowLifecycleOwner.init(config.enableOverlayWindowMonitor)
+            MatrixLifecycleLogger.init(app, config.enableLifecycleLogger)
         }
 
         @SuppressLint("PrivateApi", "DiscouragedPrivateApi")

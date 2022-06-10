@@ -49,7 +49,6 @@ public class TraceConfig implements IDefaultConfig {
     public boolean isDevEnv;
     public boolean defaultSignalAnrEnable;
     public int stackStyle = STACK_STYLE_SIMPLE;
-    public boolean defaultMainThreadPriorityTraceEnable;
     public String splashActivities;
     public Set<String> splashActivitiesSet;
     public String anrTraceFilePath = "";
@@ -135,11 +134,6 @@ public class TraceConfig implements IDefaultConfig {
     @Override
     public boolean isSignalAnrTraceEnable() {
         return defaultSignalAnrEnable;
-    }
-
-    @Override
-    public boolean isMainThreadPriorityTraceEnable() {
-        return defaultMainThreadPriorityTraceEnable;
     }
 
     @Override
@@ -334,11 +328,6 @@ public class TraceConfig implements IDefaultConfig {
 
         public Builder setTouchEventThreshold(int threshold) {
             config.touchEventLagThreshold = threshold;
-            return this;
-        }
-
-        public Builder enableMainThreadPriorityTrace(boolean enable) {
-            config.defaultMainThreadPriorityTraceEnable = enable;
             return this;
         }
 

@@ -11,11 +11,13 @@ import com.tencent.matrix.resource.analyzer.model.ActivityLeakResult;
 import com.tencent.matrix.resource.analyzer.model.DestroyedActivityInfo;
 import com.tencent.matrix.resource.config.ResourceConfig;
 import com.tencent.matrix.resource.config.SharePluginInfo;
+import com.tencent.matrix.resource.dumper.HprofFileManager;
 import com.tencent.matrix.resource.watcher.ActivityRefWatcher;
 import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.util.Queue;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -111,6 +113,8 @@ public class LazyForkAnalyzeProcessor extends BaseLeakProcessor {
 
     @Override
     public boolean process(DestroyedActivityInfo destroyedActivityInfo) {
+        publishIssue(SharePluginInfo.IssueType.LEAK_FOUND, ResourceConfig.DumpMode.NO_DUMP, destroyedActivityInfo.mActivityName, destroyedActivityInfo.mKey, "no dump", "0");
+
         if (Build.VERSION.SDK_INT > ResourceConfig.FORK_DUMP_SUPPORTED_API_GUARD) {
             MatrixLog.e(TAG, "cannot fork-dump with unsupported API version " + Build.VERSION.SDK_INT);
             publishIssue(
@@ -138,7 +142,12 @@ public class LazyForkAnalyzeProcessor extends BaseLeakProcessor {
 
         final long dumpStart = System.currentTimeMillis();
 
-        final File hprof = getDumpStorageManager().newHprofFile();
+        File hprof = null;
+        try {
+            hprof = HprofFileManager.INSTANCE.prepareHprofFile("LFAP", true);
+        } catch (FileNotFoundException e) {
+            MatrixLog.printErrStackTrace(TAG, e, "");
+        }
 
         if (hprof != null) {
             if (!MemoryUtil.dump(hprof.getPath(), 600)) {

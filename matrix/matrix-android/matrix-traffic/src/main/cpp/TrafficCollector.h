@@ -31,8 +31,6 @@
 #include <map>
 #include <mutex>
 
-#define MSG_TYPE_CONNECT 1
-
 #define MSG_TYPE_READ 10
 #define MSG_TYPE_RECV 11
 #define MSG_TYPE_RECVFROM 12
@@ -53,24 +51,22 @@ using namespace std;
 namespace MatrixTraffic {
 class TrafficMsg {
 public:
-    TrafficMsg(const int _type, const int _fd, sa_family_t _sa_family, string _threadName, long _len)
-            : type(_type), fd(_fd), sa_family(_sa_family), threadName(_threadName), len(_len) {
+    TrafficMsg(const int _type, const int _fd, long _len)
+            : type(_type), fd(_fd), len(_len) {
     }
     int type;
     int fd;
-    sa_family_t sa_family;
-    string threadName;
+//    sa_family_t sa_family;
+//    string threadName;
     long len;
 };
 
 class TrafficCollector {
 
 public :
-    static void startLoop(bool dumpStackTrace, bool lookupIpAddress);
+    static void startLoop(bool dumpStackTrace);
 
     static void stopLoop();
-
-    static void enQueueConnect(int fd, sockaddr *addr, socklen_t __addr_length);
 
     static void enQueueClose(int fd);
 
@@ -80,7 +76,7 @@ public :
 
     static void clearTrafficInfo();
 
-    static jobject getTrafficInfoMap(int type);
+    static jobject getFdTrafficInfoMap(int type);
 
     virtual ~TrafficCollector();
 };

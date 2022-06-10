@@ -16,12 +16,14 @@ import com.tencent.matrix.resource.analyzer.model.ActivityLeakResult;
 import com.tencent.matrix.resource.analyzer.model.DestroyedActivityInfo;
 import com.tencent.matrix.resource.config.ResourceConfig;
 import com.tencent.matrix.resource.config.SharePluginInfo;
+import com.tencent.matrix.resource.dumper.HprofFileManager;
 import com.tencent.matrix.resource.watcher.ActivityRefWatcher;
 import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 import com.tencent.matrix.util.MatrixUtil;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -173,7 +175,12 @@ public class ManualDumpProcessor extends BaseLeakProcessor {
 
         getWatcher().triggerGc();
 
-        File file = getDumpStorageManager().newHprofFile();
+        File file = null;
+        try {
+            file = HprofFileManager.INSTANCE.prepareHprofFile("MDP", false);
+        } catch (FileNotFoundException e) {
+            MatrixLog.printErrStackTrace(TAG, e, "");
+        }
         final ActivityLeakResult result = MemoryUtil.dumpAndAnalyze(file.getAbsolutePath(), key, 600);
         if (result.mLeakFound) {
             final String leakChain = result.toString();

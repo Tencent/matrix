@@ -29,8 +29,10 @@
 #include <arpa/inet.h>
 #include "MatrixTraffic.h"
 
+#include <shared_mutex>
 #include <queue>
 #include <thread>
+#include <unordered_set>
 
 using namespace std;
 
@@ -41,16 +43,19 @@ static lock_guard<mutex> lock(queueMutex);
 static bool loopRunning = false;
 static bool sDumpStackTrace = false;
 static bool sLookupIpAddress = false;
-static map<int, int> fdFamilyMap;
+static unordered_set<int> activeFdSet;
+static unordered_set<int> invalidFdSet;
+
 static blocking_queue<shared_ptr<TrafficMsg>> msgQueue;
-static map<string, long> rxTrafficInfoMap;
-static map<string, long> txTrafficInfoMap;
-static mutex rxTrafficInfoMapLock;
-static mutex txTrafficInfoMapLock;
+
+static map<int, long> rxFdTrafficInfoMap;
+static map<int, long> txFdTrafficInfoMap;
+static shared_mutex rxTrafficInfoMapLock;
+static shared_mutex txTrafficInfoMapLock;
 
 static map<int, string> fdThreadNameMap;
 static map<int, string> fdIpAddressMap;
-static mutex fdThreadNameMapLock;
+static shared_mutex fdThreadNameMapSharedLock;
 static mutex fdIpAddressMapLock;
 
 string getIpAddressFromAddr(sockaddr* _addr) {
@@ -86,6 +91,18 @@ string getIpAddressFromAddr(sockaddr* _addr) {
     return ipAddress;
 }
 
+int isNetworkSocketFd(int fd) {
+    struct sockaddr c;
+    socklen_t cLen = sizeof(c);
+    int getSockNameRet = getsockname(fd, (struct sockaddr*) &c, &cLen);
+    if (getSockNameRet == 0) {
+        if (c.sa_family != AF_LOCAL && c.sa_family != AF_UNIX) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 void saveIpAddress(int fd, sockaddr* addr) {
     fdIpAddressMapLock.lock();
     if (fdIpAddressMap.count(fd) == 0) {
@@ -102,49 +119,37 @@ string getIpAddress(int fd) {
 }
 
 
-string getKeyAndSaveStack(int fd) {
-    fdThreadNameMapLock.lock();
+string saveFdInfo(int fd) {
+    fdThreadNameMapSharedLock.lock_shared();
     if (fdThreadNameMap.count(fd) == 0) {
-        string key;
-        if (sLookupIpAddress) {
-            key = getIpAddress(fd);
-            key.append(";");
-        }
+        fdThreadNameMapSharedLock.unlock_shared();
 
         auto threadName = new char[15];
         prctl(PR_GET_NAME, threadName);
-        key.append(threadName);
-        fdThreadNameMap[fd] = key;
-        fdThreadNameMapLock.unlock();
+        char key[32];
+        snprintf(key, sizeof(key), "%d-%s", fd, threadName);
+
         if (sDumpStackTrace) {
-            setStackTrace(key.data());
+            setFdStackTraceCall(key);
         }
+
+        fdThreadNameMapSharedLock.lock();
+        fdThreadNameMap[fd] = key;
+        fdThreadNameMapSharedLock.unlock();
+
         return key;
     } else {
         auto key = fdThreadNameMap[fd];
-        fdThreadNameMapLock.unlock();
+        fdThreadNameMapSharedLock.unlock_shared();
         return key;
     }
-}
-
-void TrafficCollector::enQueueConnect(int fd, sockaddr *addr, socklen_t addr_length) {
-    if (!loopRunning) {
-        return;
-    }
-    if (sLookupIpAddress) {
-        saveIpAddress(fd, addr);
-    }
-    shared_ptr<TrafficMsg> msg = make_shared<TrafficMsg>(MSG_TYPE_CONNECT, fd, addr->sa_family, getKeyAndSaveStack(fd), 0);
-
-    msgQueue.push(msg);
-    queueMutex.unlock();
 }
 
 void TrafficCollector::enQueueClose(int fd) {
     if (!loopRunning) {
         return;
     }
-    shared_ptr<TrafficMsg> msg = make_shared<TrafficMsg>(MSG_TYPE_CLOSE, fd, 0, "", 0);
+    shared_ptr<TrafficMsg> msg = make_shared<TrafficMsg>(MSG_TYPE_CLOSE, fd, 0);
     msgQueue.push(msg);
     queueMutex.unlock();
 }
@@ -154,7 +159,8 @@ void enQueueMsg(int type, int fd, size_t len) {
         return;
     }
 
-    shared_ptr<TrafficMsg> msg = make_shared<TrafficMsg>(type, fd, 0, getKeyAndSaveStack(fd), len);
+    saveFdInfo(fd);
+    shared_ptr<TrafficMsg> msg = make_shared<TrafficMsg>(type, fd, len);
     msgQueue.push(msg);
     queueMutex.unlock();
 }
@@ -173,17 +179,18 @@ void TrafficCollector::enQueueRx(int type, int fd, size_t len) {
     enQueueMsg(type, fd, len);
 }
 
-void appendRxTraffic(const string& threadName, long len) {
+void appendRxTraffic(int fd, long len) {
     rxTrafficInfoMapLock.lock();
-    rxTrafficInfoMap[threadName] += len;
+    rxFdTrafficInfoMap[fd] += len;
     rxTrafficInfoMapLock.unlock();
 }
 
-void appendTxTraffic(const string& threadName, long len) {
+void appendTxTraffic(int fd, long len) {
     txTrafficInfoMapLock.lock();
-    txTrafficInfoMap[threadName] += len;
+    txFdTrafficInfoMap[fd] += len;
     txTrafficInfoMapLock.unlock();
 }
+
 
 void loop() {
     while (loopRunning) {
@@ -191,29 +198,37 @@ void loop() {
             queueMutex.lock();
         } else {
             shared_ptr<TrafficMsg> msg = msgQueue.front();
-            if (msg->type == MSG_TYPE_CONNECT) {
-                fdFamilyMap[msg->fd] = msg->sa_family;
-            } else if (msg->type == MSG_TYPE_READ) {
-                if (fdFamilyMap.count(msg->fd) > 0) {
-                    appendRxTraffic(msg->threadName, msg->len);
+            int fd = msg->fd;
+            int type = msg->type;
+            if (type != MSG_TYPE_CLOSE) {
+                if (activeFdSet.count(fd) == 0 && invalidFdSet.count(fd) == 0) {
+                    if (!isNetworkSocketFd(fd)) {
+                        invalidFdSet.insert(fd);
+                        fdThreadNameMapSharedLock.lock();
+                        fdThreadNameMap.erase(fd);
+                        fdThreadNameMapSharedLock.unlock();
+                    } else {
+                        activeFdSet.insert(fd);
+                    }
                 }
-            } else if (msg->type >= MSG_TYPE_RECV && msg->type <= MSG_TYPE_RECVMSG) {
-                if (fdFamilyMap[msg->fd] != AF_LOCAL) {
-                    appendRxTraffic(msg->threadName, msg->len);
+            }
+
+            if (type >= MSG_TYPE_READ && type <= MSG_TYPE_RECVMSG) {
+                if (activeFdSet.count(fd) > 0 && invalidFdSet.count(fd) == 0) {
+                    appendRxTraffic(fd, msg->len);
                 }
-            } else if (msg->type == MSG_TYPE_WRITE) {
-                if (fdFamilyMap.count(msg->fd) > 0) {
-                    appendTxTraffic(msg->threadName, msg->len);
+            } else if (type >= MSG_TYPE_WRITE && type <= MSG_TYPE_SENDMSG) {
+                if (activeFdSet.count(fd) > 0 && invalidFdSet.count(fd) == 0) {
+                    appendTxTraffic(fd, msg->len);
                 }
-            } else if (msg->type >= MSG_TYPE_SEND && msg->type <= MSG_TYPE_SENDMSG) {
-                if (fdFamilyMap[msg->fd] != AF_LOCAL) {
-                    appendTxTraffic(msg->threadName, msg->len);
+            } else if (type == MSG_TYPE_CLOSE) {
+                if (activeFdSet.count(fd) > 0) {
+                    fdThreadNameMapSharedLock.lock();
+                    fdThreadNameMap.erase(fd);
+                    fdThreadNameMapSharedLock.unlock();
+                    activeFdSet.erase(fd);
+                    invalidFdSet.erase(fd);
                 }
-            } else if (msg->type == MSG_TYPE_CLOSE) {
-                fdThreadNameMapLock.lock();
-                fdThreadNameMap.erase(msg->fd);
-                fdThreadNameMapLock.unlock();
-                fdFamilyMap.erase(msg->fd);
             }
             msgQueue.pop();
         }
@@ -221,9 +236,8 @@ void loop() {
 }
 
 
-void TrafficCollector::startLoop(bool dumpStackTrace, bool lookupIpAddress) {
+void TrafficCollector::startLoop(bool dumpStackTrace) {
     sDumpStackTrace = dumpStackTrace;
-    sLookupIpAddress = lookupIpAddress;
     loopRunning = true;
     thread loopThread(loop);
     loopThread.detach();
@@ -233,7 +247,7 @@ void TrafficCollector::stopLoop() {
     loopRunning = false;
 }
 
-jobject TrafficCollector::getTrafficInfoMap(int type) {
+jobject TrafficCollector::getFdTrafficInfoMap(int type) {
     JNIEnv *env = JniInvocation::getEnv();
     jclass mapClass = env->FindClass("java/util/HashMap");
     if(mapClass == nullptr) {
@@ -245,25 +259,54 @@ jobject TrafficCollector::getTrafficInfoMap(int type) {
                                         "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;");
 
     if (type == TYPE_GET_TRAFFIC_RX) {
-        rxTrafficInfoMapLock.lock();
-        for (auto & it : rxTrafficInfoMap) {
-            jstring threadName = env->NewStringUTF(it.first.c_str());
+        rxTrafficInfoMapLock.lock_shared();
+        for (auto & it : rxFdTrafficInfoMap) {
+            int fd = it.first;
+            if (fdThreadNameMap.count(fd) == 0) {
+                continue;
+            }
+            fdThreadNameMapSharedLock.lock_shared();
+            const char* key = fdThreadNameMap[fd].c_str();
+            fdThreadNameMapSharedLock.unlock_shared();
+            if (key == nullptr || strlen(key) == 0) {
+                continue;
+            }
+
+            if (it.second <= 0) {
+                continue;
+            }
+            jstring jKey = env->NewStringUTF(key);
             jstring traffic = env->NewStringUTF(to_string(it.second).c_str());
-            env->CallObjectMethod(jHashMap, mapPut, threadName, traffic);
-            env->DeleteLocalRef(threadName);
+            env->CallObjectMethod(jHashMap, mapPut, jKey, traffic);
+            env->DeleteLocalRef(jKey);
             env->DeleteLocalRef(traffic);
+
         }
-        rxTrafficInfoMapLock.unlock();
+        rxTrafficInfoMapLock.unlock_shared();
     } else if (type == TYPE_GET_TRAFFIC_TX) {
-        txTrafficInfoMapLock.lock();
-        for (auto & it : txTrafficInfoMap) {
-            jstring threadName = env->NewStringUTF(it.first.c_str());
+        txTrafficInfoMapLock.lock_shared();
+        for (auto & it : txFdTrafficInfoMap) {
+            int fd = it.first;
+            if (fdThreadNameMap.count(fd) == 0) {
+                continue;
+            }
+            fdThreadNameMapSharedLock.lock_shared();
+            const char* key = fdThreadNameMap[fd].c_str();
+            fdThreadNameMapSharedLock.unlock_shared();
+            if (key == nullptr || strlen(key) == 0) {
+                continue;
+            }
+
+            if (it.second <= 0) {
+                continue;
+            }
+            jstring jKey = env->NewStringUTF(key);
             jstring traffic = env->NewStringUTF(to_string(it.second).c_str());
-            env->CallObjectMethod(jHashMap, mapPut, threadName, traffic);
-            env->DeleteLocalRef(threadName);
+            env->CallObjectMethod(jHashMap, mapPut, jKey, traffic);
+            env->DeleteLocalRef(jKey);
             env->DeleteLocalRef(traffic);
         }
-        txTrafficInfoMapLock.unlock();
+        txTrafficInfoMapLock.unlock_shared();
     }
     env->DeleteLocalRef(mapClass);
     return jHashMap;
@@ -271,16 +314,18 @@ jobject TrafficCollector::getTrafficInfoMap(int type) {
 
 void TrafficCollector::clearTrafficInfo() {
     rxTrafficInfoMapLock.lock();
-    rxTrafficInfoMap.clear();
+    rxFdTrafficInfoMap.clear();
     rxTrafficInfoMapLock.unlock();
 
     txTrafficInfoMapLock.lock();
-    txTrafficInfoMap.clear();
+    txFdTrafficInfoMap.clear();
     txTrafficInfoMapLock.unlock();
 
-    fdThreadNameMapLock.lock();
+    fdThreadNameMapSharedLock.lock();
     fdThreadNameMap.clear();
-    fdThreadNameMapLock.unlock();
+    fdThreadNameMapSharedLock.unlock();
+
+
 }
 
 TrafficCollector::~TrafficCollector() {

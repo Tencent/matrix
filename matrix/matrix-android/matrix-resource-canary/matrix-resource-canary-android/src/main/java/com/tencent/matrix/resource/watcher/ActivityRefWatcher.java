@@ -312,6 +312,10 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher {
         return mResourcePlugin;
     }
 
+    public Handler getDetectHandler() {
+        return mHandler;
+    }
+
     public Collection<DestroyedActivityInfo> getDestroyedActivityInfos() {
         return mDestroyedActivityInfos;
     }

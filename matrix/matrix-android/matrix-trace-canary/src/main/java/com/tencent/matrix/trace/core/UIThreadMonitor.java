@@ -135,9 +135,9 @@ public class UIThreadMonitor implements BeatLifecycle, Runnable {
 
         });
         this.isInit = true;
+        choreographer = Choreographer.getInstance();
         frameIntervalNanos = ReflectUtils.reflectObject(choreographer, "mFrameIntervalNanos", Constants.DEFAULT_FRAME_DURATION);
         if (!useFrameMetrics) {
-            choreographer = Choreographer.getInstance();
             callbackQueueLock = ReflectUtils.reflectObject(choreographer, "mLock", new Object());
             callbackQueues = ReflectUtils.reflectObject(choreographer, "mCallbackQueues", null);
             if (null != callbackQueues) {
