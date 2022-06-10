@@ -8,7 +8,6 @@ import android.text.TextUtils;
 
 import com.tencent.matrix.batterycanary.BuildConfig;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
-import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.trace.core.LooperMonitor;
 import com.tencent.matrix.util.MatrixLog;
 
