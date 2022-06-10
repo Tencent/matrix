@@ -505,16 +505,19 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
             List<Pair<Integer, String>> procList = TopThreadFeature.getProcList(context);
             curr.pidCurrJiffiesList = new ArrayList<>(procList.size());
             long sum = 0;
+            MatrixLog.i(TAG, "currProcList: " + procList);
             for (Pair<Integer, String> item : procList) {
                 //noinspection ConstantConditions
                 int pid = item.first;
                 String procName = String.valueOf(item.second);
                 if (ProcStatUtil.exists(pid)) {
-                    MatrixLog.i(TAG, " #exits: " + "/proc/" + pid + "/stat");
+                    MatrixLog.i(TAG, " exits: " + pid);
                     JiffiesSnapshot snapshot = JiffiesSnapshot.currentJiffiesSnapshot(ProcessInfo.getProcessInfo(pid), isStatPidProc);
                     snapshot.name = TopThreadIndicator.getProcSuffix(procName);
                     sum += snapshot.totalJiffies.get();
                     curr.pidCurrJiffiesList.add(snapshot);
+                } else {
+                    MatrixLog.i(TAG, " not exits: " + pid);
                 }
             }
             curr.totalUidJiffies = DigitEntry.of(sum);
