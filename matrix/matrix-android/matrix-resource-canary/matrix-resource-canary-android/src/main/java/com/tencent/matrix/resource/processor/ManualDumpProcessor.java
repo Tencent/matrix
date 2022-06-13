@@ -181,6 +181,12 @@ public class ManualDumpProcessor extends BaseLeakProcessor {
         } catch (FileNotFoundException e) {
             MatrixLog.printErrStackTrace(TAG, e, "");
         }
+
+        if (file == null) {
+            MatrixLog.e(TAG, "prepare hprof file failed, see log above");
+            return null;
+        }
+
         final ActivityLeakResult result = MemoryUtil.dumpAndAnalyze(file.getAbsolutePath(), key, 600);
         if (result.mLeakFound) {
             final String leakChain = result.toString();
