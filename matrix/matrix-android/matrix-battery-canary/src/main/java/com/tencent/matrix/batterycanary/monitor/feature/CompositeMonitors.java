@@ -175,6 +175,25 @@ public class CompositeMonitors {
         return (int) (cpuLoad * 100);
     }
 
+    public int getNorCpuLoad() {
+        int cpuLoad = getCpuLoad();
+        if (cpuLoad == -1) {
+            return -1;
+        }
+        MonitorFeature.Snapshot.Sampler.Result result = getSamplingResult(DeviceStatMonitorFeature.CpuFreqSnapshot.class);
+        if (result == null) {
+            return -1;
+        }
+        List<int[]> cpuFreqSteps = BatteryCanaryUtil.getCpuFreqSteps();
+        long sumMax = 0;
+        for (int[] item : cpuFreqSteps) {
+            sumMax += item[item.length - 1];
+        }
+        if (sumMax <= 0) {
+            return -1;
+        }
+        return (int) (cpuLoad * result.sampleAvg / sumMax);
+    }
 
     /**
      * Work in progress
