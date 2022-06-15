@@ -70,6 +70,22 @@ public class TemperatureUtilsTest {
     }
 
     @Test
+    public void getHardwareManager() {
+        HardwarePropertiesManager manager = (HardwarePropertiesManager) mContext.getSystemService(Context.HARDWARE_PROPERTIES_SERVICE);
+        Assert.assertNotNull(manager);
+        try {
+            manager.getCpuUsages();
+            Assert.fail("Should be permission denied");
+        } catch (SecurityException ignored) {
+        }
+        try {
+            manager.getFanSpeeds();
+            Assert.fail("Should be permission denied");
+        } catch (SecurityException ignored) {
+        }
+    }
+
+    @Test
     public void testGetCpuTemp() {
         HardwarePropertiesManager manager = (HardwarePropertiesManager) mContext.getSystemService(Context.HARDWARE_PROPERTIES_SERVICE);
         try {

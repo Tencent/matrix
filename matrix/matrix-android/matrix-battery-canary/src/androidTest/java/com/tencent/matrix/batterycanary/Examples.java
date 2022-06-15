@@ -37,6 +37,7 @@ import com.tencent.matrix.batterycanary.monitor.feature.NotificationMonitorFeatu
 import com.tencent.matrix.batterycanary.monitor.feature.TrafficMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.WifiMonitorFeature;
+import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.Consumer;
 
 import org.junit.After;
@@ -44,6 +45,8 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+
+import java.util.List;
 
 import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
@@ -57,7 +60,7 @@ public class Examples {
     Context mContext;
 
     /**
-     * 监控 Cpu Load
+     * 计算 Cpu Load
      */
     @Test
     public void exampleForCpuLoad() {
@@ -72,7 +75,6 @@ public class Examples {
             if (monitor != null) {
                 CompositeMonitors compositor = new CompositeMonitors(monitor.core());
                 compositor.metric(JiffiesMonitorFeature.JiffiesSnapshot.class);
-                compositor.metric(CpuStatFeature.CpuStateSnapshot.class);
                 compositor.start();
 
                 doSomething();
@@ -108,6 +110,46 @@ public class Examples {
                 MonitorFeature.Snapshot.Sampler.Result result = compositor.getSamplingResult(DeviceStatMonitorFeature.CpuFreqSnapshot.class);
                 Assert.assertNotNull(result);
                 Assert.assertTrue(result.sampleAvg > 0);
+            }
+        }
+    }
+
+    /**
+     * 计算 Cpu Load（叠加 CpuFreq 采样权重）
+     */
+    @Test
+    public void exampleForCpuLoadNormalize() {
+        if (TestUtils.isAssembleTest()) {
+            return;
+        } else {
+            mockSetup();
+        }
+
+        if (Matrix.isInstalled()) {
+            BatteryMonitorPlugin monitor = Matrix.with().getPluginByClass(BatteryMonitorPlugin.class);
+            if (monitor != null) {
+                CompositeMonitors compositor = new CompositeMonitors(monitor.core());
+                compositor.metric(JiffiesMonitorFeature.JiffiesSnapshot.class);
+                compositor.sample(DeviceStatMonitorFeature.CpuFreqSnapshot.class, 10L);
+                compositor.start();
+
+                doSomething();
+
+                compositor.finish();
+                int cpuLoad = compositor.getCpuLoad();
+                Assert.assertTrue("cpuLoad: " + cpuLoad, cpuLoad >= 0);
+
+                MonitorFeature.Snapshot.Sampler.Result result = compositor.getSamplingResult(DeviceStatMonitorFeature.CpuFreqSnapshot.class);
+                List<int[]> cpuFreqSteps = BatteryCanaryUtil.getCpuFreqSteps();
+                long sumMax = 0;
+                for (int[] item : cpuFreqSteps) {
+                    sumMax += item[item.length - 1];
+                }
+                Assert.assertTrue("cpuFreqSumAvg: " + result.sampleAvg + "vs cpuFreqSumMax: " + sumMax, sumMax >= result.sampleAvg);
+                int cpuLoadNormalized  = (int) (cpuLoad * result.sampleAvg / sumMax);
+                Assert.assertTrue("cpuLoadNormalized: " + cpuLoadNormalized + "vs cpuLoad: " + sumMax, cpuLoad >= cpuLoadNormalized);
+
+                Assert.assertEquals(cpuLoadNormalized, compositor.getNorCpuLoad());
             }
         }
     }
