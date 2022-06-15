@@ -298,8 +298,14 @@ public class Examples {
     }
 
     private void doSomething() {
+        Thread Thread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                for (;;) {}
+            }
+        }, "CpuLoadTest");
         try {
-            Thread.sleep(1000L);
+            Thread.sleep(2000L);
         } catch (InterruptedException ignored) {
         }
     }
