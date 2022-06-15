@@ -485,13 +485,20 @@ public class CompositeMonitors {
                         List<DigitEntry<Integer>> list = snapshot.cpuFreqs.getList();
                         MatrixLog.i(TAG, CompositeMonitors.this.hashCode() + " #onSampling: " + mScope);
                         MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + ", val = " + list);
-                        Collections.sort(list, new Comparator<DigitEntry<Integer>>() {
-                            @Override
-                            public int compare(DigitEntry<Integer> o1, DigitEntry<Integer> o2) {
-                                return o1.get().compareTo(o2.get());
-                            }
-                        });
-                        return list.isEmpty() ? 0 : list.get(list.size() - 1).get();
+
+                        // Better to use sum of all cpufreqs, rather than just use the max value?
+                        // Collections.sort(list, new Comparator<DigitEntry<Integer>>() {
+                        //     @Override
+                        //     public int compare(DigitEntry<Integer> o1, DigitEntry<Integer> o2) {
+                        //         return o1.get().compareTo(o2.get());
+                        //     }
+                        // });
+                        // return list.isEmpty() ? 0 : list.get(list.size() - 1).get();
+                        long sum = 0;
+                        for (DigitEntry<Integer> item : list) {
+                            sum += item.get();
+                        }
+                        return sum;
                     }
                 });
                 mSamplers.put(snapshotClass, sampler);

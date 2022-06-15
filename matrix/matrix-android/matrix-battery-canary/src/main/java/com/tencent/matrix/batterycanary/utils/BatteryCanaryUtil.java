@@ -351,6 +351,30 @@ public final class BatteryCanaryUtil {
         return output;
     }
 
+    public static List<int[]> getCpuFreqSteps() {
+        int cpuCoreNum = getCpuCoreNum();
+        List<int[]> output = new ArrayList<>(cpuCoreNum);
+        for (int i = 0; i < cpuCoreNum; i++) {
+            String path = "/sys/devices/system/cpu/cpu" + i + "/cpufreq/scaling_available_frequencies";
+            String cat = cat(path);
+            if (!TextUtils.isEmpty(cat)) {
+                //noinspection ConstantConditions
+                String[] split = cat.split(" ");
+                int[] steps = new int[split.length];
+                for (int j = 0, splitLength = split.length; j < splitLength; j++) {
+                    try {
+                        String item = split[j];
+                        steps[j] = Integer.parseInt(item) / 1000;
+                    } catch (Exception ignored) {
+                        steps[j] = 0;
+                    }
+                }
+                output.add(steps);
+            }
+        }
+        return output;
+    }
+
     public static int getCpuCoreNum() {
         return sCacheStub.getCpuCoreNum();
     }

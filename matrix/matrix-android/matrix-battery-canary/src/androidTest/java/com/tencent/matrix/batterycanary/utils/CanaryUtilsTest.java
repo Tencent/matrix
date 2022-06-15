@@ -170,6 +170,22 @@ public class CanaryUtilsTest {
     }
 
     @Test
+    public void testGetCpuFreqSteps() throws InterruptedException {
+        List<int[]> last = null;
+        for (int i = 0; i < 5; i++) {
+            List<int[]> freqSteps = BatteryCanaryUtil.getCpuFreqSteps();
+            Assert.assertNotNull(freqSteps);
+            if (last != null) {
+                for (int j = 0, freqStepsSize = freqSteps.size(); j < freqStepsSize; j++) {
+                    Assert.assertArrayEquals(last.get(j), freqSteps.get(j));
+                }
+            }
+            last = freqSteps;
+            Thread.sleep(100L);
+        }
+    }
+
+    @Test
     public void testGetBatteryTemps() throws InterruptedException {
         for (int i = 0; i < 5; i++) {
             int temperature = BatteryCanaryUtil.getBatteryTemperatureImmediately(mContext);
