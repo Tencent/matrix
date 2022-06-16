@@ -118,7 +118,7 @@ static char* getNativeBacktrace(string keyString) {
         makeNativeStack(backtracePrt, nativeStack);
         return nativeStack;
     } else {
-        return new char;
+        return new char(0);
     }
 }
 
