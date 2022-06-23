@@ -242,13 +242,13 @@ data class StatusInfo(
             }
         }
 
-        private fun getOomAdj(pid: Int): Int = safeLet(TAG, defVal = Int.MAX_VALUE) {
+        private fun getOomAdj(pid: Int): Int = safeLet(TAG, defVal = Int.MAX_VALUE, log = false) {
             File("/proc/$pid/oom_adj").useLines {
                 it.first().toInt()
             }
         }
 
-        private fun getOomScoreAdj(pid: Int): Int = safeLet(TAG, defVal = Int.MAX_VALUE) {
+        private fun getOomScoreAdj(pid: Int): Int = safeLet(TAG, defVal = Int.MAX_VALUE, log = false) {
             File("/proc/$pid/oom_score_adj").useLines {
                 it.first().toInt()
             }
