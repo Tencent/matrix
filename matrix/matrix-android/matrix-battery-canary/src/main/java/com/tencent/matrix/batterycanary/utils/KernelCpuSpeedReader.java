@@ -39,7 +39,7 @@ public class KernelCpuSpeedReader {
         }
     }
 
-    public long readTotoal() throws IOException {
+    public long readTotal() throws IOException {
         long sum = 0;
         for (long item : readAbsolute()) {
             sum += item;
