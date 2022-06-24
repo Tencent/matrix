@@ -395,8 +395,13 @@ public final class BatteryCanaryUtil {
             return files.length;
         } catch (Exception ignored) {
             // Default to return 1 core
-            return 1;
+            return getCpuCoreNumFromRuntime();
         }
+    }
+
+    public static int getCpuCoreNumFromRuntime() {
+        // fastest
+        return Runtime.getRuntime().availableProcessors();
     }
 
     @Nullable

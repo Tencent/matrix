@@ -1,7 +1,6 @@
 package com.tencent.matrix.batterycanary.monitor;
 
 import android.content.ComponentName;
-import android.os.Process;
 import android.os.SystemClock;
 import android.text.TextUtils;
 
@@ -420,7 +419,7 @@ public interface BatteryMonitorCallback extends
                     // header
                     long minute = Math.max(1, delta.during / ONE_MIN);
                     long avgJiffies = delta.dlt.totalJiffies.get() / minute;
-                    printer.append("| ").append("pid=").append(Process.myPid())
+                    printer.append("| ").append("cpu=").append(monitors.getCpuLoad()).append("/").append(monitors.getNorCpuLoad())
                             .tab().tab().append("fg=").append(BatteryCanaryUtil.convertAppStat(appStats.getAppStat()))
                             .tab().tab().append("during(min)=").append(minute)
                             .tab().tab().append("diff(jiffies)=").append(delta.dlt.totalJiffies.get())

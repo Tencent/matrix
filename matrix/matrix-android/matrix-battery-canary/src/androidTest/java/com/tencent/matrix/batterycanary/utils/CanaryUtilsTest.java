@@ -29,6 +29,7 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.PowerManager;
+import android.os.SystemClock;
 import android.text.TextUtils;
 import android.util.Log;
 import android.widget.Toast;
@@ -46,6 +47,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.LinkedList;
@@ -131,6 +133,29 @@ public class CanaryUtilsTest {
         String pkg = BatteryCanaryUtil.getPackageName();
         Assert.assertFalse(TextUtils.isEmpty(pkg));
         Assert.assertEquals(mContext.getPackageName(), pkg);
+    }
+
+    @Test
+    public void testGetCpuCoreNum() throws IOException {
+        long nanos1 = SystemClock.elapsedRealtimeNanos();
+
+        int coreNum1 = BatteryCanaryUtil.getCpuCoreNumImmediately();
+        long nanos2 = SystemClock.elapsedRealtimeNanos();
+
+        int coreNum2 = Runtime.getRuntime().availableProcessors();
+        long nanos3 = SystemClock.elapsedRealtimeNanos();
+
+        PowerProfile powerProfile = PowerProfile.init(mContext);
+        int coreNum3 = powerProfile.getCpuCoreNum();
+        long nanos4 = SystemClock.elapsedRealtimeNanos();
+
+
+        Assert.assertEquals(coreNum1, coreNum2);
+        Assert.assertEquals(coreNum2, coreNum3);
+
+        if (!TestUtils.isAssembleTest()) {
+            Assert.fail((nanos2 - nanos1) + " vs " + (nanos3 - nanos2) + " vs " + (nanos4 - nanos3));
+        }
     }
 
     @Test
