@@ -931,10 +931,7 @@ bool exclude_default_references(HprofAnalyzer &analyzer) {
      * Non-strong references.
      */
     analyzer.ExcludeInstanceFieldReference("java.lang.ref.WeakReference", "referent");
-// we should treat soft reference as strong reference, because
-// "all soft references to softly-reachable objects are guaranteed to have been cleared before the virtual machine throws an OutOfMemoryError."
-// see https://developer.android.com/reference/java/lang/ref/SoftReference
-//    analyzer.ExcludeInstanceFieldReference("java.lang.ref.SoftReference", "referent");
+    analyzer.ExcludeInstanceFieldReference("java.lang.ref.SoftReference", "referent");
     analyzer.ExcludeInstanceFieldReference("java.lang.ref.PhantomReference", "referent");
     analyzer.ExcludeInstanceFieldReference("java.lang.ref.Finalizer", "prev");
     analyzer.ExcludeInstanceFieldReference("java.lang.ref.Finalizer", "element");

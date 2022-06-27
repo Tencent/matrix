@@ -82,7 +82,6 @@ public class TestHooksActivity extends Activity {
                 WeChatBacktrace.instance()
                         .configure(getApplication())
                         .setBacktraceMode(WeChatBacktrace.Mode.Fp)
-                        .setQuickenAlwaysOn()
                         .commit();
             } else {
                 WeChatBacktrace.instance()

@@ -684,10 +684,7 @@ public enum AndroidExcludedRefs {
         @Override
         void add(ExcludedRefs.Builder excluded) {
             excluded.clazz(WeakReference.class.getName()).alwaysExclude();
-// we should treat soft reference as strong reference, because
-// "all soft references to softly-reachable objects are guaranteed to have been cleared before the virtual machine throws an OutOfMemoryError."
-// see https://developer.android.com/reference/java/lang/ref/SoftReference
-//            excluded.clazz(SoftReference.class.getName()).alwaysExclude();
+            excluded.clazz(SoftReference.class.getName()).alwaysExclude();
             excluded.clazz(PhantomReference.class.getName()).alwaysExclude();
             excluded.clazz("java.lang.ref.Finalizer").alwaysExclude();
             excluded.clazz("java.lang.ref.FinalizerReference").alwaysExclude();
