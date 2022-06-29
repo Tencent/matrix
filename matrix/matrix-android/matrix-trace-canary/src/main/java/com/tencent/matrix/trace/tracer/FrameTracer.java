@@ -398,12 +398,11 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
     @Override
     public void onActivityResumed(Activity activity) {
         lastResumeTimeMap.put(activity.getClass().getName(), System.currentTimeMillis());
-
+        this.refreshRate = (int) activity.getWindowManager().getDefaultDisplay().getRefreshRate();
         if (useFrameMetrics) {
             if (frameListenerMap.containsKey(activity.hashCode())) {
                 return;
             }
-            this.refreshRate = (int) activity.getWindowManager().getDefaultDisplay().getRefreshRate();
             this.frameIntervalNs = Constants.TIME_SECOND_TO_NANO / (long) refreshRate;
             Window.OnFrameMetricsAvailableListener onFrameMetricsAvailableListener = new Window.OnFrameMetricsAvailableListener() {
                 @RequiresApi(api = Build.VERSION_CODES.O)
