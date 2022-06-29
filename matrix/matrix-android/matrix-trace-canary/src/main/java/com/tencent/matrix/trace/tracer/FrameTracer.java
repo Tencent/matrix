@@ -270,7 +270,7 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
 
     private class FrameCollectItem {
         String visibleScene;
-        long sumFrameCost;
+        float sumFrameCost;
         int sumFrame = 0;
         int sumDroppedFrames;
         // record the level of frames dropped each time
@@ -306,7 +306,7 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
         }
 
         void report() {
-            float fps = Math.min(refreshRate, 1000.f * sumFrame / sumFrameCost);
+            float fps = 1000.f * sumFrame / sumFrameCost;
             MatrixLog.i(TAG, "[report] FPS:%s %s", fps, toString());
             try {
                 TracePlugin plugin = Matrix.with().getPluginByClass(TracePlugin.class);
