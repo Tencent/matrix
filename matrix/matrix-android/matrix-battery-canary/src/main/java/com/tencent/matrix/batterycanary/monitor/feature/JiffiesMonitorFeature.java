@@ -3,13 +3,15 @@ package com.tencent.matrix.batterycanary.monitor.feature;
 import android.content.Context;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.os.Process;
 import android.os.SystemClock;
 import android.text.TextUtils;
 
 import com.tencent.matrix.Matrix;
+import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore.Callback;
-import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.DigitEntry;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.ListEntry;
 import com.tencent.matrix.batterycanary.shell.TopThreadFeature;
@@ -89,7 +91,7 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
 
     @WorkerThread
     public UidJiffiesSnapshot currentUidJiffiesSnapshot() {
-        return UidJiffiesSnapshot.of(mCore.getContext(), mCore.getConfig().isStatPidProc);
+        return UidJiffiesSnapshot.of(mCore.getContext(), mCore.getConfig());
     }
 
     @AnyThread
@@ -500,7 +502,7 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
     }
 
     public static class UidJiffiesSnapshot extends Snapshot<UidJiffiesSnapshot> {
-        public static UidJiffiesSnapshot of(Context context, boolean isStatPidProc) {
+        public static UidJiffiesSnapshot of(Context context, BatteryMonitorConfig config) {
             UidJiffiesSnapshot curr = new UidJiffiesSnapshot();
             List<Pair<Integer, String>> procList = TopThreadFeature.getProcList(context);
             curr.pidCurrJiffiesList = new ArrayList<>(procList.size());
@@ -511,13 +513,24 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
                 int pid = item.first;
                 String procName = String.valueOf(item.second);
                 if (ProcStatUtil.exists(pid)) {
-                    MatrixLog.i(TAG, " exits: " + pid);
-                    JiffiesSnapshot snapshot = JiffiesSnapshot.currentJiffiesSnapshot(ProcessInfo.getProcessInfo(pid), isStatPidProc);
+                    MatrixLog.i(TAG, "proc: " + pid);
+                    JiffiesSnapshot snapshot = JiffiesSnapshot.currentJiffiesSnapshot(ProcessInfo.getProcessInfo(pid), config.isStatPidProc);
                     snapshot.name = TopThreadIndicator.getProcSuffix(procName);
                     sum += snapshot.totalJiffies.get();
                     curr.pidCurrJiffiesList.add(snapshot);
                 } else {
-                    MatrixLog.i(TAG, " not exits: " + pid);
+                    if (config.ipcJiffiesCollector != null) {
+                        IpcJiffies.IpcProcessJiffies ipcProcessJiffies = config.ipcJiffiesCollector.apply(item);
+                        if (ipcProcessJiffies != null) {
+                            MatrixLog.i(TAG, "ipc: " + pid);
+                            JiffiesSnapshot snapshot = IpcJiffies.toLocal(ipcProcessJiffies);
+                            snapshot.name = TopThreadIndicator.getProcSuffix(procName);
+                            sum += snapshot.totalJiffies.get();
+                            curr.pidCurrJiffiesList.add(snapshot);
+                            continue;
+                        }
+                    }
+                    MatrixLog.i(TAG, "skip: " + pid);
                 }
             }
             curr.totalUidJiffies = DigitEntry.of(sum);
@@ -573,6 +586,143 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
                     return delta;
                 }
             };
+        }
+
+
+        public static final class IpcJiffies {
+            public static IpcProcessJiffies toIpc(JiffiesSnapshot local) {
+                IpcProcessJiffies ipc = new IpcProcessJiffies();
+                ipc.pid = local.pid;
+                ipc.name = local.name;
+                ipc.threadNum = local.threadNum.get();
+                ipc.totalJiffies = local.totalJiffies.get();
+                ipc.threadJiffyList = new ArrayList<>(local.threadEntries.getList().size());
+                for (JiffiesSnapshot.ThreadJiffiesSnapshot item : local.threadEntries.getList()) {
+                    ipc.threadJiffyList.add(toIpc(item));
+                }
+                return ipc;
+            }
+
+            public static IpcProcessJiffies.IpcThreadJiffies toIpc(JiffiesSnapshot.ThreadJiffiesSnapshot local) {
+                IpcProcessJiffies.IpcThreadJiffies ipc = new IpcProcessJiffies.IpcThreadJiffies();
+                ipc.tid = local.tid;
+                ipc.name = local.name;
+                ipc.stat = local.stat;
+                ipc.jiffies = local.get();
+                return ipc;
+            }
+
+            public static JiffiesSnapshot toLocal(IpcProcessJiffies ipc) {
+                JiffiesSnapshot local = new JiffiesSnapshot();
+                local.pid = ipc.pid;
+                local.name = ipc.name;
+                local.totalJiffies = DigitEntry.of(ipc.totalJiffies);
+                List<JiffiesSnapshot.ThreadJiffiesSnapshot> threadJiffiesList = Collections.emptyList();
+                if (!ipc.threadJiffyList.isEmpty()) {
+                    threadJiffiesList = new ArrayList<>(ipc.threadJiffyList.size());
+                    for (IpcProcessJiffies.IpcThreadJiffies item : ipc.threadJiffyList) {
+                        JiffiesSnapshot.ThreadJiffiesSnapshot threadJiffies = toLocal(item);
+                        threadJiffiesList.add(threadJiffies);
+                    }
+                }
+                local.threadEntries = ListEntry.of(threadJiffiesList);
+                local.threadNum = DigitEntry.of(threadJiffiesList.size());
+                return local;
+            }
+
+            public static JiffiesSnapshot.ThreadJiffiesSnapshot toLocal(IpcProcessJiffies.IpcThreadJiffies ipc) {
+                JiffiesSnapshot.ThreadJiffiesSnapshot local = new JiffiesSnapshot.ThreadJiffiesSnapshot(ipc.jiffies);
+                local.name = ipc.name;
+                local.stat = ipc.stat;
+                local.tid = ipc.tid;
+                local.isNewAdded = true;
+                return local;
+            }
+
+            public static class IpcProcessJiffies implements Parcelable {
+                public int pid;
+                public String name;
+                public long totalJiffies;
+                public int threadNum;
+                public List<IpcThreadJiffies> threadJiffyList;
+
+                protected IpcProcessJiffies(Parcel in) {
+                    pid = in.readInt();
+                    name = in.readString();
+                    totalJiffies = in.readLong();
+                    threadNum = in.readInt();
+                    threadJiffyList = in.createTypedArrayList(IpcThreadJiffies.CREATOR);
+                }
+
+                public static final Creator<IpcProcessJiffies> CREATOR = new Creator<IpcProcessJiffies>() {
+                    @Override
+                    public IpcProcessJiffies createFromParcel(Parcel in) {
+                        return new IpcProcessJiffies(in);
+                    }
+                    @Override
+                    public IpcProcessJiffies[] newArray(int size) {
+                        return new IpcProcessJiffies[size];
+                    }
+                };
+
+                public IpcProcessJiffies() {
+                }
+
+                @Override
+                public int describeContents() {
+                    return 0;
+                }
+
+                @Override
+                public void writeToParcel(Parcel dest, int flags) {
+                    dest.writeInt(pid);
+                    dest.writeString(name);
+                    dest.writeLong(totalJiffies);
+                    dest.writeInt(threadNum);
+                    dest.writeTypedList(threadJiffyList);
+                }
+
+                public static class IpcThreadJiffies implements Parcelable {
+                    public int tid;
+                    public String name;
+                    public String stat;
+                    public long jiffies;
+
+                    protected IpcThreadJiffies(Parcel in) {
+                        tid = in.readInt();
+                        name = in.readString();
+                        stat = in.readString();
+                        jiffies = in.readLong();
+                    }
+
+                    public static final Creator<IpcThreadJiffies> CREATOR = new Creator<IpcThreadJiffies>() {
+                        @Override
+                        public IpcThreadJiffies createFromParcel(Parcel in) {
+                            return new IpcThreadJiffies(in);
+                        }
+                        @Override
+                        public IpcThreadJiffies[] newArray(int size) {
+                            return new IpcThreadJiffies[size];
+                        }
+                    };
+
+                    public IpcThreadJiffies() {
+                    }
+
+                    @Override
+                    public int describeContents() {
+                        return 0;
+                    }
+
+                    @Override
+                    public void writeToParcel(Parcel dest, int flags) {
+                        dest.writeInt(tid);
+                        dest.writeString(name);
+                        dest.writeString(stat);
+                        dest.writeLong(jiffies);
+                    }
+                }
+            }
         }
     }
 }
