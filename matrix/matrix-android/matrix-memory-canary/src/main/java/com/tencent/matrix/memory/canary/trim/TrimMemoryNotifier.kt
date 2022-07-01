@@ -11,6 +11,7 @@ import com.tencent.matrix.Matrix
 import com.tencent.matrix.lifecycle.IBackgroundStatefulOwner
 import com.tencent.matrix.lifecycle.IMatrixBackgroundCallback
 import com.tencent.matrix.lifecycle.owners.ProcessDeepBackgroundOwner
+import com.tencent.matrix.lifecycle.owners.ProcessExplicitBackgroundOwner
 import com.tencent.matrix.lifecycle.owners.ProcessStagedBackgroundOwner
 import com.tencent.matrix.lifecycle.supervisor.AppDeepBackgroundOwner
 import com.tencent.matrix.lifecycle.supervisor.AppStagedBackgroundOwner
@@ -139,7 +140,34 @@ object TrimMemoryNotifier {
 
         // system trim
         Matrix.with().application.registerComponentCallbacks(object : ComponentCallbacks2 {
+
+            private var lastTrimTimeMillis = 0L
+
+            @Volatile
+            private var trimCounter = 0
+            private val maxTrimCount = 10
+
+            init {
+                ProcessExplicitBackgroundOwner.addLifecycleCallback(object :
+                    IMatrixBackgroundCallback() {
+
+                    override fun onEnterBackground() {
+                        // reset trim
+                        trimCounter = 0
+                    }
+
+                    override fun onExitBackground() {}
+                })
+            }
+
             override fun onLowMemory() {
+                val current = System.currentTimeMillis()
+                if (current - lastTrimTimeMillis < TimeUnit.MINUTES.toMillis((trimCounter + 1).toLong()) || trimCounter >= maxTrimCount) {
+                    MatrixLog.w(TAG, "onLowMemory skip for frequency")
+                    return
+                }
+                lastTrimTimeMillis = current
+                trimCounter++
                 MatrixLog.e(TAG, "onLowMemory post")
                 MatrixHandlerThread.getDefaultHandler().post {
                     MatrixLog.e(TAG, "onLowMemory")
@@ -150,6 +178,13 @@ object TrimMemoryNotifier {
 
             override fun onTrimMemory(level: Int) {
                 if (level <= ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL) {
+                    val current = System.currentTimeMillis()
+                    if (current - lastTrimTimeMillis < TimeUnit.MINUTES.toMillis((trimCounter + 1).toLong()) || trimCounter >= maxTrimCount) {
+                        MatrixLog.w(TAG, "onLowMemory skip for frequency")
+                        return
+                    }
+                    lastTrimTimeMillis = current
+                    trimCounter++
                     MatrixLog.e(TAG, "onTrimMemory post: $level")
                     MatrixHandlerThread.getDefaultHandler().post {
                         MatrixLog.e(TAG, "onTrimMemory: $level")
