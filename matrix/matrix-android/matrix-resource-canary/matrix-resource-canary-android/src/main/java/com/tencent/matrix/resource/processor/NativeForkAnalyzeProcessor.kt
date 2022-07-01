@@ -140,17 +140,17 @@ class NativeForkAnalyzeProcessor(watcher: ActivityRefWatcher) : BaseLeakProcesso
                         var result = MemoryUtil.analyze(hprof.absolutePath, key, timeout = 1200)
                         if (result.mFailure != null) {
                             historyFailure.add(result.mFailure.toString())
-                            retryCount++
-                            safeLetOrNull(TAG) {
-                                HprofFileManager.prepareHprofFile("RETRY", false) // prevent duplicated analyse after OOM
-                            }?.let { cpy ->
-                                hprof.copyTo(cpy, true)
-                                hprof.deleteIfExist()
-                                keyFile.deleteIfExist()
-                                safeLet({
-                                    result = analyze(cpy, key) // if crashed, the copied file could be auto-cleared by HprofFileManager later (lru or expired)
-                                }, success = { cpy.deleteIfExist() }, failed = { cpy.deleteIfExist() })
-                            }
+//                            retryCount++
+//                            safeLetOrNull(TAG) {
+//                                HprofFileManager.prepareHprofFile("RETRY", false) // prevent duplicated analyse after OOM
+//                            }?.let { cpy ->
+//                                hprof.copyTo(cpy, true)
+//                                hprof.deleteIfExist()
+//                                keyFile.deleteIfExist()
+//                                safeLet({
+//                                    result = analyze(cpy, key) // if crashed, the copied file could be auto-cleared by HprofFileManager later (lru or expired)
+//                                }, success = { cpy.deleteIfExist() }, failed = { cpy.deleteIfExist() })
+//                            }
                         }
                         if (result.mLeakFound) {
                             watcher.markPublished(activity, false)
