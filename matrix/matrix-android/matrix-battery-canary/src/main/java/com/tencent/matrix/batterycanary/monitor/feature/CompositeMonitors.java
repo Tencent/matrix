@@ -215,6 +215,21 @@ public class CompositeMonitors {
         return (int) (cpuLoad * 100);
     }
 
+    public long computeAvgJiffies(long jiffies) {
+        if (mAppStats == null) {
+            MatrixLog.w(TAG, "AppStats should not be null to computeAvgJiffies");
+            return -1;
+        }
+        return computeAvgJiffies(jiffies, mAppStats.duringMillis);
+    }
+
+    public static long computeAvgJiffies(long jiffies, long millis) {
+        if (millis <= 0) {
+            throw new IllegalArgumentException("Illegal millis: " + millis);
+        }
+        return (long) (jiffies / (millis / 60000f));
+    }
+
     public <T extends Snapshot<T>> boolean isOverHeat(Class<T> snapshotClass) {
         AppStats appStats = getAppStats();
         Delta<?> delta = getDelta(snapshotClass);
@@ -621,10 +636,10 @@ public class CompositeMonitors {
                         if (mLastSnapshot != null) {
                             Delta<JiffiesMonitorFeature.UidJiffiesSnapshot> delta = curr.diff(mLastSnapshot);
                             long minute = Math.max(1, delta.during / BatteryCanaryUtil.ONE_MIN);
-                            long avgUidJiffies = delta.dlt.totalUidJiffies.get() / minute;
+                            long avgUidJiffies = computeAvgJiffies(delta.dlt.totalUidJiffies.get(), delta.during);
                             MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + " avgUidJiffies, val = " + avgUidJiffies + ", minute = " + minute);
                             for (Delta<JiffiesSnapshot> item : delta.dlt.pidDeltaJiffiesList) {
-                                long avgPidJiffies = item.dlt.totalJiffies.get() / minute;
+                                long avgPidJiffies = computeAvgJiffies(item.dlt.totalJiffies.get(), delta.during);
                                 MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + " avgPidJiffies, val = " + avgPidJiffies + ", minute = " + minute + ", name = " + item.dlt.name);
                             }
                             mLastSnapshot = curr;
