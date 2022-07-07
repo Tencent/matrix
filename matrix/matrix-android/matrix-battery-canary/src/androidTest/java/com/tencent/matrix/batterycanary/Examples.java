@@ -60,7 +60,9 @@ public class Examples {
     Context mContext;
 
     /**
-     * 计算 Cpu Load
+     * 计算 Cpu Load:
+     * 1. CpuLoad 计算口径与 adb shell top 里的 CPU 负载计算一致
+     * 2. CpuLoad = [0, 100 * cpu 核心数]
      */
     @Test
     public void exampleForCpuLoad() {
@@ -115,7 +117,11 @@ public class Examples {
     }
 
     /**
-     * 计算 Cpu Load（叠加 CpuFreq 采样权重）
+     * 计算 Cpu Load（叠加 CpuFreq 采样权重）:
+     * 1. CpuLoad 计算口径与 adb shell top 里的 CPU 负载计算一致
+     * 2. CpuLoad = [0, 100 * cpu 核心数]
+     * 3. CpuLoad 只能反馈 CPU 资源的使用率, 如果需要考虑 CPU 整体负载还要考虑 CPU 大小核的工作频率, 因此需要额外加多 CpuFreq 的数据
+     * 4. CpuLoadNormalized = cpuLoad * avgCpuFreq / maxCpuFreq
      */
     @Test
     public void exampleForCpuLoadNormalize() {
@@ -298,8 +304,14 @@ public class Examples {
     }
 
     private void doSomething() {
+        Thread Thread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                for (;;) {}
+            }
+        }, "CpuLoadTest");
         try {
-            Thread.sleep(1000L);
+            Thread.sleep(2000L);
         } catch (InterruptedException ignored) {
         }
     }

@@ -1,4 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     package="com.tencent.matrix.batterycanary">
 
     <uses-permission android:name="android.permission.WAKE_LOCK" />
@@ -8,6 +9,12 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+
+    <uses-sdk
+        tools:overrideLibrary="com.tencent.matrix.backtrace"
+        android:minSdkVersion="21"
+        android:targetSdkVersion="28" />
+
     <application>
         <service android:name=".utils.CanaryUtilsTest$SpyService">
         </service>

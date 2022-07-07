@@ -54,7 +54,7 @@ public class KernelCpuUidFreqTimeReader {
         }
     }
 
-    public List<Long> readTotoal() throws IOException {
+    public List<Long> readTotal() throws IOException {
         List<long[]> cpuCoreStepJiffies = readAbsolute();
         List<Long> cpuCoreJiffies = new ArrayList<>(cpuCoreStepJiffies.size());
         for (long[] stepJiffies : cpuCoreStepJiffies) {

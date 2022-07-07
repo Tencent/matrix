@@ -1,7 +1,6 @@
 package com.tencent.matrix.batterycanary.monitor;
 
 import android.content.ComponentName;
-import android.os.Process;
 import android.os.SystemClock;
 import android.text.TextUtils;
 
@@ -419,8 +418,8 @@ public interface BatteryMonitorCallback extends
                     Delta<JiffiesSnapshot> delta = (Delta<JiffiesSnapshot>) sessionDelta;
                     // header
                     long minute = Math.max(1, delta.during / ONE_MIN);
-                    long avgJiffies = delta.dlt.totalJiffies.get() / minute;
-                    printer.append("| ").append("pid=").append(Process.myPid())
+                    long avgJiffies = monitors.computeAvgJiffies(delta.dlt.totalJiffies.get());
+                    printer.append("| ").append("cpu=").append(monitors.getCpuLoad()).append("/").append(monitors.getNorCpuLoad())
                             .tab().tab().append("fg=").append(BatteryCanaryUtil.convertAppStat(appStats.getAppStat()))
                             .tab().tab().append("during(min)=").append(minute)
                             .tab().tab().append("diff(jiffies)=").append(delta.dlt.totalJiffies.get())
@@ -440,7 +439,7 @@ public interface BatteryMonitorCallback extends
                         if (i < toppingCount) {
                             printer.append("|   -> (").append(threadJiffies.isNewAdded ? "+" : "~").append("/").append(threadJiffies.stat).append(")")
                                     .append(threadJiffies.name).append("(").append(threadJiffies.tid).append(")\t")
-                                    .append(entryJffies / minute).append("/").append(entryJffies).append("\tjiffies")
+                                    .append(monitors.computeAvgJiffies(entryJffies)).append("/").append(entryJffies).append("\tjiffies")
                                     .append("\n");
                         } else {
                             remainJffies += entryJffies;
@@ -450,7 +449,7 @@ public interface BatteryMonitorCallback extends
                     if (remainJffies > 0) {
                         printer.append("|   -> R/R)")
                                 .append("REMAINS").append("(").append(delta.dlt.threadEntries.getList().size() - toppingCount).append(")\t")
-                                .append(remainJffies / minute).append("/").append(remainJffies).append("\tjiffies")
+                                .append(monitors.computeAvgJiffies(remainJffies) / minute).append("/").append(remainJffies).append("\tjiffies")
                                 .append("\n");
                     }
                     if (avgJiffies > 1000L || !delta.isValid()) {
