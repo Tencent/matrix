@@ -43,7 +43,7 @@ public class TrafficPlugin extends Plugin {
         String[] ignoreSoFiles = trafficConfig.getIgnoreSoFiles();
         stackTraceFilterMode = trafficConfig.getStackTraceFilterMode();
         stackTraceFilterCore = trafficConfig.getStackTraceFilterCore();
-        nativeInitMatrixTraffic(trafficConfig.isRxCollectorEnable(), trafficConfig.isTxCollectorEnable(), trafficConfig.willDumpStackTrace(), trafficConfig.willDumpNativeBackTrace(), ignoreSoFiles);
+        nativeInitMatrixTraffic(trafficConfig.isRxCollectorEnable(), trafficConfig.isTxCollectorEnable(), trafficConfig.willDumpStackTrace(), trafficConfig.willDumpNativeBackTrace(), trafficConfig.willHookAllSoReadWrite(), ignoreSoFiles);
     }
 
 
@@ -88,7 +88,7 @@ public class TrafficPlugin extends Plugin {
         nativeClearTrafficInfo();
     }
 
-    private static native void nativeInitMatrixTraffic(boolean rxEnable, boolean txEnable, boolean dumpStackTrace, boolean dumpNativeBackTrace, String[] ignoreSoFiles);
+    private static native void nativeInitMatrixTraffic(boolean rxEnable, boolean txEnable, boolean dumpStackTrace, boolean dumpNativeBackTrace, boolean willHookAllSoReadWrite, String[] ignoreSoFiles);
     private static native String nativeGetTrafficInfo();
     private static native String nativeGetAllStackTraceTrafficInfo();
     private static native void nativeReleaseMatrixTraffic();
