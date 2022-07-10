@@ -39,11 +39,15 @@ using namespace std;
 namespace MatrixTraffic {
 
 static mutex queueMutex;
-static lock_guard<mutex> lock(queueMutex);
+static condition_variable cv;
+
 static bool loopRunning = false;
 static bool sDumpStackTrace = false;
 static bool sLookupIpAddress = false;
+
 static unordered_set<int> activeFdSet;
+static shared_mutex activeFdSetMutex;
+
 static unordered_set<int> invalidFdSet;
 
 static blocking_queue<shared_ptr<TrafficMsg>> msgQueue;
@@ -151,7 +155,7 @@ void TrafficCollector::enQueueClose(int fd) {
     }
     shared_ptr<TrafficMsg> msg = make_shared<TrafficMsg>(MSG_TYPE_CLOSE, fd, 0);
     msgQueue.push(msg);
-    queueMutex.unlock();
+    cv.notify_one();
 }
 
 void enQueueMsg(int type, int fd, size_t len) {
@@ -159,10 +163,18 @@ void enQueueMsg(int type, int fd, size_t len) {
         return;
     }
 
-    saveFdInfo(fd);
+    activeFdSetMutex.lock_shared();
+    if (activeFdSet.count(fd) > 0) {
+        activeFdSetMutex.unlock_shared();
+        saveFdInfo(fd);
+    } else {
+        activeFdSetMutex.unlock_shared();
+    }
+
     shared_ptr<TrafficMsg> msg = make_shared<TrafficMsg>(type, fd, len);
     msgQueue.push(msg);
-    queueMutex.unlock();
+
+    cv.notify_one();
 }
 
 void TrafficCollector::enQueueTx(int type, int fd, size_t len) {
@@ -193,9 +205,10 @@ void appendTxTraffic(int fd, long len) {
 
 
 void loop() {
+    unique_lock lk(queueMutex);
     while (loopRunning) {
         if (msgQueue.empty()) {
-            queueMutex.lock();
+            cv.wait(lk);
         } else {
             shared_ptr<TrafficMsg> msg = msgQueue.front();
             int fd = msg->fd;
@@ -208,7 +221,9 @@ void loop() {
                         fdThreadNameMap.erase(fd);
                         fdThreadNameMapSharedLock.unlock();
                     } else {
+                        activeFdSetMutex.lock();
                         activeFdSet.insert(fd);
+                        activeFdSetMutex.unlock();
                     }
                 }
             }
@@ -226,9 +241,12 @@ void loop() {
                     fdThreadNameMapSharedLock.lock();
                     fdThreadNameMap.erase(fd);
                     fdThreadNameMapSharedLock.unlock();
+
+                    activeFdSetMutex.lock();
                     activeFdSet.erase(fd);
-                    invalidFdSet.erase(fd);
+                    activeFdSetMutex.unlock();
                 }
+                invalidFdSet.erase(fd);
             }
             msgQueue.pop();
         }
@@ -237,8 +255,11 @@ void loop() {
 
 
 void TrafficCollector::startLoop(bool dumpStackTrace) {
-    sDumpStackTrace = dumpStackTrace;
+    if (loopRunning) {
+        return;
+    }
     loopRunning = true;
+    sDumpStackTrace = dumpStackTrace;
     thread loopThread(loop);
     loopThread.detach();
 }
