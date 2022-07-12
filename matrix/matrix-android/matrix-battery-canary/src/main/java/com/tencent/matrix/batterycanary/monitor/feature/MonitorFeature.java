@@ -551,6 +551,20 @@ public interface MonitorFeature {
                 public double sampleMax;
                 public double sampleMin;
                 public double sampleAvg;
+
+                @Override
+                public String toString() {
+                    return "Result{" +
+                            "interval=" + interval +
+                            ", count=" + count +
+                            ", duringMillis=" + duringMillis +
+                            ", sampleFst=" + sampleFst +
+                            ", sampleLst=" + sampleLst +
+                            ", sampleMax=" + sampleMax +
+                            ", sampleMin=" + sampleMin +
+                            ", sampleAvg=" + sampleAvg +
+                            '}';
+                }
             }
         }
     }

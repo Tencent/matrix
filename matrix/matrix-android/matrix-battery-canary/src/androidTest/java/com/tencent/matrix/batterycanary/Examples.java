@@ -146,6 +146,7 @@ public class Examples {
                 Assert.assertTrue("cpuLoad: " + cpuLoad, cpuLoad >= 0);
 
                 MonitorFeature.Snapshot.Sampler.Result result = compositor.getSamplingResult(DeviceStatMonitorFeature.CpuFreqSnapshot.class);
+                Assert.assertNotNull(result);
                 List<int[]> cpuFreqSteps = BatteryCanaryUtil.getCpuFreqSteps();
                 long sumMax = 0;
                 for (int[] item : cpuFreqSteps) {

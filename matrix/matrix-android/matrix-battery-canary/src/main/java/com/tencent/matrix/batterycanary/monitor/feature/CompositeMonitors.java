@@ -19,6 +19,7 @@ import com.tencent.matrix.batterycanary.utils.Function;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -191,6 +192,13 @@ public class CompositeMonitors {
         }
         if (sumMax <= 0) {
             return -1;
+        }
+        if (result.sampleAvg >= sumMax) {
+            // avgFreq should not greater than maxFreq
+            MatrixLog.w(TAG, "NorCpuLoad err: sampling = " + result);
+            for (int[] item : cpuFreqSteps) {
+                MatrixLog.w(TAG, "NorCpuLoad err: freqs = " + Arrays.toString(item));
+            }
         }
         return (int) (cpuLoad * result.sampleAvg / sumMax);
     }
