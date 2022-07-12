@@ -11,6 +11,7 @@ public class TrafficConfig {
     private boolean txCollectorEnable;
     private boolean dumpStackTraceEnable;
     private boolean dumpNativeBackTraceEnable;
+    private boolean hookAllSoReadWrite = true;
     //TODO
     //private boolean lookupIpAddressEnable;
     private int stackTraceFilterMode = 0;
@@ -85,4 +86,13 @@ public class TrafficConfig {
     public String getStackTraceFilterCore() {
         return this.stackTraceFilterCore;
     }
+
+    public boolean willHookAllSoReadWrite() {
+        return hookAllSoReadWrite;
+    }
+
+    public void setHookAllSoReadWrite(boolean hookAllSoReadWrite) {
+        this.hookAllSoReadWrite = hookAllSoReadWrite;
+    }
+
 }

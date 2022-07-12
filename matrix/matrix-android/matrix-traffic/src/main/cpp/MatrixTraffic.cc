@@ -125,14 +125,18 @@ static char* getNativeBacktrace(string keyString) {
 ssize_t (*original_read)(int fd, void *buf, size_t count);
 ssize_t my_read(int fd, void *buf, size_t count) {
     ssize_t ret = original_read(fd, buf, count);
-    TrafficCollector::enQueueRx(MSG_TYPE_READ, fd, ret);
+    if (ret > 0) {
+        TrafficCollector::enQueueRx(MSG_TYPE_READ, fd, ret);
+    }
     return ret;
 }
 
 ssize_t (*original_recv)(int sockfd, void *buf, size_t len, int flags);
 ssize_t my_recv(int sockfd, void *buf, size_t len, int flags) {
     ssize_t ret = original_recv(sockfd, buf, len, flags);
-    TrafficCollector::enQueueRx(MSG_TYPE_RECV, sockfd, ret);
+    if (ret > 0) {
+        TrafficCollector::enQueueRx(MSG_TYPE_RECV, sockfd, ret);
+    }
     return ret;
 }
 
@@ -141,28 +145,36 @@ ssize_t (*original_recvfrom)(int sockfd, void *buf, size_t len, int flags,
 ssize_t my_recvfrom(int sockfd, void *buf, size_t len, int flags,
                     struct sockaddr *src_addr, socklen_t *addrlen) {
     ssize_t ret = original_recvfrom(sockfd, buf, len, flags, src_addr, addrlen);
-    TrafficCollector::enQueueRx(MSG_TYPE_RECVFROM, sockfd, ret);
+    if (ret > 0) {
+        TrafficCollector::enQueueRx(MSG_TYPE_RECVFROM, sockfd, ret);
+    }
     return ret;
 }
 
 ssize_t (*original_recvmsg)(int sockfd, struct msghdr *msg, int flags);
 ssize_t my_recvmsg(int sockfd, struct msghdr *msg, int flags) {
     ssize_t ret = original_recvmsg(sockfd, msg, flags);
-    TrafficCollector::enQueueRx(MSG_TYPE_RECVMSG, sockfd, ret);
+    if (ret > 0) {
+        TrafficCollector::enQueueRx(MSG_TYPE_RECVMSG, sockfd, ret);
+    }
     return ret;
 }
 
 ssize_t (*original_write)(int fd, const void *buf, size_t count);
 ssize_t my_write(int fd, const void *buf, size_t count) {
     ssize_t ret = original_write(fd, buf, count);
-    TrafficCollector::enQueueTx(MSG_TYPE_WRITE, fd, ret);
+    if (ret > 0) {
+        TrafficCollector::enQueueTx(MSG_TYPE_WRITE, fd, ret);
+    }
     return ret;
 }
 
 ssize_t (*original_send)(int sockfd, const void *buf, size_t len, int flags);
 ssize_t my_send(int sockfd, const void *buf, size_t len, int flags) {
     ssize_t ret = original_send(sockfd, buf, len, flags);
-    TrafficCollector::enQueueTx(MSG_TYPE_SEND, sockfd, ret);
+    if (ret > 0) {
+        TrafficCollector::enQueueTx(MSG_TYPE_SEND, sockfd, ret);
+    }
     return ret;
 }
 
@@ -171,21 +183,38 @@ ssize_t (*original_sendto)(int sockfd, const void *buf, size_t len, int flags,
 ssize_t my_sendto(int sockfd, const void *buf, size_t len, int flags,
                   const struct sockaddr *dest_addr, socklen_t addrlen) {
     ssize_t ret = original_sendto(sockfd, buf, len, flags, dest_addr, addrlen);
-    TrafficCollector::enQueueTx(MSG_TYPE_SENDTO, sockfd, ret);
+    if (ret > 0) {
+        TrafficCollector::enQueueTx(MSG_TYPE_SENDTO, sockfd, ret);
+    }
     return ret;
 }
 
 ssize_t (*original_sendmsg)(int sockfd, const struct msghdr *msg, int flags);
 ssize_t my_sendmsg(int sockfd, const struct msghdr *msg, int flags) {
     ssize_t ret = original_sendmsg(sockfd, msg, flags);
-    TrafficCollector::enQueueTx(MSG_TYPE_SENDMSG, sockfd, ret);
+    if (ret > 0) {
+        TrafficCollector::enQueueTx(MSG_TYPE_SENDMSG, sockfd, ret);
+    }
+    return ret;
+}
+
+int (*original_fclose)(FILE *stream);
+int my_fclose(FILE *stream) {
+    int fd = fileno(stream);
+    int ret = original_fclose(stream);
+    if (ret == 0) {
+        TrafficCollector::enQueueClose(fd);
+    }
     return ret;
 }
 
 int (*original_close)(int fd);
 int my_close(int fd) {
-    TrafficCollector::enQueueClose(fd);
-    return original_close(fd);
+    int ret = original_close(fd);
+    if (ret == 0) {
+        TrafficCollector::enQueueClose(fd);
+    }
+    return ret;
 }
 
 static jobject nativeGetTrafficInfoMap(JNIEnv *env, jclass, jint type) {
@@ -225,18 +254,24 @@ void setFdStackTraceCall(const char* key) {
     env->DeleteLocalRef(jKey);
 }
 
-static void hookSocket(bool rxHook, bool txHook) {
+static void hookSocket(bool rxHook, bool txHook, bool willHookAllSoReadWrite) {
     if (HOOKED) {
         return;
     }
 
     xhook_grouped_register(HOOK_REQUEST_GROUPID_TRAFFIC, ".*\\.so$", "close",
                            (void *) my_close, (void **) (&original_close));
+    xhook_grouped_register(HOOK_REQUEST_GROUPID_TRAFFIC, ".*\\.so$", "fclose",
+                           (void *) my_fclose, (void **) (&original_fclose));
 
     if (rxHook) {
-
-        xhook_grouped_register(HOOK_REQUEST_GROUPID_TRAFFIC, "/data/.*", "read",
-                               (void *) my_read, (void **) (&original_read));
+        if (willHookAllSoReadWrite) {
+            xhook_grouped_register(HOOK_REQUEST_GROUPID_TRAFFIC, ".*\\.so$", "read",
+                                   (void *) my_read, (void **) (&original_read));
+        } else {
+            xhook_grouped_register(HOOK_REQUEST_GROUPID_TRAFFIC, "/data/.*\\.so$", "read",
+                                   (void *) my_read, (void **) (&original_read));
+        }
         xhook_grouped_register(HOOK_REQUEST_GROUPID_TRAFFIC, ".*\\.so$", "recv",
                                (void *) my_recv, (void **) (&original_recv));
         xhook_grouped_register(HOOK_REQUEST_GROUPID_TRAFFIC, ".*\\.so$", "recvfrom",
@@ -246,8 +281,13 @@ static void hookSocket(bool rxHook, bool txHook) {
     }
 
     if (txHook) {
-        xhook_grouped_register(HOOK_REQUEST_GROUPID_TRAFFIC, "/data/.*", "write",
-                               (void *) my_write, (void **) (&original_write));
+        if (willHookAllSoReadWrite) {
+            xhook_grouped_register(HOOK_REQUEST_GROUPID_TRAFFIC, ".*\\.so$", "write",
+                                   (void *) my_write, (void **) (&original_write));
+        } else {
+            xhook_grouped_register(HOOK_REQUEST_GROUPID_TRAFFIC, "/data/.*\\.so$", "write",
+                                   (void *) my_write, (void **) (&original_write));
+        }
         xhook_grouped_register(HOOK_REQUEST_GROUPID_TRAFFIC, ".*\\.so$", "send",
                                (void *) my_send, (void **) (&original_send));
         xhook_grouped_register(HOOK_REQUEST_GROUPID_TRAFFIC, ".*\\.so$", "sendto",
@@ -256,9 +296,19 @@ static void hookSocket(bool rxHook, bool txHook) {
                                (void *) my_sendmsg, (void **) (&original_sendmsg));
     }
 
+    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libc\\.so$", "read");
+    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libc\\.so$", "recv");
+    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libc\\.so$", "recvfrom");
+    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libc\\.so$", "recvmsg");
+
+    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libc\\.so$", "write");
+    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libc\\.so$", "send");
+    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libc\\.so$", "sendto");
+    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libc\\.so$", "sendmsg");
 
     xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, "/vendor/lib.*", nullptr);
     xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libinput\\.so$", nullptr);
+    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libmeminfo\\.so$", nullptr);
     xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libgui\\.so$", nullptr);
     xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libsensor\\.so$", nullptr);
     xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libutils\\.so$", nullptr);
@@ -270,7 +320,6 @@ static void hookSocket(bool rxHook, bool txHook) {
     xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libandroid_runtime\\.so$", nullptr);
     xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libnetd_client\\.so$", nullptr);
     xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libstatssocket\\.so$", nullptr);
-    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libc\\.so$", nullptr);
     xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libprofile\\.so$", nullptr);
     xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libbinder\\.so$", nullptr);
     xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libGLES_mali\\.so$", nullptr);
@@ -286,6 +335,9 @@ static void hookSocket(bool rxHook, bool txHook) {
     xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libandroidfw\\.so$", nullptr);
     xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libaudioclient\\.so$", nullptr);
     xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libjavacrypto\\.so$", nullptr);
+    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libwechatbacktrace\\.so$", nullptr);
+    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libmatrix-memoryhook\\.so$", nullptr);
+
 
     xhook_refresh(true);
     HOOKED = true;
@@ -299,18 +351,18 @@ static void ignoreSo(JNIEnv *env, jobjectArray ignoreSoFiles) {
     }
 }
 
-static void nativeInitMatrixTraffic(JNIEnv *env, jclass, jboolean rxEnable, jboolean txEnable, jboolean dumpStackTrace, jboolean dumpNativeBackTrace, jobjectArray ignoreSoFiles) {
+static void nativeInitMatrixTraffic(JNIEnv *env, jclass, jboolean rxEnable, jboolean txEnable, jboolean dumpStackTrace, jboolean dumpNativeBackTrace, jboolean willHookAllSoReadWrite, jobjectArray ignoreSoFiles) {
     TrafficCollector::startLoop(dumpStackTrace == JNI_TRUE);
     sDumpNativeBackTrace = (dumpNativeBackTrace == JNI_TRUE);
     ignoreSo(env, ignoreSoFiles);
-    hookSocket(rxEnable == JNI_TRUE, txEnable == JNI_TRUE);
+    hookSocket(rxEnable == JNI_TRUE, txEnable == JNI_TRUE, willHookAllSoReadWrite == JNI_TRUE);
 }
 
 template <typename T, std::size_t sz>
 static inline constexpr std::size_t NELEM(const T(&)[sz]) { return sz; }
 
 static const JNINativeMethod TRAFFIC_METHODS[] = {
-        {"nativeInitMatrixTraffic", "(ZZZZ[Ljava/lang/String;)V", (void *) nativeInitMatrixTraffic},
+        {"nativeInitMatrixTraffic", "(ZZZZZ[Ljava/lang/String;)V", (void *) nativeInitMatrixTraffic},
         {"nativeGetTrafficInfoMap", "(I)Ljava/util/HashMap;", (void *) nativeGetTrafficInfoMap},
         {"nativeClearTrafficInfo", "()V", (void *) nativeClearTrafficInfo},
         {"nativeReleaseMatrixTraffic", "()V", (void *) nativeReleaseMatrixTraffic},

@@ -15,7 +15,7 @@
 using namespace std;
 
 static mutex queueMutex;
-static lock_guard<mutex> lock(queueMutex);
+static condition_variable cv;
 static bool loopRunning = false;
 static bool startDetect = false;
 static int LAG_THRESHOLD;
@@ -37,7 +37,7 @@ void TouchEventTracer::touchRecv(int fd) {
         lastRecvTouchEventTimeStamp = 0;
     } else {
         lastRecvTouchEventTimeStamp = time(nullptr);
-        queueMutex.unlock();
+        cv.notify_one();
     }
 }
 
@@ -52,10 +52,10 @@ void TouchEventTracer::touchSendFinish(int fd) {
 
 
 void recvQueueLooper() {
-    queueMutex.lock();
+    unique_lock lk(queueMutex);
     while (loopRunning) {
         if (lastRecvTouchEventTimeStamp == 0) {
-            queueMutex.lock();
+            cv.wait(lk);
         } else {
             long lastRecvTouchEventTimeStampNow = lastRecvTouchEventTimeStamp;
             if (lastRecvTouchEventTimeStampNow <= 0) {
@@ -65,7 +65,7 @@ void recvQueueLooper() {
             if (time(nullptr) - lastRecvTouchEventTimeStampNow >= LAG_THRESHOLD && startDetect) {
                 lagFd = currentFd;
                 onTouchEventLagDumpTrace(currentFd);
-                queueMutex.lock();
+                cv.wait(lk);
             }
         }
     }

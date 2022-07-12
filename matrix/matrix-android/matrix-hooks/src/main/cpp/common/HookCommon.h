@@ -100,6 +100,7 @@
       xhook_grouped_ignore(group_id, ".*/libmatrix-opengl-leak\\.so$", NULL); \
       xhook_grouped_ignore(group_id, ".*/libmatrix-memguard\\.so$", NULL);\
       xhook_grouped_ignore(group_id, ".*/libTcpOptimizer\\.mobiledata\\.samsung\\.so$", NULL); \
+      xhook_grouped_ignore(group_id, ".*/libmatrix-traffic\\.so$", NULL);\
     } while (0)
 
 #include <vector>
