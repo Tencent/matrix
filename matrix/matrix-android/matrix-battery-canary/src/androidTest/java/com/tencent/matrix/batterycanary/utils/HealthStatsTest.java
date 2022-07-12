@@ -18,11 +18,11 @@ package com.tencent.matrix.batterycanary.utils;
 
 import android.app.Application;
 import android.content.Context;
+import android.hardware.Sensor;
+import android.hardware.SensorManager;
 import android.os.health.HealthStats;
-import android.os.health.PidHealthStats;
 import android.os.health.SystemHealthManager;
 import android.os.health.TimerStat;
-import android.os.health.UidHealthStats;
 
 import com.tencent.matrix.Matrix;
 
@@ -32,6 +32,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -138,6 +140,24 @@ public class HealthStatsTest {
                     Assert.assertTrue(item.getDataType() + ": " + entry.getKey() + "=" + entry.getValue().getCount() + "," + entry.getValue().getTime(), entry.getValue().getTime() >= 0);
                 }
             }
+        }
+    }
+
+    @Test
+    public void testGetSenorsHandle() throws NoSuchFieldException, IllegalAccessException, NoSuchMethodException, InvocationTargetException {
+        SensorManager sm = (SensorManager) mContext.getSystemService(Context.SENSOR_SERVICE);
+        Assert.assertNotNull(sm);
+        List<Sensor> sensorList = sm.getSensorList(Sensor.TYPE_ALL);
+        Assert.assertFalse(sensorList.isEmpty());
+
+        for (Sensor item : sensorList) {
+            String name = item.getName();
+            int id = item.getId();
+            int type = item.getType();
+            float power = item.getPower();
+            Method method = item.getClass().getDeclaredMethod("getHandle");
+            int handle = (int) method.invoke(item);
+            Assert.assertTrue(handle > 0);
         }
     }
 }

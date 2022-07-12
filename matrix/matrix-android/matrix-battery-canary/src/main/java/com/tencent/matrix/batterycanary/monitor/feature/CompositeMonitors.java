@@ -187,8 +187,14 @@ public class CompositeMonitors {
         }
         List<int[]> cpuFreqSteps = BatteryCanaryUtil.getCpuFreqSteps();
         long sumMax = 0;
-        for (int[] item : cpuFreqSteps) {
-            sumMax += item[item.length - 1];
+        for (int[] steps : cpuFreqSteps) {
+            int max = 0;
+            for (int item : steps) {
+                if (item > max) {
+                    max = item;
+                }
+            }
+            sumMax += max;
         }
         if (sumMax <= 0) {
             return -1;

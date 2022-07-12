@@ -46,6 +46,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import androidx.test.core.app.ApplicationProvider;
@@ -149,8 +151,14 @@ public class Examples {
                 Assert.assertNotNull(result);
                 List<int[]> cpuFreqSteps = BatteryCanaryUtil.getCpuFreqSteps();
                 long sumMax = 0;
-                for (int[] item : cpuFreqSteps) {
-                    sumMax += item[item.length - 1];
+                for (int[] steps : cpuFreqSteps) {
+                    int max = 0;
+                    for (int item : steps) {
+                        if (item > max) {
+                            max = item;
+                        }
+                    }
+                    sumMax += max;
                 }
                 Assert.assertTrue("cpuFreqSumAvg: " + result.sampleAvg + "vs cpuFreqSumMax: " + sumMax, sumMax >= result.sampleAvg);
                 int cpuLoadNormalized  = (int) (cpuLoad * result.sampleAvg / sumMax);
