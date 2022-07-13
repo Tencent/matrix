@@ -150,6 +150,8 @@ public class Examples {
                 MonitorFeature.Snapshot.Sampler.Result result = compositor.getSamplingResult(DeviceStatMonitorFeature.CpuFreqSnapshot.class);
                 Assert.assertNotNull(result);
                 List<int[]> cpuFreqSteps = BatteryCanaryUtil.getCpuFreqSteps();
+                Assert.assertEquals(BatteryCanaryUtil.getCpuCoreNum(), cpuFreqSteps.size());
+
                 long sumMax = 0;
                 for (int[] steps : cpuFreqSteps) {
                     int max = 0;

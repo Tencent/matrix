@@ -179,13 +179,18 @@ public class CompositeMonitors {
     public int getNorCpuLoad() {
         int cpuLoad = getCpuLoad();
         if (cpuLoad == -1) {
+            MatrixLog.w(TAG, "cpu is invalid");
             return -1;
         }
         MonitorFeature.Snapshot.Sampler.Result result = getSamplingResult(DeviceStatMonitorFeature.CpuFreqSnapshot.class);
         if (result == null) {
+            MatrixLog.w(TAG, "cpufreq is null");
             return -1;
         }
         List<int[]> cpuFreqSteps = BatteryCanaryUtil.getCpuFreqSteps();
+        if (cpuFreqSteps.size() != BatteryCanaryUtil.getCpuCoreNum()) {
+            MatrixLog.w(TAG, "cpuCore is invalid: " + cpuFreqSteps.size() + " vs " + BatteryCanaryUtil.getCpuCoreNum());
+        }
         long sumMax = 0;
         for (int[] steps : cpuFreqSteps) {
             int max = 0;
@@ -197,6 +202,7 @@ public class CompositeMonitors {
             sumMax += max;
         }
         if (sumMax <= 0) {
+            MatrixLog.w(TAG, "cpufreq sum is invalid: " + sumMax);
             return -1;
         }
         if (result.sampleAvg >= sumMax) {
