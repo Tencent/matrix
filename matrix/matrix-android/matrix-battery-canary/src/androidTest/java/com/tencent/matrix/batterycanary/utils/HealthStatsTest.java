@@ -23,8 +23,14 @@ import android.hardware.SensorManager;
 import android.os.health.HealthStats;
 import android.os.health.SystemHealthManager;
 import android.os.health.TimerStat;
+import android.os.health.UidHealthStats;
 
 import com.tencent.matrix.Matrix;
+import com.tencent.matrix.batterycanary.BatteryCanary;
+import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
+import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
+import com.tencent.matrix.batterycanary.monitor.feature.CpuStatFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -32,15 +38,21 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import java.io.IOException;
+import java.io.PipedWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
+
+import static com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil.JIFFY_MILLIS;
+import static com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil.ONE_HOR;
 
 
 @RunWith(AndroidJUnit4.class)
@@ -61,6 +73,36 @@ public class HealthStatsTest {
     public void shutDown() {
     }
 
+    private BatteryMonitorCore mockMonitor() {
+        BatteryMonitorConfig config = new BatteryMonitorConfig.Builder()
+                .enable(CpuStatFeature.class)
+                .enableBuiltinForegroundNotify(false)
+                .enableForegroundMode(false)
+                .wakelockTimeout(1000)
+                .greyJiffiesTime(100)
+                .foregroundLoopCheckTime(1000)
+                .build();
+        return new BatteryMonitorCore(config);
+    }
+
+
+    @Test
+    public void testGetSenorsHandle() throws NoSuchFieldException, IllegalAccessException, NoSuchMethodException, InvocationTargetException {
+        SensorManager sm = (SensorManager) mContext.getSystemService(Context.SENSOR_SERVICE);
+        Assert.assertNotNull(sm);
+        List<Sensor> sensorList = sm.getSensorList(Sensor.TYPE_ALL);
+        Assert.assertFalse(sensorList.isEmpty());
+
+        for (Sensor item : sensorList) {
+            String name = item.getName();
+            int id = item.getId();
+            int type = item.getType();
+            float power = item.getPower();
+            Method method = item.getClass().getDeclaredMethod("getHandle");
+            int handle = (int) method.invoke(item);
+            Assert.assertTrue(handle > 0);
+        }
+    }
 
     @Test
     public void testLiterateStats() {
@@ -144,20 +186,392 @@ public class HealthStatsTest {
     }
 
     @Test
-    public void testGetSenorsHandle() throws NoSuchFieldException, IllegalAccessException, NoSuchMethodException, InvocationTargetException {
-        SensorManager sm = (SensorManager) mContext.getSystemService(Context.SENSOR_SERVICE);
-        Assert.assertNotNull(sm);
-        List<Sensor> sensorList = sm.getSensorList(Sensor.TYPE_ALL);
-        Assert.assertFalse(sensorList.isEmpty());
+    public void testEstimateCpuPower() throws IOException {
+        PowerProfile powerProfile = PowerProfile.init(mContext);
+        Assert.assertNotNull(powerProfile);
+        Assert.assertTrue(powerProfile.isSupported());
 
-        for (Sensor item : sensorList) {
-            String name = item.getName();
-            int id = item.getId();
-            int type = item.getType();
-            float power = item.getPower();
-            Method method = item.getClass().getDeclaredMethod("getHandle");
-            int handle = (int) method.invoke(item);
-            Assert.assertTrue(handle > 0);
+        double cpuActivePower = powerProfile.getAveragePower("cpu.active");
+        Assert.assertTrue(cpuActivePower > 0);
+        UsageBasedPowerEstimator etmCpuActivePower = new UsageBasedPowerEstimator(cpuActivePower);
+    }
+
+    @Test
+    public void testEstimateCpuPowerByHealthStats() throws IOException {
+        SystemHealthManager manager = (SystemHealthManager) mContext.getSystemService(Context.SYSTEM_HEALTH_SERVICE);
+        HealthStats healthStats = manager.takeMyUidSnapshot();
+        Assert.assertNotNull(healthStats);
+
+        if (healthStats.hasStats(UidHealthStats.MEASUREMENT_CPU_POWER_MAMS)) {
+            double powerMah = healthStats.getMeasurement(UidHealthStats.MEASUREMENT_CPU_POWER_MAMS) / (1000.0 * 60 * 60);
+            Assert.assertTrue(powerMah >= 0);
         }
     }
+
+    @Test
+    public void testEstimateCpuPowerByCpuStats() throws IOException {
+        CpuStatFeature feature = new CpuStatFeature();
+        feature.configure(mockMonitor());
+        feature.onTurnOn();
+
+        Assert.assertTrue(feature.isSupported());
+        CpuStatFeature.CpuStateSnapshot cpuStateSnapshot = feature.currentCpuStateSnapshot();
+        Assert.assertTrue(cpuStateSnapshot.procCpuCoreStates.size() > 0);
+
+        SystemHealthManager manager = (SystemHealthManager) mContext.getSystemService(Context.SYSTEM_HEALTH_SERVICE);
+        HealthStats healthStats = manager.takeMyUidSnapshot();
+        Assert.assertNotNull(healthStats);
+
+        healthStats.hasMeasurement(UidHealthStats.MEASUREMENT_USER_CPU_TIME_MS);
+        healthStats.hasMeasurement(UidHealthStats.MEASUREMENT_SYSTEM_CPU_TIME_MS);
+        long cpuTimeMs = healthStats.getMeasurement(UidHealthStats.MEASUREMENT_USER_CPU_TIME_MS) +  healthStats.getMeasurement(UidHealthStats.MEASUREMENT_SYSTEM_CPU_TIME_MS);
+        double powerMah = estimateCpuPowerByCpuStats(cpuTimeMs);
+        Assert.assertTrue(powerMah >= 0);
+    }
+
+    private static double estimateCpuPowerByCpuStats(long cpuTimeMs) {
+        CpuStatFeature feat = BatteryCanary.getMonitorFeature(CpuStatFeature.class);
+        if (feat != null && feat.isSupported()) {
+            CpuStatFeature.CpuStateSnapshot cpuStateSnapshot = feat.currentCpuStateSnapshot();
+            if (cpuStateSnapshot != null) {
+                long jiffySum = 0;
+                for (MonitorFeature.Snapshot.Entry.ListEntry<MonitorFeature.Snapshot.Entry.DigitEntry<Long>> stepJiffies : cpuStateSnapshot.procCpuCoreStates) {
+                    for (MonitorFeature.Snapshot.Entry.DigitEntry<Long> item : stepJiffies.getList()) {
+                        jiffySum += item.get();
+                    }
+                }
+                double powerMah = 0;
+                for (int i = 0; i < cpuStateSnapshot.procCpuCoreStates.size(); i++) {
+                    List<MonitorFeature.Snapshot.Entry.DigitEntry<Long>> stepJiffies = cpuStateSnapshot.procCpuCoreStates.get(i).getList();
+                    for (int j = 0; j < stepJiffies.size(); j++) {
+                        long jiffy = stepJiffies.get(j).get();
+                        long figuredCpuTimeMs = (long) ((jiffy * 1.0f / jiffySum) * cpuTimeMs);
+                        double powerMa = feat.getPowerProfile().getAveragePowerForCpuCore(i, j);
+                        powerMah += new UsageBasedPowerEstimator(powerMa).calculatePower(figuredCpuTimeMs);
+                    }
+                }
+                return powerMah;
+            }
+        }
+        return 0;
+    }
+
+    @Test
+    public void testEstimateMemoryPower() throws IOException {
+    }
+
+    @Test
+    public void testEstimateWakelockPower() throws IOException {
+        PowerProfile powerProfile = PowerProfile.init(mContext);
+        Assert.assertNotNull(powerProfile);
+        Assert.assertTrue(powerProfile.isSupported());
+
+        Assert.assertTrue(powerProfile.getAveragePower("cpu.idle") > 0);
+
+        SystemHealthManager manager = (SystemHealthManager) mContext.getSystemService(Context.SYSTEM_HEALTH_SERVICE);
+        HealthStats healthStats = manager.takeMyUidSnapshot();
+        Assert.assertNotNull(healthStats);
+
+        double powerMah = 0;
+        if (healthStats.hasTimers(UidHealthStats.TIMERS_WAKELOCKS_PARTIAL)) {
+            Map<String, TimerStat> timers = healthStats.getTimers(UidHealthStats.TIMERS_WAKELOCKS_PARTIAL);
+            long timeMs = 0;
+            for (TimerStat item : timers.values()) {
+                timeMs += item.getTime();
+            }
+            double powerMa = powerProfile.getAveragePower("cpu.idle");
+            powerMah += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
+        }
+        Assert.assertTrue(powerMah >= 0);
+    }
+
+    @Test
+    public void testEstimateMobileRadioPower() throws IOException {
+        PowerProfile powerProfile = PowerProfile.init(mContext);
+        Assert.assertNotNull(powerProfile);
+        Assert.assertTrue(powerProfile.isSupported());
+
+        SystemHealthManager manager = (SystemHealthManager) mContext.getSystemService(Context.SYSTEM_HEALTH_SERVICE);
+        HealthStats healthStats = manager.takeMyUidSnapshot();
+        Assert.assertNotNull(healthStats);
+
+        if (healthStats.hasMeasurement(UidHealthStats.MEASUREMENT_MOBILE_POWER_MAMS)) {
+            double powerMahByHealthStats = healthStats.getMeasurement(UidHealthStats.MEASUREMENT_MOBILE_POWER_MAMS) / (1000.0 * 60 * 60);
+            Assert.assertTrue(powerMahByHealthStats >= 0);
+        }
+
+        double powerMahByRadio = 0;
+        if (powerProfile.getAveragePower("radio.active") > 0) {
+            if (healthStats.hasTimer(UidHealthStats.TIMER_MOBILE_RADIO_ACTIVE)) {
+                long timeMs = healthStats.getTimerTime(UidHealthStats.TIMER_MOBILE_RADIO_ACTIVE);
+                double powerMa = powerProfile.getAveragePower("radio.active");
+                powerMahByRadio += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
+            }
+        }
+        Assert.assertTrue(powerMahByRadio >= 0);
+
+        double powerMahByTime = 0;
+        if (healthStats.hasMeasurement(UidHealthStats.MEASUREMENT_MOBILE_IDLE_MS)) {
+            long timeMs = healthStats.getMeasurement(UidHealthStats.MEASUREMENT_MOBILE_IDLE_MS);
+            double powerMa = powerProfile.getAveragePower("modem.controller.idle");
+            powerMahByTime += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
+        }
+        if (healthStats.hasMeasurement(UidHealthStats.MEASUREMENT_MOBILE_RX_MS)) {
+            long timeMs = healthStats.getMeasurement(UidHealthStats.MEASUREMENT_MOBILE_RX_MS);
+            double powerMa = powerProfile.getAveragePower("modem.controller.rx");
+            powerMahByTime += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
+        }
+        if (healthStats.hasMeasurement(UidHealthStats.MEASUREMENT_MOBILE_TX_MS)) {
+            long timeMs = healthStats.getMeasurement(UidHealthStats.MEASUREMENT_MOBILE_TX_MS);
+            double powerMa = powerProfile.getAveragePower("modem.controller.tx");
+            powerMahByTime += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
+        }
+        Assert.assertTrue(powerMahByTime >= 0);
+    }
+
+    @Test
+    public void testEstimateWifiPower() throws IOException {
+        PowerProfile powerProfile = PowerProfile.init(mContext);
+        Assert.assertNotNull(powerProfile);
+        Assert.assertTrue(powerProfile.isSupported());
+
+
+        double wifiIdlePower = powerProfile.getAveragePower("wifi.controller.idle");
+        Assert.assertTrue(wifiIdlePower > 0);
+        UsageBasedPowerEstimator etmWifiIdlePower = new UsageBasedPowerEstimator(wifiIdlePower);
+        double wifiRxPower = powerProfile.getAveragePower("wifi.controller.rx");
+        Assert.assertTrue(wifiRxPower > 0);
+        UsageBasedPowerEstimator etmWifiRxPower = new UsageBasedPowerEstimator(wifiIdlePower);
+        double wifiTxPower = powerProfile.getAveragePower("wifi.controller.tx");
+        Assert.assertTrue(wifiTxPower > 0);
+        UsageBasedPowerEstimator etmWifiTxPower = new UsageBasedPowerEstimator(wifiIdlePower);
+
+        SystemHealthManager manager = (SystemHealthManager) mContext.getSystemService(Context.SYSTEM_HEALTH_SERVICE);
+        HealthStats healthStats = manager.takeMyUidSnapshot();
+        Assert.assertNotNull(healthStats);
+
+        if (healthStats.hasMeasurement(UidHealthStats.MEASUREMENT_WIFI_POWER_MAMS)) {
+            double powerMahByHealthStats = healthStats.getMeasurement(UidHealthStats.MEASUREMENT_WIFI_POWER_MAMS) / (1000.0 * 60 * 60);
+            Assert.assertTrue(powerMahByHealthStats >= 0);
+        }
+
+        double powerMah = 0;
+        if (healthStats.hasMeasurement(UidHealthStats.MEASUREMENT_WIFI_IDLE_MS)) {
+            long idleMs = healthStats.getMeasurement(UidHealthStats.MEASUREMENT_WIFI_IDLE_MS);
+            powerMah += etmWifiIdlePower.calculatePower(idleMs);
+        }
+        if (healthStats.hasMeasurement(UidHealthStats.MEASUREMENT_WIFI_RX_MS)) {
+            long rxMs = healthStats.getMeasurement(UidHealthStats.MEASUREMENT_WIFI_RX_MS);
+            powerMah += etmWifiRxPower.calculatePower(rxMs);
+        }
+        if (healthStats.hasMeasurement(UidHealthStats.MEASUREMENT_WIFI_TX_MS)) {
+            long txMs = healthStats.getMeasurement(UidHealthStats.MEASUREMENT_WIFI_TX_MS);
+            powerMah += etmWifiTxPower.calculatePower(txMs);
+        }
+        Assert.assertTrue(powerMah >= 0);
+    }
+
+    @Test
+    public void testEstimateBlueToothPower() throws IOException {
+        PowerProfile powerProfile = PowerProfile.init(mContext);
+        Assert.assertNotNull(powerProfile);
+        Assert.assertTrue(powerProfile.isSupported());
+
+        Assert.assertTrue(powerProfile.getAveragePower("bluetooth.controller.idle") > 0);
+        Assert.assertTrue(powerProfile.getAveragePower("bluetooth.controller.rx") > 0);
+        Assert.assertTrue(powerProfile.getAveragePower("bluetooth.controller.tx") > 0);
+
+        SystemHealthManager manager = (SystemHealthManager) mContext.getSystemService(Context.SYSTEM_HEALTH_SERVICE);
+        HealthStats healthStats = manager.takeMyUidSnapshot();
+        Assert.assertNotNull(healthStats);
+
+        if (healthStats.hasMeasurement(UidHealthStats.MEASUREMENT_BLUETOOTH_POWER_MAMS)) {
+            double powerMahByHealthStats = healthStats.getMeasurement(UidHealthStats.MEASUREMENT_BLUETOOTH_POWER_MAMS) / (1000.0 * 60 * 60);
+            Assert.assertTrue(powerMahByHealthStats >= 0);
+        }
+
+        double powerMah = 0;
+        if (healthStats.hasMeasurement(UidHealthStats.MEASUREMENT_BLUETOOTH_IDLE_MS)) {
+            long timeMs = healthStats.getMeasurement(UidHealthStats.MEASUREMENT_BLUETOOTH_IDLE_MS);
+            double powerMa = powerProfile.getAveragePower("bluetooth.controller.idle");
+            powerMah += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
+        }
+        if (healthStats.hasMeasurement(UidHealthStats.MEASUREMENT_BLUETOOTH_RX_MS)) {
+            long timeMs = healthStats.getMeasurement(UidHealthStats.MEASUREMENT_BLUETOOTH_RX_MS);
+            double powerMa = powerProfile.getAveragePower("bluetooth.controller.rx");
+            powerMah += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
+        }
+        if (healthStats.hasMeasurement(UidHealthStats.MEASUREMENT_BLUETOOTH_TX_MS)) {
+            long timeMs = healthStats.getMeasurement(UidHealthStats.MEASUREMENT_BLUETOOTH_TX_MS);
+            double powerMa = powerProfile.getAveragePower("bluetooth.controller.tx");
+            powerMah += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
+        }
+        Assert.assertTrue(powerMah >= 0);
+    }
+
+    @Test
+    public void testEstimateGpsPower() throws IOException {
+        PowerProfile powerProfile = PowerProfile.init(mContext);
+        Assert.assertNotNull(powerProfile);
+        Assert.assertTrue(powerProfile.isSupported());
+
+        double powerMa = 0;
+        if (powerProfile.getAveragePower("gps.voltage") > 0) {
+            powerMa = powerProfile.getAveragePower("gps.on");
+            if (powerMa <= 0) {
+                int num = powerProfile.getNumElements("gps.signalqualitybased");
+                double sumMa = 0;
+                for (int i = 0; i < num; i++) {
+                    sumMa += powerProfile.getAveragePower("gps.signalqualitybased", i);
+                }
+                powerMa = sumMa / num;
+            }
+        }
+
+        Assert.assertTrue(powerMa > 0);
+
+        SystemHealthManager manager = (SystemHealthManager) mContext.getSystemService(Context.SYSTEM_HEALTH_SERVICE);
+        HealthStats healthStats = manager.takeMyUidSnapshot();
+        Assert.assertNotNull(healthStats);
+
+        double powerMah = 0;
+        if (healthStats.hasTimer(UidHealthStats.TIMER_GPS_SENSOR)) {
+            long timeMs = healthStats.getTimerTime(UidHealthStats.TIMER_GPS_SENSOR);
+            powerMah += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
+        }
+        Assert.assertTrue(powerMah >= 0);
+    }
+
+    @Test
+    public void testEstimateSensorsPower() throws InvocationTargetException, IllegalAccessException, NoSuchMethodException {
+        SystemHealthManager manager = (SystemHealthManager) mContext.getSystemService(Context.SYSTEM_HEALTH_SERVICE);
+        HealthStats healthStats = manager.takeMyUidSnapshot();
+        Assert.assertNotNull(healthStats);
+
+        double powerMah = 0;
+        if (healthStats.hasTimers(UidHealthStats.TIMERS_SENSORS)) {
+            SensorManager sm = (SensorManager) mContext.getSystemService(Context.SENSOR_SERVICE);
+            Assert.assertNotNull(sm);
+            List<Sensor> sensorList = sm.getSensorList(Sensor.TYPE_ALL);
+            Assert.assertFalse(sensorList.isEmpty());
+
+            Map<String, Sensor> sensorMap = new HashMap<>();
+            for (Sensor item : sensorList) {
+                Method method = item.getClass().getDeclaredMethod("getHandle");
+                int handle = (int) method.invoke(item);
+                sensorMap.put(String.valueOf(handle), item);
+            }
+
+            Map<String, TimerStat> timers = healthStats.getTimers(UidHealthStats.TIMERS_SENSORS);
+            for (Map.Entry<String, TimerStat> item : timers.entrySet()) {
+                String handle = item.getKey();
+                long timeMs = item.getValue().getTime();
+                if (handle.equals("-10000")) {
+                    continue; // skip GPS Sensors
+                }
+                Sensor sensor = sensorMap.get(handle);
+                if (sensor != null) {
+                    powerMah += new UsageBasedPowerEstimator(sensor.getPower()).calculatePower(timeMs);
+                }
+            }
+        }
+        Assert.assertTrue(powerMah >= 0);
+    }
+
+    @Test
+    public void testEstimateMediaAndHwPower() throws IOException {
+        PowerProfile powerProfile = PowerProfile.init(mContext);
+        Assert.assertNotNull(powerProfile);
+        Assert.assertTrue(powerProfile.isSupported());
+
+
+        SystemHealthManager manager = (SystemHealthManager) mContext.getSystemService(Context.SYSTEM_HEALTH_SERVICE);
+        HealthStats healthStats = manager.takeMyUidSnapshot();
+        Assert.assertNotNull(healthStats);
+
+        double powerMah = 0;
+
+        // Camera
+        Assert.assertTrue(powerProfile.getAveragePower("camera.avg") > 0);
+        if (healthStats.hasTimer(UidHealthStats.TIMER_CAMERA)) {
+            long timeMs = healthStats.getTimerTime(UidHealthStats.TIMER_CAMERA);
+            double powerMa = powerProfile.getAveragePower("camera.avg");
+            powerMah += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
+        }
+        // Flash Light
+        Assert.assertTrue(powerProfile.getAveragePower("camera.flashlight") > 0);
+        if (healthStats.hasTimer(UidHealthStats.TIMER_FLASHLIGHT)) {
+            long timeMs = healthStats.getTimerTime(UidHealthStats.TIMER_FLASHLIGHT);
+            double powerMa = powerProfile.getAveragePower("camera.flashlight");
+            powerMah += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
+        }
+        // Media
+        Assert.assertTrue(powerProfile.getAveragePower("audio") > 0);
+        Assert.assertTrue(powerProfile.getAveragePower("video") > 0);
+        if (healthStats.hasTimer(UidHealthStats.TIMER_AUDIO)) {
+            long timeMs = healthStats.getTimerTime(UidHealthStats.TIMER_AUDIO);
+            double powerMa = powerProfile.getAveragePower("audio");
+            powerMah += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
+        }
+        if (healthStats.hasTimer(UidHealthStats.TIMER_VIDEO)) {
+            long timeMs = healthStats.getTimerTime(UidHealthStats.TIMER_VIDEO);
+            double powerMa = powerProfile.getAveragePower("video");
+            powerMah += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
+        }
+        Assert.assertTrue(powerMah >= 0);
+    }
+
+    @Test
+    public void testEstimateScreenPower() throws IOException {
+        PowerProfile powerProfile = PowerProfile.init(mContext);
+        Assert.assertNotNull(powerProfile);
+        Assert.assertTrue(powerProfile.isSupported());
+
+        Assert.assertTrue(powerProfile.getAveragePower("screen.on") > 0);
+        Assert.assertTrue(powerProfile.getAveragePower("screen.full") > 0);
+
+        SystemHealthManager manager = (SystemHealthManager) mContext.getSystemService(Context.SYSTEM_HEALTH_SERVICE);
+        HealthStats healthStats = manager.takeMyUidSnapshot();
+        Assert.assertNotNull(healthStats);
+
+        Assert.assertTrue(healthStats.hasMeasurement(UidHealthStats.MEASUREMENT_REALTIME_BATTERY_MS));
+        Assert.assertTrue(healthStats.hasMeasurement(UidHealthStats.MEASUREMENT_REALTIME_SCREEN_OFF_BATTERY_MS));
+
+        long totalTimeMs = healthStats.getMeasurement(UidHealthStats.MEASUREMENT_REALTIME_BATTERY_MS);
+        long screenOffTimeMs = healthStats.getMeasurement(UidHealthStats.MEASUREMENT_REALTIME_SCREEN_OFF_BATTERY_MS);
+        Assert.assertTrue(totalTimeMs >= screenOffTimeMs);
+        long screenOnTimeMs = totalTimeMs - screenOffTimeMs;
+
+        double powerMah = 0;
+        powerMah += new UsageBasedPowerEstimator(powerProfile.getAveragePower("screen.on")).calculatePower(screenOnTimeMs);
+
+        Assert.assertTrue(powerMah > 0);
+    }
+
+    @Test
+    public void testEstimateSystemServicePower() throws IOException {
+    }
+
+    @Test
+    public void testEstimateIdlePower() throws IOException {
+    }
+
+
+    public static class UsageBasedPowerEstimator {
+        private static final double MILLIS_IN_HOUR = 1000.0 * 60 * 60;
+        private final double mAveragePowerMahPerMs;
+
+        public UsageBasedPowerEstimator(double averagePowerMilliAmp) {
+            mAveragePowerMahPerMs = averagePowerMilliAmp / MILLIS_IN_HOUR;
+        }
+
+        public boolean isSupported() {
+            return mAveragePowerMahPerMs != 0;
+        }
+
+        public double calculatePower(long durationMs) {
+            return mAveragePowerMahPerMs * durationMs;
+        }
+    }
+
 }
