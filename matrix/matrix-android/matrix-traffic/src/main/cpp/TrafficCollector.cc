@@ -43,7 +43,6 @@ static condition_variable cv;
 
 static bool loopRunning = false;
 static bool sDumpStackTrace = false;
-static bool sLookupIpAddress = false;
 
 static unordered_set<int> activeFdSet;
 static shared_mutex activeFdSetMutex;
@@ -58,42 +57,7 @@ static shared_mutex rxTrafficInfoMapLock;
 static shared_mutex txTrafficInfoMapLock;
 
 static map<int, string> fdThreadNameMap;
-static map<int, string> fdIpAddressMap;
 static shared_mutex fdThreadNameMapSharedLock;
-static mutex fdIpAddressMapLock;
-
-string getIpAddressFromAddr(sockaddr* _addr) {
-    string ipAddress;
-    if (_addr != nullptr) {
-        if ((int)_addr->sa_family == AF_LOCAL) {
-            ipAddress = _addr->sa_data;
-            ipAddress.append(":LOCAL");
-        } else if ((int)_addr->sa_family == AF_INET) {
-            auto *sin4 = reinterpret_cast<sockaddr_in*>(_addr);
-            char ipv4str[INET_ADDRSTRLEN];
-            if (inet_ntop(AF_INET, &(sin4->sin_addr), ipv4str, INET6_ADDRSTRLEN) != nullptr) {
-                ipAddress = ipv4str;
-                int port = ntohs(sin4->sin_port);
-                if (port != -1) {
-                    ipAddress.append(":");
-                    ipAddress.append(to_string(port));
-                }
-            }
-        } else if ((int)_addr->sa_family == AF_INET6) {
-            auto *sin6 = reinterpret_cast<sockaddr_in6 *>(_addr);
-            char ipv6str[INET6_ADDRSTRLEN];
-            if (inet_ntop(AF_INET6, &(sin6->sin6_addr), ipv6str, INET6_ADDRSTRLEN) != nullptr) {
-                ipAddress = ipv6str;
-                int port = ntohs(sin6->sin6_port);
-                if (port != -1) {
-                    ipAddress.append(":");
-                    ipAddress.append(to_string(port));
-                }
-            }
-        }
-    }
-    return ipAddress;
-}
 
 int isNetworkSocketFd(int fd) {
     struct sockaddr c;
@@ -107,28 +71,12 @@ int isNetworkSocketFd(int fd) {
     return 0;
 }
 
-void saveIpAddress(int fd, sockaddr* addr) {
-    fdIpAddressMapLock.lock();
-    if (fdIpAddressMap.count(fd) == 0) {
-        fdIpAddressMap[fd] = getIpAddressFromAddr(addr);
-    }
-    fdIpAddressMapLock.unlock();
-}
-
-string getIpAddress(int fd) {
-    fdIpAddressMapLock.lock();
-    string ipAddress = fdIpAddressMap[fd];
-    fdIpAddressMapLock.unlock();
-    return ipAddress;
-}
-
-
 string saveFdInfo(int fd) {
     fdThreadNameMapSharedLock.lock_shared();
     if (fdThreadNameMap.count(fd) == 0) {
         fdThreadNameMapSharedLock.unlock_shared();
 
-        auto threadName = new char[15];
+        char threadName[15];
         prctl(PR_GET_NAME, threadName);
         char key[32];
         snprintf(key, sizeof(key), "%d-%s", fd, threadName);
@@ -203,7 +151,6 @@ void appendTxTraffic(int fd, long len) {
     txTrafficInfoMapLock.unlock();
 }
 
-
 void loop() {
     unique_lock lk(queueMutex);
     while (loopRunning) {
@@ -213,7 +160,18 @@ void loop() {
             shared_ptr<TrafficMsg> msg = msgQueue.front();
             int fd = msg->fd;
             int type = msg->type;
-            if (type != MSG_TYPE_CLOSE) {
+            if (type == MSG_TYPE_CLOSE) {
+                if (activeFdSet.count(fd) > 0) {
+                    fdThreadNameMapSharedLock.lock();
+                    fdThreadNameMap.erase(fd);
+                    fdThreadNameMapSharedLock.unlock();
+
+                    activeFdSetMutex.lock();
+                    activeFdSet.erase(fd);
+                    activeFdSetMutex.unlock();
+                }
+                invalidFdSet.erase(fd);
+            } else {
                 if (activeFdSet.count(fd) == 0 && invalidFdSet.count(fd) == 0) {
                     if (!isNetworkSocketFd(fd)) {
                         invalidFdSet.insert(fd);
@@ -226,33 +184,20 @@ void loop() {
                         activeFdSetMutex.unlock();
                     }
                 }
-            }
-
-            if (type >= MSG_TYPE_READ && type <= MSG_TYPE_RECVMSG) {
-                if (activeFdSet.count(fd) > 0 && invalidFdSet.count(fd) == 0) {
-                    appendRxTraffic(fd, msg->len);
+                if (type >= MSG_TYPE_READ && type <= MSG_TYPE_RECVMSG) {
+                    if (activeFdSet.count(fd) > 0 && invalidFdSet.count(fd) == 0) {
+                        appendRxTraffic(fd, msg->len);
+                    }
+                } else if (type >= MSG_TYPE_WRITE && type <= MSG_TYPE_SENDMSG) {
+                    if (activeFdSet.count(fd) > 0 && invalidFdSet.count(fd) == 0) {
+                        appendTxTraffic(fd, msg->len);
+                    }
                 }
-            } else if (type >= MSG_TYPE_WRITE && type <= MSG_TYPE_SENDMSG) {
-                if (activeFdSet.count(fd) > 0 && invalidFdSet.count(fd) == 0) {
-                    appendTxTraffic(fd, msg->len);
-                }
-            } else if (type == MSG_TYPE_CLOSE) {
-                if (activeFdSet.count(fd) > 0) {
-                    fdThreadNameMapSharedLock.lock();
-                    fdThreadNameMap.erase(fd);
-                    fdThreadNameMapSharedLock.unlock();
-
-                    activeFdSetMutex.lock();
-                    activeFdSet.erase(fd);
-                    activeFdSetMutex.unlock();
-                }
-                invalidFdSet.erase(fd);
             }
             msgQueue.pop();
         }
     }
 }
-
 
 void TrafficCollector::startLoop(bool dumpStackTrace) {
     if (loopRunning) {
