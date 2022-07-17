@@ -288,23 +288,13 @@ void makeNativeStack(wechat_backtrace::Backtrace* backtrace, char *&stack) {
     strcpy(stack, full_stack_builder.str().c_str());
 }
 
-static const char* getNativeBacktrace() {
-    wechat_backtrace::Backtrace *backtracePrt;
-
+static char* getNativeBacktrace() {
     wechat_backtrace::Backtrace backtrace_zero = BACKTRACE_INITIALIZER(
             16);
-
-
-    backtracePrt = new wechat_backtrace::Backtrace;
-    backtracePrt->max_frames = backtrace_zero.max_frames;
-    backtracePrt->frame_size = backtrace_zero.frame_size;
-    backtracePrt->frames = backtrace_zero.frames;
-
-    wechat_backtrace::unwind_adapter(backtracePrt->frames.get(), backtracePrt->max_frames,
-                                     backtracePrt->frame_size);
-
+    wechat_backtrace::unwind_adapter(backtrace_zero.frames.get(), backtrace_zero.max_frames,
+                                     backtrace_zero.frame_size);
     char* nativeStack;
-    makeNativeStack(backtracePrt, nativeStack);
+    makeNativeStack(&backtrace_zero, nativeStack);
     return nativeStack;
 }
 
@@ -317,9 +307,11 @@ int my_pthread_key_create(pthread_key_t *key, void (*destructor)(void*)) {
     Dl_info dl_info;
     dladdr(__caller_addr, &dl_info);
     const char* soName = dl_info.dli_fname;
+    char* backtrace = getNativeBacktrace();
     if (!strstr(soName, "libc.so")) {
-        pthreadKeyCallback(0, ret, keySeq, soName, getNativeBacktrace());
+        pthreadKeyCallback(0, ret, keySeq, soName, backtrace);
     }
+    delete[] backtrace;
     return ret;
 }
 
@@ -331,9 +323,11 @@ int my_pthread_key_delete(pthread_key_t key) {
     Dl_info dl_info;
     dladdr(__caller_addr, &dl_info);
     const char* soName = dl_info.dli_fname;
+    char* backtrace = getNativeBacktrace();
     if (!strstr(soName, "libc.so")) {
-        pthreadKeyCallback(1, ret, keySeq, soName, getNativeBacktrace());
+        pthreadKeyCallback(1, ret, keySeq, soName, backtrace);
     }
+    delete[] backtrace;
     return 0;
 }
 
