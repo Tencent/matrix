@@ -231,6 +231,9 @@ public class HealthStatsTest {
         long cpuTimeMs = healthStats.getMeasurement(UidHealthStats.MEASUREMENT_USER_CPU_TIME_MS) +  healthStats.getMeasurement(UidHealthStats.MEASUREMENT_SYSTEM_CPU_TIME_MS);
         double powerMah = estimateCpuPowerByCpuStats(cpuTimeMs);
         Assert.assertTrue(powerMah >= 0);
+
+        double calcCpuPower = HealthStatsHelper.calcCpuPower(feature.getPowerProfile(), healthStats);
+        Assert.assertEquals(powerMah, calcCpuPower, 1d);
     }
 
     private static double estimateCpuPowerByCpuStats(long cpuTimeMs) {
@@ -287,6 +290,9 @@ public class HealthStatsTest {
             powerMah += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
         }
         Assert.assertTrue(powerMah >= 0);
+
+        double calcCpuPower = HealthStatsHelper.calcWakelocksPower(powerProfile, healthStats);
+        Assert.assertEquals(powerMah, calcCpuPower, 1d);
     }
 
     @Test
@@ -331,6 +337,9 @@ public class HealthStatsTest {
             powerMahByTime += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
         }
         Assert.assertTrue(powerMahByTime >= 0);
+
+        double calcCpuPower = HealthStatsHelper.calcMobilePower(powerProfile, healthStats);
+        Assert.assertEquals(powerMahByTime, calcCpuPower, 1d);
     }
 
     @Test
@@ -373,6 +382,9 @@ public class HealthStatsTest {
             powerMah += etmWifiTxPower.calculatePower(txMs);
         }
         Assert.assertTrue(powerMah >= 0);
+
+        double calcCpuPower = HealthStatsHelper.calcWifiPower(powerProfile, healthStats);
+        Assert.assertEquals(powerMah, calcCpuPower, 1d);
     }
 
     @Test
@@ -411,6 +423,9 @@ public class HealthStatsTest {
             powerMah += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
         }
         Assert.assertTrue(powerMah >= 0);
+
+        double calcCpuPower = HealthStatsHelper.calcBlueToothPower(powerProfile, healthStats);
+        Assert.assertEquals(powerMah, calcCpuPower, 1d);
     }
 
     @Test
@@ -444,6 +459,9 @@ public class HealthStatsTest {
             powerMah += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
         }
         Assert.assertTrue(powerMah >= 0);
+
+        double calcCpuPower = HealthStatsHelper.calcGpsPower(powerProfile, healthStats);
+        Assert.assertEquals(powerMah, calcCpuPower, 1d);
     }
 
     @Test
@@ -502,6 +520,10 @@ public class HealthStatsTest {
             double powerMa = powerProfile.getAveragePower("camera.avg");
             powerMah += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
         }
+
+        double calcCpuPower = HealthStatsHelper.calcCameraPower(powerProfile, healthStats);
+        Assert.assertEquals(powerMah, calcCpuPower, 1d);
+
         // Flash Light
         Assert.assertTrue(powerProfile.getAveragePower("camera.flashlight") > 0);
         if (healthStats.hasTimer(UidHealthStats.TIMER_FLASHLIGHT)) {
@@ -509,6 +531,10 @@ public class HealthStatsTest {
             double powerMa = powerProfile.getAveragePower("camera.flashlight");
             powerMah += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
         }
+
+        calcCpuPower = HealthStatsHelper.calcFlashLightPower(powerProfile, healthStats);
+        Assert.assertEquals(powerMah, calcCpuPower, 1d);
+
         // Media
         Assert.assertTrue(powerProfile.getAveragePower("audio") > 0);
         Assert.assertTrue(powerProfile.getAveragePower("video") > 0);
@@ -517,12 +543,19 @@ public class HealthStatsTest {
             double powerMa = powerProfile.getAveragePower("audio");
             powerMah += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
         }
+
+        calcCpuPower = HealthStatsHelper.calcAudioPower(powerProfile, healthStats);
+        Assert.assertEquals(powerMah, calcCpuPower, 1d);
+
         if (healthStats.hasTimer(UidHealthStats.TIMER_VIDEO)) {
             long timeMs = healthStats.getTimerTime(UidHealthStats.TIMER_VIDEO);
             double powerMa = powerProfile.getAveragePower("video");
             powerMah += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
         }
         Assert.assertTrue(powerMah >= 0);
+
+        calcCpuPower = HealthStatsHelper.calcVideoPower(powerProfile, healthStats);
+        Assert.assertEquals(powerMah, calcCpuPower, 1d);
     }
 
     @Test
@@ -550,6 +583,9 @@ public class HealthStatsTest {
         powerMah += new UsageBasedPowerEstimator(powerProfile.getAveragePower("screen.on")).calculatePower(screenOnTimeMs);
 
         Assert.assertTrue(powerMah > 0);
+
+        double calcCpuPower = HealthStatsHelper.calcScreenPower(powerProfile, healthStats);
+        Assert.assertEquals(powerMah, calcCpuPower, 1d);
     }
 
     @Test
