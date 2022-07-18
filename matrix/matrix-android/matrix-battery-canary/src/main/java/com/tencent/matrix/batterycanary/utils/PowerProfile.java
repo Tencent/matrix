@@ -13,6 +13,7 @@ import java.util.HashMap;
 
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
+import androidx.annotation.VisibleForTesting;
 
 /**
  * @see com.android.internal.os.PowerProfile
@@ -257,8 +258,8 @@ public class PowerProfile {
 
     private static final Object sLock = new Object();
 
-
-    PowerProfile(Context context) {
+    @VisibleForTesting
+    public PowerProfile(Context context) {
         // Read the XML file for the given profile (normally only one per device)
         synchronized (sLock) {
             if (sPowerItemMap.size() == 0 && sPowerArrayMap.size() == 0) {
@@ -266,6 +267,16 @@ public class PowerProfile {
             }
             initCpuClusters();
         }
+    }
+
+    @VisibleForTesting
+    public static HashMap<String, Double> getPowerItemMap() {
+        return sPowerItemMap;
+    }
+
+    @VisibleForTesting
+    public static HashMap<String, Double[]> getPowerArrayMap() {
+        return sPowerArrayMap;
     }
 
     @SuppressWarnings({"ToArrayCallWithZeroLengthArrayArgument", "UnnecessaryBoxing", "CatchMayIgnoreException", "TryWithIdenticalCatches"})
