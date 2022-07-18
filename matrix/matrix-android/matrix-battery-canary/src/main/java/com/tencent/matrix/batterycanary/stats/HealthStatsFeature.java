@@ -170,6 +170,7 @@ public class HealthStatsFeature extends AbsMonitorFeature {
         public DigitEntry<Double> videoPower = DigitEntry.of(0D);
         public DigitEntry<Double> screenPower = DigitEntry.of(0D);
 
+        // Meta Data:
         // CPU
         public DigitEntry<Long> cpuPowerMams = DigitEntry.of(0L);
         public DigitEntry<Long> cpuUsrTimeMs = DigitEntry.of(0L);
@@ -211,6 +212,19 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                 @Override
                 protected HealthStatsSnapshot computeDelta() {
                     HealthStatsSnapshot delta = new HealthStatsSnapshot();
+                    delta.cpuPower = Differ.DigitDiffer.globalDiff(bgn.cpuPower, end.cpuPower);
+                    delta.wakelocksPower = Differ.DigitDiffer.globalDiff(bgn.wakelocksPower, end.wakelocksPower);
+                    delta.mobilePower = Differ.DigitDiffer.globalDiff(bgn.mobilePower, end.mobilePower);
+                    delta.wifiPower = Differ.DigitDiffer.globalDiff(bgn.wifiPower, end.wifiPower);
+                    delta.blueToothPower = Differ.DigitDiffer.globalDiff(bgn.blueToothPower, end.blueToothPower);
+                    delta.gpsPower = Differ.DigitDiffer.globalDiff(bgn.gpsPower, end.gpsPower);
+                    delta.sensorsPower = Differ.DigitDiffer.globalDiff(bgn.sensorsPower, end.sensorsPower);
+                    delta.cameraPower = Differ.DigitDiffer.globalDiff(bgn.cameraPower, end.cameraPower);
+                    delta.flashLightPower = Differ.DigitDiffer.globalDiff(bgn.flashLightPower, end.flashLightPower);
+                    delta.audioPower = Differ.DigitDiffer.globalDiff(bgn.audioPower, end.audioPower);
+                    delta.videoPower = Differ.DigitDiffer.globalDiff(bgn.videoPower, end.videoPower);
+                    delta.screenPower = Differ.DigitDiffer.globalDiff(bgn.screenPower, end.screenPower);
+
                     delta.cpuPowerMams = Differ.DigitDiffer.globalDiff(bgn.cpuPowerMams, end.cpuPowerMams);
                     delta.cpuUsrTimeMs = Differ.DigitDiffer.globalDiff(bgn.cpuUsrTimeMs, end.cpuUsrTimeMs);
                     delta.cpuSysTimeMs = Differ.DigitDiffer.globalDiff(bgn.cpuSysTimeMs, end.cpuSysTimeMs);
