@@ -69,6 +69,21 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                     snapshot.audioPower = DigitEntry.of(HealthStatsHelper.calcAudioPower(powerProfile, healthStats));
                     snapshot.videoPower = DigitEntry.of(HealthStatsHelper.calcVideoPower(powerProfile, healthStats));
                     snapshot.screenPower = DigitEntry.of(HealthStatsHelper.calcScreenPower(powerProfile, healthStats));
+
+                    double total = snapshot.cpuPower.get()
+                            + snapshot.wakelocksPower.get()
+                            + snapshot.mobilePower.get()
+                            + snapshot.wifiPower.get()
+                            + snapshot.blueToothPower.get()
+                            + snapshot.gpsPower.get()
+                            + snapshot.sensorsPower.get()
+                            + snapshot.cameraPower.get()
+                            + snapshot.flashLightPower.get()
+                            + snapshot.audioPower.get()
+                            + snapshot.videoPower.get()
+                            + snapshot.screenPower.get();
+
+                    snapshot.totalPower = DigitEntry.of(total);
                 }
             }
 
@@ -157,6 +172,7 @@ public class HealthStatsFeature extends AbsMonitorFeature {
         public HealthStats healthStats;
 
         // Estimated Powers
+        public DigitEntry<Double> totalPower = DigitEntry.of(0D);
         public DigitEntry<Double> cpuPower = DigitEntry.of(0D);
         public DigitEntry<Double> wakelocksPower = DigitEntry.of(0D);
         public DigitEntry<Double> mobilePower = DigitEntry.of(0D);
@@ -212,6 +228,7 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                 @Override
                 protected HealthStatsSnapshot computeDelta() {
                     HealthStatsSnapshot delta = new HealthStatsSnapshot();
+                    delta.totalPower = Differ.DigitDiffer.globalDiff(bgn.totalPower, end.totalPower);
                     delta.cpuPower = Differ.DigitDiffer.globalDiff(bgn.cpuPower, end.cpuPower);
                     delta.wakelocksPower = Differ.DigitDiffer.globalDiff(bgn.wakelocksPower, end.wakelocksPower);
                     delta.mobilePower = Differ.DigitDiffer.globalDiff(bgn.mobilePower, end.mobilePower);
