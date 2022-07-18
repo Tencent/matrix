@@ -64,7 +64,7 @@ int isNetworkSocketFd(int fd) {
     socklen_t cLen = sizeof(c);
     int getSockNameRet = getsockname(fd, (struct sockaddr*) &c, &cLen);
     if (getSockNameRet == 0) {
-        if (c.sa_family != AF_LOCAL && c.sa_family != AF_UNIX) {
+        if (c.sa_family != AF_LOCAL && c.sa_family != AF_NETLINK) {
             return 1;
         }
     }
