@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.tencent.matrix.batterycanary.utils;
+package com.tencent.matrix.batterycanary.stats;
 
 import android.app.Application;
 import android.content.Context;
@@ -31,6 +31,9 @@ import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.batterycanary.monitor.feature.CpuStatFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
+import com.tencent.matrix.batterycanary.stats.HealthStatsFeature.HealthStatsSnapshot;
+import com.tencent.matrix.batterycanary.utils.PowerProfile;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -76,6 +79,7 @@ public class HealthStatsTest {
     private BatteryMonitorCore mockMonitor() {
         BatteryMonitorConfig config = new BatteryMonitorConfig.Builder()
                 .enable(CpuStatFeature.class)
+                .enable(HealthStatsFeature.class)
                 .enableBuiltinForegroundNotify(false)
                 .enableForegroundMode(false)
                 .wakelockTimeout(1000)
@@ -554,6 +558,27 @@ public class HealthStatsTest {
 
     @Test
     public void testEstimateIdlePower() throws IOException {
+    }
+
+    @Test
+    public void testGetCurrSnapshot() {
+        HealthStatsFeature feature = new HealthStatsFeature();
+        feature.configure(mockMonitor());
+        feature.onTurnOn();
+
+        Assert.assertNotNull(feature.currHealthStats());
+
+        HealthStatsSnapshot bgn = feature.currHealthStatsSnapshot();
+        Assert.assertNotNull(bgn);
+        Assert.assertNotNull(bgn.healthStats);
+
+        HealthStatsSnapshot end = feature.currHealthStatsSnapshot();
+        Assert.assertNotNull(end);
+        Assert.assertNotNull(end.healthStats);
+
+        Delta<HealthStatsSnapshot> delta = end.diff(bgn);
+        Assert.assertNotNull(delta);
+        Assert.assertNull(delta.dlt.healthStats);
     }
 
 

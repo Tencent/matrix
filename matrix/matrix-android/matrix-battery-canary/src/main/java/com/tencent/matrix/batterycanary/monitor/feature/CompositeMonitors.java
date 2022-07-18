@@ -13,6 +13,7 @@ import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.Ji
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.DigitEntry;
+import com.tencent.matrix.batterycanary.stats.HealthStatsFeature;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.Consumer;
 import com.tencent.matrix.batterycanary.utils.Function;
@@ -499,6 +500,13 @@ public class CompositeMonitors {
             AppStatMonitorFeature feature = getFeature(AppStatMonitorFeature.class);
             if (feature != null) {
                 snapshot = feature.currentAppStatSnapshot();
+            }
+            return snapshot;
+        }
+        if (snapshotClass == HealthStatsFeature.HealthStatsSnapshot.class) {
+            HealthStatsFeature feature = getFeature(HealthStatsFeature.class);
+            if (feature != null) {
+                snapshot = feature.currHealthStatsSnapshot();
             }
             return snapshot;
         }
