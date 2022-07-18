@@ -336,7 +336,7 @@ static void hookSocket(bool rxHook, bool txHook, bool willHookAllSoReadWrite) {
     xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libjavacrypto\\.so$", nullptr);
     xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libwechatbacktrace\\.so$", nullptr);
     xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libmatrix-memoryhook\\.so$", nullptr);
-
+    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libmatrix-traffic\\.so$", nullptr);
 
     xhook_refresh(true);
     HOOKED = true;
