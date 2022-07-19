@@ -555,6 +555,83 @@ data class SmapsItem(
 data class MergedSmapsInfo(
     val list: List<SmapsItem>? = null
 ) {
+    fun toBriefString(): String {
+        val sb = StringBuilder()
+        sb.append("\n")
+        sb.append(
+            String.format(
+                FORMAT,
+                "PSS",
+                "RSS",
+                "SIZE",
+                "SWAP_PSS",
+                "SH_C",
+                "SH_D",
+                "PRI_C",
+                "PRI_D",
+                "COUNT",
+                "PERM",
+                "NAME"
+            )
+        ).append("\n")
+        sb.append(
+            String.format(
+                FORMAT,
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----"
+            )
+        ).append("\n")
+        for ((name, permission, count, vmSize, rss, pss, sharedClean, sharedDirty, privateClean, privateDirty, swapPss) in list!!) {
+            if (pss < 1024 /* K */) {
+                continue
+            }
+            sb.append(
+                String.format(
+                    FORMAT,
+                    pss,
+                    rss,
+                    vmSize,
+                    swapPss,
+                    sharedClean,
+                    sharedDirty,
+                    privateClean,
+                    privateDirty,
+                    count,
+                    permission,
+                    name
+                )
+            ).append("\n")
+        }
+        sb.append(
+            String.format(
+                FORMAT,
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----"
+            )
+        )
+        sb.append("\n")
+
+        return sb.toString()
+    }
+
     override fun toString(): String {
         val sb = StringBuilder()
         sb.append("\n")
