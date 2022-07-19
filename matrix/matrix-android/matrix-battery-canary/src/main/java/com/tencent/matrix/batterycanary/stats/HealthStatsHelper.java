@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import androidx.annotation.ChecksSdkIntAtLeast;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 
@@ -28,6 +29,7 @@ import androidx.annotation.RequiresApi;
  * @author Kaede
  * @since 6/7/2022
  */
+@SuppressWarnings("JavadocReference")
 @SuppressLint("RestrictedApi")
 public final class HealthStatsHelper {
     public static final String TAG = "HealthStatsHelper";
@@ -45,6 +47,7 @@ public final class HealthStatsHelper {
         }
     }
 
+    @ChecksSdkIntAtLeast(api = Build.VERSION_CODES.N)
     public static boolean isSupported() {
         return Build.VERSION.SDK_INT >= Build.VERSION_CODES.N;
     }
@@ -126,12 +129,25 @@ public final class HealthStatsHelper {
             for (TimerStat item : timers.values()) {
                 timeMs += item.getTime();
             }
-            double powerMa = powerProfile.getAveragePower("cpu.idle");
+            double powerMa = powerProfile.getAveragePower(PowerProfile.POWER_CPU_IDLE);
             power = new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
         }
         return power;
     }
 
+    /**
+     * @see com.android.internal.os.MobileRadioPowerCalculator
+     */
+    @RequiresApi(api = Build.VERSION_CODES.N)
+    public static double calcMobilePowerByRadioActive(PowerProfile powerProfile, HealthStats healthStats) {
+        long timeMs = getTimerTime(healthStats, UidHealthStats.TIMER_MOBILE_RADIO_ACTIVE);
+        double powerMa = powerProfile.getAveragePower(PowerProfile.POWER_RADIO_ACTIVE);
+        return new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
+    }
+
+    /**
+     * @see com.android.internal.os.MobileRadioPowerCalculator
+     */
     @RequiresApi(api = Build.VERSION_CODES.N)
     public static double calcMobilePower(PowerProfile powerProfile, HealthStats healthStats) {
         double power = getMeasure(healthStats, UidHealthStats.MEASUREMENT_MOBILE_POWER_MAMS) / UsageBasedPowerEstimator.MILLIS_IN_HOUR;
@@ -140,57 +156,49 @@ public final class HealthStatsHelper {
         }
         if (power == 0) {
             {
-                long timeMs = getTimerTime(healthStats, UidHealthStats.TIMER_MOBILE_RADIO_ACTIVE);
-                double powerMa = powerProfile.getAveragePower("radio.active");
-                power = new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
-            }
-            if (power > 0) {
-                MatrixLog.i(TAG, "estimate CPU by radio");
-            }
-        }
-        if (power == 0) {
-            {
                 long timeMs = getMeasure(healthStats, UidHealthStats.MEASUREMENT_MOBILE_IDLE_MS);
-                double powerMa = powerProfile.getAveragePower("modem.controller.idle");
+                double powerMa = powerProfile.getAveragePower(PowerProfile.POWER_MODEM_CONTROLLER_IDLE);
                 power += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
             }
             {
                 long timeMs = getMeasure(healthStats, UidHealthStats.MEASUREMENT_MOBILE_RX_MS);
-                double powerMa = powerProfile.getAveragePower("modem.controller.rx");
+                double powerMa = powerProfile.getAveragePower(PowerProfile.POWER_MODEM_CONTROLLER_RX);
                 power += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
             }
             {
                 long timeMs = getMeasure(healthStats, UidHealthStats.MEASUREMENT_MOBILE_TX_MS);
-                double powerMa = powerProfile.getAveragePower("modem.controller.tx");
+                double powerMa = powerProfile.getAveragePower(PowerProfile.POWER_MODEM_CONTROLLER_TX);
                 power += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
             }
         }
         return power;
     }
 
+    /**
+     * @see com.android.internal.os.WifiPowerCalculator
+     */
     @RequiresApi(api = Build.VERSION_CODES.N)
     public static double calcWifiPower(PowerProfile powerProfile, HealthStats healthStats) {
         double power = getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_POWER_MAMS) / UsageBasedPowerEstimator.MILLIS_IN_HOUR;
         if (power > 0) {
             MatrixLog.i(TAG, "estimate WIFI by mams");
-
         }
         if (power == 0) {
             {
-                double wifiIdlePower = powerProfile.getAveragePower("wifi.controller.idle");
+                double wifiIdlePower = powerProfile.getAveragePower(PowerProfile.POWER_WIFI_CONTROLLER_IDLE);
                 long idleMs = getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_IDLE_MS);
                 UsageBasedPowerEstimator etmWifiIdlePower = new UsageBasedPowerEstimator(wifiIdlePower);
                 power += etmWifiIdlePower.calculatePower(idleMs);
             }
             {
-                double wifiRxPower = powerProfile.getAveragePower("wifi.controller.rx");
+                double wifiRxPower = powerProfile.getAveragePower(PowerProfile.POWER_WIFI_CONTROLLER_RX);
                 UsageBasedPowerEstimator etmWifiRxPower = new UsageBasedPowerEstimator(wifiRxPower);
                 long rxMs = getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_RX_MS);
                 power += etmWifiRxPower.calculatePower(rxMs);
             }
             {
+                double wifiTxPower = powerProfile.getAveragePower(PowerProfile.POWER_WIFI_CONTROLLER_TX);
                 long txMs = getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_TX_MS);
-                double wifiTxPower = powerProfile.getAveragePower("wifi.controller.tx");
                 UsageBasedPowerEstimator etmWifiTxPower = new UsageBasedPowerEstimator(wifiTxPower);
                 power += etmWifiTxPower.calculatePower(txMs);
             }
@@ -198,45 +206,50 @@ public final class HealthStatsHelper {
         return power;
     }
 
+    /**
+     * @see com.android.internal.os.BluetoothPowerCalculator
+     */
     @RequiresApi(api = Build.VERSION_CODES.N)
     public static double calcBlueToothPower(PowerProfile powerProfile, HealthStats healthStats) {
         double power = getMeasure(healthStats, UidHealthStats.MEASUREMENT_BLUETOOTH_POWER_MAMS) / UsageBasedPowerEstimator.MILLIS_IN_HOUR;
         if (power > 0) {
             MatrixLog.i(TAG, "etmMobilePower BLE by mams");
-
         }
         if (power == 0) {
             {
                 long timeMs = getMeasure(healthStats, UidHealthStats.MEASUREMENT_BLUETOOTH_IDLE_MS);
-                double powerMa = powerProfile.getAveragePower("bluetooth.controller.idle");
+                double powerMa = powerProfile.getAveragePower(PowerProfile.POWER_BLUETOOTH_CONTROLLER_IDLE);
                 power += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
             }
             {
                 long timeMs = getMeasure(healthStats, UidHealthStats.MEASUREMENT_BLUETOOTH_RX_MS);
-                double powerMa = powerProfile.getAveragePower("bluetooth.controller.rx");
+                double powerMa = powerProfile.getAveragePower(PowerProfile.POWER_BLUETOOTH_CONTROLLER_RX);
                 power += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
             }
             {
                 long timeMs = getMeasure(healthStats, UidHealthStats.MEASUREMENT_BLUETOOTH_TX_MS);
-                double powerMa = powerProfile.getAveragePower("bluetooth.controller.tx");
+                double powerMa = powerProfile.getAveragePower(PowerProfile.POWER_BLUETOOTH_CONTROLLER_TX);
                 power += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
             }
         }
         return power;
     }
 
+    /**
+     * @see com.android.internal.os.GnssPowerCalculator
+     */
     @RequiresApi(api = Build.VERSION_CODES.N)
     public static double calcGpsPower(PowerProfile powerProfile, HealthStats healthStats) {
         long timeMs = getTimerTime(healthStats, UidHealthStats.TIMER_GPS_SENSOR);
         double powerMa = 0;
         if (timeMs > 0) {
-            if (powerProfile.getAveragePower("gps.voltage") > 0) {
-                powerMa = powerProfile.getAveragePower("gps.on");
+            if (powerProfile.getAveragePower(PowerProfile.POWER_GPS_OPERATING_VOLTAGE) > 0) {
+                powerMa = powerProfile.getAveragePower(PowerProfile.POWER_GPS_ON);
                 if (powerMa <= 0) {
-                    int num = powerProfile.getNumElements("gps.signalqualitybased");
+                    int num = powerProfile.getNumElements(PowerProfile.POWER_GPS_SIGNAL_QUALITY_BASED);
                     double sumMa = 0;
                     for (int i = 0; i < num; i++) {
-                        sumMa += powerProfile.getAveragePower("gps.signalqualitybased", i);
+                        sumMa += powerProfile.getAveragePower(PowerProfile.POWER_GPS_SIGNAL_QUALITY_BASED, i);
                     }
                     powerMa = sumMa / num;
                 }
@@ -245,6 +258,9 @@ public final class HealthStatsHelper {
         return new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
     }
 
+    /**
+     * @see com.android.internal.os.SensorPowerCalculator
+     */
     @RequiresApi(api = Build.VERSION_CODES.N)
     public static double calcSensorsPower(Context context, HealthStats healthStats) {
         double power = 0;
@@ -281,40 +297,55 @@ public final class HealthStatsHelper {
         return power;
     }
 
+    /**
+     * @see com.android.internal.os.CameraPowerCalculator
+     */
     @RequiresApi(api = Build.VERSION_CODES.N)
     public static double calcCameraPower(PowerProfile powerProfile, HealthStats healthStats) {
         long timeMs = getTimerTime(healthStats, UidHealthStats.TIMER_CAMERA);
-        double powerMa = powerProfile.getAveragePower("camera.avg");
+        double powerMa = powerProfile.getAveragePower(PowerProfile.POWER_CAMERA);
         return new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
     }
 
+    /**
+     * @see com.android.internal.os.FlashlightPowerCalculator
+     */
     @RequiresApi(api = Build.VERSION_CODES.N)
     public static double calcFlashLightPower(PowerProfile powerProfile, HealthStats healthStats) {
         long timeMs = getTimerTime(healthStats, UidHealthStats.TIMER_FLASHLIGHT);
-        double powerMa = powerProfile.getAveragePower("camera.flashlight");
+        double powerMa = powerProfile.getAveragePower(PowerProfile.POWER_FLASHLIGHT);
         return new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
     }
 
+    /**
+     * @see com.android.internal.os.MediaPowerCalculator
+     */
     @RequiresApi(api = Build.VERSION_CODES.N)
     public static double calcAudioPower(PowerProfile powerProfile, HealthStats healthStats) {
         long timeMs = getTimerTime(healthStats, UidHealthStats.TIMER_AUDIO);
-        double powerMa = powerProfile.getAveragePower("audio");
+        double powerMa = powerProfile.getAveragePower(PowerProfile.POWER_AUDIO);
         return new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
     }
 
+    /**
+     * @see com.android.internal.os.MediaPowerCalculator
+     */
     @RequiresApi(api = Build.VERSION_CODES.N)
     public static double calcVideoPower(PowerProfile powerProfile, HealthStats healthStats) {
         long timeMs = getTimerTime(healthStats, UidHealthStats.TIMER_VIDEO);
-        double powerMa = powerProfile.getAveragePower("video");
+        double powerMa = powerProfile.getAveragePower(PowerProfile.POWER_VIDEO);
         return new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
     }
 
+    /**
+     * @see com.android.internal.os.ScreenPowerCalculator
+     */
     @RequiresApi(api = Build.VERSION_CODES.N)
     public static double calcScreenPower(PowerProfile powerProfile, HealthStats healthStats) {
         long totalTimeMs = getMeasure(healthStats, UidHealthStats.MEASUREMENT_REALTIME_BATTERY_MS);
         long screenOffTimeMs = getMeasure(healthStats, UidHealthStats.MEASUREMENT_REALTIME_SCREEN_OFF_BATTERY_MS);
         long screenOnTimeMs = totalTimeMs - screenOffTimeMs;
-        double powerMa = powerProfile.getAveragePower("screen.on");
+        double powerMa = powerProfile.getAveragePower(PowerProfile.POWER_SCREEN_ON);
         return new UsageBasedPowerEstimator(powerMa).calculatePower(screenOnTimeMs);
     }
 }

@@ -320,6 +320,9 @@ public class HealthStatsTest {
         }
         Assert.assertTrue(powerMahByRadio >= 0);
 
+        double calcCpuPower = HealthStatsHelper.calcMobilePowerByRadioActive(powerProfile, healthStats);
+        Assert.assertEquals(powerMahByRadio, calcCpuPower, 1d);
+
         double powerMahByTime = 0;
         if (healthStats.hasMeasurement(UidHealthStats.MEASUREMENT_MOBILE_IDLE_MS)) {
             long timeMs = healthStats.getMeasurement(UidHealthStats.MEASUREMENT_MOBILE_IDLE_MS);
@@ -338,7 +341,7 @@ public class HealthStatsTest {
         }
         Assert.assertTrue(powerMahByTime >= 0);
 
-        double calcCpuPower = HealthStatsHelper.calcMobilePower(powerProfile, healthStats);
+        calcCpuPower = HealthStatsHelper.calcMobilePower(powerProfile, healthStats);
         Assert.assertEquals(powerMahByTime, calcCpuPower, 1d);
     }
 

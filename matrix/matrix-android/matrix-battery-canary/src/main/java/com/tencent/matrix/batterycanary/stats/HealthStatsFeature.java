@@ -60,6 +60,7 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                     snapshot.cpuPower = DigitEntry.of(HealthStatsHelper.calcCpuPower(powerProfile, healthStats));
                     snapshot.wakelocksPower = DigitEntry.of(HealthStatsHelper.calcWakelocksPower(powerProfile, healthStats));
                     snapshot.mobilePower = DigitEntry.of(HealthStatsHelper.calcMobilePower(powerProfile, healthStats));
+                    snapshot.radioActivePower = DigitEntry.of(HealthStatsHelper.calcMobilePowerByRadioActive(powerProfile, healthStats));
                     snapshot.wifiPower = DigitEntry.of(HealthStatsHelper.calcWifiPower(powerProfile, healthStats));
                     snapshot.blueToothPower = DigitEntry.of(HealthStatsHelper.calcBlueToothPower(powerProfile, healthStats));
                     snapshot.gpsPower = DigitEntry.of(HealthStatsHelper.calcGpsPower(powerProfile, healthStats));
@@ -176,6 +177,7 @@ public class HealthStatsFeature extends AbsMonitorFeature {
         public DigitEntry<Double> cpuPower = DigitEntry.of(0D);
         public DigitEntry<Double> wakelocksPower = DigitEntry.of(0D);
         public DigitEntry<Double> mobilePower = DigitEntry.of(0D);
+        public DigitEntry<Double> radioActivePower = DigitEntry.of(0D);
         public DigitEntry<Double> wifiPower = DigitEntry.of(0D);
         public DigitEntry<Double> blueToothPower = DigitEntry.of(0D);
         public DigitEntry<Double> gpsPower = DigitEntry.of(0D);
@@ -232,6 +234,7 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                     delta.cpuPower = Differ.DigitDiffer.globalDiff(bgn.cpuPower, end.cpuPower);
                     delta.wakelocksPower = Differ.DigitDiffer.globalDiff(bgn.wakelocksPower, end.wakelocksPower);
                     delta.mobilePower = Differ.DigitDiffer.globalDiff(bgn.mobilePower, end.mobilePower);
+                    delta.radioActivePower = Differ.DigitDiffer.globalDiff(bgn.radioActivePower, end.radioActivePower);
                     delta.wifiPower = Differ.DigitDiffer.globalDiff(bgn.wifiPower, end.wifiPower);
                     delta.blueToothPower = Differ.DigitDiffer.globalDiff(bgn.blueToothPower, end.blueToothPower);
                     delta.gpsPower = Differ.DigitDiffer.globalDiff(bgn.gpsPower, end.gpsPower);
