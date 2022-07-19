@@ -641,7 +641,7 @@ data class MergedSmapsInfo(
 
         private fun mergeSmaps(pid: Int): ArrayList<SmapsItem> {
             val pattern =
-                Pattern.compile("^[0-9a-f]+-[0-9a-f]+\\s+([rwxps-]{4})\\s+\\d+\\s+\\d+:\\d+\\s+\\d+\\s+(.*)$")
+                Pattern.compile("^[0-9a-f]+-[0-9a-f]+\\s+([rwxps-]{4})\\s+[0-9a-f]+\\s+[0-9a-f]+:[0-9a-f]+\\s+\\d+\\s+(.*)$")
 
             val merged: HashMap<String, SmapsItem> = HashMap<String, SmapsItem>()
             var currentInfo: SmapsItem? = null
