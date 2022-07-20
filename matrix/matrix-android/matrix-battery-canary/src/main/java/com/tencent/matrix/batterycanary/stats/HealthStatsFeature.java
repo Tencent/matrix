@@ -69,6 +69,8 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                     snapshot.audioPower = DigitEntry.of(HealthStatsHelper.calcAudioPower(powerProfile, healthStats));
                     snapshot.videoPower = DigitEntry.of(HealthStatsHelper.calcVideoPower(powerProfile, healthStats));
                     snapshot.screenPower = DigitEntry.of(HealthStatsHelper.calcScreenPower(powerProfile, healthStats));
+                    snapshot.systemServicePower = DigitEntry.of(HealthStatsHelper.calcSystemServicePower(powerProfile, healthStats));
+                    snapshot.idlePower = DigitEntry.of(HealthStatsHelper.calcIdlePower(powerProfile, healthStats));
 
                     double total = snapshot.cpuPower.get()
                             + snapshot.wakelocksPower.get()
@@ -81,7 +83,9 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                             + snapshot.flashLightPower.get()
                             + snapshot.audioPower.get()
                             + snapshot.videoPower.get()
-                            + snapshot.screenPower.get();
+                            + snapshot.screenPower.get()
+                            + snapshot.systemServicePower.get()
+                            + snapshot.idlePower.get();
 
                     snapshot.totalPower = DigitEntry.of(total);
                     snapshot.radioActivePower = DigitEntry.of(HealthStatsHelper.calcMobilePowerByRadioActive(powerProfile, healthStats));
@@ -92,15 +96,8 @@ public class HealthStatsFeature extends AbsMonitorFeature {
             snapshot.cpuPowerMams = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_CPU_POWER_MAMS));
             snapshot.cpuUsrTimeMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_USER_CPU_TIME_MS));
             snapshot.cpuSysTimeMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_SYSTEM_CPU_TIME_MS));
-
-            if (healthStats.hasTimers(UidHealthStats.TIMERS_WAKELOCKS_PARTIAL)) {
-                Map<String, TimerStat> timers = healthStats.getTimers(UidHealthStats.TIMERS_WAKELOCKS_PARTIAL);
-                long timeMs = 0;
-                for (TimerStat item : timers.values()) {
-                    timeMs += item.getTime();
-                }
-                snapshot.wakelocksPartialMs = DigitEntry.of(timeMs);
-            }
+            snapshot.realTimeMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_REALTIME_BATTERY_MS));
+            snapshot.upTimeMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_UPTIME_BATTERY_MS));
 
             snapshot.mobilePowerMams = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_MOBILE_POWER_MAMS));
             snapshot.mobileRadioActiveMs = DigitEntry.of(HealthStatsHelper.getTimerTime(healthStats, UidHealthStats.TIMER_MOBILE_RADIO_ACTIVE));
@@ -118,8 +115,15 @@ public class HealthStatsFeature extends AbsMonitorFeature {
             snapshot.blueToothRxMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_BLUETOOTH_RX_MS));
             snapshot.blueToothTxMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_BLUETOOTH_TX_MS));
 
+            if (healthStats.hasTimers(UidHealthStats.TIMERS_WAKELOCKS_PARTIAL)) {
+                Map<String, TimerStat> timers = healthStats.getTimers(UidHealthStats.TIMERS_WAKELOCKS_PARTIAL);
+                long timeMs = 0;
+                for (TimerStat item : timers.values()) {
+                    timeMs += item.getTime();
+                }
+                snapshot.wakelocksPartialMs = DigitEntry.of(timeMs);
+            }
             snapshot.gpsMs = DigitEntry.of(HealthStatsHelper.getTimerTime(healthStats, UidHealthStats.TIMER_GPS_SENSOR));
-
             if (healthStats.hasTimers(UidHealthStats.TIMERS_SENSORS)) {
                 SensorManager sm = (SensorManager) mCore.getContext().getSystemService(Context.SENSOR_SERVICE);
                 List<Sensor> sensorList = sm.getSensorList(Sensor.TYPE_ALL);
@@ -152,18 +156,29 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                 }
                 snapshot.sensorsPowerMams = DigitEntry.of(sensorsPowerMams);
             }
-
             snapshot.cameraMs = DigitEntry.of(HealthStatsHelper.getTimerTime(healthStats, UidHealthStats.TIMER_CAMERA));
             snapshot.flashLightMs = DigitEntry.of(HealthStatsHelper.getTimerTime(healthStats, UidHealthStats.TIMER_FLASHLIGHT));
             snapshot.audioMs = DigitEntry.of(HealthStatsHelper.getTimerTime(healthStats, UidHealthStats.TIMER_AUDIO));
             snapshot.videoMs = DigitEntry.of(HealthStatsHelper.getTimerTime(healthStats, UidHealthStats.TIMER_VIDEO));
-
-            {
-                long totalTimeMs = HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_REALTIME_BATTERY_MS);
-                long screenOffTimeMs = HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_REALTIME_SCREEN_OFF_BATTERY_MS);
-                long screenOnTimeMs = totalTimeMs - screenOffTimeMs;
-                snapshot.screenOnMs = DigitEntry.of(screenOnTimeMs);
+            if (healthStats.hasTimers(UidHealthStats.TIMERS_JOBS)) {
+                long timeMs = 0;
+                Map<String, TimerStat> timers = healthStats.getTimers(UidHealthStats.TIMERS_JOBS);
+                for (TimerStat item : timers.values()) {
+                    timeMs += item.getTime();
+                }
+                snapshot.jobsMs = DigitEntry.of(timeMs);
             }
+            if (healthStats.hasTimers(UidHealthStats.TIMERS_SYNCS)) {
+                long timeMs = 0;
+                Map<String, TimerStat> timers = healthStats.getTimers(UidHealthStats.TIMERS_SYNCS);
+                for (TimerStat item : timers.values()) {
+                    timeMs += item.getTime();
+                }
+                snapshot.syncMs = DigitEntry.of(timeMs);
+            }
+
+            snapshot.topAppMs = DigitEntry.of(HealthStatsHelper.getTimerTime(healthStats, UidHealthStats.TIMER_PROCESS_STATE_TOP_MS));
+            snapshot.fgActivityMs = DigitEntry.of(HealthStatsHelper.getTimerTime(healthStats, UidHealthStats.TIMER_FOREGROUND_ACTIVITY));
         }
         return snapshot;
     }
@@ -173,11 +188,9 @@ public class HealthStatsFeature extends AbsMonitorFeature {
         public HealthStats healthStats;
 
         // Estimated Powers
-        public DigitEntry<Double> totalPower = DigitEntry.of(0D);
         public DigitEntry<Double> cpuPower = DigitEntry.of(0D);
         public DigitEntry<Double> wakelocksPower = DigitEntry.of(0D);
         public DigitEntry<Double> mobilePower = DigitEntry.of(0D);
-        public DigitEntry<Double> radioActivePower = DigitEntry.of(0D);
         public DigitEntry<Double> wifiPower = DigitEntry.of(0D);
         public DigitEntry<Double> blueToothPower = DigitEntry.of(0D);
         public DigitEntry<Double> gpsPower = DigitEntry.of(0D);
@@ -187,19 +200,19 @@ public class HealthStatsFeature extends AbsMonitorFeature {
         public DigitEntry<Double> audioPower = DigitEntry.of(0D);
         public DigitEntry<Double> videoPower = DigitEntry.of(0D);
         public DigitEntry<Double> screenPower = DigitEntry.of(0D);
+        public DigitEntry<Double> systemServicePower = DigitEntry.of(0D);
+        public DigitEntry<Double> idlePower = DigitEntry.of(0D);
+
+        public DigitEntry<Double> totalPower = DigitEntry.of(0D);
+        public DigitEntry<Double> radioActivePower = DigitEntry.of(0D);
 
         // Meta Data:
         // CPU
         public DigitEntry<Long> cpuPowerMams = DigitEntry.of(0L);
         public DigitEntry<Long> cpuUsrTimeMs = DigitEntry.of(0L);
         public DigitEntry<Long> cpuSysTimeMs = DigitEntry.of(0L);
-
-        // SystemService & Sensors
-        public DigitEntry<Long> wakelocksPartialMs = DigitEntry.of(0L);
-        public DigitEntry<Long> gpsMs = DigitEntry.of(0L);
-        public DigitEntry<Long> sensorsPowerMams = DigitEntry.of(0L);
-        public DigitEntry<Long> cameraMs = DigitEntry.of(0L);
-        public DigitEntry<Long> flashLightMs = DigitEntry.of(0L);
+        public DigitEntry<Long> realTimeMs = DigitEntry.of(0L);
+        public DigitEntry<Long> upTimeMs = DigitEntry.of(0L);
 
         // Network
         public DigitEntry<Long> mobilePowerMams = DigitEntry.of(0L);
@@ -218,11 +231,20 @@ public class HealthStatsFeature extends AbsMonitorFeature {
         public DigitEntry<Long> blueToothRxMs = DigitEntry.of(0L);
         public DigitEntry<Long> blueToothTxMs = DigitEntry.of(0L);
 
-        // Media & Hardware
+        // SystemService & Media
+        public DigitEntry<Long> wakelocksPartialMs = DigitEntry.of(0L);
+        public DigitEntry<Long> gpsMs = DigitEntry.of(0L);
+        public DigitEntry<Long> sensorsPowerMams = DigitEntry.of(0L);
+        public DigitEntry<Long> cameraMs = DigitEntry.of(0L);
+        public DigitEntry<Long> flashLightMs = DigitEntry.of(0L);
         public DigitEntry<Long> audioMs = DigitEntry.of(0L);
         public DigitEntry<Long> videoMs = DigitEntry.of(0L);
-        public DigitEntry<Long> screenOnMs = DigitEntry.of(0L);
+        public DigitEntry<Long> jobsMs = DigitEntry.of(0L);
+        public DigitEntry<Long> syncMs = DigitEntry.of(0L);
 
+        // Screen
+        public DigitEntry<Long> topAppMs = DigitEntry.of(0L);
+        public DigitEntry<Long> fgActivityMs = DigitEntry.of(0L);
 
         @Override
         public Delta<HealthStatsSnapshot> diff(HealthStatsSnapshot bgn) {
@@ -242,6 +264,8 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                     delta.audioPower = Differ.DigitDiffer.globalDiff(bgn.audioPower, end.audioPower);
                     delta.videoPower = Differ.DigitDiffer.globalDiff(bgn.videoPower, end.videoPower);
                     delta.screenPower = Differ.DigitDiffer.globalDiff(bgn.screenPower, end.screenPower);
+                    delta.systemServicePower = Differ.DigitDiffer.globalDiff(bgn.systemServicePower, end.systemServicePower);
+                    delta.idlePower = Differ.DigitDiffer.globalDiff(bgn.idlePower, end.idlePower);
 
                     delta.totalPower = Differ.DigitDiffer.globalDiff(bgn.totalPower, end.totalPower);
                     delta.radioActivePower = Differ.DigitDiffer.globalDiff(bgn.radioActivePower, end.radioActivePower);
@@ -249,12 +273,8 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                     delta.cpuPowerMams = Differ.DigitDiffer.globalDiff(bgn.cpuPowerMams, end.cpuPowerMams);
                     delta.cpuUsrTimeMs = Differ.DigitDiffer.globalDiff(bgn.cpuUsrTimeMs, end.cpuUsrTimeMs);
                     delta.cpuSysTimeMs = Differ.DigitDiffer.globalDiff(bgn.cpuSysTimeMs, end.cpuSysTimeMs);
-
-                    delta.wakelocksPartialMs = Differ.DigitDiffer.globalDiff(bgn.wakelocksPartialMs, end.wakelocksPartialMs);
-                    delta.gpsMs = Differ.DigitDiffer.globalDiff(bgn.gpsMs, end.gpsMs);
-                    delta.sensorsPowerMams = Differ.DigitDiffer.globalDiff(bgn.sensorsPowerMams, end.sensorsPowerMams);
-                    delta.cameraMs = Differ.DigitDiffer.globalDiff(bgn.cameraMs, end.cameraMs);
-                    delta.flashLightMs = Differ.DigitDiffer.globalDiff(bgn.flashLightMs, end.flashLightMs);
+                    delta.realTimeMs = Differ.DigitDiffer.globalDiff(bgn.realTimeMs, end.realTimeMs);
+                    delta.upTimeMs = Differ.DigitDiffer.globalDiff(bgn.upTimeMs, end.upTimeMs);
 
                     delta.mobilePowerMams = Differ.DigitDiffer.globalDiff(bgn.mobilePowerMams, end.mobilePowerMams);
                     delta.mobileRadioActiveMs = Differ.DigitDiffer.globalDiff(bgn.mobileRadioActiveMs, end.mobileRadioActiveMs);
@@ -272,9 +292,18 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                     delta.blueToothRxMs = Differ.DigitDiffer.globalDiff(bgn.blueToothRxMs, end.blueToothRxMs);
                     delta.blueToothTxMs = Differ.DigitDiffer.globalDiff(bgn.blueToothTxMs, end.blueToothTxMs);
 
+                    delta.wakelocksPartialMs = Differ.DigitDiffer.globalDiff(bgn.wakelocksPartialMs, end.wakelocksPartialMs);
+                    delta.gpsMs = Differ.DigitDiffer.globalDiff(bgn.gpsMs, end.gpsMs);
+                    delta.sensorsPowerMams = Differ.DigitDiffer.globalDiff(bgn.sensorsPowerMams, end.sensorsPowerMams);
+                    delta.cameraMs = Differ.DigitDiffer.globalDiff(bgn.cameraMs, end.cameraMs);
+                    delta.flashLightMs = Differ.DigitDiffer.globalDiff(bgn.flashLightMs, end.flashLightMs);
                     delta.audioMs = Differ.DigitDiffer.globalDiff(bgn.audioMs, end.audioMs);
                     delta.videoMs = Differ.DigitDiffer.globalDiff(bgn.videoMs, end.videoMs);
-                    delta.screenOnMs = Differ.DigitDiffer.globalDiff(bgn.screenOnMs, end.screenOnMs);
+                    delta.jobsMs = Differ.DigitDiffer.globalDiff(bgn.jobsMs, end.jobsMs);
+                    delta.syncMs = Differ.DigitDiffer.globalDiff(bgn.syncMs, end.syncMs);
+
+                    delta.topAppMs = Differ.DigitDiffer.globalDiff(bgn.topAppMs, end.topAppMs);
+                    delta.fgActivityMs = Differ.DigitDiffer.globalDiff(bgn.fgActivityMs, end.fgActivityMs);
                     return delta;
                 }
             };
