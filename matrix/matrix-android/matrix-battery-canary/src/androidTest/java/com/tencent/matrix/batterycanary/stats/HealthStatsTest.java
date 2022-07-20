@@ -190,6 +190,28 @@ public class HealthStatsTest {
     }
 
     @Test
+    public void getGetArrayItemAvgPower() throws IOException {
+        PowerProfile powerProfile = PowerProfile.init(mContext);
+        Assert.assertNotNull(powerProfile);
+        Assert.assertTrue(powerProfile.isSupported());
+
+        for (String key : PowerProfile.getPowerItemMap().keySet()) {
+            Assert.assertEquals(powerProfile.getAveragePower(key), powerProfile.getAveragePowerUni(key), 0d);
+        }
+
+        for (String key : PowerProfile.getPowerArrayMap().keySet()) {
+            Assert.assertEquals(powerProfile.getAveragePower(key, 0), powerProfile.getAveragePower(key), 0d);
+
+            double sum = 0;
+            int num = powerProfile.getNumElements(key);
+            for (int i = 0; i < num; i++) {
+                sum += powerProfile.getAveragePower(key, i);
+            }
+            Assert.assertEquals(sum / num, powerProfile.getAveragePowerUni(key), 0d);
+        }
+    }
+
+    @Test
     public void testEstimateCpuPower() throws IOException {
         PowerProfile powerProfile = PowerProfile.init(mContext);
         Assert.assertNotNull(powerProfile);

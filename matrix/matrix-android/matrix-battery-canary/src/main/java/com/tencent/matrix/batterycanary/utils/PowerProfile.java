@@ -67,6 +67,21 @@ public class PowerProfile {
         }
     }
 
+    public double getAveragePowerUni(String type) {
+        int num = getNumElements(type);
+        if (num > 0) {
+            // Array
+            double sum = 0;
+            for (int i = 0; i < num; i++) {
+                sum += getAveragePower(type, i);
+            }
+            return sum / num;
+        } else {
+            // Item
+            return getAveragePower(type);
+        }
+    }
+
     public int getCpuCoreNum() {
         int cpuCoreNumInProfile = 0;
         for (int i = 0; i < getNumCpuClusters(); i++) {
