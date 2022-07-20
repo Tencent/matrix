@@ -26,6 +26,23 @@ import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
 
 /**
+ * totalPowerMah = usagePowerMah + wifiPowerMah + gpsPowerMah + cpuPowerMah +
+ *                 sensorPowerMah + mobileRadioPowerMah + wakeLockPowerMah + cameraPowerMah +
+ *                 flashlightPowerMah + bluetoothPowerMah + audioPowerMah + videoPowerMah
+ *                 + systemServiceCpuPowerMah;
+ * if (customMeasuredPowerMah != null) {
+ *     for (int idx = 0; idx < customMeasuredPowerMah.length; idx++) {
+ *         totalPowerMah += customMeasuredPowerMah[idx];
+ *     }
+ * }
+ * // powerAttributedToOtherSippersMah is negative or zero
+ * totalPowerMah = totalPowerMah + powerReattributedToOtherSippersMah;
+ * totalSmearedPowerMah = totalPowerMah + screenPowerMah + proportionalSmearMah;
+ *
+ * @see com.android.internal.os.BatterySipper#sumPower
+ * @see com.android.internal.os.BatteryStatsHelper
+ * @see com.android.internal.os.BatteryStatsImpl.Uid
+ *
  * @author Kaede
  * @since 6/7/2022
  */
@@ -117,27 +134,29 @@ public final class HealthStatsHelper {
     }
 
     private static double estimateCpuPowerByCpuStats(PowerProfile powerProfile, long cpuTimeMs) {
-        CpuStatFeature feat = BatteryCanary.getMonitorFeature(CpuStatFeature.class);
-        if (feat != null && feat.isSupported()) {
-            CpuStatFeature.CpuStateSnapshot cpuStateSnapshot = feat.currentCpuStateSnapshot();
-            if (cpuStateSnapshot != null) {
-                long jiffySum = 0;
-                for (MonitorFeature.Snapshot.Entry.ListEntry<MonitorFeature.Snapshot.Entry.DigitEntry<Long>> stepJiffies : cpuStateSnapshot.procCpuCoreStates) {
-                    for (MonitorFeature.Snapshot.Entry.DigitEntry<Long> item : stepJiffies.getList()) {
-                        jiffySum += item.get();
+        if (cpuTimeMs > 0) {
+            CpuStatFeature feat = BatteryCanary.getMonitorFeature(CpuStatFeature.class);
+            if (feat != null && feat.isSupported()) {
+                CpuStatFeature.CpuStateSnapshot cpuStateSnapshot = feat.currentCpuStateSnapshot();
+                if (cpuStateSnapshot != null) {
+                    long jiffySum = 0;
+                    for (MonitorFeature.Snapshot.Entry.ListEntry<MonitorFeature.Snapshot.Entry.DigitEntry<Long>> stepJiffies : cpuStateSnapshot.procCpuCoreStates) {
+                        for (MonitorFeature.Snapshot.Entry.DigitEntry<Long> item : stepJiffies.getList()) {
+                            jiffySum += item.get();
+                        }
                     }
-                }
-                double powerMah = 0;
-                for (int i = 0; i < cpuStateSnapshot.procCpuCoreStates.size(); i++) {
-                    List<MonitorFeature.Snapshot.Entry.DigitEntry<Long>> stepJiffies = cpuStateSnapshot.procCpuCoreStates.get(i).getList();
-                    for (int j = 0; j < stepJiffies.size(); j++) {
-                        long jiffy = stepJiffies.get(j).get();
-                        long figuredCpuTimeMs = (long) ((jiffy * 1.0f / jiffySum) * cpuTimeMs);
-                        double powerMa = powerProfile.getAveragePowerForCpuCore(i, j);
-                        powerMah += new UsageBasedPowerEstimator(powerMa).calculatePower(figuredCpuTimeMs);
+                    double powerMah = 0;
+                    for (int i = 0; i < cpuStateSnapshot.procCpuCoreStates.size(); i++) {
+                        List<MonitorFeature.Snapshot.Entry.DigitEntry<Long>> stepJiffies = cpuStateSnapshot.procCpuCoreStates.get(i).getList();
+                        for (int j = 0; j < stepJiffies.size(); j++) {
+                            long jiffy = stepJiffies.get(j).get();
+                            long figuredCpuTimeMs = (long) ((jiffy * 1.0f / jiffySum) * cpuTimeMs);
+                            double powerMa = powerProfile.getAveragePowerForCpuCore(i, j);
+                            powerMah += new UsageBasedPowerEstimator(powerMa).calculatePower(figuredCpuTimeMs);
+                        }
                     }
+                    return powerMah;
                 }
-                return powerMah;
             }
         }
         return 0;
@@ -389,5 +408,38 @@ public final class HealthStatsHelper {
         long screenOnTimeMs = Math.min(topAppMs, fgActivityMs);
         double powerMa = powerProfile.getAveragePower(PowerProfile.POWER_SCREEN_ON);
         return new UsageBasedPowerEstimator(powerMa).calculatePower(screenOnTimeMs);
+    }
+
+    /**
+     * @see com.android.internal.os.SystemServicePowerCalculator
+     */
+    @RequiresApi(api = Build.VERSION_CODES.N)
+    public static double calcSystemServicePower(PowerProfile powerProfile, HealthStats healthStats) {
+        long timeMs = 0;
+        if (healthStats.hasTimers(UidHealthStats.TIMERS_JOBS)) {
+            Map<String, TimerStat> timers = healthStats.getTimers(UidHealthStats.TIMERS_JOBS);
+            for (TimerStat item : timers.values()) {
+                timeMs += item.getTime();
+            }
+        }
+        if (healthStats.hasTimers(UidHealthStats.TIMERS_SYNCS)) {
+            Map<String, TimerStat> timers = healthStats.getTimers(UidHealthStats.TIMERS_SYNCS);
+            for (TimerStat item : timers.values()) {
+                timeMs += item.getTime();
+            }
+        }
+        return estimateCpuPowerByCpuStats(powerProfile, timeMs);
+    }
+
+    /**
+     * @see com.android.internal.os.IdlePowerCalculator#IdlePowerCalculator
+     */
+    @RequiresApi(api = Build.VERSION_CODES.N)
+    public static double calcIdlePower(PowerProfile powerProfile, HealthStats healthStats) {
+        long batteryRealtimeMs = getMeasure(healthStats, UidHealthStats.MEASUREMENT_REALTIME_BATTERY_MS);
+        long batteryUptimeMs = getMeasure(healthStats, UidHealthStats.MEASUREMENT_UPTIME_BATTERY_MS);
+        double suspendPowerMah = new UsageBasedPowerEstimator(powerProfile.getAveragePower(PowerProfile.POWER_CPU_SUSPEND)).calculatePower(batteryRealtimeMs);
+        double idlePowerMah = new UsageBasedPowerEstimator(powerProfile.getAveragePower(PowerProfile.POWER_CPU_IDLE)).calculatePower(batteryUptimeMs);
+        return suspendPowerMah + idlePowerMah;
     }
 }

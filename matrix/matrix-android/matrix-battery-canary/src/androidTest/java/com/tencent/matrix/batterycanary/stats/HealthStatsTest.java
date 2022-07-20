@@ -229,15 +229,14 @@ public class HealthStatsTest {
         healthStats.hasMeasurement(UidHealthStats.MEASUREMENT_USER_CPU_TIME_MS);
         healthStats.hasMeasurement(UidHealthStats.MEASUREMENT_SYSTEM_CPU_TIME_MS);
         long cpuTimeMs = healthStats.getMeasurement(UidHealthStats.MEASUREMENT_USER_CPU_TIME_MS) +  healthStats.getMeasurement(UidHealthStats.MEASUREMENT_SYSTEM_CPU_TIME_MS);
-        double powerMah = estimateCpuPowerByCpuStats(cpuTimeMs);
+        double powerMah = estimateCpuPowerByCpuStats(feature, cpuTimeMs);
         Assert.assertTrue(powerMah >= 0);
 
         double calcCpuPower = HealthStatsHelper.calcCpuPower(feature.getPowerProfile(), healthStats);
         Assert.assertEquals(powerMah, calcCpuPower, 1d);
     }
 
-    private static double estimateCpuPowerByCpuStats(long cpuTimeMs) {
-        CpuStatFeature feat = BatteryCanary.getMonitorFeature(CpuStatFeature.class);
+    private static double estimateCpuPowerByCpuStats(CpuStatFeature feat, long cpuTimeMs) {
         if (feat != null && feat.isSupported()) {
             CpuStatFeature.CpuStateSnapshot cpuStateSnapshot = feat.currentCpuStateSnapshot();
             if (cpuStateSnapshot != null) {
@@ -265,6 +264,17 @@ public class HealthStatsTest {
 
     @Test
     public void testEstimateMemoryPower() throws IOException {
+        PowerProfile powerProfile = PowerProfile.init(mContext);
+        Assert.assertNotNull(powerProfile);
+        Assert.assertTrue(powerProfile.isSupported());
+
+        int num = powerProfile.getNumElements(PowerProfile.POWER_MEMORY);
+        for (int i = 0; i < num; i++) {
+            Assert.assertTrue(powerProfile.getAveragePower(PowerProfile.POWER_MEMORY, num) > 0);
+        }
+
+        double calcPower = HealthStatsHelper.calcMemoryPower(powerProfile);
+        Assert.assertTrue(calcPower >= 0);
     }
 
     @Test
@@ -578,10 +588,58 @@ public class HealthStatsTest {
 
     @Test
     public void testEstimateSystemServicePower() throws IOException {
+        PowerProfile powerProfile = PowerProfile.init(mContext);
+        Assert.assertNotNull(powerProfile);
+        Assert.assertTrue(powerProfile.isSupported());
+
+        CpuStatFeature feature = new CpuStatFeature();
+        feature.configure(mockMonitor());
+        feature.onTurnOn();
+
+        Assert.assertTrue(feature.isSupported());
+        CpuStatFeature.CpuStateSnapshot cpuStateSnapshot = feature.currentCpuStateSnapshot();
+        Assert.assertTrue(cpuStateSnapshot.procCpuCoreStates.size() > 0);
+
+        SystemHealthManager manager = (SystemHealthManager) mContext.getSystemService(Context.SYSTEM_HEALTH_SERVICE);
+        HealthStats healthStats = manager.takeMyUidSnapshot();
+        Assert.assertNotNull(healthStats);
+
+        long timeMs = 0;
+        if (healthStats.hasTimers(UidHealthStats.TIMERS_JOBS)) {
+            Map<String, TimerStat> timers = healthStats.getTimers(UidHealthStats.TIMERS_JOBS);
+            for (TimerStat item : timers.values()) {
+                timeMs += item.getTime();
+            }
+        }
+        if (healthStats.hasTimers(UidHealthStats.TIMERS_SYNCS)) {
+            Map<String, TimerStat> timers = healthStats.getTimers(UidHealthStats.TIMERS_SYNCS);
+            for (TimerStat item : timers.values()) {
+                timeMs += item.getTime();
+            }
+        }
+
+        double calcPower = estimateCpuPowerByCpuStats(feature, timeMs);
+        Assert.assertTrue(calcPower >= 0);
+
+        calcPower = HealthStatsHelper.calcSystemServicePower(powerProfile, healthStats);
+        Assert.assertTrue(calcPower >= 0);
     }
 
     @Test
     public void testEstimateIdlePower() throws IOException {
+        PowerProfile powerProfile = PowerProfile.init(mContext);
+        Assert.assertNotNull(powerProfile);
+        Assert.assertTrue(powerProfile.isSupported());
+
+        Assert.assertTrue(powerProfile.getAveragePower(PowerProfile.POWER_CPU_SUSPEND) > 0);
+        Assert.assertTrue(powerProfile.getAveragePower(PowerProfile.POWER_CPU_IDLE) > 0);
+
+        SystemHealthManager manager = (SystemHealthManager) mContext.getSystemService(Context.SYSTEM_HEALTH_SERVICE);
+        HealthStats healthStats = manager.takeMyUidSnapshot();
+        Assert.assertNotNull(healthStats);
+
+        double calcPower = HealthStatsHelper.calcIdlePower(powerProfile, healthStats);
+        Assert.assertTrue(calcPower >= 0);
     }
 
     @Test
