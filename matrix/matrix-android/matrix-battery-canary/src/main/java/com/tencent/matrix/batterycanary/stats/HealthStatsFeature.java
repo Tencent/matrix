@@ -60,7 +60,6 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                     snapshot.cpuPower = DigitEntry.of(HealthStatsHelper.calcCpuPower(powerProfile, healthStats));
                     snapshot.wakelocksPower = DigitEntry.of(HealthStatsHelper.calcWakelocksPower(powerProfile, healthStats));
                     snapshot.mobilePower = DigitEntry.of(HealthStatsHelper.calcMobilePower(powerProfile, healthStats));
-                    snapshot.radioActivePower = DigitEntry.of(HealthStatsHelper.calcMobilePowerByRadioActive(powerProfile, healthStats));
                     snapshot.wifiPower = DigitEntry.of(HealthStatsHelper.calcWifiPower(powerProfile, healthStats));
                     snapshot.blueToothPower = DigitEntry.of(HealthStatsHelper.calcBlueToothPower(powerProfile, healthStats));
                     snapshot.gpsPower = DigitEntry.of(HealthStatsHelper.calcGpsPower(powerProfile, healthStats));
@@ -85,6 +84,7 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                             + snapshot.screenPower.get();
 
                     snapshot.totalPower = DigitEntry.of(total);
+                    snapshot.radioActivePower = DigitEntry.of(HealthStatsHelper.calcMobilePowerByRadioActive(powerProfile, healthStats));
                 }
             }
 
@@ -230,11 +230,9 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                 @Override
                 protected HealthStatsSnapshot computeDelta() {
                     HealthStatsSnapshot delta = new HealthStatsSnapshot();
-                    delta.totalPower = Differ.DigitDiffer.globalDiff(bgn.totalPower, end.totalPower);
                     delta.cpuPower = Differ.DigitDiffer.globalDiff(bgn.cpuPower, end.cpuPower);
                     delta.wakelocksPower = Differ.DigitDiffer.globalDiff(bgn.wakelocksPower, end.wakelocksPower);
                     delta.mobilePower = Differ.DigitDiffer.globalDiff(bgn.mobilePower, end.mobilePower);
-                    delta.radioActivePower = Differ.DigitDiffer.globalDiff(bgn.radioActivePower, end.radioActivePower);
                     delta.wifiPower = Differ.DigitDiffer.globalDiff(bgn.wifiPower, end.wifiPower);
                     delta.blueToothPower = Differ.DigitDiffer.globalDiff(bgn.blueToothPower, end.blueToothPower);
                     delta.gpsPower = Differ.DigitDiffer.globalDiff(bgn.gpsPower, end.gpsPower);
@@ -244,6 +242,9 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                     delta.audioPower = Differ.DigitDiffer.globalDiff(bgn.audioPower, end.audioPower);
                     delta.videoPower = Differ.DigitDiffer.globalDiff(bgn.videoPower, end.videoPower);
                     delta.screenPower = Differ.DigitDiffer.globalDiff(bgn.screenPower, end.screenPower);
+
+                    delta.totalPower = Differ.DigitDiffer.globalDiff(bgn.totalPower, end.totalPower);
+                    delta.radioActivePower = Differ.DigitDiffer.globalDiff(bgn.radioActivePower, end.radioActivePower);
 
                     delta.cpuPowerMams = Differ.DigitDiffer.globalDiff(bgn.cpuPowerMams, end.cpuPowerMams);
                     delta.cpuUsrTimeMs = Differ.DigitDiffer.globalDiff(bgn.cpuUsrTimeMs, end.cpuUsrTimeMs);

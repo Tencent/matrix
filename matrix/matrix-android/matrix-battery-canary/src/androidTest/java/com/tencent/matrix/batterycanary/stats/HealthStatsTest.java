@@ -291,8 +291,8 @@ public class HealthStatsTest {
         }
         Assert.assertTrue(powerMah >= 0);
 
-        double calcCpuPower = HealthStatsHelper.calcWakelocksPower(powerProfile, healthStats);
-        Assert.assertEquals(powerMah, calcCpuPower, 1d);
+        double calcPower = HealthStatsHelper.calcWakelocksPower(powerProfile, healthStats);
+        Assert.assertEquals(powerMah, calcPower, 1d);
     }
 
     @Test
@@ -320,8 +320,8 @@ public class HealthStatsTest {
         }
         Assert.assertTrue(powerMahByRadio >= 0);
 
-        double calcCpuPower = HealthStatsHelper.calcMobilePowerByRadioActive(powerProfile, healthStats);
-        Assert.assertEquals(powerMahByRadio, calcCpuPower, 1d);
+        double calcPower = HealthStatsHelper.calcMobilePowerByRadioActive(powerProfile, healthStats);
+        Assert.assertEquals(powerMahByRadio, calcPower, 1d);
 
         double powerMahByTime = 0;
         if (healthStats.hasMeasurement(UidHealthStats.MEASUREMENT_MOBILE_IDLE_MS)) {
@@ -341,8 +341,8 @@ public class HealthStatsTest {
         }
         Assert.assertTrue(powerMahByTime >= 0);
 
-        calcCpuPower = HealthStatsHelper.calcMobilePower(powerProfile, healthStats);
-        Assert.assertEquals(powerMahByTime, calcCpuPower, 1d);
+        calcPower = HealthStatsHelper.calcMobilePower(powerProfile, healthStats);
+        Assert.assertEquals(powerMahByTime, calcPower, 1d);
     }
 
     @Test
@@ -386,8 +386,8 @@ public class HealthStatsTest {
         }
         Assert.assertTrue(powerMah >= 0);
 
-        double calcCpuPower = HealthStatsHelper.calcWifiPower(powerProfile, healthStats);
-        Assert.assertEquals(powerMah, calcCpuPower, 1d);
+        double calcPower = HealthStatsHelper.calcWifiPower(powerProfile, healthStats);
+        Assert.assertEquals(powerMah, calcPower, 1d);
     }
 
     @Test
@@ -427,8 +427,8 @@ public class HealthStatsTest {
         }
         Assert.assertTrue(powerMah >= 0);
 
-        double calcCpuPower = HealthStatsHelper.calcBlueToothPower(powerProfile, healthStats);
-        Assert.assertEquals(powerMah, calcCpuPower, 1d);
+        double calcPower = HealthStatsHelper.calcBlueToothPower(powerProfile, healthStats);
+        Assert.assertEquals(powerMah, calcPower, 1d);
     }
 
     @Test
@@ -438,16 +438,14 @@ public class HealthStatsTest {
         Assert.assertTrue(powerProfile.isSupported());
 
         double powerMa = 0;
-        if (powerProfile.getAveragePower("gps.voltage") > 0) {
-            powerMa = powerProfile.getAveragePower("gps.on");
-            if (powerMa <= 0) {
-                int num = powerProfile.getNumElements("gps.signalqualitybased");
-                double sumMa = 0;
-                for (int i = 0; i < num; i++) {
-                    sumMa += powerProfile.getAveragePower("gps.signalqualitybased", i);
-                }
-                powerMa = sumMa / num;
+        powerMa = powerProfile.getAveragePower("gps.on");
+        if (powerMa <= 0) {
+            int num = powerProfile.getNumElements("gps.signalqualitybased");
+            double sumMa = 0;
+            for (int i = 0; i < num; i++) {
+                sumMa += powerProfile.getAveragePower("gps.signalqualitybased", i);
             }
+            powerMa = sumMa / num;
         }
 
         Assert.assertTrue(powerMa > 0);
@@ -463,8 +461,8 @@ public class HealthStatsTest {
         }
         Assert.assertTrue(powerMah >= 0);
 
-        double calcCpuPower = HealthStatsHelper.calcGpsPower(powerProfile, healthStats);
-        Assert.assertEquals(powerMah, calcCpuPower, 1d);
+        double calcPower = HealthStatsHelper.calcGpsPower(powerProfile, healthStats);
+        Assert.assertEquals(powerMah, calcPower, 1d);
     }
 
     @Test
@@ -524,8 +522,8 @@ public class HealthStatsTest {
             powerMah += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
         }
 
-        double calcCpuPower = HealthStatsHelper.calcCameraPower(powerProfile, healthStats);
-        Assert.assertEquals(powerMah, calcCpuPower, 1d);
+        double calcPower = HealthStatsHelper.calcCameraPower(powerProfile, healthStats);
+        Assert.assertEquals(powerMah, calcPower, 1d);
 
         // Flash Light
         Assert.assertTrue(powerProfile.getAveragePower("camera.flashlight") > 0);
@@ -535,8 +533,8 @@ public class HealthStatsTest {
             powerMah += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
         }
 
-        calcCpuPower = HealthStatsHelper.calcFlashLightPower(powerProfile, healthStats);
-        Assert.assertEquals(powerMah, calcCpuPower, 1d);
+        calcPower = HealthStatsHelper.calcFlashLightPower(powerProfile, healthStats);
+        Assert.assertEquals(powerMah, calcPower, 1d);
 
         // Media
         Assert.assertTrue(powerProfile.getAveragePower("audio") > 0);
@@ -547,8 +545,8 @@ public class HealthStatsTest {
             powerMah += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
         }
 
-        calcCpuPower = HealthStatsHelper.calcAudioPower(powerProfile, healthStats);
-        Assert.assertEquals(powerMah, calcCpuPower, 1d);
+        calcPower = HealthStatsHelper.calcAudioPower(powerProfile, healthStats);
+        Assert.assertEquals(powerMah, calcPower, 1d);
 
         if (healthStats.hasTimer(UidHealthStats.TIMER_VIDEO)) {
             long timeMs = healthStats.getTimerTime(UidHealthStats.TIMER_VIDEO);
@@ -557,8 +555,8 @@ public class HealthStatsTest {
         }
         Assert.assertTrue(powerMah >= 0);
 
-        calcCpuPower = HealthStatsHelper.calcVideoPower(powerProfile, healthStats);
-        Assert.assertEquals(powerMah, calcCpuPower, 1d);
+        calcPower = HealthStatsHelper.calcVideoPower(powerProfile, healthStats);
+        Assert.assertEquals(powerMah, calcPower, 1d);
     }
 
     @Test
@@ -574,21 +572,8 @@ public class HealthStatsTest {
         HealthStats healthStats = manager.takeMyUidSnapshot();
         Assert.assertNotNull(healthStats);
 
-        Assert.assertTrue(healthStats.hasMeasurement(UidHealthStats.MEASUREMENT_REALTIME_BATTERY_MS));
-        Assert.assertTrue(healthStats.hasMeasurement(UidHealthStats.MEASUREMENT_REALTIME_SCREEN_OFF_BATTERY_MS));
-
-        long totalTimeMs = healthStats.getMeasurement(UidHealthStats.MEASUREMENT_REALTIME_BATTERY_MS);
-        long screenOffTimeMs = healthStats.getMeasurement(UidHealthStats.MEASUREMENT_REALTIME_SCREEN_OFF_BATTERY_MS);
-        Assert.assertTrue(totalTimeMs >= screenOffTimeMs);
-        long screenOnTimeMs = totalTimeMs - screenOffTimeMs;
-
-        double powerMah = 0;
-        powerMah += new UsageBasedPowerEstimator(powerProfile.getAveragePower("screen.on")).calculatePower(screenOnTimeMs);
-
-        Assert.assertTrue(powerMah > 0);
-
-        double calcCpuPower = HealthStatsHelper.calcScreenPower(powerProfile, healthStats);
-        Assert.assertEquals(powerMah, calcCpuPower, 1d);
+        double calcPower = HealthStatsHelper.calcScreenPower(powerProfile, healthStats);
+        Assert.assertTrue(calcPower >= 0);
     }
 
     @Test

@@ -37,11 +37,12 @@ public final class HealthStatsHelper {
     public static class UsageBasedPowerEstimator {
         private static final double MILLIS_IN_HOUR = 1000.0 * 60 * 60;
         private final double mAveragePowerMahPerMs;
-
         public UsageBasedPowerEstimator(double averagePowerMilliAmp) {
             mAveragePowerMahPerMs = averagePowerMilliAmp / MILLIS_IN_HOUR;
         }
-
+        public boolean isSupported() {
+            return mAveragePowerMahPerMs != 0;
+        }
         public double calculatePower(long durationMs) {
             return mAveragePowerMahPerMs * durationMs;
         }
@@ -81,12 +82,34 @@ public final class HealthStatsHelper {
         return 0L;
     }
 
+    /**
+     * @see com.android.internal.os.CpuPowerCalculator
+     * @see com.android.internal.os.PowerProfile
+     */
     @RequiresApi(api = Build.VERSION_CODES.N)
     public static double calcCpuPower(PowerProfile powerProfile, HealthStats healthStats) {
         double power = getMeasure(healthStats, UidHealthStats.MEASUREMENT_CPU_POWER_MAMS) / UsageBasedPowerEstimator.MILLIS_IN_HOUR;
         if (power > 0) {
             MatrixLog.i(TAG, "estimate CPU by mams");
         } else if (power == 0) {
+            /*
+             * POWER_CPU_SUSPEND: Power consumption when CPU is in power collapse mode.
+             * POWER_CPU_IDLE: Power consumption when CPU is awake (when a wake lock is held). This should
+             *                 be zero on devices that can go into full CPU power collapse even when a wake
+             *                 lock is held. Otherwise, this is the power consumption in addition to
+             * POWER_CPU_SUSPEND due to a wake lock being held but with no CPU activity.
+             * POWER_CPU_ACTIVE: Power consumption when CPU is running, excluding power consumed by clusters
+             *                   and cores.
+             *
+             * CPU Power Equation (assume two clusters):
+             * Total power = POWER_CPU_SUSPEND  (always added)
+             *               + POWER_CPU_IDLE   (skip this and below if in power collapse mode)
+             *               + POWER_CPU_ACTIVE (skip this and below if CPU is not running, but a wakelock
+             *                                   is held)
+             *               + cluster_power.cluster0 + cluster_power.cluster1 (skip cluster not running)
+             *               + core_power.cluster0 * num running cores in cluster 0
+             *               + core_power.cluster1 * num running cores in cluster 1
+             */
             long cpuTimeMs = getMeasure(healthStats, UidHealthStats.MEASUREMENT_USER_CPU_TIME_MS) + getMeasure(healthStats, UidHealthStats.MEASUREMENT_SYSTEM_CPU_TIME_MS);
             power = estimateCpuPowerByCpuStats(powerProfile, cpuTimeMs);
         }
@@ -120,6 +143,23 @@ public final class HealthStatsHelper {
         return 0;
     }
 
+    /**
+     * WIP
+     * @see com.android.internal.os.MemoryPowerCalculator
+     */
+    public static double calcMemoryPower(PowerProfile powerProfile) {
+        double power = 0;
+        int numBuckets = powerProfile.getNumElements(PowerProfile.POWER_MEMORY);
+        for (int i = 0; i < numBuckets; i++) {
+            long timeMs = 0; // TODO: Memory TimeStats supported, see "com.android.internal.os.KernelMemoryBandwidthStats"
+            power += new UsageBasedPowerEstimator(powerProfile.getAveragePower(PowerProfile.POWER_MEMORY, i)).calculatePower(timeMs);
+        }
+        return power;
+    }
+
+    /**
+     * @see com.android.internal.os.WakelockPowerCalculator
+     */
     @RequiresApi(api = Build.VERSION_CODES.N)
     public static double calcWakelocksPower(PowerProfile powerProfile, HealthStats healthStats) {
         double power = 0;
@@ -170,6 +210,8 @@ public final class HealthStatsHelper {
                 double powerMa = powerProfile.getAveragePower(PowerProfile.POWER_MODEM_CONTROLLER_TX);
                 power += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
             }
+
+            // FIXME: calc with packets
         }
         return power;
     }
@@ -202,6 +244,8 @@ public final class HealthStatsHelper {
                 UsageBasedPowerEstimator etmWifiTxPower = new UsageBasedPowerEstimator(wifiTxPower);
                 power += etmWifiTxPower.calculatePower(txMs);
             }
+
+            // FIXME: calc without wifi-controller
         }
         return power;
     }
@@ -243,16 +287,14 @@ public final class HealthStatsHelper {
         long timeMs = getTimerTime(healthStats, UidHealthStats.TIMER_GPS_SENSOR);
         double powerMa = 0;
         if (timeMs > 0) {
-            if (powerProfile.getAveragePower(PowerProfile.POWER_GPS_OPERATING_VOLTAGE) > 0) {
-                powerMa = powerProfile.getAveragePower(PowerProfile.POWER_GPS_ON);
-                if (powerMa <= 0) {
-                    int num = powerProfile.getNumElements(PowerProfile.POWER_GPS_SIGNAL_QUALITY_BASED);
-                    double sumMa = 0;
-                    for (int i = 0; i < num; i++) {
-                        sumMa += powerProfile.getAveragePower(PowerProfile.POWER_GPS_SIGNAL_QUALITY_BASED, i);
-                    }
-                    powerMa = sumMa / num;
+            powerMa = powerProfile.getAveragePower(PowerProfile.POWER_GPS_ON);
+            if (powerMa <= 0) {
+                int num = powerProfile.getNumElements(PowerProfile.POWER_GPS_SIGNAL_QUALITY_BASED);
+                double sumMa = 0;
+                for (int i = 0; i < num; i++) {
+                    sumMa += powerProfile.getAveragePower(PowerProfile.POWER_GPS_SIGNAL_QUALITY_BASED, i);
                 }
+                powerMa = sumMa / num;
             }
         }
         return new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
@@ -342,9 +384,9 @@ public final class HealthStatsHelper {
      */
     @RequiresApi(api = Build.VERSION_CODES.N)
     public static double calcScreenPower(PowerProfile powerProfile, HealthStats healthStats) {
-        long totalTimeMs = getMeasure(healthStats, UidHealthStats.MEASUREMENT_REALTIME_BATTERY_MS);
-        long screenOffTimeMs = getMeasure(healthStats, UidHealthStats.MEASUREMENT_REALTIME_SCREEN_OFF_BATTERY_MS);
-        long screenOnTimeMs = totalTimeMs - screenOffTimeMs;
+        long topAppMs = getTimerTime(healthStats, UidHealthStats.TIMER_PROCESS_STATE_TOP_MS);
+        long fgActivityMs = getTimerTime(healthStats, UidHealthStats.TIMER_FOREGROUND_ACTIVITY);
+        long screenOnTimeMs = Math.min(topAppMs, fgActivityMs);
         double powerMa = powerProfile.getAveragePower(PowerProfile.POWER_SCREEN_ON);
         return new UsageBasedPowerEstimator(powerMa).calculatePower(screenOnTimeMs);
     }
