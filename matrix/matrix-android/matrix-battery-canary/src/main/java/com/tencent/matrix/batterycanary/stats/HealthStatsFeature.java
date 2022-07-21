@@ -6,6 +6,7 @@ import android.hardware.Sensor;
 import android.hardware.SensorManager;
 import android.os.Build;
 import android.os.health.HealthStats;
+import android.os.health.PidHealthStats;
 import android.os.health.TimerStat;
 import android.os.health.UidHealthStats;
 
@@ -98,6 +99,8 @@ public class HealthStatsFeature extends AbsMonitorFeature {
             snapshot.cpuSysTimeMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_SYSTEM_CPU_TIME_MS));
             snapshot.realTimeMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_REALTIME_BATTERY_MS));
             snapshot.upTimeMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_UPTIME_BATTERY_MS));
+            snapshot.offRealTimeMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_REALTIME_SCREEN_OFF_BATTERY_MS));
+            snapshot.offUpTimeMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_UPTIME_SCREEN_OFF_BATTERY_MS));
 
             snapshot.mobilePowerMams = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_MOBILE_POWER_MAMS));
             snapshot.mobileRadioActiveMs = DigitEntry.of(HealthStatsHelper.getTimerTime(healthStats, UidHealthStats.TIMER_MOBILE_RADIO_ACTIVE));
@@ -109,19 +112,57 @@ public class HealthStatsFeature extends AbsMonitorFeature {
             snapshot.wifiIdleMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_IDLE_MS));
             snapshot.wifiRxMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_RX_MS));
             snapshot.wifiTxMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_TX_MS));
+            snapshot.wifiRxBytes = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_RX_BYTES));
+            snapshot.wifiTxBytes = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_TX_BYTES));
 
             snapshot.blueToothPowerMams = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_BLUETOOTH_POWER_MAMS));
             snapshot.blueToothIdleMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_BLUETOOTH_IDLE_MS));
             snapshot.blueToothRxMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_BLUETOOTH_RX_MS));
             snapshot.blueToothTxMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_BLUETOOTH_TX_MS));
 
-            if (healthStats.hasTimers(UidHealthStats.TIMERS_WAKELOCKS_PARTIAL)) {
-                Map<String, TimerStat> timers = healthStats.getTimers(UidHealthStats.TIMERS_WAKELOCKS_PARTIAL);
-                long timeMs = 0;
-                for (TimerStat item : timers.values()) {
-                    timeMs += item.getTime();
+            {
+                if (healthStats.hasTimers(UidHealthStats.TIMERS_WAKELOCKS_PARTIAL)) {
+                    Map<String, TimerStat> timers = healthStats.getTimers(UidHealthStats.TIMERS_WAKELOCKS_PARTIAL);
+                    long timeMs = 0;
+                    for (TimerStat item : timers.values()) {
+                        timeMs += item.getTime();
+                    }
+                    snapshot.wakelocksPartialMs = DigitEntry.of(timeMs);
                 }
-                snapshot.wakelocksPartialMs = DigitEntry.of(timeMs);
+                if (healthStats.hasTimers(UidHealthStats.TIMERS_WAKELOCKS_FULL)) {
+                    Map<String, TimerStat> timers = healthStats.getTimers(UidHealthStats.TIMERS_WAKELOCKS_FULL);
+                    long timeMs = 0;
+                    for (TimerStat item : timers.values()) {
+                        timeMs += item.getTime();
+                    }
+                    snapshot.wakelocksFullMs = DigitEntry.of(timeMs);
+                }
+                if (healthStats.hasTimers(UidHealthStats.TIMERS_WAKELOCKS_WINDOW)) {
+                    Map<String, TimerStat> timers = healthStats.getTimers(UidHealthStats.TIMERS_WAKELOCKS_WINDOW);
+                    long timeMs = 0;
+                    for (TimerStat item : timers.values()) {
+                        timeMs += item.getTime();
+                    }
+                    snapshot.wakelocksWindowMs = DigitEntry.of(timeMs);
+                }
+                if (healthStats.hasTimers(UidHealthStats.TIMERS_WAKELOCKS_DRAW)) {
+                    Map<String, TimerStat> timers = healthStats.getTimers(UidHealthStats.TIMERS_WAKELOCKS_DRAW);
+                    long timeMs = 0;
+                    for (TimerStat item : timers.values()) {
+                        timeMs += item.getTime();
+                    }
+                    snapshot.wakelocksDrawMs = DigitEntry.of(timeMs);
+                }
+                if (healthStats.hasStats(UidHealthStats.STATS_PIDS)) {
+                    long sum = 0;
+                    Map<String, HealthStats> pidStats = healthStats.getStats(UidHealthStats.STATS_PIDS);
+                    for (HealthStats item : pidStats.values()) {
+                        if (item.hasMeasurement(PidHealthStats.MEASUREMENT_WAKE_SUM_MS)) {
+                            sum += item.getMeasurement(PidHealthStats.MEASUREMENT_WAKE_SUM_MS);
+                        }
+                    }
+                    snapshot.wakelocksPidSum = DigitEntry.of(sum);
+                }
             }
             snapshot.gpsMs = DigitEntry.of(HealthStatsHelper.getTimerTime(healthStats, UidHealthStats.TIMER_GPS_SENSOR));
             if (healthStats.hasTimers(UidHealthStats.TIMERS_SENSORS)) {
@@ -177,8 +218,13 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                 snapshot.syncMs = DigitEntry.of(timeMs);
             }
 
-            snapshot.topAppMs = DigitEntry.of(HealthStatsHelper.getTimerTime(healthStats, UidHealthStats.TIMER_PROCESS_STATE_TOP_MS));
-            snapshot.fgActivityMs = DigitEntry.of(HealthStatsHelper.getTimerTime(healthStats, UidHealthStats.TIMER_FOREGROUND_ACTIVITY));
+            snapshot.fgActMs = DigitEntry.of(HealthStatsHelper.getTimerTime(healthStats, UidHealthStats.TIMER_FOREGROUND_ACTIVITY));
+            snapshot.procTopAppMs = DigitEntry.of(HealthStatsHelper.getTimerTime(healthStats, UidHealthStats.TIMER_PROCESS_STATE_TOP_MS));
+            snapshot.procTopSleepMs = DigitEntry.of(HealthStatsHelper.getTimerTime(healthStats, UidHealthStats.TIMER_PROCESS_STATE_TOP_SLEEPING_MS));
+            snapshot.procFgMs = DigitEntry.of(HealthStatsHelper.getTimerTime(healthStats, UidHealthStats.TIMER_PROCESS_STATE_FOREGROUND_MS));
+            snapshot.procFgSrvMs = DigitEntry.of(HealthStatsHelper.getTimerTime(healthStats, UidHealthStats.TIMER_PROCESS_STATE_FOREGROUND_SERVICE_MS));
+            snapshot.procBgMs = DigitEntry.of(HealthStatsHelper.getTimerTime(healthStats, UidHealthStats.TIMER_PROCESS_STATE_BACKGROUND_MS));
+            snapshot.procCacheMs = DigitEntry.of(HealthStatsHelper.getTimerTime(healthStats, UidHealthStats.TIMER_PROCESS_STATE_CACHED_MS));
         }
         return snapshot;
     }
@@ -213,6 +259,8 @@ public class HealthStatsFeature extends AbsMonitorFeature {
         public DigitEntry<Long> cpuSysTimeMs = DigitEntry.of(0L);
         public DigitEntry<Long> realTimeMs = DigitEntry.of(0L);
         public DigitEntry<Long> upTimeMs = DigitEntry.of(0L);
+        public DigitEntry<Long> offRealTimeMs = DigitEntry.of(0L);
+        public DigitEntry<Long> offUpTimeMs = DigitEntry.of(0L);
 
         // Network
         public DigitEntry<Long> mobilePowerMams = DigitEntry.of(0L);
@@ -225,6 +273,8 @@ public class HealthStatsFeature extends AbsMonitorFeature {
         public DigitEntry<Long> wifiIdleMs = DigitEntry.of(0L);
         public DigitEntry<Long> wifiRxMs = DigitEntry.of(0L);
         public DigitEntry<Long> wifiTxMs = DigitEntry.of(0L);
+        public DigitEntry<Long> wifiRxBytes = DigitEntry.of(0L);
+        public DigitEntry<Long> wifiTxBytes = DigitEntry.of(0L);
 
         public DigitEntry<Long> blueToothPowerMams = DigitEntry.of(0L);
         public DigitEntry<Long> blueToothIdleMs = DigitEntry.of(0L);
@@ -233,6 +283,10 @@ public class HealthStatsFeature extends AbsMonitorFeature {
 
         // SystemService & Media
         public DigitEntry<Long> wakelocksPartialMs = DigitEntry.of(0L);
+        public DigitEntry<Long> wakelocksFullMs = DigitEntry.of(0L);
+        public DigitEntry<Long> wakelocksWindowMs = DigitEntry.of(0L);
+        public DigitEntry<Long> wakelocksDrawMs = DigitEntry.of(0L);
+        public DigitEntry<Long> wakelocksPidSum = DigitEntry.of(0L);
         public DigitEntry<Long> gpsMs = DigitEntry.of(0L);
         public DigitEntry<Long> sensorsPowerMams = DigitEntry.of(0L);
         public DigitEntry<Long> cameraMs = DigitEntry.of(0L);
@@ -242,9 +296,14 @@ public class HealthStatsFeature extends AbsMonitorFeature {
         public DigitEntry<Long> jobsMs = DigitEntry.of(0L);
         public DigitEntry<Long> syncMs = DigitEntry.of(0L);
 
-        // Screen
-        public DigitEntry<Long> topAppMs = DigitEntry.of(0L);
-        public DigitEntry<Long> fgActivityMs = DigitEntry.of(0L);
+        // Foreground
+        public DigitEntry<Long> fgActMs = DigitEntry.of(0L);
+        public DigitEntry<Long> procTopAppMs = DigitEntry.of(0L);
+        public DigitEntry<Long> procTopSleepMs = DigitEntry.of(0L);
+        public DigitEntry<Long> procFgMs = DigitEntry.of(0L);
+        public DigitEntry<Long> procFgSrvMs = DigitEntry.of(0L);
+        public DigitEntry<Long> procBgMs = DigitEntry.of(0L);
+        public DigitEntry<Long> procCacheMs = DigitEntry.of(0L);
 
         @Override
         public Delta<HealthStatsSnapshot> diff(HealthStatsSnapshot bgn) {
@@ -286,6 +345,8 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                     delta.wifiIdleMs = Differ.DigitDiffer.globalDiff(bgn.wifiIdleMs, end.wifiIdleMs);
                     delta.wifiRxMs = Differ.DigitDiffer.globalDiff(bgn.wifiRxMs, end.wifiRxMs);
                     delta.wifiTxMs = Differ.DigitDiffer.globalDiff(bgn.wifiTxMs, end.wifiTxMs);
+                    delta.wifiRxBytes = Differ.DigitDiffer.globalDiff(bgn.wifiRxBytes, end.wifiRxBytes);
+                    delta.wifiTxBytes = Differ.DigitDiffer.globalDiff(bgn.wifiTxBytes, end.wifiTxBytes);
 
                     delta.blueToothPowerMams = Differ.DigitDiffer.globalDiff(bgn.blueToothPowerMams, end.blueToothPowerMams);
                     delta.blueToothIdleMs = Differ.DigitDiffer.globalDiff(bgn.blueToothIdleMs, end.blueToothIdleMs);
@@ -293,6 +354,10 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                     delta.blueToothTxMs = Differ.DigitDiffer.globalDiff(bgn.blueToothTxMs, end.blueToothTxMs);
 
                     delta.wakelocksPartialMs = Differ.DigitDiffer.globalDiff(bgn.wakelocksPartialMs, end.wakelocksPartialMs);
+                    delta.wakelocksFullMs = Differ.DigitDiffer.globalDiff(bgn.wakelocksFullMs, end.wakelocksFullMs);
+                    delta.wakelocksWindowMs = Differ.DigitDiffer.globalDiff(bgn.wakelocksWindowMs, end.wakelocksWindowMs);
+                    delta.wakelocksDrawMs = Differ.DigitDiffer.globalDiff(bgn.wakelocksDrawMs, end.wakelocksDrawMs);
+                    delta.wakelocksPidSum = Differ.DigitDiffer.globalDiff(bgn.wakelocksPidSum, end.wakelocksPidSum);
                     delta.gpsMs = Differ.DigitDiffer.globalDiff(bgn.gpsMs, end.gpsMs);
                     delta.sensorsPowerMams = Differ.DigitDiffer.globalDiff(bgn.sensorsPowerMams, end.sensorsPowerMams);
                     delta.cameraMs = Differ.DigitDiffer.globalDiff(bgn.cameraMs, end.cameraMs);
@@ -302,8 +367,13 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                     delta.jobsMs = Differ.DigitDiffer.globalDiff(bgn.jobsMs, end.jobsMs);
                     delta.syncMs = Differ.DigitDiffer.globalDiff(bgn.syncMs, end.syncMs);
 
-                    delta.topAppMs = Differ.DigitDiffer.globalDiff(bgn.topAppMs, end.topAppMs);
-                    delta.fgActivityMs = Differ.DigitDiffer.globalDiff(bgn.fgActivityMs, end.fgActivityMs);
+                    delta.fgActMs = Differ.DigitDiffer.globalDiff(bgn.fgActMs, end.fgActMs);
+                    delta.procTopAppMs = Differ.DigitDiffer.globalDiff(bgn.procTopAppMs, end.procTopAppMs);
+                    delta.procTopSleepMs = Differ.DigitDiffer.globalDiff(bgn.procTopSleepMs, end.procTopSleepMs);
+                    delta.procFgMs = Differ.DigitDiffer.globalDiff(bgn.procFgMs, end.procFgMs);
+                    delta.procFgSrvMs = Differ.DigitDiffer.globalDiff(bgn.procFgSrvMs, end.procFgSrvMs);
+                    delta.procBgMs = Differ.DigitDiffer.globalDiff(bgn.procBgMs, end.procBgMs);
+                    delta.procCacheMs = Differ.DigitDiffer.globalDiff(bgn.procCacheMs, end.procCacheMs);
                     return delta;
                 }
             };
