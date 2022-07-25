@@ -198,31 +198,33 @@ public final class HealthStatsHelper {
      * @see com.android.internal.os.MobileRadioPowerCalculator
      */
     @RequiresApi(api = Build.VERSION_CODES.N)
-    public static double calcMobilePowerByRadioActive(PowerProfile powerProfile, HealthStats healthStats) {
-        long timeMs = getTimerTime(healthStats, UidHealthStats.TIMER_MOBILE_RADIO_ACTIVE);
-        double powerMa = powerProfile.getAveragePowerUni(PowerProfile.POWER_RADIO_ACTIVE);
-        if (powerMa <= 0) {
-            double sum = 0;
-            sum += powerProfile.getAveragePower(PowerProfile.POWER_MODEM_CONTROLLER_RX);
-            int num = powerProfile.getNumElements(PowerProfile.POWER_MODEM_CONTROLLER_TX);
-            for (int i = 0; i < num; i++) {
-                sum += powerProfile.getAveragePower(PowerProfile.POWER_MODEM_CONTROLLER_TX, i);
-            }
-            powerMa = sum / (num + 1);
-        }
-        return new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
-    }
-
-    /**
-     * @see com.android.internal.os.MobileRadioPowerCalculator
-     */
-    @RequiresApi(api = Build.VERSION_CODES.N)
     public static double calcMobilePower(PowerProfile powerProfile, HealthStats healthStats) {
         double power = getMeasure(healthStats, UidHealthStats.MEASUREMENT_MOBILE_POWER_MAMS) / UsageBasedPowerEstimator.MILLIS_IN_HOUR;
         if (power > 0) {
             MatrixLog.i(TAG, "estimate Mobile by mams");
         }
         if (power == 0) {
+            // calc from radio active
+            // for some aosp mistakes, radio active timer was given in time unit us:
+            // https://cs.android.com/android/_/android/platform/frameworks/base/+/bee44ae8e5da109cd8273a057b566dc6925d6a71
+            long timeMs = getTimerTime(healthStats, UidHealthStats.TIMER_MOBILE_RADIO_ACTIVE) / 1000;
+            double powerMa = powerProfile.getAveragePowerUni(PowerProfile.POWER_RADIO_ACTIVE);
+            if (powerMa <= 0) {
+                double sum = 0;
+                sum += powerProfile.getAveragePower(PowerProfile.POWER_MODEM_CONTROLLER_RX);
+                int num = powerProfile.getNumElements(PowerProfile.POWER_MODEM_CONTROLLER_TX);
+                for (int i = 0; i < num; i++) {
+                    sum += powerProfile.getAveragePower(PowerProfile.POWER_MODEM_CONTROLLER_TX, i);
+                }
+                powerMa = sum / (num + 1);
+            }
+            power = new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
+            if (power > 0) {
+                MatrixLog.i(TAG, "estimate Mobile by radioActive");
+            }
+        }
+        if (power == 0) {
+            // calc from controller
             {
                 long timeMs = getMeasure(healthStats, UidHealthStats.MEASUREMENT_MOBILE_IDLE_MS);
                 double powerMa = powerProfile.getAveragePowerUni(PowerProfile.POWER_MODEM_CONTROLLER_IDLE);

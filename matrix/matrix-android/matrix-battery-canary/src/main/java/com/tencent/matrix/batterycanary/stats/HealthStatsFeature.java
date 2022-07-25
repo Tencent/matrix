@@ -89,7 +89,6 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                             + snapshot.idlePower.get();
 
                     snapshot.totalPower = DigitEntry.of(total);
-                    snapshot.radioActivePower = DigitEntry.of(HealthStatsHelper.calcMobilePowerByRadioActive(powerProfile, healthStats));
                 }
             }
 
@@ -250,7 +249,6 @@ public class HealthStatsFeature extends AbsMonitorFeature {
         public DigitEntry<Double> idlePower = DigitEntry.of(0D);
 
         public DigitEntry<Double> totalPower = DigitEntry.of(0D);
-        public DigitEntry<Double> radioActivePower = DigitEntry.of(0D);
 
         // Meta Data:
         // CPU
@@ -327,7 +325,6 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                     delta.idlePower = Differ.DigitDiffer.globalDiff(bgn.idlePower, end.idlePower);
 
                     delta.totalPower = Differ.DigitDiffer.globalDiff(bgn.totalPower, end.totalPower);
-                    delta.radioActivePower = Differ.DigitDiffer.globalDiff(bgn.radioActivePower, end.radioActivePower);
 
                     delta.cpuPowerMams = Differ.DigitDiffer.globalDiff(bgn.cpuPowerMams, end.cpuPowerMams);
                     delta.cpuUsrTimeMs = Differ.DigitDiffer.globalDiff(bgn.cpuUsrTimeMs, end.cpuUsrTimeMs);
