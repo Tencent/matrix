@@ -16,7 +16,7 @@ set(SOURCE_DIR src/main/cpp)
 
 set(
         SOURCE_FILES
-        ${SOURCE_DIR}/jectl/MallCtl.cpp
+        ${SOURCE_DIR}/mallctl/MallCtl.cpp
 )
 
 add_library( # Specifies the name of the library.
