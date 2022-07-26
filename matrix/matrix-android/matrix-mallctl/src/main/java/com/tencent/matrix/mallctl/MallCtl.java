@@ -48,9 +48,29 @@ public class MallCtl {
         return getVersionNative();
     }
 
+    public static final int MALLOPT_FAILED = 0;
+    public static final int MALLOPT_SUCCESS = 1;
+    public static final int MALLOPT_SYM_NOT_FOUND = -1;
+    public static final int MALLOPT_EXCEPTION = -2;
+
+    /**
+     * @return On success, mallopt() returns 1.  On error, it returns 0.
+     */
+    public synchronized static int mallopt() {
+        try {
+            return malloptNative();
+        } catch (Throwable e) {
+            MatrixLog.printErrStackTrace(TAG, e, "mallopt failed");
+        }
+        return MALLOPT_EXCEPTION;
+    }
+
     @Keep
     private static native void initNative();
 
     @Keep
     private static native String getVersionNative();
+
+    @Keep
+    private static native int malloptNative();
 }

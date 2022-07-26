@@ -16,8 +16,7 @@ set(SOURCE_DIR src/main/cpp)
 
 set(
         SOURCE_FILES
-        ${SOURCE_DIR}/jectl/JeCtl.cpp
-        ${SOURCE_DIR}/jectl/JeHooks.cpp
+        ${SOURCE_DIR}/jectl/MallCtl.cpp
 )
 
 add_library( # Specifies the name of the library.
