@@ -23,6 +23,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Process;
 import android.os.SystemClock;
+import android.system.Os;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -34,9 +35,11 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.xmlpull.v1.XmlPullParser;
+import org.xmlpull.v1.XmlPullParserFactory;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
@@ -44,6 +47,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Stack;
+import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -100,6 +104,58 @@ public class BatteryMetricsTest {
         Assert.assertNotNull(powerProfile);
         Assert.assertNotNull(PowerProfile.getInstance());
         Assert.assertTrue(PowerProfile.getInstance().isSupported());
+    }
+
+    @Test
+    public void testReadPowerProfileTest() throws Exception {
+        Class<?> clazz = Class.forName("com.android.internal.os.PowerProfile");
+        Constructor<?> constructor = clazz.getConstructor(Context.class);
+        Object obj = constructor.newInstance(mContext);
+        Assert.assertNotNull(obj);
+
+        int id = mContext.getResources().getIdentifier("power_profile_test", "xml", "android");
+        Assert.assertTrue(id > 0);
+    }
+
+    @Test
+    public void testFindPowerProfileFile() throws Exception {
+        Callable<File> findBlock = new Callable<File>() {
+            @Override
+            public File call() {
+                String customDirs = Os.getenv("CUST_POLICY_DIRS");
+                Assert.assertFalse(TextUtils.isEmpty(customDirs));
+                for (String dir : customDirs.split(":")) {
+                    // example: /hw_product/etc/xml/power_profile.xml
+                    File file = new File(dir, "/xml/power_profile.xml");
+                    if (file.exists() && file.canRead()) {
+                        return file;
+                    }
+                }
+                return null;
+            }
+        };
+
+
+        File file = findBlock.call();
+        if (file != null) {
+            XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
+            factory.setNamespaceAware(true);
+            XmlPullParser parser = factory.newPullParser();
+            parser.setInput(new FileInputStream(file), "UTF-8");
+            while (parser.getEventType() != XmlPullParser.END_DOCUMENT) {
+                if (parser.getEventType() == XmlPullParser.START_TAG) {
+                    String tagName = parser.getName();
+                    String tagText = parser.getText();
+                    for (int i = 0; i < parser.getAttributeCount(); i++) {
+                        String attrName = parser.getAttributeName(i);
+                        String attrValue = parser.getAttributeValue(i);
+                        if (attrValue.startsWith("cpu.core_speeds.cluster")) {
+                        }
+                    }
+                }
+                parser.nextToken();
+            }
+        }
     }
 
     @Test

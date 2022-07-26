@@ -7,6 +7,7 @@ import android.hardware.SensorManager;
 import android.os.Build;
 import android.os.health.HealthStats;
 import android.os.health.PidHealthStats;
+import android.os.health.ProcessHealthStats;
 import android.os.health.TimerStat;
 import android.os.health.UidHealthStats;
 
@@ -17,6 +18,7 @@ import com.tencent.matrix.batterycanary.utils.PowerProfile;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.lang.reflect.Method;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -224,6 +226,32 @@ public class HealthStatsFeature extends AbsMonitorFeature {
             snapshot.procFgSrvMs = DigitEntry.of(HealthStatsHelper.getTimerTime(healthStats, UidHealthStats.TIMER_PROCESS_STATE_FOREGROUND_SERVICE_MS));
             snapshot.procBgMs = DigitEntry.of(HealthStatsHelper.getTimerTime(healthStats, UidHealthStats.TIMER_PROCESS_STATE_BACKGROUND_MS));
             snapshot.procCacheMs = DigitEntry.of(HealthStatsHelper.getTimerTime(healthStats, UidHealthStats.TIMER_PROCESS_STATE_CACHED_MS));
+
+            {
+                if (healthStats.hasStats(UidHealthStats.STATS_PROCESSES)) {
+                    Map<String, HealthStats> processes = healthStats.getStats(UidHealthStats.STATS_PROCESSES);
+                    for (Map.Entry<String, HealthStats> item : processes.entrySet()) {
+                        String pkg = item.getKey();
+                        HealthStats procStats = item.getValue();
+                        if (procStats != null) {
+                            if (snapshot.procStatsCpuUsrTimeMs.isEmpty()) {
+                                snapshot.procStatsCpuUsrTimeMs = new HashMap<>();
+                            }
+                            snapshot.procStatsCpuUsrTimeMs.put(pkg, DigitEntry.of(HealthStatsHelper.getMeasure(procStats, ProcessHealthStats.MEASUREMENT_USER_TIME_MS)));
+
+                            if (snapshot.procStatsCpuSysTimeMs.isEmpty()) {
+                                snapshot.procStatsCpuSysTimeMs = new HashMap<>();
+                            }
+                            snapshot.procStatsCpuSysTimeMs.put(pkg, DigitEntry.of(HealthStatsHelper.getMeasure(procStats, ProcessHealthStats.MEASUREMENT_SYSTEM_TIME_MS)));
+
+                            if (snapshot.procStatsCpuFgTimeMs.isEmpty()) {
+                                snapshot.procStatsCpuFgTimeMs = new HashMap<>();
+                            }
+                            snapshot.procStatsCpuFgTimeMs.put(pkg, DigitEntry.of(HealthStatsHelper.getMeasure(procStats, ProcessHealthStats.MEASUREMENT_FOREGROUND_MS)));
+                        }
+                    }
+                }
+            }
         }
         return snapshot;
     }
@@ -303,6 +331,11 @@ public class HealthStatsFeature extends AbsMonitorFeature {
         public DigitEntry<Long> procBgMs = DigitEntry.of(0L);
         public DigitEntry<Long> procCacheMs = DigitEntry.of(0L);
 
+        // Process Stats
+        public Map<String, DigitEntry<Long>> procStatsCpuUsrTimeMs = Collections.emptyMap();
+        public Map<String, DigitEntry<Long>> procStatsCpuSysTimeMs = Collections.emptyMap();
+        public Map<String, DigitEntry<Long>> procStatsCpuFgTimeMs = Collections.emptyMap();
+
         @Override
         public Delta<HealthStatsSnapshot> diff(HealthStatsSnapshot bgn) {
             return new Delta<HealthStatsSnapshot>(bgn, this) {
@@ -371,6 +404,40 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                     delta.procFgSrvMs = Differ.DigitDiffer.globalDiff(bgn.procFgSrvMs, end.procFgSrvMs);
                     delta.procBgMs = Differ.DigitDiffer.globalDiff(bgn.procBgMs, end.procBgMs);
                     delta.procCacheMs = Differ.DigitDiffer.globalDiff(bgn.procCacheMs, end.procCacheMs);
+
+                    delta.procStatsCpuUsrTimeMs = new HashMap<>();
+                    for (Map.Entry<String, DigitEntry<Long>> entry : end.procStatsCpuUsrTimeMs.entrySet()) {
+                        String key = entry.getKey();
+                        DigitEntry<Long> endEntry = entry.getValue();
+                        long bgnValue = 0L;
+                        DigitEntry<Long> bgnEntry = bgn.procStatsCpuUsrTimeMs.get(key);
+                        if (bgnEntry != null) {
+                            bgnValue = bgnEntry.get();
+                        }
+                        delta.procStatsCpuUsrTimeMs.put(key, Differ.DigitDiffer.globalDiff(DigitEntry.of(bgnValue), endEntry));
+                    }
+                    delta.procStatsCpuSysTimeMs = new HashMap<>();
+                    for (Map.Entry<String, DigitEntry<Long>> entry : end.procStatsCpuSysTimeMs.entrySet()) {
+                        String key = entry.getKey();
+                        DigitEntry<Long> endEntry = entry.getValue();
+                        long bgnValue = 0L;
+                        DigitEntry<Long> bgnEntry = bgn.procStatsCpuSysTimeMs.get(key);
+                        if (bgnEntry != null) {
+                            bgnValue = bgnEntry.get();
+                        }
+                        delta.procStatsCpuSysTimeMs.put(key, Differ.DigitDiffer.globalDiff(DigitEntry.of(bgnValue), endEntry));
+                    }
+                    delta.procStatsCpuFgTimeMs = new HashMap<>();
+                    for (Map.Entry<String, DigitEntry<Long>> entry : end.procStatsCpuFgTimeMs.entrySet()) {
+                        String key = entry.getKey();
+                        DigitEntry<Long> endEntry = entry.getValue();
+                        long bgnValue = 0L;
+                        DigitEntry<Long> bgnEntry = bgn.procStatsCpuFgTimeMs.get(key);
+                        if (bgnEntry != null) {
+                            bgnValue = bgnEntry.get();
+                        }
+                        delta.procStatsCpuFgTimeMs.put(key, Differ.DigitDiffer.globalDiff(DigitEntry.of(bgnValue), endEntry));
+                    }
                     return delta;
                 }
             };

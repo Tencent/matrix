@@ -3,13 +3,20 @@ package com.tencent.matrix.batterycanary.utils;
 import android.content.Context;
 import android.content.res.Resources;
 import android.content.res.XmlResourceParser;
+import android.os.Build;
+import android.system.Os;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
+import org.xmlpull.v1.XmlPullParserFactory;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.concurrent.Callable;
 
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
@@ -273,12 +280,11 @@ public class PowerProfile {
 
     private static final Object sLock = new Object();
 
-    @VisibleForTesting
-    public PowerProfile(Context context) {
+    private PowerProfile(Context context) {
         // Read the XML file for the given profile (normally only one per device)
         synchronized (sLock) {
             if (sPowerItemMap.size() == 0 && sPowerArrayMap.size() == 0) {
-                readPowerValuesFromXml(context);
+                readPowerValuesCompat(context);
             }
             initCpuClusters();
         }
@@ -294,11 +300,94 @@ public class PowerProfile {
         return sPowerArrayMap;
     }
 
+    private static String mResType = "unknown";
+
+    public static String getResType() {
+        return mResType;
+    }
+
+    private void readPowerValuesCompat(Context context) {
+        try {
+            readPowerValuesFromRes(context, "power_profile");
+            initCpuClusters();
+            smoke();
+            mResType = "framework";
+        } catch (Exception ignored) {
+            Callable<File> findBlock = new Callable<File>() {
+                @SuppressWarnings("checkstyle:RegexpSingleline")
+                @Override
+                public File call() throws FileNotFoundException {
+                    String targetFileName = "/xml/power_profile.xml";
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                        String customDirs = Os.getenv("CUST_POLICY_DIRS");
+                        for (String dir : customDirs.split(":")) {
+                            // example: /hw_product/etc/xml/power_profile.xml
+                            File file = new File(dir, targetFileName);
+                            if (file.exists() && file.canRead()) {
+                                return file;
+                            }
+                        }
+                    }
+                    throw new FileNotFoundException(targetFileName);
+                }
+            };
+            try {
+                readPowerValuesFromFilePath(context, findBlock.call());
+                initCpuClusters();
+                smoke();
+                mResType = "custom";
+            } catch (Exception ignored2) {
+                readPowerValuesFromRes(context, "power_profile_test");
+                initCpuClusters();
+                mResType = "test";
+            }
+        }
+    }
+
+    private void readPowerValuesFromRes(Context context, String fileName) {
+        XmlResourceParser parser = null;
+        try {
+            final int id = context.getResources().getIdentifier(fileName, "xml", "android");
+            final Resources resources = context.getResources();
+            parser = resources.getXml(id);
+            readPowerValuesFromXml(context, parser);
+        } catch (Exception e) {
+            throw new RuntimeException("Error reading power values: " + fileName, e);
+        } finally {
+            if (parser != null) {
+                try {
+                    parser.close();
+                } catch (Exception e) {
+                    // ignore
+                }
+            }
+        }
+    }
+
+    private void readPowerValuesFromFilePath(Context context, File path) {
+        FileInputStream is = null;
+        try {
+            XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
+            factory.setNamespaceAware(true);
+            XmlPullParser parser = factory.newPullParser();
+            is = new FileInputStream(path);
+            parser.setInput(is, null);
+            readPowerValuesFromXml(context, parser);
+        } catch (Exception e) {
+           throw new RuntimeException("Failed to read power values from file: " + path, e);
+        } finally {
+            if (is != null) {
+                try {
+                    is.close();
+                } catch (IOException e) {
+                    // ignore
+                }
+            }
+        }
+    }
+
     @SuppressWarnings({"ToArrayCallWithZeroLengthArrayArgument", "UnnecessaryBoxing", "CatchMayIgnoreException", "TryWithIdenticalCatches"})
-    private void readPowerValuesFromXml(Context context) {
-        final int id = context.getResources().getIdentifier("power_profile", "xml", "android");
-        final Resources resources = context.getResources();
-        XmlResourceParser parser = resources.getXml(id);
+    private void readPowerValuesFromXml(Context context, XmlPullParser parser) {
         boolean parsingArray = false;
         ArrayList<Double> array = new ArrayList<>();
         String arrayName = null;
@@ -346,8 +435,6 @@ public class PowerProfile {
             throw new RuntimeException(e);
         } catch (IOException e) {
             throw new RuntimeException(e);
-        } finally {
-            parser.close();
         }
 
         // Now collect other config variables.
@@ -372,7 +459,7 @@ public class PowerProfile {
             if ((sPowerItemMap.containsKey(key) && sPowerItemMap.get(key) > 0)) {
                 continue;
             }
-            int value = resources.getInteger(configResIds[i]);
+            int value = context.getResources().getInteger(configResIds[i]);
             if (value > 0) {
                 sPowerItemMap.put(key, (double) value);
             }
