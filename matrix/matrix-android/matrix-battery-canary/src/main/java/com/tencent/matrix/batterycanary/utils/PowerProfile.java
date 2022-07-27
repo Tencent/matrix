@@ -6,6 +6,8 @@ import android.content.res.XmlResourceParser;
 import android.os.Build;
 import android.system.Os;
 
+import com.tencent.matrix.util.MatrixLog;
+
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 import org.xmlpull.v1.XmlPullParserFactory;
@@ -28,6 +30,7 @@ import androidx.annotation.VisibleForTesting;
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 @SuppressWarnings({"JavadocReference", "ConstantConditions", "TryFinallyCanBeTryWithResources"})
 public class PowerProfile {
+    private static final String TAG = "PowerProfile";
     private static PowerProfile sInstance = null;
 
     @Nullable
@@ -41,7 +44,7 @@ public class PowerProfile {
                 sInstance = new PowerProfile(context).smoke();
                 return sInstance;
             } catch (Throwable e) {
-                throw new IOException(e);
+                throw new IOException("Compat err: " + e.getMessage(), e);
             }
         }
     }
@@ -312,7 +315,8 @@ public class PowerProfile {
             initCpuClusters();
             smoke();
             mResType = "framework";
-        } catch (Exception ignored) {
+        } catch (Exception e1) {
+            MatrixLog.w(TAG, "read from framework failed: " + e1);
             Callable<File> findBlock = new Callable<File>() {
                 @SuppressWarnings("checkstyle:RegexpSingleline")
                 @Override
@@ -324,6 +328,7 @@ public class PowerProfile {
                             // example: /hw_product/etc/xml/power_profile.xml
                             File file = new File(dir, targetFileName);
                             if (file.exists() && file.canRead()) {
+                                MatrixLog.i(TAG, "find profile xml: " + file);
                                 return file;
                             }
                         }
@@ -336,7 +341,8 @@ public class PowerProfile {
                 initCpuClusters();
                 smoke();
                 mResType = "custom";
-            } catch (Exception ignored2) {
+            } catch (Exception e2) {
+                MatrixLog.w(TAG, "read from framework failed: " + e1);
                 readPowerValuesFromRes(context, "power_profile_test");
                 initCpuClusters();
                 mResType = "test";
@@ -352,7 +358,7 @@ public class PowerProfile {
             parser = resources.getXml(id);
             readPowerValuesFromXml(context, parser);
         } catch (Exception e) {
-            throw new RuntimeException("Error reading power values: " + fileName, e);
+            throw new RuntimeException("Error reading res " + fileName + ": " + e.getMessage(), e);
         } finally {
             if (parser != null) {
                 try {
@@ -364,17 +370,17 @@ public class PowerProfile {
         }
     }
 
-    private void readPowerValuesFromFilePath(Context context, File path) {
+    private void readPowerValuesFromFilePath(Context context, File xmlFile) {
         FileInputStream is = null;
         try {
             XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
             factory.setNamespaceAware(true);
             XmlPullParser parser = factory.newPullParser();
-            is = new FileInputStream(path);
+            is = new FileInputStream(xmlFile);
             parser.setInput(is, null);
             readPowerValuesFromXml(context, parser);
         } catch (Exception e) {
-           throw new RuntimeException("Failed to read power values from file: " + path, e);
+            throw new RuntimeException("Error reading file " + xmlFile + ": " + e.getMessage(), e);
         } finally {
             if (is != null) {
                 try {
