@@ -260,10 +260,10 @@ public class CanaryUtilsTest {
 
     @Test
     public void testGetBatteryCapacity() throws Exception {
+        PowerProfile powerProfile = PowerProfile.init(mContext);
         int capacity0 = BatteryCanaryUtil.getBatteryCapacityImmediately(mContext);
         Assert.assertTrue(capacity0 > 0);
 
-        PowerProfile powerProfile = PowerProfile.init(mContext);
         Assert.assertNotNull(powerProfile);
         Assert.assertTrue(powerProfile.isSupported());
         double capacity1 = powerProfile.getBatteryCapacity();

@@ -16,12 +16,15 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.Callable;
 
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
+import androidx.annotation.StringDef;
 import androidx.annotation.VisibleForTesting;
 
 /**
@@ -30,6 +33,16 @@ import androidx.annotation.VisibleForTesting;
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 @SuppressWarnings({"JavadocReference", "ConstantConditions", "TryFinallyCanBeTryWithResources"})
 public class PowerProfile {
+    @StringDef(value = {
+            "unknown",
+            "framework",
+            "custom",
+            "test"
+    })
+    @Retention(RetentionPolicy.SOURCE)
+    @interface ResType {
+    }
+
     private static final String TAG = "PowerProfile";
     private static PowerProfile sInstance = null;
 
@@ -41,7 +54,9 @@ public class PowerProfile {
     public static PowerProfile init(Context context) throws IOException {
         synchronized (sLock) {
             try {
-                sInstance = new PowerProfile(context).smoke();
+                if (sInstance == null) {
+                    sInstance = new PowerProfile(context).smoke();
+                }
                 return sInstance;
             } catch (Throwable e) {
                 throw new IOException("Compat err: " + e.getMessage(), e);
@@ -305,6 +320,7 @@ public class PowerProfile {
 
     private static String mResType = "unknown";
 
+    @ResType
     public static String getResType() {
         return mResType;
     }

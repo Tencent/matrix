@@ -461,6 +461,12 @@ public class CompositeMonitors {
             }
             return snapshot;
         }
+        if (snapshotClass == JiffiesMonitorFeature.UidJiffiesSnapshot.class) {
+            JiffiesMonitorFeature feat = getFeature(JiffiesMonitorFeature.class);
+            if (feat != null) {
+                return feat.currentUidJiffiesSnapshot();
+            }
+        }
         if (snapshotClass == LocationMonitorFeature.LocationSnapshot.class) {
             LocationMonitorFeature feature = getFeature(LocationMonitorFeature.class);
             if (feature != null) {
