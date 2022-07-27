@@ -48,6 +48,15 @@ public class MallCtl {
         return getVersionNative();
     }
 
+    public synchronized static boolean setRetain(boolean enable) {
+        try {
+            return setRetainNative(enable);
+        } catch (Throwable e) {
+            MatrixLog.printErrStackTrace(TAG, e, "set retain failed");
+        }
+        return false;
+    }
+
     public static final int MALLOPT_FAILED = 0;
     public static final int MALLOPT_SUCCESS = 1;
     public static final int MALLOPT_SYM_NOT_FOUND = -1;
@@ -73,4 +82,7 @@ public class MallCtl {
 
     @Keep
     private static native int malloptNative();
+
+    @Keep
+    private static native boolean setRetainNative(boolean enable);
 }

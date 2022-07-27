@@ -147,6 +147,21 @@ Java_com_tencent_matrix_mallctl_MallCtl_malloptNative(JNIEnv *env, jclass clazz)
     return ret;
 }
 
+JNIEXPORT jboolean JNICALL
+Java_com_tencent_matrix_mallctl_MallCtl_setRetainNative(JNIEnv *env, jclass clazz, jboolean enable) {
+#ifdef __LP64__
+    return true;
+#else
+    bool old = true;
+    if (initialized && je_opt_retain_ptr) {
+        old = *je_opt_retain_ptr;
+        *je_opt_retain_ptr = enable;
+        LOGD(TAG, "retain = %d", *je_opt_retain_ptr);
+    }
+    return old;
+#endif
+}
+
 #ifdef __cplusplus
 }
 #endif
