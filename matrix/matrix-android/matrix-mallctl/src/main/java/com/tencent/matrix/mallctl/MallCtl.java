@@ -48,7 +48,7 @@ public class MallCtl {
         return getVersionNative();
     }
 
-    public synchronized static boolean setRetain(boolean enable) {
+    public synchronized static boolean jeSetRetain(boolean enable) {
         try {
             return setRetainNative(enable);
         } catch (Throwable e) {
