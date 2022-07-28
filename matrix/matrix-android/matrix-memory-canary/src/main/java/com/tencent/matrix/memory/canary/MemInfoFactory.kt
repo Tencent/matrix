@@ -718,7 +718,7 @@ data class MergedSmapsInfo(
 
         private fun mergeSmaps(pid: Int): ArrayList<SmapsItem> {
             val pattern =
-                Pattern.compile("^[0-9a-f]+-[0-9a-f]+\\s+([rwxps-]{4})\\s+[0-9a-f]+\\s+[0-9a-f]+:[0-9a-f]+\\s+\\d+\\s+(.*)$")
+                Pattern.compile("^[0-9a-f]+-[0-9a-f]+\\s+([rwxps-]{4})\\s+[0-9a-f]+\\s+[0-9a-f]+:[0-9a-f]+\\s+\\d+\\s*(.*)$")
 
             val merged: HashMap<String, SmapsItem> = HashMap<String, SmapsItem>()
             var currentInfo: SmapsItem? = null
@@ -784,7 +784,10 @@ data class MergedSmapsInfo(
                     val matcher: Matcher = pattern.matcher(line)
                     if (matcher.find()) {
                         val permission = matcher.group(1)
-                        val name = matcher.group(2)
+                        var name = matcher.group(2)
+                        if (name.isNullOrBlank()) {
+                            name = "[no-name]"
+                        }
                         currentInfo = merged["$permission|$name"]
                         if (currentInfo == null) {
                             currentInfo = SmapsItem()
