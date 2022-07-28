@@ -592,7 +592,7 @@ data class MergedSmapsInfo(
         ).append("\n")
         for ((name, permission, count, vmSize, rss, pss, sharedClean, sharedDirty, privateClean, privateDirty, swapPss) in list!!) {
             if (pss < 1024 /* K */) {
-                continue
+                break
             }
             sb.append(
                 String.format(
