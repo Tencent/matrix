@@ -148,7 +148,8 @@ Java_com_tencent_matrix_mallctl_MallCtl_malloptNative(JNIEnv *env, jclass clazz)
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_tencent_matrix_mallctl_MallCtl_setRetainNative(JNIEnv *env, jclass clazz, jboolean enable) {
+Java_com_tencent_matrix_mallctl_MallCtl_setRetainNative(JNIEnv *env, jclass clazz,
+                                                        jboolean enable) {
 #ifdef __LP64__
     return true;
 #else
@@ -160,6 +161,13 @@ Java_com_tencent_matrix_mallctl_MallCtl_setRetainNative(JNIEnv *env, jclass claz
     }
     return old;
 #endif
+}
+
+JNIEXPORT jint JNICALL
+Java_com_tencent_matrix_mallctl_MallCtl_flushReadOnlyFilePagesNative(JNIEnv *env, jclass clazz,
+                                                                     jlong begin, jlong size) {
+
+    return madvise((void *)begin, (size_t) size, MADV_DONTNEED);
 }
 
 #ifdef __cplusplus

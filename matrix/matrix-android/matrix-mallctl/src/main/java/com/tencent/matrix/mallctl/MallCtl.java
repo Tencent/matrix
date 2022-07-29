@@ -21,6 +21,13 @@ import androidx.annotation.Keep;
 
 import com.tencent.matrix.util.MatrixLog;
 
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 /**
  * Created by Yves on 2020/7/15
  */
@@ -74,6 +81,67 @@ public class MallCtl {
         return MALLOPT_EXCEPTION;
     }
 
+    public interface TrimPrediction {
+        boolean canBeTrim(String pathName, String permission);
+    }
+
+    public static class DefaultPrediction implements TrimPrediction {
+        @Override
+        public boolean canBeTrim(String pathName, String permission) {
+            if (pathName.endsWith(" (deleted)")) {
+                pathName = pathName.substring(0, pathName.length() - " (deleted)".length());
+            } else if (pathName.endsWith("]")) {
+                pathName = pathName.substring(0, pathName.length() - "]".length());
+            }
+            return !permission.contains("w")
+                    && (pathName.endsWith(".so")
+                    || pathName.endsWith(".dex")
+                    || pathName.endsWith(".apk")
+                    || pathName.endsWith(".vdex")
+                    || pathName.endsWith(".odex")
+                    || pathName.endsWith(".oat")
+                    || pathName.endsWith(".art")
+                    || pathName.endsWith(".ttf")
+                    || pathName.endsWith(".otf")
+                    || pathName.endsWith(".jar"));
+        }
+    }
+
+    public synchronized static void flushReadOnlyFilePages(TrimPrediction prediction) {
+        if (prediction == null) {
+            prediction = new DefaultPrediction();
+        }
+        Pattern pattern = Pattern.compile("^([0-9a-f]+)-([0-9a-f]+)\\s+([rwxps-]{4})\\s+[0-9a-f]+\\s+[0-9a-f]+:[0-9a-f]+\\s+\\d+\\s*(.*)$");
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream("/proc/self/maps")))) {
+            String line = br.readLine();
+            while (line != null) {
+                Matcher matcher = pattern.matcher(line);
+                if (matcher.find()) {
+                    String beginStr = matcher.group(1);
+                    String endStr = matcher.group(2);
+                    String permission = matcher.group(3);
+                    String name = matcher.group(4);
+                    if (name == null || name.isEmpty()) {
+                        name = "[no-name]";
+                    }
+                    if (prediction.canBeTrim(name, permission) && beginStr != null && endStr != null) {
+                        try {
+                            long beginPtr = Long.parseLong(beginStr, 16);
+                            long endPtr = Long.parseLong(endStr, 16);
+                            long size = endPtr - beginPtr;
+                            flushReadOnlyFilePagesNative(beginPtr, size);
+                        } catch (Throwable e) {
+                            MatrixLog.printErrStackTrace(TAG, e, "%s-%s %s %s", beginStr, endStr, permission, name);
+                        }
+                    }
+                }
+                line = br.readLine();
+            }
+        } catch (IOException e) {
+            MatrixLog.printErrStackTrace(TAG, e, "");
+        }
+    }
+
     @Keep
     private static native void initNative();
 
@@ -85,4 +153,6 @@ public class MallCtl {
 
     @Keep
     private static native boolean setRetainNative(boolean enable);
+
+    private static native int flushReadOnlyFilePagesNative(long begin, long size);
 }
