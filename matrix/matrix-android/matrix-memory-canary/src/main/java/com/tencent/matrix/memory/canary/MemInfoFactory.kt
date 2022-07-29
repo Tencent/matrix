@@ -555,6 +555,83 @@ data class SmapsItem(
 data class MergedSmapsInfo(
     val list: List<SmapsItem>? = null
 ) {
+    fun toBriefString(): String {
+        val sb = StringBuilder()
+        sb.append("\n")
+        sb.append(
+            String.format(
+                FORMAT,
+                "PSS",
+                "RSS",
+                "SIZE",
+                "SWAP_PSS",
+                "SH_C",
+                "SH_D",
+                "PRI_C",
+                "PRI_D",
+                "COUNT",
+                "PERM",
+                "NAME"
+            )
+        ).append("\n")
+        sb.append(
+            String.format(
+                FORMAT,
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----"
+            )
+        ).append("\n")
+        for ((name, permission, count, vmSize, rss, pss, sharedClean, sharedDirty, privateClean, privateDirty, swapPss) in list!!) {
+            if (pss < 1024 /* K */) {
+                break
+            }
+            sb.append(
+                String.format(
+                    FORMAT,
+                    pss,
+                    rss,
+                    vmSize,
+                    swapPss,
+                    sharedClean,
+                    sharedDirty,
+                    privateClean,
+                    privateDirty,
+                    count,
+                    permission,
+                    name
+                )
+            ).append("\n")
+        }
+        sb.append(
+            String.format(
+                FORMAT,
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----"
+            )
+        )
+        sb.append("\n")
+
+        return sb.toString()
+    }
+
     override fun toString(): String {
         val sb = StringBuilder()
         sb.append("\n")
@@ -641,7 +718,7 @@ data class MergedSmapsInfo(
 
         private fun mergeSmaps(pid: Int): ArrayList<SmapsItem> {
             val pattern =
-                Pattern.compile("^[0-9a-f]+-[0-9a-f]+\\s+([rwxps-]{4})\\s+[0-9a-f]+\\s+[0-9a-f]+:[0-9a-f]+\\s+\\d+\\s+(.*)$")
+                Pattern.compile("^[0-9a-f]+-[0-9a-f]+\\s+([rwxps-]{4})\\s+[0-9a-f]+\\s+[0-9a-f]+:[0-9a-f]+\\s+\\d+\\s*(.*)$")
 
             val merged: HashMap<String, SmapsItem> = HashMap<String, SmapsItem>()
             var currentInfo: SmapsItem? = null
@@ -707,7 +784,10 @@ data class MergedSmapsInfo(
                     val matcher: Matcher = pattern.matcher(line)
                     if (matcher.find()) {
                         val permission = matcher.group(1)
-                        val name = matcher.group(2)
+                        var name = matcher.group(2)
+                        if (name.isNullOrBlank()) {
+                            name = "[no-name]"
+                        }
                         currentInfo = merged["$permission|$name"]
                         if (currentInfo == null) {
                             currentInfo = SmapsItem()
