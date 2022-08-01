@@ -302,7 +302,11 @@ public class PowerProfile {
         // Read the XML file for the given profile (normally only one per device)
         synchronized (sLock) {
             if (sPowerItemMap.size() == 0 && sPowerArrayMap.size() == 0) {
-                readPowerValuesCompat(context);
+                try {
+                    readPowerValuesCompat(context);
+                } catch (IOException e) {
+                    MatrixLog.w(TAG, "Failed to read power values: " + e);
+                }
             }
             initCpuClusters();
         }
@@ -325,14 +329,19 @@ public class PowerProfile {
         return mResType;
     }
 
-    private void readPowerValuesCompat(Context context) {
+    private void readPowerValuesCompat(Context context) throws IOException {
+        Exception exception = null;
         try {
             readPowerValuesFromRes(context, "power_profile");
             initCpuClusters();
             smoke();
             mResType = "framework";
-        } catch (Exception e1) {
-            MatrixLog.w(TAG, "read from framework failed: " + e1);
+        } catch (Exception e) {
+            MatrixLog.w(TAG, "read from framework failed: " + e);
+            exception = e;
+        }
+
+        if (exception != null) {
             Callable<File> findBlock = new Callable<File>() {
                 @SuppressWarnings("checkstyle:RegexpSingleline")
                 @Override
@@ -357,12 +366,26 @@ public class PowerProfile {
                 initCpuClusters();
                 smoke();
                 mResType = "custom";
-            } catch (Exception e2) {
-                MatrixLog.w(TAG, "read from framework failed: " + e1);
+            } catch (Exception e) {
+                MatrixLog.w(TAG, "read from custom failed: " + e);
+                exception = e;
+            }
+        }
+
+        if (exception != null) {
+            try {
                 readPowerValuesFromRes(context, "power_profile_test");
                 initCpuClusters();
+                smoke();
                 mResType = "test";
+            } catch (Exception e) {
+                MatrixLog.w(TAG, "read from test failed: " + e);
+                exception = e;
             }
+        }
+
+        if (exception != null) {
+            throw new IOException("readPowerValuesCompat failed", exception);
         }
     }
 

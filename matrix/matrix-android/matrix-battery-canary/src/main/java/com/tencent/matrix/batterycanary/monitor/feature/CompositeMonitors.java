@@ -831,6 +831,10 @@ public class CompositeMonitors {
     public List<Delta<JiffiesSnapshot>> getAllPidDeltaList() {
         Delta<JiffiesMonitorFeature.UidJiffiesSnapshot> delta = getDelta(JiffiesMonitorFeature.UidJiffiesSnapshot.class);
         if (delta == null) {
+            Delta<JiffiesSnapshot> pidDelta = getDelta(JiffiesSnapshot.class);
+            if (pidDelta != null) {
+                return Collections.singletonList(pidDelta);
+            }
             return Collections.emptyList();
         }
         return delta.dlt.pidDeltaJiffiesList;
