@@ -24,7 +24,7 @@ include ':matrix-traffic'
 include ':matrix-backtrace'
 include ':matrix-hooks'
 include ':matrix-memguard'
-include ':matrix-jectl'
+include ':matrix-mallctl'
 include ':matrix-fd'
 
 // Benchmark
