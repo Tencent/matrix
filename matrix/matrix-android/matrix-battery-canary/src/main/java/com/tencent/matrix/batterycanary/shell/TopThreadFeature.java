@@ -157,9 +157,11 @@ public class TopThreadFeature extends AbsMonitorFeature {
         ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
         if (am != null) {
             List<ActivityManager.RunningAppProcessInfo> processes = am.getRunningAppProcesses();
-            for (ActivityManager.RunningAppProcessInfo item : processes) {
-                if (item.processName.contains(context.getPackageName())) {
-                    list.add(new Pair<>(item.pid, item.processName));
+            if (processes != null) {
+                for (ActivityManager.RunningAppProcessInfo item : processes) {
+                    if (item.processName.contains(context.getPackageName())) {
+                        list.add(new Pair<>(item.pid, item.processName));
+                    }
                 }
             }
         }
