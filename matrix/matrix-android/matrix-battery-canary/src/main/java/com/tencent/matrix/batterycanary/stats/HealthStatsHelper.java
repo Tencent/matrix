@@ -24,6 +24,7 @@ import java.util.Map;
 import androidx.annotation.ChecksSdkIntAtLeast;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
+import androidx.annotation.VisibleForTesting;
 
 /**
  * totalPowerMah = usagePowerMah + wifiPowerMah + gpsPowerMah + cpuPowerMah +
@@ -128,42 +129,144 @@ public final class HealthStatsHelper {
              *               + core_power.cluster1 * num running cores in cluster 1
              */
             long cpuTimeMs = getMeasure(healthStats, UidHealthStats.MEASUREMENT_USER_CPU_TIME_MS) + getMeasure(healthStats, UidHealthStats.MEASUREMENT_SYSTEM_CPU_TIME_MS);
-            power = estimateCpuPowerByCpuStats(powerProfile, cpuTimeMs);
+            power += estimateCpuActivePower(powerProfile, cpuTimeMs);
+            CpuStatFeature feat = BatteryCanary.getMonitorFeature(CpuStatFeature.class);
+            if (feat != null && feat.isSupported()) {
+                CpuStatFeature.CpuStateSnapshot snapshot = feat.currentCpuStateSnapshot();
+                if (snapshot != null) {
+                    power += estimateCpuClustersPowerByUidStats(powerProfile, snapshot, cpuTimeMs, false);
+                    power += estimateCpuCoresPowerByUidStats(powerProfile, snapshot, cpuTimeMs, false);
+                }
+            }
         }
         return power;
     }
 
-    private static double estimateCpuPowerByCpuStats(PowerProfile powerProfile, long cpuTimeMs) {
+    @VisibleForTesting
+    public static double estimateCpuActivePower(PowerProfile powerProfile, long cpuTimeMs) {
+        //noinspection UnnecessaryLocalVariable
+        long timeMs = cpuTimeMs;
+        double powerMa = powerProfile.getAveragePowerUni(PowerProfile.POWER_CPU_ACTIVE);
+        return new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
+    }
+
+    @VisibleForTesting
+    public static double estimateCpuClustersPowerByUidStats(PowerProfile powerProfile, CpuStatFeature.CpuStateSnapshot snapshot, long cpuTimeMs, boolean scaled) {
         if (cpuTimeMs > 0) {
-            CpuStatFeature feat = BatteryCanary.getMonitorFeature(CpuStatFeature.class);
-            if (feat != null && feat.isSupported()) {
-                CpuStatFeature.CpuStateSnapshot cpuStateSnapshot = feat.currentCpuStateSnapshot();
-                if (cpuStateSnapshot != null) {
-                    long jiffySum = 0;
-                    for (MonitorFeature.Snapshot.Entry.ListEntry<MonitorFeature.Snapshot.Entry.DigitEntry<Long>> stepJiffies : cpuStateSnapshot.procCpuCoreStates) {
-                        for (MonitorFeature.Snapshot.Entry.DigitEntry<Long> item : stepJiffies.getList()) {
-                            jiffySum += item.get();
-                        }
-                    }
-                    double powerMah = 0;
-                    for (int i = 0; i < cpuStateSnapshot.procCpuCoreStates.size(); i++) {
-                        List<MonitorFeature.Snapshot.Entry.DigitEntry<Long>> stepJiffies = cpuStateSnapshot.procCpuCoreStates.get(i).getList();
-                        for (int j = 0; j < stepJiffies.size(); j++) {
-                            long jiffy = stepJiffies.get(j).get();
-                            long figuredCpuTimeMs = (long) ((jiffy * 1.0f / jiffySum) * cpuTimeMs);
-                            double powerMa = powerProfile.getAveragePowerForCpuCore(i, j);
-                            powerMah += new UsageBasedPowerEstimator(powerMa).calculatePower(figuredCpuTimeMs);
-                        }
-                    }
-                    return powerMah;
+            long jiffySum = 0;
+            for (int i = 0; i < snapshot.procCpuCoreStates.size(); i++) {
+                List<MonitorFeature.Snapshot.Entry.DigitEntry<Long>> stepJiffies = snapshot.procCpuCoreStates.get(i).getList();
+                int scale = scaled ? powerProfile.getNumCoresInCpuCluster(i) : 1;
+                for (MonitorFeature.Snapshot.Entry.DigitEntry<Long> item : stepJiffies) {
+                    jiffySum += item.get() * scale;
                 }
             }
+            double powerMah = 0;
+            for (int i = 0; i < snapshot.procCpuCoreStates.size(); i++) {
+                List<MonitorFeature.Snapshot.Entry.DigitEntry<Long>> stepJiffies = snapshot.procCpuCoreStates.get(i).getList();
+                int scale = scaled ? powerProfile.getNumCoresInCpuCluster(i) : 1;
+                long jiffySumInCluster = 0;
+                for (int j = 0; j < stepJiffies.size(); j++) {
+                    long jiffy = stepJiffies.get(j).get();
+                    jiffySumInCluster += jiffy * scale;
+                }
+                long figuredCpuTimeMs = (long) ((jiffySumInCluster * 1.0f / jiffySum) * cpuTimeMs);
+                double powerMa = powerProfile.getAveragePowerForCpuCluster(i);
+                powerMah += new UsageBasedPowerEstimator(powerMa).calculatePower(figuredCpuTimeMs);
+            }
+            return powerMah;
+        }
+        return 0;
+    }
+
+    @VisibleForTesting
+    public static double estimateCpuCoresPowerByUidStats(PowerProfile powerProfile, CpuStatFeature.CpuStateSnapshot snapshot, long cpuTimeMs, boolean scaled) {
+        if (cpuTimeMs > 0) {
+            long jiffySum = 0;
+            for (int i = 0; i < snapshot.procCpuCoreStates.size(); i++) {
+                List<MonitorFeature.Snapshot.Entry.DigitEntry<Long>> stepJiffies = snapshot.procCpuCoreStates.get(i).getList();
+                int scale = scaled ? powerProfile.getNumCoresInCpuCluster(i) : 1;
+                for (MonitorFeature.Snapshot.Entry.DigitEntry<Long> item : stepJiffies) {
+                    jiffySum += item.get() * scale;
+                }
+            }
+            double powerMah = 0;
+            for (int i = 0; i < snapshot.procCpuCoreStates.size(); i++) {
+                List<MonitorFeature.Snapshot.Entry.DigitEntry<Long>> stepJiffies = snapshot.procCpuCoreStates.get(i).getList();
+                int scale = scaled ? powerProfile.getNumCoresInCpuCluster(i) : 1;
+                for (int j = 0; j < stepJiffies.size(); j++) {
+                    long jiffy = stepJiffies.get(j).get();
+                    long figuredCpuTimeMs = (long) ((jiffy * scale * 1.0f / jiffySum) * cpuTimeMs);
+                    double powerMa = powerProfile.getAveragePowerForCpuCore(i, j);
+                    powerMah += new UsageBasedPowerEstimator(powerMa).calculatePower(figuredCpuTimeMs);
+                }
+            }
+            return powerMah;
+        }
+        return 0;
+    }
+
+    @VisibleForTesting
+    public static double estimateCpuClustersPowerByDevStats(PowerProfile powerProfile, CpuStatFeature.CpuStateSnapshot snapshot, long cpuTimeMs) {
+        if (cpuTimeMs > 0) {
+            long jiffySum = 0;
+            for (int i = 0; i < snapshot.cpuCoreStates.size(); i++) {
+                List<MonitorFeature.Snapshot.Entry.DigitEntry<Long>> stepJiffies = snapshot.cpuCoreStates.get(i).getList();
+                for (MonitorFeature.Snapshot.Entry.DigitEntry<Long> item : stepJiffies) {
+                    jiffySum += item.get();
+                }
+            }
+            double powerMah = 0;
+            for (int i = 0; i < snapshot.cpuCoreStates.size(); i++) {
+                List<MonitorFeature.Snapshot.Entry.DigitEntry<Long>> stepJiffies = snapshot.cpuCoreStates.get(i).getList();
+                long jiffySumInCluster = 0;
+                for (int j = 0; j < stepJiffies.size(); j++) {
+                    long jiffy = stepJiffies.get(j).get();
+                    jiffySumInCluster += jiffy;
+                }
+                long figuredCpuTimeMs = (long) ((jiffySumInCluster * 1.0f / jiffySum) * cpuTimeMs);
+                int clusterNum = powerProfile.getClusterByCpuNum(i);
+                if (clusterNum >= 0 && clusterNum < powerProfile.getNumCpuClusters()) {
+                    double powerMa = powerProfile.getAveragePowerForCpuCluster(clusterNum);
+                    powerMah += new UsageBasedPowerEstimator(powerMa).calculatePower(figuredCpuTimeMs);
+                }
+            }
+            return powerMah;
+        }
+        return 0;
+    }
+
+    @VisibleForTesting
+    public static double estimateCpuCoresPowerByDevStats(PowerProfile powerProfile, CpuStatFeature.CpuStateSnapshot snapshot, long cpuTimeMs) {
+        if (cpuTimeMs > 0) {
+            long jiffySum = 0;
+            for (int i = 0; i < snapshot.cpuCoreStates.size(); i++) {
+                List<MonitorFeature.Snapshot.Entry.DigitEntry<Long>> stepJiffies = snapshot.cpuCoreStates.get(i).getList();
+                for (MonitorFeature.Snapshot.Entry.DigitEntry<Long> item : stepJiffies) {
+                    jiffySum += item.get();
+                }
+            }
+            double powerMah = 0;
+            for (int i = 0; i < snapshot.cpuCoreStates.size(); i++) {
+                List<MonitorFeature.Snapshot.Entry.DigitEntry<Long>> stepJiffies = snapshot.cpuCoreStates.get(i).getList();
+                for (int j = 0; j < stepJiffies.size(); j++) {
+                    long jiffy = stepJiffies.get(j).get();
+                    long figuredCpuTimeMs = (long) ((jiffy * 1.0f / jiffySum) * cpuTimeMs);
+                    int clusterNum = powerProfile.getClusterByCpuNum(i);
+                    if (clusterNum >= 0 && clusterNum < powerProfile.getNumCpuClusters()) {
+                        double powerMa = powerProfile.getAveragePowerForCpuCore(clusterNum, j);
+                        powerMah += new UsageBasedPowerEstimator(powerMa).calculatePower(figuredCpuTimeMs);
+                    }
+                }
+            }
+            return powerMah;
         }
         return 0;
     }
 
     /**
      * WIP
+     *
      * @see com.android.internal.os.MemoryPowerCalculator
      */
     public static double calcMemoryPower(PowerProfile powerProfile) {
@@ -444,6 +547,7 @@ public final class HealthStatsHelper {
      */
     @RequiresApi(api = Build.VERSION_CODES.N)
     public static double calcSystemServicePower(PowerProfile powerProfile, HealthStats healthStats) {
+        double power = 0;
         long timeMs = 0;
         if (healthStats.hasTimers(UidHealthStats.TIMERS_JOBS)) {
             Map<String, TimerStat> timers = healthStats.getTimers(UidHealthStats.TIMERS_JOBS);
@@ -457,7 +561,17 @@ public final class HealthStatsHelper {
                 timeMs += item.getTime();
             }
         }
-        return estimateCpuPowerByCpuStats(powerProfile, timeMs);
+
+        power += estimateCpuActivePower(powerProfile, timeMs);
+        CpuStatFeature feat = BatteryCanary.getMonitorFeature(CpuStatFeature.class);
+        if (feat != null && feat.isSupported()) {
+            CpuStatFeature.CpuStateSnapshot snapshot = feat.currentCpuStateSnapshot();
+            if (snapshot != null) {
+                power += estimateCpuClustersPowerByUidStats(powerProfile, snapshot, timeMs, false);
+                power += estimateCpuCoresPowerByUidStats(powerProfile, snapshot, timeMs, false);
+            }
+        }
+        return power;
     }
 
     /**
