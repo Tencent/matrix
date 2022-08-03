@@ -77,6 +77,12 @@ public class Examples {
         if (Matrix.isInstalled()) {
             BatteryMonitorPlugin monitor = Matrix.with().getPluginByClass(BatteryMonitorPlugin.class);
             if (monitor != null) {
+                /*
+                 * 注意:
+                 * 1. CompositeMonitors 设计为非线程安全, 需要做好并发控制
+                 * 2. #start() 和 #finish() 必须成对调用, 以下代码监控了 doSomething() 这段时间内的功耗数据
+                 * 3. 监控结束后可通过 CompositeMonitors 实例访问功耗数据
+                 */
                 CompositeMonitors compositor = new CompositeMonitors(monitor.core());
                 compositor.metric(JiffiesMonitorFeature.JiffiesSnapshot.class);
                 compositor.start();
@@ -104,8 +110,16 @@ public class Examples {
         if (Matrix.isInstalled()) {
             BatteryMonitorPlugin monitor = Matrix.with().getPluginByClass(BatteryMonitorPlugin.class);
             if (monitor != null) {
+                /*
+                 * 注意:
+                 * 1. CompositeMonitors 设计为非线程安全, 需要做好并发控制
+                 * 2. #start() 和 #finish() 必须成对调用, 以下代码监控了 doSomething() 这段时间内的功耗数据
+                 * 3. 监控结束后可通过 CompositeMonitors 实例访问功耗数据
+                 * 4. samplingIntervalMs 为采样周期, 建议取值 1minute, 最低值不应低于 5s (此处 10ms 仅为单元测试)
+                 */
                 CompositeMonitors compositor = new CompositeMonitors(monitor.core());
-                compositor.sample(DeviceStatMonitorFeature.CpuFreqSnapshot.class, 10L);
+                long samplingIntervalMs = 10L;
+                compositor.sample(DeviceStatMonitorFeature.CpuFreqSnapshot.class, samplingIntervalMs);
                 compositor.start();
 
                 doSomething();
@@ -136,9 +150,17 @@ public class Examples {
         if (Matrix.isInstalled()) {
             BatteryMonitorPlugin monitor = Matrix.with().getPluginByClass(BatteryMonitorPlugin.class);
             if (monitor != null) {
+                /*
+                 * 注意:
+                 * 1. CompositeMonitors 设计为非线程安全, 需要做好并发控制
+                 * 2. #start() 和 #finish() 必须成对调用, 以下代码监控了 doSomething() 这段时间内的功耗数据
+                 * 3. 监控结束后可通过 CompositeMonitors 实例访问功耗数据
+                 * 4. samplingIntervalMs 为采样周期, 建议取值 1minute, 最低值不应低于 5s (此处 10ms 仅为单元测试)
+                 */
                 CompositeMonitors compositor = new CompositeMonitors(monitor.core());
                 compositor.metric(JiffiesMonitorFeature.JiffiesSnapshot.class);
-                compositor.sample(DeviceStatMonitorFeature.CpuFreqSnapshot.class, 10L);
+                long samplingIntervalMs = 10L;
+                compositor.sample(DeviceStatMonitorFeature.CpuFreqSnapshot.class, samplingIntervalMs);
                 compositor.start();
 
                 doSomething();
@@ -185,8 +207,16 @@ public class Examples {
         if (Matrix.isInstalled()) {
             BatteryMonitorPlugin monitor = Matrix.with().getPluginByClass(BatteryMonitorPlugin.class);
             if (monitor != null) {
+                /*
+                 * 注意:
+                 * 1. CompositeMonitors 设计为非线程安全, 需要做好并发控制
+                 * 2. #start() 和 #finish() 必须成对调用, 以下代码监控了 doSomething() 这段时间内的功耗数据
+                 * 3. 监控结束后可通过 CompositeMonitors 实例访问功耗数据
+                 * 4. samplingIntervalMs 为采样周期, 建议取值 1minute, 最低值不应低于 5s (此处 10ms 仅为单元测试)
+                 */
                 CompositeMonitors compositor = new CompositeMonitors(monitor.core());
-                compositor.sample(DeviceStatMonitorFeature.BatteryTmpSnapshot.class, 10L);
+                long samplingIntervalMs = 10L;
+                compositor.sample(DeviceStatMonitorFeature.CpuFreqSnapshot.class, samplingIntervalMs);
                 compositor.start();
 
                 doSomething();
