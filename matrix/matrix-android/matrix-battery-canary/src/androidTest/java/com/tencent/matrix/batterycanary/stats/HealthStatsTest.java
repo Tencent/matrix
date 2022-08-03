@@ -251,37 +251,26 @@ public class HealthStatsTest {
         healthStats.hasMeasurement(UidHealthStats.MEASUREMENT_USER_CPU_TIME_MS);
         healthStats.hasMeasurement(UidHealthStats.MEASUREMENT_SYSTEM_CPU_TIME_MS);
         long cpuTimeMs = healthStats.getMeasurement(UidHealthStats.MEASUREMENT_USER_CPU_TIME_MS) +  healthStats.getMeasurement(UidHealthStats.MEASUREMENT_SYSTEM_CPU_TIME_MS);
-        double powerMah = estimateCpuPowerByCpuStats(feature, cpuTimeMs);
-        Assert.assertTrue(powerMah >= 0);
+
+        double powerMahByUid = 0, powerMahByDev = 0;
+        double activePower = HealthStatsHelper.estimateCpuActivePower(feature.getPowerProfile(), cpuTimeMs);
+        Assert.assertTrue(activePower >= 0);
+        powerMahByUid += activePower;
+        powerMahByDev += activePower;
+
+
+        powerMahByUid += HealthStatsHelper.estimateCpuClustersPowerByUidStats(feature.getPowerProfile(), cpuStateSnapshot, cpuTimeMs, false);
+        Assert.assertTrue(powerMahByUid >= 0);
+        powerMahByUid += HealthStatsHelper.estimateCpuCoresPowerByUidStats(feature.getPowerProfile(), cpuStateSnapshot, cpuTimeMs, false);
+        Assert.assertTrue(powerMahByUid >= 0);
+
+        powerMahByDev += HealthStatsHelper.estimateCpuClustersPowerByDevStats(feature.getPowerProfile(), cpuStateSnapshot, cpuTimeMs);
+        Assert.assertTrue(powerMahByDev >= 0);
+        powerMahByDev += HealthStatsHelper.estimateCpuCoresPowerByDevStats(feature.getPowerProfile(), cpuStateSnapshot, cpuTimeMs);
+        Assert.assertTrue(powerMahByDev >= 0);
 
         double calcCpuPower = HealthStatsHelper.calcCpuPower(feature.getPowerProfile(), healthStats);
-        Assert.assertEquals(powerMah, calcCpuPower, 1d);
-    }
-
-    private static double estimateCpuPowerByCpuStats(CpuStatFeature feat, long cpuTimeMs) {
-        if (feat != null && feat.isSupported()) {
-            CpuStatFeature.CpuStateSnapshot cpuStateSnapshot = feat.currentCpuStateSnapshot();
-            if (cpuStateSnapshot != null) {
-                long jiffySum = 0;
-                for (MonitorFeature.Snapshot.Entry.ListEntry<MonitorFeature.Snapshot.Entry.DigitEntry<Long>> stepJiffies : cpuStateSnapshot.procCpuCoreStates) {
-                    for (MonitorFeature.Snapshot.Entry.DigitEntry<Long> item : stepJiffies.getList()) {
-                        jiffySum += item.get();
-                    }
-                }
-                double powerMah = 0;
-                for (int i = 0; i < cpuStateSnapshot.procCpuCoreStates.size(); i++) {
-                    List<MonitorFeature.Snapshot.Entry.DigitEntry<Long>> stepJiffies = cpuStateSnapshot.procCpuCoreStates.get(i).getList();
-                    for (int j = 0; j < stepJiffies.size(); j++) {
-                        long jiffy = stepJiffies.get(j).get();
-                        long figuredCpuTimeMs = (long) ((jiffy * 1.0f / jiffySum) * cpuTimeMs);
-                        double powerMa = feat.getPowerProfile().getAveragePowerForCpuCore(i, j);
-                        powerMah += new UsageBasedPowerEstimator(powerMa).calculatePower(figuredCpuTimeMs);
-                    }
-                }
-                return powerMah;
-            }
-        }
-        return 0;
+        Assert.assertEquals(powerMahByDev, calcCpuPower, 1d);
     }
 
     @Test
@@ -637,10 +626,7 @@ public class HealthStatsTest {
             }
         }
 
-        double calcPower = estimateCpuPowerByCpuStats(feature, timeMs);
-        Assert.assertTrue(calcPower >= 0);
-
-        calcPower = HealthStatsHelper.calcSystemServicePower(powerProfile, healthStats);
+        double calcPower = HealthStatsHelper.calcSystemServicePower(powerProfile, healthStats);
         Assert.assertTrue(calcPower >= 0);
     }
 
