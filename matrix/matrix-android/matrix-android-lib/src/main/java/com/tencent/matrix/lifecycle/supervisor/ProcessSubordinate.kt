@@ -247,7 +247,10 @@ internal object ProcessSubordinate {
             }
         }
 
-        override fun getMemInfo(): MemInfo = MemInfo.getCurrentProcessFullMemInfo()
+        override fun getMemInfo(): MemInfo = safeLet(
+            TAG,
+            defVal = MemInfo(amsPssInfo = PssInfo(), debugPssInfo = PssInfo())
+        ) { MemInfo.getCurrentProcessFullMemInfo() }
 
     }
 
