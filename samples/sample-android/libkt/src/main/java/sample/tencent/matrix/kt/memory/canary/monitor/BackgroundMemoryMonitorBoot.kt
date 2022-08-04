@@ -4,7 +4,7 @@ import com.tencent.matrix.lifecycle.owners.ProcessDeepBackgroundOwner
 import com.tencent.matrix.lifecycle.owners.ProcessStagedBackgroundOwner
 import com.tencent.matrix.lifecycle.supervisor.AppDeepBackgroundOwner
 import com.tencent.matrix.lifecycle.supervisor.AppStagedBackgroundOwner
-import com.tencent.matrix.memory.canary.MemInfo
+import com.tencent.matrix.util.MemInfo
 import com.tencent.matrix.memory.canary.monitor.AppBgSumPssMonitorConfig
 import com.tencent.matrix.memory.canary.monitor.ProcessBgMemoryMonitorConfig
 import com.tencent.matrix.util.MatrixLog
@@ -45,6 +45,42 @@ object BackgroundMemoryMonitorBoot {
         bgStatefulOwner = ProcessStagedBackgroundOwner,
         checkInterval = 20 * 1000L,
         javaThresholdByte = 10 * 1000L,
+        nativeThresholdByte = Long.MAX_VALUE,
+        checkTimes = 1
+    )
+
+    internal val procStagedBgMemoryMonitorConfig2 = ProcessBgMemoryMonitorConfig(
+        callback = procBgMemCallback,
+        bgStatefulOwner = ProcessStagedBackgroundOwner,
+        checkInterval = 20 * 1000L,
+        javaThresholdByte = Long.MAX_VALUE,
+        nativeThresholdByte = 10 * 1024L,
+        checkTimes = 1
+    )
+
+    internal val procStagedBgMemoryMonitorConfig3 = ProcessBgMemoryMonitorConfig(
+        callback = procBgMemCallback,
+        bgStatefulOwner = ProcessStagedBackgroundOwner,
+        checkInterval = 30 * 1000L,
+        javaThresholdByte = 10 * 1000L,
+        nativeThresholdByte = Long.MAX_VALUE,
+        checkTimes = 1
+    )
+
+    internal val procStagedBgMemoryMonitorConfig4 = ProcessBgMemoryMonitorConfig(
+        callback = procBgMemCallback,
+        bgStatefulOwner = ProcessStagedBackgroundOwner,
+        checkInterval = 30 * 1000L,
+        javaThresholdByte = Long.MAX_VALUE,
+        nativeThresholdByte = 10 * 1024L,
+        checkTimes = 1
+    )
+
+    internal val procStagedBgMemoryMonitorConfig5 = ProcessBgMemoryMonitorConfig(
+        callback = procBgMemCallback,
+        bgStatefulOwner = ProcessStagedBackgroundOwner,
+        checkInterval = 40 * 1000L,
+        javaThresholdByte = Long.MAX_VALUE,
         nativeThresholdByte = 10 * 1024L,
         checkTimes = 1
     )

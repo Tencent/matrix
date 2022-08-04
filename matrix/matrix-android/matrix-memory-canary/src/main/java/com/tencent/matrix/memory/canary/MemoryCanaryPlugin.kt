@@ -47,9 +47,7 @@ class MemoryCanaryPlugin(
             if (isSupervisor) {
                 MatrixLog.d(tag, "supervisor is ${MatrixUtil.getProcessName(application)}")
 
-                appBgSumPssMonitorConfigs.forEach {
-                    AppBgSumPssMonitor(it).init()
-                }
+                AppBgSumPssMonitor.init(appBgSumPssMonitorConfigs)
             }
             processBgMemoryMonitorConfigs.forEach {
                 ProcessBgMemoryMonitor(it).init()

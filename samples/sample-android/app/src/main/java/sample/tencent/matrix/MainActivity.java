@@ -31,11 +31,17 @@ import android.widget.LinearLayout;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.tencent.matrix.lifecycle.IMatrixForegroundCallback;
 import com.tencent.matrix.lifecycle.owners.OverlayWindowLifecycleOwner;
-import com.tencent.matrix.memory.canary.MemInfo;
+import com.tencent.matrix.lifecycle.supervisor.AppUIForegroundOwner;
+import com.tencent.matrix.lifecycle.supervisor.ProcessSupervisor;
+import com.tencent.matrix.util.MemInfo;
 import com.tencent.matrix.trace.view.FrameDecorator;
 import com.tencent.matrix.util.MatrixLog;
 import com.tencent.matrix.util.ViewDumper;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import sample.tencent.matrix.battery.TestBatteryActivity;
 import sample.tencent.matrix.hooks.TestHooksActivity;
@@ -72,6 +78,20 @@ public class MainActivity extends AppCompatActivity {
 
             }
         }, 3000);
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                MemInfo[] infoArr = ProcessSupervisor.INSTANCE.getAllProcessMemInfo();
+                if (infoArr == null) {
+                    MatrixLog.d(TAG, "main info == null");
+                    return;
+                }
+                for (MemInfo memInfo : infoArr) {
+                    MatrixLog.d(TAG, "%s", memInfo);
+                }
+            }
+        }).start();
     }
 
     @Override
@@ -173,6 +193,33 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public IBinder onBind(Intent intent) {
             return null;
+        }
+
+        @Override
+        public void onCreate() {
+            super.onCreate();
+            AppUIForegroundOwner.INSTANCE.addLifecycleCallback(new IMatrixForegroundCallback() {
+                @Override
+                public void onEnterForeground() {
+
+                }
+
+                @Override
+                public void onExitForeground() {
+                    MatrixLog.d(TAG, "dump mem info");
+                    MemInfo[] infoArr = ProcessSupervisor.INSTANCE.getAllProcessMemInfo();
+                    if (infoArr == null) {
+                        MatrixLog.d(TAG, "supervisor info == null");
+                        return;
+                    }
+                    JSONArray array = new JSONArray();
+                    for (MemInfo memInfo : infoArr) {
+                        MatrixLog.d(TAG, "%s", memInfo.toJson());
+                        array.put(memInfo.toJson());
+                    }
+                    MatrixLog.d(TAG, "=====\n%s", array.toString());
+                }
+            });
         }
     }
 
