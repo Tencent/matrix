@@ -666,6 +666,8 @@ public class HealthStatsTest {
         Delta<HealthStatsSnapshot> delta = end.diff(bgn);
         Assert.assertNotNull(delta);
         Assert.assertNull(delta.dlt.healthStats);
+
+        Assert.assertEquals(delta.dlt.getTotalPower(), end.getTotalPower() - bgn.getTotalPower(), 0.001d);
     }
 
 

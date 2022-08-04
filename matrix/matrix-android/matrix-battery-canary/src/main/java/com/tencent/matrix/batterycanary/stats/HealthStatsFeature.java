@@ -74,23 +74,6 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                     snapshot.screenPower = DigitEntry.of(HealthStatsHelper.calcScreenPower(powerProfile, healthStats));
                     snapshot.systemServicePower = DigitEntry.of(HealthStatsHelper.calcSystemServicePower(powerProfile, healthStats));
                     snapshot.idlePower = DigitEntry.of(HealthStatsHelper.calcIdlePower(powerProfile, healthStats));
-
-                    double total = snapshot.cpuPower.get()
-                            + snapshot.wakelocksPower.get()
-                            + snapshot.mobilePower.get()
-                            + snapshot.wifiPower.get()
-                            + snapshot.blueToothPower.get()
-                            + snapshot.gpsPower.get()
-                            + snapshot.sensorsPower.get()
-                            + snapshot.cameraPower.get()
-                            + snapshot.flashLightPower.get()
-                            + snapshot.audioPower.get()
-                            + snapshot.videoPower.get()
-                            + snapshot.screenPower.get()
-                            + snapshot.systemServicePower.get()
-                            + snapshot.idlePower.get();
-
-                    snapshot.totalPower = DigitEntry.of(total);
                 }
             }
 
@@ -276,8 +259,6 @@ public class HealthStatsFeature extends AbsMonitorFeature {
         public DigitEntry<Double> systemServicePower = DigitEntry.of(0D);
         public DigitEntry<Double> idlePower = DigitEntry.of(0D);
 
-        public DigitEntry<Double> totalPower = DigitEntry.of(0D);
-
         // Meta Data:
         // CPU
         public DigitEntry<Long> cpuPowerMams = DigitEntry.of(0L);
@@ -336,6 +317,23 @@ public class HealthStatsFeature extends AbsMonitorFeature {
         public Map<String, DigitEntry<Long>> procStatsCpuSysTimeMs = Collections.emptyMap();
         public Map<String, DigitEntry<Long>> procStatsCpuFgTimeMs = Collections.emptyMap();
 
+        public double getTotalPower() {
+            return cpuPower.get()
+                    + wakelocksPower.get()
+                    + mobilePower.get()
+                    + wifiPower.get()
+                    + blueToothPower.get()
+                    + gpsPower.get()
+                    + sensorsPower.get()
+                    + cameraPower.get()
+                    + flashLightPower.get()
+                    + audioPower.get()
+                    + videoPower.get()
+                    + screenPower.get()
+                    + systemServicePower.get()
+                    + idlePower.get();
+        }
+
         @Override
         public Delta<HealthStatsSnapshot> diff(HealthStatsSnapshot bgn) {
             return new Delta<HealthStatsSnapshot>(bgn, this) {
@@ -356,8 +354,6 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                     delta.screenPower = Differ.DigitDiffer.globalDiff(bgn.screenPower, end.screenPower);
                     delta.systemServicePower = Differ.DigitDiffer.globalDiff(bgn.systemServicePower, end.systemServicePower);
                     delta.idlePower = Differ.DigitDiffer.globalDiff(bgn.idlePower, end.idlePower);
-
-                    delta.totalPower = Differ.DigitDiffer.globalDiff(bgn.totalPower, end.totalPower);
 
                     delta.cpuPowerMams = Differ.DigitDiffer.globalDiff(bgn.cpuPowerMams, end.cpuPowerMams);
                     delta.cpuUsrTimeMs = Differ.DigitDiffer.globalDiff(bgn.cpuUsrTimeMs, end.cpuUsrTimeMs);
