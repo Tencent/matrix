@@ -568,7 +568,9 @@ public class CompositeMonitors {
                         List<DigitEntry<Integer>> list = snapshot.cpuFreqs.getList();
                         MatrixLog.i(TAG, CompositeMonitors.this.hashCode() + " #onSampling: " + mScope);
                         MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + ", val = " + list);
-
+                        if (list.isEmpty()) {
+                            return Snapshot.Sampler.INVALID;
+                        }
                         // Better to use sum of all cpufreqs, rather than just use the max value?
                         // Collections.sort(list, new Comparator<DigitEntry<Integer>>() {
                         //     @Override
@@ -597,6 +599,9 @@ public class CompositeMonitors {
                         DeviceStatMonitorFeature.BatteryTmpSnapshot snapshot = feature.currentBatteryTemperature(mMonitor.getContext());
                         Integer value = snapshot.temp.get();
                         MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + ", val = " + value);
+                        if (value == -1) {
+                            return Snapshot.Sampler.INVALID;
+                        }
                         return value;
                     }
                 });
@@ -612,6 +617,9 @@ public class CompositeMonitors {
                     public Number apply(Snapshot.Sampler sampler) {
                         int value = BatteryCanaryUtil.getThermalStat(mMonitor.getContext());
                         MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + ", val = " + value);
+                        if (value == -1) {
+                            return Snapshot.Sampler.INVALID;
+                        }
                         return value;
                     }
                 });
@@ -629,6 +637,9 @@ public class CompositeMonitors {
                         public Number apply(Snapshot.Sampler sampler) {
                             float value = BatteryCanaryUtil.getThermalHeadroom(mMonitor.getContext(), (int) (interval / 1000L));
                             MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + ", val = " + value);
+                            if (value == -1f) {
+                                return Snapshot.Sampler.INVALID;
+                            }
                             return value;
                         }
                     });
@@ -645,6 +656,9 @@ public class CompositeMonitors {
                     public Number apply(Snapshot.Sampler sampler) {
                         int value = BatteryCanaryUtil.getChargingWatt(mMonitor.getContext());
                         MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + ", val = " + value);
+                        if (value == -1) {
+                            return Snapshot.Sampler.INVALID;
+                        }
                         return value;
                     }
                 });
@@ -732,6 +746,9 @@ public class CompositeMonitors {
                         DeviceStatMonitorFeature.BatteryCurrentSnapshot snapshot = feature.currentBatteryCurrency(mMonitor.getContext());
                         Long value = snapshot.stat.get();
                         MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + ", val = " + value);
+                        if (value == -1L) {
+                            return Snapshot.Sampler.INVALID;
+                        }
                         return value;
                     }
                 });

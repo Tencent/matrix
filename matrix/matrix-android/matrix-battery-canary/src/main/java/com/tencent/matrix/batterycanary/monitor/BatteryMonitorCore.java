@@ -292,7 +292,7 @@ public class BatteryMonitorCore implements
             return tmp;
         } catch (Throwable e) {
             MatrixLog.printErrStackTrace(TAG, e, "#currentBatteryTemperature error");
-            return 0;
+            return -1;
         }
     }
 

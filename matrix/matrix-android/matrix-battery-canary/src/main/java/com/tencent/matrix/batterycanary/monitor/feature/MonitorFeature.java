@@ -420,7 +420,7 @@ public interface MonitorFeature {
 
         public static class Sampler {
             private static final String TAG = "Matrix.battery.Sampler";
-            public static final Number INVALID = Integer.MIN_VALUE;
+            public static final Integer INVALID = Integer.MIN_VALUE;
 
             final String mTag;
             final Handler mHandler;

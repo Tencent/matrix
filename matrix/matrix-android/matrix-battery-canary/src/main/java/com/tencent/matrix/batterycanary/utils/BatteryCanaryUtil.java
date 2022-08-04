@@ -443,7 +443,7 @@ public final class BatteryCanaryUtil {
                 MatrixLog.w(TAG, "getCurrentThermalStatus failed: " + e.getMessage());
             }
         }
-        return 0;
+        return -1;
     }
 
     public static float getThermalHeadroom(Context context, @IntRange(from = 0, to = 60) int forecastSeconds) {
@@ -459,7 +459,7 @@ public final class BatteryCanaryUtil {
                 MatrixLog.w(TAG, "getThermalHeadroom failed: " + e.getMessage());
             }
         }
-        return 0f;
+        return -1f;
     }
 
     public static int getChargingWatt(Context context) {
@@ -478,7 +478,7 @@ public final class BatteryCanaryUtil {
                 return (maxCurrent / 1000) * (maxVoltage / 1000) / 1000000;
             }
         }
-        return 0;
+        return -1;
     }
 
     @AppStats.AppStatusDef
