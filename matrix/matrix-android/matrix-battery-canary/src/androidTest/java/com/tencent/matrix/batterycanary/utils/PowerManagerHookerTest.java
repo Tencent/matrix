@@ -16,10 +16,14 @@
 
 package com.tencent.matrix.batterycanary.utils;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.os.IBinder;
 import android.os.PowerManager;
 import android.os.WorkSource;
+import android.text.TextUtils;
+import android.util.Log;
+
 import androidx.test.platform.app.InstrumentationRegistry;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
@@ -31,6 +35,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -89,6 +94,8 @@ public class PowerManagerHookerTest {
         PowerManager pm = (PowerManager) mContext.getSystemService(Context.POWER_SERVICE);
         PowerManager.WakeLock wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, TAG);
         wakLockRef.set(wakeLock);
+        String wakeLockTag = getWakeLockTag(wakeLock);
+        Assert.assertEquals(TAG, wakeLockTag);
         Assert.assertNotNull(wakeLock);
 
         wakeLock.acquire();
@@ -99,6 +106,51 @@ public class PowerManagerHookerTest {
         Thread.sleep(100L);
         Assert.assertTrue(hasAcquired.get());
         Assert.assertTrue(hasRelease.get());
+    }
+
+    private static String getWakeLockTag(PowerManager.WakeLock wakeLock) {
+        String tag = null;
+        try {
+            @SuppressWarnings("JavaReflectionMemberAccess")
+            @SuppressLint({"SoonBlockedPrivateApi"})
+            Method method = wakeLock.getClass().getDeclaredMethod("getTag");
+            method.setAccessible(true);
+            tag = (String) method.invoke(wakeLock);
+        } catch (Throwable e) {
+            Log.e(TAG, "getTag err: " + e);
+        }
+        if (TextUtils.isEmpty(tag)) {
+            try {
+                @SuppressWarnings("JavaReflectionMemberAccess")
+                @SuppressLint("DiscouragedPrivateApi")
+                Field field = wakeLock.getClass().getDeclaredField("mTag");
+                field.setAccessible(true);
+                tag = (String) field.get(wakeLock);
+            } catch (Throwable e) {
+                Log.e(TAG, "mTag err: " + e);
+            }
+        }
+        if (TextUtils.isEmpty(tag)) {
+            try {
+                @SuppressWarnings("JavaReflectionMemberAccess")
+                @SuppressLint({"SoonBlockedPrivateApi"})
+                Field field = wakeLock.getClass().getDeclaredField("mTraceName");
+                field.setAccessible(true);
+                tag = (String) field.get(wakeLock);
+                if (tag != null && tag.startsWith("WakeLock (") && tag.endsWith(")")) {
+                    int idxBgn = tag.indexOf("WakeLock (") + "WakeLock (".length();
+                    int idxEnd = tag.lastIndexOf(")");
+                    if (idxBgn < idxEnd) {
+                        tag = tag.substring(idxBgn, idxEnd);
+                    }
+                }
+            } catch (Throwable e) {
+                Log.e(TAG, "mTraceName err: " + e);
+            }
+        }
+
+        Log.i(TAG, "getWakeLockTag: " + tag);
+        return tag;
     }
 
     @Ignore

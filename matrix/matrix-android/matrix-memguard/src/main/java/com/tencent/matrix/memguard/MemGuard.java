@@ -455,13 +455,15 @@ public final class MemGuard {
         final List<ActivityManager.RunningAppProcessInfo> runningProcs = am.getRunningAppProcesses();
         final int myUid = Process.myUid();
         final int myPid = Process.myPid();
-        for (ActivityManager.RunningAppProcessInfo procInfo : runningProcs) {
-            if (procInfo.uid == myUid && procInfo.pid == myPid) {
-                final int colIdx = procInfo.processName.lastIndexOf(':');
-                if (colIdx >= 0) {
-                    return procInfo.processName.substring(colIdx + 1);
-                } else {
-                    return "main";
+        if (runningProcs != null) {
+            for (ActivityManager.RunningAppProcessInfo procInfo : runningProcs) {
+                if (procInfo.uid == myUid && procInfo.pid == myPid) {
+                    final int colIdx = procInfo.processName.lastIndexOf(':');
+                    if (colIdx >= 0) {
+                        return procInfo.processName.substring(colIdx + 1);
+                    } else {
+                        return "main";
+                    }
                 }
             }
         }

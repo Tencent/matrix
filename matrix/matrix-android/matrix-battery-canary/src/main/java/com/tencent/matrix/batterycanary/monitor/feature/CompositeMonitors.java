@@ -13,6 +13,7 @@ import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.Ji
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.DigitEntry;
+import com.tencent.matrix.batterycanary.stats.HealthStatsFeature;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.Consumer;
 import com.tencent.matrix.batterycanary.utils.Function;
@@ -94,12 +95,18 @@ public class CompositeMonitors {
         mSampleResults.clear();
         mTaskDeltas.clear();
         mTaskDeltasCollect.clear();
+        mExtras.clear();
+        mStacks.clear();
+    }
+
+    public CompositeMonitors fork() {
+        return fork(new CompositeMonitors(mMonitor, mScope));
     }
 
     @CallSuper
-    public CompositeMonitors fork() {
+    protected CompositeMonitors fork(CompositeMonitors that) {
         MatrixLog.i(TAG, hashCode() + " #fork: " + mScope);
-        CompositeMonitors that = new CompositeMonitors(mMonitor, mScope);
+        that.clear();
         that.mBgnMillis = this.mBgnMillis;
         that.mAppStats = this.mAppStats;
 
@@ -107,12 +114,15 @@ public class CompositeMonitors {
         that.mBgnSnapshots.putAll(mBgnSnapshots);
         that.mDeltas.putAll(mDeltas);
 
-        that.mSampleRegs.putAll(mSampleRegs);
-        that.mSamplers.putAll(mSamplers);
-        that.mSampleResults.putAll(mSampleResults);
+        // Sampler can not be cloned.
+        // that.mSampleRegs.putAll(mSampleRegs);
+        // that.mSamplers.putAll(mSamplers);
+        // that.mSampleResults.putAll(mSampleResults);
 
         that.mTaskDeltas.putAll(this.mTaskDeltas);
+        that.mTaskDeltasCollect.putAll(this.mTaskDeltasCollect);
         that.mExtras.putAll(this.mExtras);
+        that.mStacks.putAll(this.mStacks);
         return that;
     }
 
@@ -164,13 +174,19 @@ public class CompositeMonitors {
             MatrixLog.w(TAG, "AppStats should not be null to get CpuLoad");
             return -1;
         }
-        Delta<JiffiesSnapshot> appJiffies = getDelta(JiffiesSnapshot.class);
-        if (appJiffies == null) {
-            MatrixLog.w(TAG, JiffiesSnapshot.class + " should be metrics to get CpuLoad");
-            return -1;
+        long appJiffiesDelta;
+        Delta<JiffiesMonitorFeature.UidJiffiesSnapshot> uidJiffies = getDelta(JiffiesMonitorFeature.UidJiffiesSnapshot.class);
+        if (uidJiffies != null) {
+            appJiffiesDelta = uidJiffies.dlt.totalUidJiffies.get();
+        } else {
+            Delta<JiffiesSnapshot> pidJiffies = getDelta(JiffiesSnapshot.class);
+            if (pidJiffies == null) {
+                MatrixLog.w(TAG, JiffiesSnapshot.class + " should be metrics to get CpuLoad");
+                return -1;
+            }
+            appJiffiesDelta = pidJiffies.dlt.totalJiffies.get();
         }
 
-        long appJiffiesDelta = appJiffies.dlt.totalJiffies.get();
         long cpuUptimeDelta = mAppStats.duringMillis;
         float cpuLoad = cpuUptimeDelta > 0 ? (float) (appJiffiesDelta * 10) / cpuUptimeDelta : 0;
         return (int) (cpuLoad * 100);
@@ -460,6 +476,12 @@ public class CompositeMonitors {
             }
             return snapshot;
         }
+        if (snapshotClass == JiffiesMonitorFeature.UidJiffiesSnapshot.class) {
+            JiffiesMonitorFeature feat = getFeature(JiffiesMonitorFeature.class);
+            if (feat != null) {
+                return feat.currentUidJiffiesSnapshot();
+            }
+        }
         if (snapshotClass == LocationMonitorFeature.LocationSnapshot.class) {
             LocationMonitorFeature feature = getFeature(LocationMonitorFeature.class);
             if (feature != null) {
@@ -502,6 +524,13 @@ public class CompositeMonitors {
             }
             return snapshot;
         }
+        if (snapshotClass == HealthStatsFeature.HealthStatsSnapshot.class) {
+            HealthStatsFeature feature = getFeature(HealthStatsFeature.class);
+            if (feature != null) {
+                snapshot = feature.currHealthStatsSnapshot();
+            }
+            return snapshot;
+        }
         return null;
     }
 
@@ -539,7 +568,9 @@ public class CompositeMonitors {
                         List<DigitEntry<Integer>> list = snapshot.cpuFreqs.getList();
                         MatrixLog.i(TAG, CompositeMonitors.this.hashCode() + " #onSampling: " + mScope);
                         MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + ", val = " + list);
-
+                        if (list.isEmpty()) {
+                            return Snapshot.Sampler.INVALID;
+                        }
                         // Better to use sum of all cpufreqs, rather than just use the max value?
                         // Collections.sort(list, new Comparator<DigitEntry<Integer>>() {
                         //     @Override
@@ -568,6 +599,9 @@ public class CompositeMonitors {
                         DeviceStatMonitorFeature.BatteryTmpSnapshot snapshot = feature.currentBatteryTemperature(mMonitor.getContext());
                         Integer value = snapshot.temp.get();
                         MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + ", val = " + value);
+                        if (value == -1) {
+                            return Snapshot.Sampler.INVALID;
+                        }
                         return value;
                     }
                 });
@@ -583,6 +617,9 @@ public class CompositeMonitors {
                     public Number apply(Snapshot.Sampler sampler) {
                         int value = BatteryCanaryUtil.getThermalStat(mMonitor.getContext());
                         MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + ", val = " + value);
+                        if (value == -1) {
+                            return Snapshot.Sampler.INVALID;
+                        }
                         return value;
                     }
                 });
@@ -600,6 +637,9 @@ public class CompositeMonitors {
                         public Number apply(Snapshot.Sampler sampler) {
                             float value = BatteryCanaryUtil.getThermalHeadroom(mMonitor.getContext(), (int) (interval / 1000L));
                             MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + ", val = " + value);
+                            if (value == -1f) {
+                                return Snapshot.Sampler.INVALID;
+                            }
                             return value;
                         }
                     });
@@ -616,6 +656,9 @@ public class CompositeMonitors {
                     public Number apply(Snapshot.Sampler sampler) {
                         int value = BatteryCanaryUtil.getChargingWatt(mMonitor.getContext());
                         MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + ", val = " + value);
+                        if (value == -1) {
+                            return Snapshot.Sampler.INVALID;
+                        }
                         return value;
                     }
                 });
@@ -703,6 +746,9 @@ public class CompositeMonitors {
                         DeviceStatMonitorFeature.BatteryCurrentSnapshot snapshot = feature.currentBatteryCurrency(mMonitor.getContext());
                         Long value = snapshot.stat.get();
                         MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + ", val = " + value);
+                        if (value == -1L) {
+                            return Snapshot.Sampler.INVALID;
+                        }
                         return value;
                     }
                 });
@@ -790,6 +836,25 @@ public class CompositeMonitors {
 
     public void getCollectedTaskDeltas(Consumer<Map<String, List<Pair<Class<? extends AbsTaskMonitorFeature>, Delta<TaskJiffiesSnapshot>>>>> block) {
         block.accept(getCollectedTaskDeltas());
+    }
+
+    public void getAllPidDeltaList(Consumer<List<Delta<JiffiesSnapshot>>> block) {
+        List<Delta<JiffiesSnapshot>> deltaList = getAllPidDeltaList();
+        if (deltaList != null) {
+            block.accept(deltaList);
+        }
+    }
+
+    public List<Delta<JiffiesSnapshot>> getAllPidDeltaList() {
+        Delta<JiffiesMonitorFeature.UidJiffiesSnapshot> delta = getDelta(JiffiesMonitorFeature.UidJiffiesSnapshot.class);
+        if (delta == null) {
+            Delta<JiffiesSnapshot> pidDelta = getDelta(JiffiesSnapshot.class);
+            if (pidDelta != null) {
+                return Collections.singletonList(pidDelta);
+            }
+            return Collections.emptyList();
+        }
+        return delta.dlt.pidDeltaJiffiesList;
     }
 
     public Map<String, String> getStacks() {

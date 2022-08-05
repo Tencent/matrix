@@ -443,7 +443,7 @@ public final class BatteryCanaryUtil {
                 MatrixLog.w(TAG, "getCurrentThermalStatus failed: " + e.getMessage());
             }
         }
-        return 0;
+        return -1;
     }
 
     public static float getThermalHeadroom(Context context, @IntRange(from = 0, to = 60) int forecastSeconds) {
@@ -459,7 +459,7 @@ public final class BatteryCanaryUtil {
                 MatrixLog.w(TAG, "getThermalHeadroom failed: " + e.getMessage());
             }
         }
-        return 0f;
+        return -1f;
     }
 
     public static int getChargingWatt(Context context) {
@@ -478,7 +478,7 @@ public final class BatteryCanaryUtil {
                 return (maxCurrent / 1000) * (maxVoltage / 1000) / 1000000;
             }
         }
-        return 0;
+        return -1;
     }
 
     @AppStats.AppStatusDef
@@ -669,17 +669,14 @@ public final class BatteryCanaryUtil {
     @SuppressWarnings("ConstantConditions")
     @SuppressLint("PrivateApi")
     public static int getBatteryCapacityImmediately(Context context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            BatteryManager mBatteryManager = (BatteryManager) context.getSystemService(Context.BATTERY_SERVICE);
-            int chargeCounter = mBatteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER);
-            int capacity = mBatteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
-            if (chargeCounter > 0 && capacity > 0) {
-                return (int) (((chargeCounter / (float) capacity) * 100) / 1000);
+        /*
+         * Matrix PowerProfile (static) >> OS PowerProfile (static) >> BatteryManager (dynamic)
+         */
+        try {
+            if (PowerProfile.getResType().equals("framework") || PowerProfile.getResType().equals("custom")) {
+                return (int) PowerProfile.init(context).getBatteryCapacity();
             }
-        }
-
-        if (PowerProfile.getInstance() != null) {
-            return (int) PowerProfile.getInstance().getBatteryCapacity();
+        } catch (Throwable ignored) {
         }
 
         try {
@@ -688,14 +685,22 @@ public final class BatteryCanaryUtil {
             Method method;
             try {
                 method = profileClass.getMethod("getAveragePower", String.class);
-                return (int) method.invoke(profileObject, "battery.capacity");
+                return (int) method.invoke(profileObject, PowerProfile.POWER_BATTERY_CAPACITY);
             } catch (Throwable e) {
                 MatrixLog.w(TAG, "get PowerProfile failed: " + e.getMessage());
             }
             method = profileClass.getMethod("getBatteryCapacity");
             return (int) method.invoke(profileObject);
-        } catch (Throwable e) {
-            MatrixLog.w(TAG, "get PowerProfile failed: " + e.getMessage());
+        } catch (Throwable ignored) {
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            BatteryManager mBatteryManager = (BatteryManager) context.getSystemService(Context.BATTERY_SERVICE);
+            int chargeCounter = mBatteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER);
+            int capacity = mBatteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
+            if (chargeCounter > 0 && capacity > 0) {
+                return (int) (((chargeCounter / (float) capacity) * 100) / 1000);
+            }
         }
         return -1;
     }

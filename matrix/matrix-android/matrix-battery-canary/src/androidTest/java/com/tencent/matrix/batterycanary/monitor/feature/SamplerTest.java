@@ -85,6 +85,13 @@ public class SamplerTest {
     }
 
     @Test
+    public void testInvalidSamplingResult() {
+        Number result = Integer.MIN_VALUE;
+        Assert.assertTrue(result.equals(Integer.MIN_VALUE));
+        Assert.assertEquals(Integer.MIN_VALUE, result);
+    }
+
+    @Test
     public void testSampling() throws InterruptedException {
         final BatteryMonitorCore monitor = mockMonitor();
         BatteryMonitorPlugin plugin = new BatteryMonitorPlugin(monitor.getConfig());

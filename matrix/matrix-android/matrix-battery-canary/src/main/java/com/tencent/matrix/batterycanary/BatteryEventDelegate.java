@@ -155,6 +155,17 @@ public final class BatteryEventDelegate {
                         // Received 'ACTION_BATTERY_CHANGED' frequently,
                         // should be frequency-controlled & handled with worker thread
                         if (mCore != null) {
+                            int status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
+                            if (status == BatteryManager.BATTERY_STATUS_FULL) {
+                                mCore.getHandler().post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        onBatteryFullCharged();
+                                    }
+                                });
+                                return;
+                            }
+
                             boolean limited = false;
                             long currMs = System.currentTimeMillis();
                             if (mLastBatteryChangedHandleMs > 0 && currMs - mLastBatteryChangedHandleMs < ONE_MIN) {
@@ -343,6 +354,19 @@ public final class BatteryEventDelegate {
         }
     }
 
+    private void onBatteryFullCharged() {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            dispatchBatteryFullCharged();
+        } else {
+            mUiHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    dispatchBatteryFullCharged();
+                }
+            });
+        }
+    }
+
     private void onBatteryTemperatureChanged(final int temp) {
         if (Looper.myLooper() == Looper.getMainLooper()) {
             dispatchBatteryTemperatureChanged(temp);
@@ -416,6 +440,21 @@ public final class BatteryEventDelegate {
             for (Listener item : mListenerList) {
                 if (item instanceof Listener.ExListener) {
                     if (((Listener.ExListener) item).onBatteryPowerChanged(batteryState, pct)) {
+                        removeListener(item);
+                    }
+                }
+            }
+        }
+    }
+
+    @VisibleForTesting
+    void dispatchBatteryFullCharged() {
+        MatrixLog.i(TAG, "dispatchBatteryFullCharged");
+        synchronized (mListenerList) {
+            BatteryState batteryState = currentState();
+            for (Listener item : mListenerList) {
+                if (item instanceof Listener.ExListener) {
+                    if (((Listener.ExListener) item).onBatteryFullCharged(batteryState)) {
                         removeListener(item);
                     }
                 }
@@ -600,6 +639,15 @@ public final class BatteryEventDelegate {
             boolean onBatteryPowerChanged(BatteryState batteryState, int levelPct);
 
             /**
+             * On battery power full charged.
+             *
+             * @param batteryState {@link BatteryState}
+             * @return return true if your listening is done, thus we remove your listener
+             */
+            @UiThread
+            boolean onBatteryFullCharged(BatteryState batteryState);
+
+            /**
              * On battery power low or ok.
              *
              * @param batteryState {@link BatteryState}
@@ -641,6 +689,11 @@ public final class BatteryEventDelegate {
 
             @Override
             public boolean onBatteryPowerChanged(BatteryState batteryState, int levelPct) {
+                return !mKeepAlive;
+            }
+
+            @Override
+            public boolean onBatteryFullCharged(BatteryState batteryState) {
                 return !mKeepAlive;
             }
 
