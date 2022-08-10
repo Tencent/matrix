@@ -16,15 +16,22 @@ object BackgroundMemoryMonitorBoot {
 
     private const val TAG = "Matrix.sample.BackgroundMemoryMonitor"
 
-    private val appBgMemCallback: (Int, Array<MemInfo>) -> Unit = { sumPssKB, memInfos ->
-        MatrixLog.i(TAG, "report : $sumPssKB, ${memInfos.contentToString()}")
-    }
+    private val appBgMemCallback: (amsPssSumKB: Int, debugPssSumKB: Int, amsMemInfos: Array<MemInfo>, debugMemInfos: Array<MemInfo>) -> Unit =
+        { amsSumPssKB, debugSumPssKB, amsMemInfos, debugMemInfos ->
+            MatrixLog.e(
+                TAG,
+                "sum pss of all process over threshold: amsSumPss = $amsSumPssKB KB, debugSumPss = $debugSumPssKB KB " +
+                        "amsMemDetail: ${amsMemInfos.contentToString()}" +
+                        "\n==========\n" +
+                        "debugMemDetail: ${debugMemInfos.contentToString()}"
+            )
+        }
 
     internal val appStagedBgMemoryMonitorConfig =
         AppBgSumPssMonitorConfig(
             callback = appBgMemCallback,
             bgStatefulOwner = AppStagedBackgroundOwner,
-            thresholdKB = 2 * 1024L,
+            amsPssThresholdKB = 2 * 1024L,
             checkInterval = 10 * 1000L,
             checkTimes = 1,
         )
@@ -32,7 +39,7 @@ object BackgroundMemoryMonitorBoot {
         AppBgSumPssMonitorConfig(
             callback = appBgMemCallback,
             bgStatefulOwner = AppDeepBackgroundOwner,
-            thresholdKB = 2 * 1024L,
+            amsPssThresholdKB = 2 * 1024L,
             checkInterval = 10 * 1000L
         )
 
