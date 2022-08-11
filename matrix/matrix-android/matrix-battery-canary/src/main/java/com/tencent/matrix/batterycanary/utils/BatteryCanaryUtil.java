@@ -685,7 +685,8 @@ public final class BatteryCanaryUtil {
             Method method;
             try {
                 method = profileClass.getMethod("getAveragePower", String.class);
-                return (int) method.invoke(profileObject, PowerProfile.POWER_BATTERY_CAPACITY);
+                double capacity = (double) method.invoke(profileObject, PowerProfile.POWER_BATTERY_CAPACITY);
+                return (int) capacity;
             } catch (Throwable e) {
                 MatrixLog.w(TAG, "get PowerProfile failed: " + e.getMessage());
             }
