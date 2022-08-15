@@ -379,42 +379,59 @@ public final class HealthStatsHelper {
             MatrixLog.i(TAG, "estimate Mobile by mams");
         }
         if (power == 0) {
-            // calc from radio active
-            // for some aosp mistakes, radio active timer was given in time unit us:
-            // https://cs.android.com/android/_/android/platform/frameworks/base/+/bee44ae8e5da109cd8273a057b566dc6925d6a71
-            long timeMs = getTimerTime(healthStats, UidHealthStats.TIMER_MOBILE_RADIO_ACTIVE) / 1000;
-            double powerMa = powerProfile.getAveragePowerUni(PowerProfile.POWER_RADIO_ACTIVE);
-            if (powerMa <= 0) {
-                double sum = 0;
-                sum += powerProfile.getAveragePower(PowerProfile.POWER_MODEM_CONTROLLER_RX);
-                int num = powerProfile.getNumElements(PowerProfile.POWER_MODEM_CONTROLLER_TX);
-                for (int i = 0; i < num; i++) {
-                    sum += powerProfile.getAveragePower(PowerProfile.POWER_MODEM_CONTROLLER_TX, i);
-                }
-                powerMa = sum / (num + 1);
-            }
-            power = new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
+            power = calcMobilePowerByRadioActive(powerProfile, healthStats);
             if (power > 0) {
                 MatrixLog.i(TAG, "estimate Mobile by radioActive");
             }
         }
         if (power == 0) {
-            // calc from controller
-            {
-                long timeMs = getMeasure(healthStats, UidHealthStats.MEASUREMENT_MOBILE_IDLE_MS);
-                double powerMa = powerProfile.getAveragePowerUni(PowerProfile.POWER_MODEM_CONTROLLER_IDLE);
-                power += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
+            power = calcMobilePowerByController(powerProfile, healthStats);
+            if (power > 0) {
+                MatrixLog.i(TAG, "estimate Mobile by controller");
             }
-            {
-                long timeMs = getMeasure(healthStats, UidHealthStats.MEASUREMENT_MOBILE_RX_MS);
-                double powerMa = powerProfile.getAveragePowerUni(PowerProfile.POWER_MODEM_CONTROLLER_RX);
-                power += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
+        }
+        return power;
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.N)
+    @VisibleForTesting
+    public static double calcMobilePowerByRadioActive(PowerProfile powerProfile, HealthStats healthStats) {
+        // calc from radio active
+        // for some aosp mistakes, radio active timer was given in time unit us:
+        // https://cs.android.com/android/_/android/platform/frameworks/base/+/bee44ae8e5da109cd8273a057b566dc6925d6a71
+        long timeMs = getTimerTime(healthStats, UidHealthStats.TIMER_MOBILE_RADIO_ACTIVE) / 1000;
+        double powerMa = powerProfile.getAveragePowerUni(PowerProfile.POWER_RADIO_ACTIVE);
+        if (powerMa <= 0) {
+            double sum = 0;
+            sum += powerProfile.getAveragePower(PowerProfile.POWER_MODEM_CONTROLLER_RX);
+            int num = powerProfile.getNumElements(PowerProfile.POWER_MODEM_CONTROLLER_TX);
+            for (int i = 0; i < num; i++) {
+                sum += powerProfile.getAveragePower(PowerProfile.POWER_MODEM_CONTROLLER_TX, i);
             }
-            {
-                long timeMs = getMeasure(healthStats, UidHealthStats.MEASUREMENT_MOBILE_TX_MS);
-                double powerMa = powerProfile.getAveragePowerUni(PowerProfile.POWER_MODEM_CONTROLLER_TX);
-                power += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
-            }
+            powerMa = sum / (num + 1);
+        }
+        return new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.N)
+    @VisibleForTesting
+    public static double calcMobilePowerByController(PowerProfile powerProfile, HealthStats healthStats) {
+        // calc from controller
+        double power = 0;
+        {
+            long timeMs = getMeasure(healthStats, UidHealthStats.MEASUREMENT_MOBILE_IDLE_MS);
+            double powerMa = powerProfile.getAveragePowerUni(PowerProfile.POWER_MODEM_CONTROLLER_IDLE);
+            power += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
+        }
+        {
+            long timeMs = getMeasure(healthStats, UidHealthStats.MEASUREMENT_MOBILE_RX_MS);
+            double powerMa = powerProfile.getAveragePowerUni(PowerProfile.POWER_MODEM_CONTROLLER_RX);
+            power += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
+        }
+        {
+            long timeMs = getMeasure(healthStats, UidHealthStats.MEASUREMENT_MOBILE_TX_MS);
+            double powerMa = powerProfile.getAveragePowerUni(PowerProfile.POWER_MODEM_CONTROLLER_TX);
+            power += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
         }
         return power;
     }
@@ -429,46 +446,68 @@ public final class HealthStatsHelper {
             MatrixLog.i(TAG, "estimate WIFI by mams");
         }
         if (power == 0) {
-            // calc from controller
-            {
-                double wifiIdlePower = powerProfile.getAveragePowerUni(PowerProfile.POWER_WIFI_CONTROLLER_IDLE);
-                long idleMs = getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_IDLE_MS);
-                UsageBasedPowerEstimator etmWifiIdlePower = new UsageBasedPowerEstimator(wifiIdlePower);
-                power += etmWifiIdlePower.calculatePower(idleMs);
-            }
-            {
-                double wifiRxPower = powerProfile.getAveragePowerUni(PowerProfile.POWER_WIFI_CONTROLLER_RX);
-                UsageBasedPowerEstimator etmWifiRxPower = new UsageBasedPowerEstimator(wifiRxPower);
-                long rxMs = getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_RX_MS);
-                power += etmWifiRxPower.calculatePower(rxMs);
-            }
-            {
-                double wifiTxPower = powerProfile.getAveragePowerUni(PowerProfile.POWER_WIFI_CONTROLLER_TX);
-                long txMs = getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_TX_MS);
-                UsageBasedPowerEstimator etmWifiTxPower = new UsageBasedPowerEstimator(wifiTxPower);
-                power += etmWifiTxPower.calculatePower(txMs);
+            power = calcWifiPowerByController(powerProfile, healthStats);
+            if (power > 0) {
+                MatrixLog.i(TAG, "estimate WIFI by controller");
             }
         }
         if (power == 0) {
-            // calc from packets
-            MatrixLog.i(TAG, "estimate WIFI by packets");
-            {
-                final long wifiBps = 1000000;
-                final double averageWifiActivePower = powerProfile.getAveragePowerUni(PowerProfile.POWER_WIFI_ACTIVE) / 3600;
-                double powerMaPerPacket = averageWifiActivePower / (((double) wifiBps) / 8 / 2048);
-                long packets = getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_RX_PACKETS) + getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_TX_PACKETS);
-                power += powerMaPerPacket * packets;
+            power = calcWifiPowerByPackets(powerProfile, healthStats);
+            if (power > 0) {
+                MatrixLog.i(TAG, "estimate WIFI by packets");
             }
-            {
-                double powerMa = powerProfile.getAveragePowerUni(PowerProfile.POWER_WIFI_ON);
-                long timeMs = getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_RUNNING_MS);
-                power += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
-            }
-            {
-                double powerMa = powerProfile.getAveragePowerUni(PowerProfile.POWER_WIFI_SCAN);
-                long timeMs = getTimerTime(healthStats, UidHealthStats.TIMER_WIFI_SCAN);
-                power += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
-            }
+        }
+        return power;
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.N)
+    @VisibleForTesting
+    public static double calcWifiPowerByController(PowerProfile powerProfile, HealthStats healthStats) {
+        // calc from controller
+        double power = 0;
+        {
+            double wifiIdlePower = powerProfile.getAveragePowerUni(PowerProfile.POWER_WIFI_CONTROLLER_IDLE);
+            long idleMs = getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_IDLE_MS);
+            UsageBasedPowerEstimator etmWifiIdlePower = new UsageBasedPowerEstimator(wifiIdlePower);
+            power += etmWifiIdlePower.calculatePower(idleMs);
+        }
+        {
+            double wifiRxPower = powerProfile.getAveragePowerUni(PowerProfile.POWER_WIFI_CONTROLLER_RX);
+            UsageBasedPowerEstimator etmWifiRxPower = new UsageBasedPowerEstimator(wifiRxPower);
+            long rxMs = getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_RX_MS);
+            power += etmWifiRxPower.calculatePower(rxMs);
+        }
+        {
+            double wifiTxPower = powerProfile.getAveragePowerUni(PowerProfile.POWER_WIFI_CONTROLLER_TX);
+            long txMs = getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_TX_MS);
+            UsageBasedPowerEstimator etmWifiTxPower = new UsageBasedPowerEstimator(wifiTxPower);
+            power += etmWifiTxPower.calculatePower(txMs);
+        }
+        return power;
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.N)
+    @VisibleForTesting
+    public static double calcWifiPowerByPackets(PowerProfile powerProfile, HealthStats healthStats) {
+        // calc from packets
+        double power = 0;
+        MatrixLog.i(TAG, "estimate WIFI by packets");
+        {
+            final long wifiBps = 1000000;
+            final double averageWifiActivePower = powerProfile.getAveragePowerUni(PowerProfile.POWER_WIFI_ACTIVE) / 3600;
+            double powerMaPerPacket = averageWifiActivePower / (((double) wifiBps) / 8 / 2048);
+            long packets = getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_RX_PACKETS) + getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_TX_PACKETS);
+            power += powerMaPerPacket * packets;
+        }
+        {
+            double powerMa = powerProfile.getAveragePowerUni(PowerProfile.POWER_WIFI_ON);
+            long timeMs = getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_RUNNING_MS);
+            power += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
+        }
+        {
+            double powerMa = powerProfile.getAveragePowerUni(PowerProfile.POWER_WIFI_SCAN);
+            long timeMs = getTimerTime(healthStats, UidHealthStats.TIMER_WIFI_SCAN);
+            power += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
         }
         return power;
     }

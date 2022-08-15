@@ -46,6 +46,7 @@ public class HealthStatsFeature extends AbsMonitorFeature {
         return HealthStatsHelper.getCurrStats(mCore.getContext());
     }
 
+    @SuppressLint("VisibleForTests")
     public HealthStatsSnapshot currHealthStatsSnapshot() {
         HealthStatsSnapshot snapshot = new HealthStatsSnapshot();
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
@@ -60,6 +61,11 @@ public class HealthStatsFeature extends AbsMonitorFeature {
             if (cpuStatFeat != null) {
                 PowerProfile powerProfile = cpuStatFeat.getPowerProfile();
                 if (powerProfile != null && powerProfile.isSupported()) {
+                    snapshot.mobilePowerByRadioActive = DigitEntry.of(HealthStatsHelper.calcMobilePowerByRadioActive(powerProfile, healthStats));
+                    snapshot.mobilePowerByController = DigitEntry.of(HealthStatsHelper.calcMobilePowerByController(powerProfile, healthStats));
+                    snapshot.wifiPowerByController = DigitEntry.of(HealthStatsHelper.calcWifiPowerByController(powerProfile, healthStats));
+                    snapshot.wifiPowerByPackets = DigitEntry.of(HealthStatsHelper.calcWifiPowerByPackets(powerProfile, healthStats));
+
                     snapshot.cpuPower = DigitEntry.of(HealthStatsHelper.calcCpuPower(powerProfile, healthStats));
                     snapshot.wakelocksPower = DigitEntry.of(HealthStatsHelper.calcWakelocksPower(powerProfile, healthStats));
                     snapshot.mobilePower = DigitEntry.of(HealthStatsHelper.calcMobilePower(powerProfile, healthStats));
@@ -240,8 +246,11 @@ public class HealthStatsFeature extends AbsMonitorFeature {
     }
 
     public static class HealthStatsSnapshot extends Snapshot<HealthStatsSnapshot> {
-        @VisibleForTesting
-        public HealthStats healthStats;
+        @VisibleForTesting public HealthStats healthStats;
+        @VisibleForTesting public DigitEntry<Double> mobilePowerByRadioActive = DigitEntry.of(0D);
+        @VisibleForTesting public DigitEntry<Double> mobilePowerByController = DigitEntry.of(0D);
+        @VisibleForTesting public DigitEntry<Double> wifiPowerByController = DigitEntry.of(0D);
+        @VisibleForTesting public DigitEntry<Double> wifiPowerByPackets = DigitEntry.of(0D);
 
         // Estimated Powers
         public DigitEntry<Double> cpuPower = DigitEntry.of(0D);
@@ -340,6 +349,11 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                 @Override
                 protected HealthStatsSnapshot computeDelta() {
                     HealthStatsSnapshot delta = new HealthStatsSnapshot();
+                    delta.mobilePowerByRadioActive = Differ.DigitDiffer.globalDiff(bgn.mobilePowerByRadioActive, end.mobilePowerByRadioActive);
+                    delta.mobilePowerByController = Differ.DigitDiffer.globalDiff(bgn.mobilePowerByController, end.mobilePowerByController);
+                    delta.wifiPowerByController = Differ.DigitDiffer.globalDiff(bgn.wifiPowerByController, end.wifiPowerByController);
+                    delta.wifiPowerByPackets = Differ.DigitDiffer.globalDiff(bgn.wifiPowerByPackets, end.wifiPowerByPackets);
+
                     delta.cpuPower = Differ.DigitDiffer.globalDiff(bgn.cpuPower, end.cpuPower);
                     delta.wakelocksPower = Differ.DigitDiffer.globalDiff(bgn.wakelocksPower, end.wakelocksPower);
                     delta.mobilePower = Differ.DigitDiffer.globalDiff(bgn.mobilePower, end.mobilePower);
