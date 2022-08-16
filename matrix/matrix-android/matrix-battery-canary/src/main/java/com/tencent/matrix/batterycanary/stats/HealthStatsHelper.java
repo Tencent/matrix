@@ -68,6 +68,11 @@ public final class HealthStatsHelper {
         }
     }
 
+    public static double round(double input, int decimalPlace) {
+        double decimal = Math.pow(10.0, decimalPlace);
+        return Math.round(input * decimal) / decimal;
+    }
+
     @ChecksSdkIntAtLeast(api = Build.VERSION_CODES.N)
     public static boolean isSupported() {
         return Build.VERSION.SDK_INT >= Build.VERSION_CODES.N;
@@ -108,40 +113,44 @@ public final class HealthStatsHelper {
      */
     @RequiresApi(api = Build.VERSION_CODES.N)
     public static double calcCpuPower(PowerProfile powerProfile, HealthStats healthStats) {
-        double power = getMeasure(healthStats, UidHealthStats.MEASUREMENT_CPU_POWER_MAMS) / UsageBasedPowerEstimator.MILLIS_IN_HOUR;
-        if (power > 0) {
-            MatrixLog.i(TAG, "estimate CPU by mams");
-        } else if (power == 0) {
-            /*
-             * POWER_CPU_SUSPEND: Power consumption when CPU is in power collapse mode.
-             * POWER_CPU_IDLE: Power consumption when CPU is awake (when a wake lock is held). This should
-             *                 be zero on devices that can go into full CPU power collapse even when a wake
-             *                 lock is held. Otherwise, this is the power consumption in addition to
-             * POWER_CPU_SUSPEND due to a wake lock being held but with no CPU activity.
-             * POWER_CPU_ACTIVE: Power consumption when CPU is running, excluding power consumed by clusters
-             *                   and cores.
-             *
-             * CPU Power Equation (assume two clusters):
-             * Total power = POWER_CPU_SUSPEND  (always added)
-             *               + POWER_CPU_IDLE   (skip this and below if in power collapse mode)
-             *               + POWER_CPU_ACTIVE (skip this and below if CPU is not running, but a wakelock
-             *                                   is held)
-             *               + cluster_power.cluster0 + cluster_power.cluster1 (skip cluster not running)
-             *               + core_power.cluster0 * num running cores in cluster 0
-             *               + core_power.cluster1 * num running cores in cluster 1
-             */
-            long cpuTimeMs = getMeasure(healthStats, UidHealthStats.MEASUREMENT_USER_CPU_TIME_MS) + getMeasure(healthStats, UidHealthStats.MEASUREMENT_SYSTEM_CPU_TIME_MS);
-            power += estimateCpuActivePower(powerProfile, cpuTimeMs);
-            CpuStatFeature feat = BatteryCanary.getMonitorFeature(CpuStatFeature.class);
-            if (feat != null && feat.isSupported()) {
-                CpuStateSnapshot snapshot = feat.currentCpuStateSnapshot();
-                if (snapshot != null) {
-                    power += estimateCpuClustersPower(powerProfile, snapshot, cpuTimeMs, false);
-                    power += estimateCpuCoresPower(powerProfile, snapshot, cpuTimeMs, false);
-                }
+        // double mams = getMeasure(healthStats, UidHealthStats.MEASUREMENT_CPU_POWER_MAMS) / (UsageBasedPowerEstimator.MILLIS_IN_HOUR * 1000L);
+        // if (mams > 0) {
+        //     MatrixLog.i(TAG, "estimate CPU by mams");
+        //     return mams;
+        // }
+        double power = 0;
+        /*
+         * POWER_CPU_SUSPEND: Power consumption when CPU is in power collapse mode.
+         * POWER_CPU_IDLE: Power consumption when CPU is awake (when a wake lock is held). This should
+         *                 be zero on devices that can go into full CPU power collapse even when a wake
+         *                 lock is held. Otherwise, this is the power consumption in addition to
+         * POWER_CPU_SUSPEND due to a wake lock being held but with no CPU activity.
+         * POWER_CPU_ACTIVE: Power consumption when CPU is running, excluding power consumed by clusters
+         *                   and cores.
+         *
+         * CPU Power Equation (assume two clusters):
+         * Total power = POWER_CPU_SUSPEND  (always added)
+         *               + POWER_CPU_IDLE   (skip this and below if in power collapse mode)
+         *               + POWER_CPU_ACTIVE (skip this and below if CPU is not running, but a wakelock
+         *                                   is held)
+         *               + cluster_power.cluster0 + cluster_power.cluster1 (skip cluster not running)
+         *               + core_power.cluster0 * num running cores in cluster 0
+         *               + core_power.cluster1 * num running cores in cluster 1
+         */
+        long cpuTimeMs = getMeasure(healthStats, UidHealthStats.MEASUREMENT_USER_CPU_TIME_MS) + getMeasure(healthStats, UidHealthStats.MEASUREMENT_SYSTEM_CPU_TIME_MS);
+        power += estimateCpuActivePower(powerProfile, cpuTimeMs);
+        CpuStatFeature feat = BatteryCanary.getMonitorFeature(CpuStatFeature.class);
+        if (feat != null && feat.isSupported()) {
+            CpuStateSnapshot snapshot = feat.currentCpuStateSnapshot();
+            if (snapshot != null) {
+                power += estimateCpuClustersPower(powerProfile, snapshot, cpuTimeMs, false);
+                power += estimateCpuCoresPower(powerProfile, snapshot, cpuTimeMs, false);
             }
         }
-        return power;
+        if (power > 0) {
+            return power;
+        }
+        return 0;
     }
 
     @VisibleForTesting
@@ -374,23 +383,22 @@ public final class HealthStatsHelper {
      */
     @RequiresApi(api = Build.VERSION_CODES.N)
     public static double calcMobilePower(PowerProfile powerProfile, HealthStats healthStats) {
-        double power = getMeasure(healthStats, UidHealthStats.MEASUREMENT_MOBILE_POWER_MAMS) / UsageBasedPowerEstimator.MILLIS_IN_HOUR;
+        // double mams = getMeasure(healthStats, UidHealthStats.MEASUREMENT_MOBILE_POWER_MAMS) / UsageBasedPowerEstimator.MILLIS_IN_HOUR;
+        // if (mams > 0) {
+        //     MatrixLog.i(TAG, "estimate Mobile by mams");
+        //     return mams;
+        // }
+        double power = calcMobilePowerByRadioActive(powerProfile, healthStats);
         if (power > 0) {
-            MatrixLog.i(TAG, "estimate Mobile by mams");
+            MatrixLog.i(TAG, "estimate Mobile by radioActive");
+            return power;
         }
-        if (power == 0) {
-            power = calcMobilePowerByRadioActive(powerProfile, healthStats);
-            if (power > 0) {
-                MatrixLog.i(TAG, "estimate Mobile by radioActive");
-            }
+        power = calcMobilePowerByController(powerProfile, healthStats);
+        if (power > 0) {
+            MatrixLog.i(TAG, "estimate Mobile by controller");
+            return power;
         }
-        if (power == 0) {
-            power = calcMobilePowerByController(powerProfile, healthStats);
-            if (power > 0) {
-                MatrixLog.i(TAG, "estimate Mobile by controller");
-            }
-        }
-        return power;
+        return 0;
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
@@ -441,23 +449,22 @@ public final class HealthStatsHelper {
      */
     @RequiresApi(api = Build.VERSION_CODES.N)
     public static double calcWifiPower(PowerProfile powerProfile, HealthStats healthStats) {
-        double power = getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_POWER_MAMS) / UsageBasedPowerEstimator.MILLIS_IN_HOUR;
+        // double mams = getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_POWER_MAMS) / UsageBasedPowerEstimator.MILLIS_IN_HOUR;
+        // if (mams > 0) {
+        //     MatrixLog.i(TAG, "estimate WIFI by mams");
+        //     return mams;
+        // }
+        double power = calcWifiPowerByController(powerProfile, healthStats);
         if (power > 0) {
-            MatrixLog.i(TAG, "estimate WIFI by mams");
+            MatrixLog.i(TAG, "estimate WIFI by controller");
+            return power;
         }
-        if (power == 0) {
-            power = calcWifiPowerByController(powerProfile, healthStats);
-            if (power > 0) {
-                MatrixLog.i(TAG, "estimate WIFI by controller");
-            }
+        power = calcWifiPowerByPackets(powerProfile, healthStats);
+        if (power > 0) {
+            MatrixLog.i(TAG, "estimate WIFI by packets");
+            return power;
         }
-        if (power == 0) {
-            power = calcWifiPowerByPackets(powerProfile, healthStats);
-            if (power > 0) {
-                MatrixLog.i(TAG, "estimate WIFI by packets");
-            }
-        }
-        return power;
+        return 0;
     }
 
     @RequiresApi(api = Build.VERSION_CODES.N)
@@ -517,26 +524,26 @@ public final class HealthStatsHelper {
      */
     @RequiresApi(api = Build.VERSION_CODES.N)
     public static double calcBlueToothPower(PowerProfile powerProfile, HealthStats healthStats) {
-        double power = getMeasure(healthStats, UidHealthStats.MEASUREMENT_BLUETOOTH_POWER_MAMS) / UsageBasedPowerEstimator.MILLIS_IN_HOUR;
-        if (power > 0) {
-            MatrixLog.i(TAG, "etmMobilePower BLE by mams");
+        // double mams = getMeasure(healthStats, UidHealthStats.MEASUREMENT_BLUETOOTH_POWER_MAMS) / UsageBasedPowerEstimator.MILLIS_IN_HOUR;
+        // if (mams > 0) {
+        //     MatrixLog.i(TAG, "etmMobilePower BLE by mams");
+        //     return mams;
+        // }
+        double power = 0;
+        {
+            long timeMs = getMeasure(healthStats, UidHealthStats.MEASUREMENT_BLUETOOTH_IDLE_MS);
+            double powerMa = powerProfile.getAveragePowerUni(PowerProfile.POWER_BLUETOOTH_CONTROLLER_IDLE);
+            power += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
         }
-        if (power == 0) {
-            {
-                long timeMs = getMeasure(healthStats, UidHealthStats.MEASUREMENT_BLUETOOTH_IDLE_MS);
-                double powerMa = powerProfile.getAveragePowerUni(PowerProfile.POWER_BLUETOOTH_CONTROLLER_IDLE);
-                power += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
-            }
-            {
-                long timeMs = getMeasure(healthStats, UidHealthStats.MEASUREMENT_BLUETOOTH_RX_MS);
-                double powerMa = powerProfile.getAveragePowerUni(PowerProfile.POWER_BLUETOOTH_CONTROLLER_RX);
-                power += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
-            }
-            {
-                long timeMs = getMeasure(healthStats, UidHealthStats.MEASUREMENT_BLUETOOTH_TX_MS);
-                double powerMa = powerProfile.getAveragePowerUni(PowerProfile.POWER_BLUETOOTH_CONTROLLER_TX);
-                power += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
-            }
+        {
+            long timeMs = getMeasure(healthStats, UidHealthStats.MEASUREMENT_BLUETOOTH_RX_MS);
+            double powerMa = powerProfile.getAveragePowerUni(PowerProfile.POWER_BLUETOOTH_CONTROLLER_RX);
+            power += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
+        }
+        {
+            long timeMs = getMeasure(healthStats, UidHealthStats.MEASUREMENT_BLUETOOTH_TX_MS);
+            double powerMa = powerProfile.getAveragePowerUni(PowerProfile.POWER_BLUETOOTH_CONTROLLER_TX);
+            power += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
         }
         return power;
     }

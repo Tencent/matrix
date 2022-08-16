@@ -93,7 +93,7 @@ public class HealthStatsFeature extends AbsMonitorFeature {
             snapshot.offUpTimeMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_UPTIME_SCREEN_OFF_BATTERY_MS));
 
             snapshot.mobilePowerMams = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_MOBILE_POWER_MAMS));
-            snapshot.mobileRadioActiveMs = DigitEntry.of(HealthStatsHelper.getTimerTime(healthStats, UidHealthStats.TIMER_MOBILE_RADIO_ACTIVE));
+            snapshot.mobileRadioActiveMs = DigitEntry.of(HealthStatsHelper.getTimerTime(healthStats, UidHealthStats.TIMER_MOBILE_RADIO_ACTIVE) / 1000L);
             snapshot.mobileIdleMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_MOBILE_IDLE_MS));
             snapshot.mobileRxMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_MOBILE_RX_MS));
             snapshot.mobileTxMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_MOBILE_TX_MS));
@@ -102,8 +102,8 @@ public class HealthStatsFeature extends AbsMonitorFeature {
             snapshot.wifiIdleMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_IDLE_MS));
             snapshot.wifiRxMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_RX_MS));
             snapshot.wifiTxMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_TX_MS));
-            snapshot.wifiRxBytes = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_RX_BYTES));
-            snapshot.wifiTxBytes = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_TX_BYTES));
+            snapshot.wifiRxPackets = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_RX_PACKETS));
+            snapshot.wifiTxPackets = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_TX_PACKETS));
 
             snapshot.blueToothPowerMams = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_BLUETOOTH_POWER_MAMS));
             snapshot.blueToothIdleMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_BLUETOOTH_IDLE_MS));
@@ -289,8 +289,8 @@ public class HealthStatsFeature extends AbsMonitorFeature {
         public DigitEntry<Long> wifiIdleMs = DigitEntry.of(0L);
         public DigitEntry<Long> wifiRxMs = DigitEntry.of(0L);
         public DigitEntry<Long> wifiTxMs = DigitEntry.of(0L);
-        public DigitEntry<Long> wifiRxBytes = DigitEntry.of(0L);
-        public DigitEntry<Long> wifiTxBytes = DigitEntry.of(0L);
+        public DigitEntry<Long> wifiRxPackets = DigitEntry.of(0L);
+        public DigitEntry<Long> wifiTxPackets = DigitEntry.of(0L);
 
         public DigitEntry<Long> blueToothPowerMams = DigitEntry.of(0L);
         public DigitEntry<Long> blueToothIdleMs = DigitEntry.of(0L);
@@ -385,8 +385,8 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                     delta.wifiIdleMs = Differ.DigitDiffer.globalDiff(bgn.wifiIdleMs, end.wifiIdleMs);
                     delta.wifiRxMs = Differ.DigitDiffer.globalDiff(bgn.wifiRxMs, end.wifiRxMs);
                     delta.wifiTxMs = Differ.DigitDiffer.globalDiff(bgn.wifiTxMs, end.wifiTxMs);
-                    delta.wifiRxBytes = Differ.DigitDiffer.globalDiff(bgn.wifiRxBytes, end.wifiRxBytes);
-                    delta.wifiTxBytes = Differ.DigitDiffer.globalDiff(bgn.wifiTxBytes, end.wifiTxBytes);
+                    delta.wifiRxPackets = Differ.DigitDiffer.globalDiff(bgn.wifiRxPackets, end.wifiRxPackets);
+                    delta.wifiTxPackets = Differ.DigitDiffer.globalDiff(bgn.wifiTxPackets, end.wifiTxPackets);
 
                     delta.blueToothPowerMams = Differ.DigitDiffer.globalDiff(bgn.blueToothPowerMams, end.blueToothPowerMams);
                     delta.blueToothIdleMs = Differ.DigitDiffer.globalDiff(bgn.blueToothIdleMs, end.blueToothIdleMs);
