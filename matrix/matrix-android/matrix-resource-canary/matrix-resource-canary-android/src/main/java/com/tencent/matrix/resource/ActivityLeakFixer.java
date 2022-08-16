@@ -130,12 +130,17 @@ public final class ActivityLeakFixer {
         MatrixLog.i(TAG, "fixInputMethodManagerLeak done, cost: %s ms.", System.currentTimeMillis() - startTick);
     }
 
+    public static boolean sSupportSplit = false;
+
     public static void unbindDrawables(Activity ui) {
         final long startTick = System.currentTimeMillis();
         if (ui != null && ui.getWindow() != null && ui.getWindow().peekDecorView() != null) {
-            final View viewRoot = ui.getWindow().peekDecorView().getRootView();
+            View viewRoot = ui.getWindow().peekDecorView().getRootView();
             try {
                 unbindDrawablesAndRecycle(viewRoot);
+                if (Build.VERSION.SDK_INT >= 31 && sSupportSplit) {
+                    viewRoot = ui.getWindow().getDecorView().findViewById(android.R.id.content);
+                }
                 if (viewRoot instanceof ViewGroup) {
                     ((ViewGroup) viewRoot).removeAllViews();
                 }
