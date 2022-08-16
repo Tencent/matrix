@@ -545,7 +545,10 @@ public final class HealthStatsHelper {
             double powerMa = powerProfile.getAveragePowerUni(PowerProfile.POWER_BLUETOOTH_CONTROLLER_TX);
             power += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
         }
-        return power;
+        if (power > 0) {
+            return power;
+        }
+        return 0;
     }
 
     /**
@@ -566,7 +569,11 @@ public final class HealthStatsHelper {
                 powerMa = sumMa / num;
             }
         }
-        return new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
+        double power = new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
+        if (power > 0) {
+            return power;
+        }
+        return 0;
     }
 
     /**
@@ -605,7 +612,10 @@ public final class HealthStatsHelper {
                 }
             }
         }
-        return power;
+        if (power > 0) {
+            return power;
+        }
+        return 0;
     }
 
     /**
@@ -615,7 +625,11 @@ public final class HealthStatsHelper {
     public static double calcCameraPower(PowerProfile powerProfile, HealthStats healthStats) {
         long timeMs = getTimerTime(healthStats, UidHealthStats.TIMER_CAMERA);
         double powerMa = powerProfile.getAveragePowerUni(PowerProfile.POWER_CAMERA);
-        return new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
+        double power = new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
+        if (power > 0) {
+            return power;
+        }
+        return 0;
     }
 
     /**
@@ -625,7 +639,11 @@ public final class HealthStatsHelper {
     public static double calcFlashLightPower(PowerProfile powerProfile, HealthStats healthStats) {
         long timeMs = getTimerTime(healthStats, UidHealthStats.TIMER_FLASHLIGHT);
         double powerMa = powerProfile.getAveragePowerUni(PowerProfile.POWER_FLASHLIGHT);
-        return new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
+        double power = new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
+        if (power > 0) {
+            return power;
+        }
+        return 0;
     }
 
     /**
@@ -635,7 +653,11 @@ public final class HealthStatsHelper {
     public static double calcAudioPower(PowerProfile powerProfile, HealthStats healthStats) {
         long timeMs = getTimerTime(healthStats, UidHealthStats.TIMER_AUDIO);
         double powerMa = powerProfile.getAveragePowerUni(PowerProfile.POWER_AUDIO);
-        return new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
+        double power = new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
+        if (power > 0) {
+            return power;
+        }
+        return 0;
     }
 
     /**
@@ -645,7 +667,11 @@ public final class HealthStatsHelper {
     public static double calcVideoPower(PowerProfile powerProfile, HealthStats healthStats) {
         long timeMs = getTimerTime(healthStats, UidHealthStats.TIMER_VIDEO);
         double powerMa = powerProfile.getAveragePowerUni(PowerProfile.POWER_VIDEO);
-        return new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
+        double power = new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
+        if (power > 0) {
+            return power;
+        }
+        return 0;
     }
 
     /**
@@ -657,7 +683,11 @@ public final class HealthStatsHelper {
         long fgActivityMs = getTimerTime(healthStats, UidHealthStats.TIMER_FOREGROUND_ACTIVITY);
         long screenOnTimeMs = Math.min(topAppMs, fgActivityMs);
         double powerMa = powerProfile.getAveragePowerUni(PowerProfile.POWER_SCREEN_ON);
-        return new UsageBasedPowerEstimator(powerMa).calculatePower(screenOnTimeMs);
+        double power = new UsageBasedPowerEstimator(powerMa).calculatePower(screenOnTimeMs);
+        if (power > 0) {
+            return power;
+        }
+        return 0;
     }
 
     /**
@@ -689,7 +719,10 @@ public final class HealthStatsHelper {
                 power += estimateCpuCoresPower(powerProfile, snapshot, timeMs, false);
             }
         }
-        return power;
+        if (power > 0) {
+            return power;
+        }
+        return 0;
     }
 
     /**
@@ -701,6 +734,10 @@ public final class HealthStatsHelper {
         long batteryUptimeMs = getMeasure(healthStats, UidHealthStats.MEASUREMENT_UPTIME_BATTERY_MS);
         double suspendPowerMah = new UsageBasedPowerEstimator(powerProfile.getAveragePowerUni(PowerProfile.POWER_CPU_SUSPEND)).calculatePower(batteryRealtimeMs);
         double idlePowerMah = new UsageBasedPowerEstimator(powerProfile.getAveragePowerUni(PowerProfile.POWER_CPU_IDLE)).calculatePower(batteryUptimeMs);
-        return suspendPowerMah + idlePowerMah;
+        double power = suspendPowerMah + idlePowerMah;
+        if (power > 0) {
+            return power;
+        }
+        return 0;
     }
 }
