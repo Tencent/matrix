@@ -29,6 +29,7 @@ import android.util.Log;
 
 import com.tencent.matrix.batterycanary.TestUtils;
 
+import org.apache.commons.io.IOUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -135,27 +136,28 @@ public class BatteryMetricsTest {
             }
         };
 
-
         File file = findBlock.call();
         if (file != null) {
-            XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
-            factory.setNamespaceAware(true);
-            XmlPullParser parser = factory.newPullParser();
-            parser.setInput(new FileInputStream(file), "UTF-8");
-            while (parser.getEventType() != XmlPullParser.END_DOCUMENT) {
-                if (parser.getEventType() == XmlPullParser.START_TAG) {
-                    String tagName = parser.getName();
-                    String tagText = parser.getText();
-                    for (int i = 0; i < parser.getAttributeCount(); i++) {
-                        String attrName = parser.getAttributeName(i);
-                        String attrValue = parser.getAttributeValue(i);
-                        if (attrValue.startsWith("cpu.core_speeds.cluster")) {
-                        }
-                    }
-                }
-                parser.nextToken();
-            }
+            PowerProfile powerProfile = new PowerProfile(mContext);
+            Assert.fail(PowerProfile.getResType());
+            powerProfile.readPowerValuesFromFilePath(mContext, file);
+            powerProfile.initCpuClusters();
+            powerProfile.smoke();
         }
+    }
+
+    @Test
+    public void KernelCpuUidFreqTimeReaderCompat() throws IOException {
+        PowerProfile powerProfile = PowerProfile.init(mContext);
+        Assert.assertNotNull(powerProfile);
+        Assert.assertTrue(powerProfile.isSupported());
+
+        int[] clusterSteps = new int[powerProfile.getNumCpuClusters()];
+        for (int i = 0; i < clusterSteps.length; i++) {
+            clusterSteps[i] = powerProfile.getNumSpeedStepsInCpuCluster(i);
+        }
+        KernelCpuUidFreqTimeReader reader = new KernelCpuUidFreqTimeReader(Process.myPid(), clusterSteps);
+        reader.smoke();
     }
 
     @Test

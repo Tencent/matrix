@@ -64,7 +64,7 @@ public class PowerProfile {
         }
     }
 
-    public PowerProfile smoke() throws IOException {
+    PowerProfile smoke() throws IOException {
         if (getNumCpuClusters() <= 0) {
             throw new IOException("Invalid cpu clusters: " + getNumCpuClusters());
         }
@@ -298,7 +298,7 @@ public class PowerProfile {
 
     private static final Object sLock = new Object();
 
-    private PowerProfile(Context context) {
+    PowerProfile(Context context) {
         // Read the XML file for the given profile (normally only one per device)
         synchronized (sLock) {
             if (sPowerItemMap.size() == 0 && sPowerArrayMap.size() == 0) {
@@ -362,6 +362,7 @@ public class PowerProfile {
                 }
             };
             try {
+                exception = null;
                 readPowerValuesFromFilePath(context, findBlock.call());
                 initCpuClusters();
                 smoke();
@@ -374,6 +375,7 @@ public class PowerProfile {
 
         if (exception != null) {
             try {
+                exception = null;
                 readPowerValuesFromRes(context, "power_profile_test");
                 initCpuClusters();
                 smoke();
@@ -409,7 +411,7 @@ public class PowerProfile {
         }
     }
 
-    private void readPowerValuesFromFilePath(Context context, File xmlFile) {
+    void readPowerValuesFromFilePath(Context context, File xmlFile) {
         FileInputStream is = null;
         try {
             XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
@@ -518,7 +520,7 @@ public class PowerProfile {
     private static final String CPU_CORE_SPEED_PREFIX = "cpu.core_speeds.cluster";
     private static final String CPU_CORE_POWER_PREFIX = "cpu.core_power.cluster";
 
-    private void initCpuClusters() {
+    void initCpuClusters() {
         if (sPowerArrayMap.containsKey(CPU_PER_CLUSTER_CORE_COUNT)) {
             final Double[] data = sPowerArrayMap.get(CPU_PER_CLUSTER_CORE_COUNT);
             mCpuClusters = new CpuClusterKey[data.length];
