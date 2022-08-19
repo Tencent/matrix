@@ -188,7 +188,7 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
 
     public BatteryCurrentSnapshot currentBatteryCurrency(Context context) {
         BatteryCurrentSnapshot snapshot = new BatteryCurrentSnapshot();
-        snapshot.stat = Snapshot.Entry.DigitEntry.of(BatteryCanaryUtil.getBatteryCurrency(context));
+        snapshot.stat = Snapshot.Entry.DigitEntry.of(BatteryCanaryUtil.getBatteryCurrencyImmediately(context));
         return snapshot;
     }
 

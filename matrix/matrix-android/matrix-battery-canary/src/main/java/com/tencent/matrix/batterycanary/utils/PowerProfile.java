@@ -338,6 +338,7 @@ public class PowerProfile {
             mResType = "framework";
         } catch (Exception e) {
             MatrixLog.w(TAG, "read from framework failed: " + e);
+            clear();
             exception = e;
         }
 
@@ -369,6 +370,7 @@ public class PowerProfile {
                 mResType = "custom";
             } catch (Exception e) {
                 MatrixLog.w(TAG, "read from custom failed: " + e);
+                clear();
                 exception = e;
             }
         }
@@ -382,6 +384,7 @@ public class PowerProfile {
                 mResType = "test";
             } catch (Exception e) {
                 MatrixLog.w(TAG, "read from test failed: " + e);
+                clear();
                 exception = e;
             }
         }
@@ -391,7 +394,8 @@ public class PowerProfile {
         }
     }
 
-    private void readPowerValuesFromRes(Context context, String fileName) {
+    @VisibleForTesting
+    public void readPowerValuesFromRes(Context context, String fileName) {
         XmlResourceParser parser = null;
         try {
             final int id = context.getResources().getIdentifier(fileName, "xml", "android");
@@ -411,7 +415,8 @@ public class PowerProfile {
         }
     }
 
-    void readPowerValuesFromFilePath(Context context, File xmlFile) {
+    @VisibleForTesting
+    public void readPowerValuesFromFilePath(Context context, File xmlFile) {
         FileInputStream is = null;
         try {
             XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
@@ -431,6 +436,12 @@ public class PowerProfile {
                 }
             }
         }
+    }
+
+    @VisibleForTesting
+    public void clear() {
+        sPowerItemMap.clear();
+        sPowerArrayMap.clear();
     }
 
     @SuppressWarnings({"ToArrayCallWithZeroLengthArrayArgument", "UnnecessaryBoxing", "CatchMayIgnoreException", "TryWithIdenticalCatches"})
