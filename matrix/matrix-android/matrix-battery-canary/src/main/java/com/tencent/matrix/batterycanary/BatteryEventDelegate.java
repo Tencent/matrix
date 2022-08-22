@@ -669,7 +669,7 @@ public final class BatteryEventDelegate {
 
             @Override
             public boolean onStateChanged(String event) {
-                return !mKeepAlive;
+                throw new RuntimeException("Use #onStateChanged(BatteryState, String) instead");
             }
 
             @Override
