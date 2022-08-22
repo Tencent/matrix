@@ -100,7 +100,9 @@ internal object ProcessSubordinate {
         fun getMemInfo(): Array<MemInfo> {
             val memInfoList = ArrayList<MemInfo>()
             subordinateProxies.forEachSafe {
-                memInfoList.add(it.value.memInfo)
+                it.value.memInfo?.let { m->
+                    memInfoList.add(m)
+                }
             }
             return memInfoList.toTypedArray()
         }
