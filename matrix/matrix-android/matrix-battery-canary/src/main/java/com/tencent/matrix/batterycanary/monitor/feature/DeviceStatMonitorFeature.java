@@ -117,13 +117,18 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
     }
 
     public CpuFreqSnapshot currentCpuFreq() {
-        CpuFreqSnapshot snapshot = new CpuFreqSnapshot();
         try {
-            snapshot.cpuFreqs = Snapshot.Entry.ListEntry.ofDigits(BatteryCanaryUtil.getCpuCurrentFreq());
+            int[] cpuFreqs = BatteryCanaryUtil.getCpuCurrentFreq();
+            return currentCpuFreq(cpuFreqs);
         } catch (Throwable e) {
             MatrixLog.printErrStackTrace(TAG, e, "#currentCpuFreq error");
-            snapshot.cpuFreqs = Snapshot.Entry.ListEntry.ofDigits(new int[]{});
+            return currentCpuFreq(new int[]{});
         }
+    }
+
+    public CpuFreqSnapshot currentCpuFreq(int[] cpuFreqs) {
+        CpuFreqSnapshot snapshot = new CpuFreqSnapshot();
+        snapshot.cpuFreqs = Snapshot.Entry.ListEntry.ofDigits(cpuFreqs);
         return snapshot;
     }
 

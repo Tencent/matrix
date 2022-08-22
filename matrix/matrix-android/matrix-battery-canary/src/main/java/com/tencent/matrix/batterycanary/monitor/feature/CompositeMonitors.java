@@ -17,6 +17,7 @@ import com.tencent.matrix.batterycanary.stats.HealthStatsFeature;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.Consumer;
 import com.tencent.matrix.batterycanary.utils.Function;
+import com.tencent.matrix.batterycanary.utils.PowerProfile;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.ArrayList;
@@ -69,6 +70,9 @@ public class CompositeMonitors {
     protected BatteryMonitorCore mMonitor;
     @Nullable
     protected AppStats mAppStats;
+    @Nullable
+    protected CpuFreqSampler mCpuFreqSampler;
+
     protected long mBgnMillis = SystemClock.uptimeMillis();
     protected String mScope;
 
@@ -97,6 +101,7 @@ public class CompositeMonitors {
         mTaskDeltasCollect.clear();
         mExtras.clear();
         mStacks.clear();
+        mCpuFreqSampler = null;
     }
 
     public CompositeMonitors fork() {
@@ -123,6 +128,7 @@ public class CompositeMonitors {
         that.mTaskDeltasCollect.putAll(this.mTaskDeltasCollect);
         that.mExtras.putAll(this.mExtras);
         that.mStacks.putAll(this.mStacks);
+        that.mCpuFreqSampler = this.mCpuFreqSampler;
         return that;
     }
 
@@ -561,10 +567,22 @@ public class CompositeMonitors {
         if (snapshotClass == DeviceStatMonitorFeature.CpuFreqSnapshot.class) {
             final DeviceStatMonitorFeature feature = getFeature(DeviceStatMonitorFeature.class);
             if (feature != null && mMonitor != null) {
+                final CpuStatFeature cpuStatsFeat = getFeature(CpuStatFeature.class);
+                if (cpuStatsFeat != null) {
+                    if (cpuStatsFeat.isSupported()) {
+                        mCpuFreqSampler = new CpuFreqSampler(BatteryCanaryUtil.getCpuFreqSteps());
+                    }
+                }
                 sampler = new Snapshot.Sampler("cpufreq", mMonitor.getHandler(), new Function<Snapshot.Sampler, Number>() {
                     @Override
                     public Number apply(Snapshot.Sampler sampler) {
-                        DeviceStatMonitorFeature.CpuFreqSnapshot snapshot = feature.currentCpuFreq();
+                        int[] cpuFreqs = BatteryCanaryUtil.getCpuCurrentFreq();
+                        if (cpuStatsFeat != null && cpuStatsFeat.isSupported()) {
+                            if (mCpuFreqSampler != null && mCpuFreqSampler.isCompat(cpuStatsFeat.getPowerProfile())) {
+                                mCpuFreqSampler.count(cpuFreqs);
+                            }
+                        }
+                        DeviceStatMonitorFeature.CpuFreqSnapshot snapshot = feature.currentCpuFreq(cpuFreqs);
                         List<DigitEntry<Integer>> list = snapshot.cpuFreqs.getList();
                         MatrixLog.i(TAG, CompositeMonitors.this.hashCode() + " #onSampling: " + mScope);
                         MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + ", val = " + list);
@@ -865,6 +883,11 @@ public class CompositeMonitors {
         return mExtras;
     }
 
+    @Nullable
+    public CpuFreqSampler getCpuFreqSampler() {
+        return mCpuFreqSampler;
+    }
+
     @Override
     @NonNull
     public String toString() {
@@ -891,5 +914,58 @@ public class CompositeMonitors {
             result.put(entry.getKey(), entry.getValue());
         }
         return result;
+    }
+
+    public static class CpuFreqSampler {
+        public int[] cpuCurrentFreq;
+        public final List<int[]> cpuFreqSteps;
+        public final List<int[]> cpuFreqCounters;
+
+        public CpuFreqSampler(List<int[]> cpuFreqSteps) {
+            this.cpuFreqSteps = cpuFreqSteps;
+            this.cpuFreqCounters = new ArrayList<>(cpuFreqSteps.size());
+            for (int[] item : cpuFreqSteps) {
+                this.cpuFreqCounters.add(new int[item.length]);
+            }
+        }
+
+        public boolean isCompat(PowerProfile powerProfile) {
+            if (cpuFreqSteps.size() == powerProfile.getCpuCoreNum()) {
+                for (int i = 0; i < cpuFreqSteps.size(); i++) {
+                    int clusterByCpuNum = powerProfile.getClusterByCpuNum(i);
+                    int steps = powerProfile.getNumSpeedStepsInCpuCluster(clusterByCpuNum);
+                    if (cpuFreqSteps.get(i).length != steps) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            return false;
+        }
+
+        public void count(int[] cpuCurrentFreq) {
+            this.cpuCurrentFreq = BatteryCanaryUtil.getCpuCurrentFreq();
+            for (int i = 0; i < cpuCurrentFreq.length; i++) {
+                int speed = cpuCurrentFreq[i];
+                int[] steps = cpuFreqSteps.get(i);
+                if (speed < steps[0]) {
+                    cpuFreqCounters.get(i)[0]++;
+                    continue;
+                }
+                boolean found = false;
+                for (int j = 0; j < steps.length; j++) {
+                    if (speed <= steps[j]) {
+                        cpuFreqCounters.get(i)[j]++;
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    if (speed > steps[steps.length - 1]) {
+                        cpuFreqCounters.get(i)[steps.length - 1]++;
+                    }
+                }
+            }
+        }
     }
 }

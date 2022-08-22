@@ -28,19 +28,17 @@ import android.text.TextUtils;
 import android.util.Log;
 
 import com.tencent.matrix.batterycanary.TestUtils;
+import com.tencent.matrix.batterycanary.monitor.feature.CompositeMonitors;
 
-import org.apache.commons.io.IOUtils;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.xmlpull.v1.XmlPullParser;
-import org.xmlpull.v1.XmlPullParserFactory;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
@@ -158,6 +156,35 @@ public class BatteryMetricsTest {
         }
         KernelCpuUidFreqTimeReader reader = new KernelCpuUidFreqTimeReader(Process.myPid(), clusterSteps);
         reader.smoke();
+    }
+
+    @Test
+    public void testCpuCoreStepSpeedsSampling() throws IOException, InterruptedException {
+        PowerProfile powerProfile = PowerProfile.init(mContext);
+        Assert.assertNotNull(powerProfile);
+        Assert.assertTrue(powerProfile.isSupported());
+
+        List<int[]> cpuFreqSteps = BatteryCanaryUtil.getCpuFreqSteps();
+        int[] cpuCurrentFreq = BatteryCanaryUtil.getCpuCurrentFreq();
+        Assert.assertNotNull(cpuFreqSteps);
+        Assert.assertNotNull(cpuCurrentFreq);
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (true) {
+                }
+            }
+        }).start();
+
+        CompositeMonitors.CpuFreqSampler sampler = new CompositeMonitors.CpuFreqSampler(BatteryCanaryUtil.getCpuFreqSteps());
+        Assert.assertTrue(sampler.isCompat(powerProfile));
+        if (!TestUtils.isAssembleTest()) {
+            while (true) {
+                sampler.count(BatteryCanaryUtil.getCpuCurrentFreq());
+                Thread.sleep(5000L);
+            }
+        }
     }
 
     @Test

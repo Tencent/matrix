@@ -15,7 +15,7 @@
         android:minSdkVersion="21"
         android:targetSdkVersion="28" />
 
-    <application>
+    <application android:name=".DebugApp">
         <service android:name=".utils.CanaryUtilsTest$SpyService">
         </service>
         <service android:name=".utils.CanaryUtilsTest$SpyForeGroundService"
