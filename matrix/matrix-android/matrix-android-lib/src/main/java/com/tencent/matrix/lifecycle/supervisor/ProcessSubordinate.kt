@@ -97,8 +97,12 @@ internal object ProcessSubordinate {
             }
         }
 
-        fun getPss(): Int {
-            return 0
+        fun getMemInfo(): Array<MemInfo> {
+            val memInfoList = ArrayList<MemInfo>()
+            subordinateProxies.forEachSafe {
+                memInfoList.add(it.value.memInfo)
+            }
+            return memInfoList.toTypedArray()
         }
     }
 
@@ -243,9 +247,10 @@ internal object ProcessSubordinate {
             }
         }
 
-        override fun getPss(): Int {
-            TODO("Not yet implemented")
-        }
+        override fun getMemInfo(): MemInfo = safeLet(
+            TAG,
+            defVal = MemInfo(amsPssInfo = PssInfo(), debugPssInfo = PssInfo())
+        ) { MemInfo.getCurrentProcessFullMemInfo() }
 
     }
 

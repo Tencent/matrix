@@ -260,4 +260,9 @@ object TrimMemoryNotifier {
             appTrimCallbacks.remove(callback)
         }
     }
+
+    fun triggerTrim() {
+        procTrimCallbacks.backgroundTrim()
+        appTrimCallbacks.backgroundTrim()
+    }
 }

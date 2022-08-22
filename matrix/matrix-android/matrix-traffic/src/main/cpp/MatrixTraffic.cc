@@ -92,13 +92,12 @@ void makeNativeStack(wechat_backtrace::Backtrace* backtrace, char *&stack) {
 
 static void saveNativeBackTrace(const char* key) {
     wechat_backtrace::Backtrace *backtracePrt;
-
-    wechat_backtrace::Backtrace backtrace_zero = BACKTRACE_INITIALIZER(16);
-
+    int max_frames = 16;
     backtracePrt = new wechat_backtrace::Backtrace;
-    backtracePrt->max_frames = backtrace_zero.max_frames;
-    backtracePrt->frame_size = backtrace_zero.frame_size;
-    backtracePrt->frames = backtrace_zero.frames;
+    backtracePrt->max_frames = max_frames;
+    backtracePrt->frame_size = 0;
+    backtracePrt->frames = std::shared_ptr<wechat_backtrace::Frame>(
+            new wechat_backtrace::Frame[max_frames], std::default_delete<wechat_backtrace::Frame[]>());
 
     wechat_backtrace::unwind_adapter(backtracePrt->frames.get(), backtracePrt->max_frames,
                                      backtracePrt->frame_size);
@@ -337,7 +336,7 @@ static void hookSocket(bool rxHook, bool txHook, bool willHookAllSoReadWrite) {
     xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libjavacrypto\\.so$", nullptr);
     xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libwechatbacktrace\\.so$", nullptr);
     xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libmatrix-memoryhook\\.so$", nullptr);
-
+    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_TRAFFIC, ".*libmatrix-traffic\\.so$", nullptr);
 
     xhook_refresh(true);
     HOOKED = true;

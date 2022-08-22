@@ -21,7 +21,12 @@ class MemoryCanaryBoot {
                 ),
                 processBgMemoryMonitorConfigs = arrayOf(
                     BackgroundMemoryMonitorBoot.procStagedBgMemoryMonitorConfig,
-                    BackgroundMemoryMonitorBoot.procDeepBgMemoryMonitorConfig
+                    BackgroundMemoryMonitorBoot.procDeepBgMemoryMonitorConfig,
+
+                    BackgroundMemoryMonitorBoot.procStagedBgMemoryMonitorConfig2,
+                    BackgroundMemoryMonitorBoot.procStagedBgMemoryMonitorConfig3,
+                    BackgroundMemoryMonitorBoot.procStagedBgMemoryMonitorConfig4,
+                    BackgroundMemoryMonitorBoot.procStagedBgMemoryMonitorConfig5,
                 )
             )
         }
