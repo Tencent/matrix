@@ -47,6 +47,8 @@ public class CompositeMonitors {
     public static final String SCOPE_CANARY = "canary";
     public static final String SCOPE_INTERNAL = "internal";
     public static final String SCOPE_OVERHEAT = "overheat";
+    public static final String SCOPE_TOP_SHELL = "topShell";
+    public static final String SCOPE_TOP_INDICATOR = "topIndicator";
 
     // Differing
     protected final List<Class<? extends Snapshot<?>>> mMetrics = new ArrayList<>();
