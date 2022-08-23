@@ -14,6 +14,7 @@ import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.DigitEntry;
 import com.tencent.matrix.batterycanary.stats.HealthStatsFeature;
+import com.tencent.matrix.batterycanary.stats.HealthStatsFeature.HealthStatsSnapshot;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.Consumer;
 import com.tencent.matrix.batterycanary.utils.Function;
@@ -25,7 +26,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -387,6 +387,14 @@ public class CompositeMonitors {
         collectStacks();
         configureSampleResults();
         mAppStats = AppStats.current(SystemClock.uptimeMillis() - mBgnMillis);
+
+        // For further procedures
+        // getDelta(HealthStatsSnapshot.class, new Consumer<Delta<HealthStatsSnapshot>>() {
+        //     @Override
+        //     public void accept(Delta<HealthStatsSnapshot> delta) {
+        //         delta.dlt.estimateTestsPowers(CompositeMonitors.this);
+        //     }
+        // });
     }
 
     protected void configureBgnSnapshots() {
@@ -530,7 +538,7 @@ public class CompositeMonitors {
             }
             return snapshot;
         }
-        if (snapshotClass == HealthStatsFeature.HealthStatsSnapshot.class) {
+        if (snapshotClass == HealthStatsSnapshot.class) {
             HealthStatsFeature feature = getFeature(HealthStatsFeature.class);
             if (feature != null) {
                 snapshot = feature.currHealthStatsSnapshot();
@@ -833,7 +841,7 @@ public class CompositeMonitors {
             return mTaskDeltasCollect;
         }
         // Sorting by jiffies sum
-        return sortMapByValue(mTaskDeltasCollect, new Comparator<Map.Entry<String, List<Pair<Class<? extends AbsTaskMonitorFeature>, Delta<TaskJiffiesSnapshot>>>>>() {
+        return BatteryCanaryUtil.sortMapByValue(mTaskDeltasCollect, new Comparator<Map.Entry<String, List<Pair<Class<? extends AbsTaskMonitorFeature>, Delta<TaskJiffiesSnapshot>>>>>() {
             @SuppressWarnings("ConstantConditions")
             @Override
             public int compare(Map.Entry<String, List<Pair<Class<? extends AbsTaskMonitorFeature>, Delta<TaskJiffiesSnapshot>>>> o1, Map.Entry<String, List<Pair<Class<? extends AbsTaskMonitorFeature>, Delta<TaskJiffiesSnapshot>>>> o2) {
@@ -903,17 +911,6 @@ public class CompositeMonitors {
                 ", Stacks=" + mStacks + "\n" +
                 ", Extras =" + mExtras + "\n" +
                 '}';
-    }
-
-    static <K, V> Map<K, V> sortMapByValue(Map<K, V> map, Comparator<? super Map.Entry<K, V>> comparator) {
-        List<Map.Entry<K, V>> list = new ArrayList<>(map.entrySet());
-        Collections.sort(list, comparator);
-
-        Map<K, V> result = new LinkedHashMap<>();
-        for (Map.Entry<K, V> entry : list) {
-            result.put(entry.getKey(), entry.getValue());
-        }
-        return result;
     }
 
     public static class CpuFreqSampler {

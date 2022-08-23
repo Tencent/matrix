@@ -14,11 +14,13 @@ import android.os.health.UidHealthStats;
 import com.tencent.matrix.batterycanary.monitor.feature.AbsMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.CpuStatFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.DigitEntry;
+import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.PowerProfile;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.lang.reflect.Method;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -252,6 +254,8 @@ public class HealthStatsFeature extends AbsMonitorFeature {
         @VisibleForTesting public DigitEntry<Double> wifiPowerByController = DigitEntry.of(0D);
         @VisibleForTesting public DigitEntry<Double> wifiPowerByPackets = DigitEntry.of(0D);
 
+        public Map<String, Object> extras = Collections.emptyMap();
+
         // Estimated Powers
         public DigitEntry<Double> cpuPower = DigitEntry.of(0D);
         public DigitEntry<Double> wakelocksPower = DigitEntry.of(0D);
@@ -265,7 +269,7 @@ public class HealthStatsFeature extends AbsMonitorFeature {
         public DigitEntry<Double> audioPower = DigitEntry.of(0D);
         public DigitEntry<Double> videoPower = DigitEntry.of(0D);
         public DigitEntry<Double> screenPower = DigitEntry.of(0D);
-        public DigitEntry<Double> systemServicePower = DigitEntry.of(0D);
+        public DigitEntry<Double> systemServicePower = DigitEntry.of(0D); // WIP
         public DigitEntry<Double> idlePower = DigitEntry.of(0D);
 
         // Meta Data:
@@ -339,7 +343,7 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                     + audioPower.get()
                     + videoPower.get()
                     + screenPower.get()
-                    + systemServicePower.get()
+                    // + systemServicePower.get()
                     + idlePower.get();
         }
 
@@ -349,11 +353,19 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                 @Override
                 protected HealthStatsSnapshot computeDelta() {
                     HealthStatsSnapshot delta = new HealthStatsSnapshot();
+
+                    // For test
                     delta.mobilePowerByRadioActive = Differ.DigitDiffer.globalDiff(bgn.mobilePowerByRadioActive, end.mobilePowerByRadioActive);
                     delta.mobilePowerByController = Differ.DigitDiffer.globalDiff(bgn.mobilePowerByController, end.mobilePowerByController);
                     delta.wifiPowerByController = Differ.DigitDiffer.globalDiff(bgn.wifiPowerByController, end.wifiPowerByController);
                     delta.wifiPowerByPackets = Differ.DigitDiffer.globalDiff(bgn.wifiPowerByPackets, end.wifiPowerByPackets);
+                    delta.extras = new HashMap<>();
+                    delta.extras.put("power-mobile-radio", mobilePowerByRadioActive.get());
+                    delta.extras.put("power-mobile-controller", mobilePowerByController.get());
+                    delta.extras.put("power-wifi-controller", wifiPowerByController.get());
+                    delta.extras.put("power-wifi-packets", wifiPowerByPackets.get());
 
+                    // UID
                     delta.cpuPower = Differ.DigitDiffer.globalDiff(bgn.cpuPower, end.cpuPower);
                     delta.wakelocksPower = Differ.DigitDiffer.globalDiff(bgn.wakelocksPower, end.wakelocksPower);
                     delta.mobilePower = Differ.DigitDiffer.globalDiff(bgn.mobilePower, end.mobilePower);
@@ -415,40 +427,63 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                     delta.procBgMs = Differ.DigitDiffer.globalDiff(bgn.procBgMs, end.procBgMs);
                     delta.procCacheMs = Differ.DigitDiffer.globalDiff(bgn.procCacheMs, end.procCacheMs);
 
-                    delta.procStatsCpuUsrTimeMs = new HashMap<>();
-                    for (Map.Entry<String, DigitEntry<Long>> entry : end.procStatsCpuUsrTimeMs.entrySet()) {
-                        String key = entry.getKey();
-                        DigitEntry<Long> endEntry = entry.getValue();
-                        long bgnValue = 0L;
-                        DigitEntry<Long> bgnEntry = bgn.procStatsCpuUsrTimeMs.get(key);
-                        if (bgnEntry != null) {
-                            bgnValue = bgnEntry.get();
+                    // PID
+                    {
+                        Map<String, DigitEntry<Long>> map = new HashMap<>();
+                        for (Map.Entry<String, DigitEntry<Long>> entry : end.procStatsCpuUsrTimeMs.entrySet()) {
+                            String key = entry.getKey();
+                            DigitEntry<Long> endEntry = entry.getValue();
+                            long bgnValue = 0L;
+                            DigitEntry<Long> bgnEntry = bgn.procStatsCpuUsrTimeMs.get(key);
+                            if (bgnEntry != null) {
+                                bgnValue = bgnEntry.get();
+                            }
+                            map.put(key, Differ.DigitDiffer.globalDiff(DigitEntry.of(bgnValue), endEntry));
                         }
-                        delta.procStatsCpuUsrTimeMs.put(key, Differ.DigitDiffer.globalDiff(DigitEntry.of(bgnValue), endEntry));
+                        delta.procStatsCpuUsrTimeMs = decrease(map);
                     }
-                    delta.procStatsCpuSysTimeMs = new HashMap<>();
-                    for (Map.Entry<String, DigitEntry<Long>> entry : end.procStatsCpuSysTimeMs.entrySet()) {
-                        String key = entry.getKey();
-                        DigitEntry<Long> endEntry = entry.getValue();
-                        long bgnValue = 0L;
-                        DigitEntry<Long> bgnEntry = bgn.procStatsCpuSysTimeMs.get(key);
-                        if (bgnEntry != null) {
-                            bgnValue = bgnEntry.get();
+                    {
+                        Map<String, DigitEntry<Long>> map = new HashMap<>();
+                        for (Map.Entry<String, DigitEntry<Long>> entry : end.procStatsCpuSysTimeMs.entrySet()) {
+                            String key = entry.getKey();
+                            DigitEntry<Long> endEntry = entry.getValue();
+                            long bgnValue = 0L;
+                            DigitEntry<Long> bgnEntry = bgn.procStatsCpuSysTimeMs.get(key);
+                            if (bgnEntry != null) {
+                                bgnValue = bgnEntry.get();
+                            }
+                            map.put(key, Differ.DigitDiffer.globalDiff(DigitEntry.of(bgnValue), endEntry));
                         }
-                        delta.procStatsCpuSysTimeMs.put(key, Differ.DigitDiffer.globalDiff(DigitEntry.of(bgnValue), endEntry));
+                        delta.procStatsCpuSysTimeMs = decrease(map);
                     }
-                    delta.procStatsCpuFgTimeMs = new HashMap<>();
-                    for (Map.Entry<String, DigitEntry<Long>> entry : end.procStatsCpuFgTimeMs.entrySet()) {
-                        String key = entry.getKey();
-                        DigitEntry<Long> endEntry = entry.getValue();
-                        long bgnValue = 0L;
-                        DigitEntry<Long> bgnEntry = bgn.procStatsCpuFgTimeMs.get(key);
-                        if (bgnEntry != null) {
-                            bgnValue = bgnEntry.get();
+                    {
+                        Map<String, DigitEntry<Long>> map = new HashMap<>();
+                        for (Map.Entry<String, DigitEntry<Long>> entry : end.procStatsCpuFgTimeMs.entrySet()) {
+                            String key = entry.getKey();
+                            DigitEntry<Long> endEntry = entry.getValue();
+                            long bgnValue = 0L;
+                            DigitEntry<Long> bgnEntry = bgn.procStatsCpuFgTimeMs.get(key);
+                            if (bgnEntry != null) {
+                                bgnValue = bgnEntry.get();
+                            }
+                            map.put(key, Differ.DigitDiffer.globalDiff(DigitEntry.of(bgnValue), endEntry));
                         }
-                        delta.procStatsCpuFgTimeMs.put(key, Differ.DigitDiffer.globalDiff(DigitEntry.of(bgnValue), endEntry));
+                        delta.procStatsCpuFgTimeMs = decrease(map);
                     }
                     return delta;
+                }
+
+                private Map<String, DigitEntry<Long>> decrease(Map<String, DigitEntry<Long>> input) {
+                    return BatteryCanaryUtil.sortMapByValue(input, new Comparator<Map.Entry<String, DigitEntry<Long>>>() {
+                        @Override
+                        public int compare(Map.Entry<String, DigitEntry<Long>> o1, Map.Entry<String, DigitEntry<Long>> o2) {
+                            long sumLeft = o1.getValue().get(), sumRight = o2.getValue().get();
+                            long minus = sumLeft - sumRight;
+                            if (minus == 0) return 0;
+                            if (minus > 0) return -1;
+                            return 1;
+                        }
+                    });
                 }
             };
         }
