@@ -1,11 +1,9 @@
 package com.tencent.matrix.batterycanary.monitor.feature;
 
-import android.content.Context;
 import android.os.Parcel;
 import android.os.Parcelable;
 import android.os.Process;
 
-import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.DigitEntry;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.ListEntry;
 import com.tencent.matrix.batterycanary.shell.TopThreadFeature;
@@ -14,6 +12,7 @@ import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.KernelCpuSpeedReader;
 import com.tencent.matrix.batterycanary.utils.KernelCpuUidFreqTimeReader;
 import com.tencent.matrix.batterycanary.utils.PowerProfile;
+import com.tencent.matrix.batterycanary.utils.ProcStatUtil;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.io.IOException;
@@ -106,6 +105,10 @@ public class CpuStatFeature extends AbsTaskMonitorFeature {
     }
 
     public CpuStateSnapshot currentCpuStateSnapshot() {
+        return currentCpuStateSnapshot(Process.myPid());
+    }
+
+    public CpuStateSnapshot currentCpuStateSnapshot(int pid) {
         CpuStateSnapshot snapshot = new CpuStateSnapshot();
         try {
             if (!isSupported()) {
@@ -116,21 +119,22 @@ public class CpuStatFeature extends AbsTaskMonitorFeature {
                     throw new IOException("PowerProfile not supported");
                 }
                 // Cpu core steps jiffies
-                snapshot.cpuCoreStates = new ArrayList<>();
-                for (int i = 0; i < mPowerProfile.getCpuCoreNum(); i++) {
-                    final int numSpeedSteps = mPowerProfile.getNumSpeedStepsInCpuCluster(mPowerProfile.getClusterByCpuNum(i));
-                    KernelCpuSpeedReader cpuStepJiffiesReader = new KernelCpuSpeedReader(i, numSpeedSteps);
-                    long[] cpuCoreStepJiffies = cpuStepJiffiesReader.readAbsolute();
-                    ListEntry<DigitEntry<Long>> cpuCoreState = ListEntry.ofDigits(cpuCoreStepJiffies);
-                    snapshot.cpuCoreStates.add(cpuCoreState);
+                if (pid == Process.myPid()) {
+                    snapshot.cpuCoreStates = new ArrayList<>();
+                    for (int i = 0; i < mPowerProfile.getCpuCoreNum(); i++) {
+                        final int numSpeedSteps = mPowerProfile.getNumSpeedStepsInCpuCluster(mPowerProfile.getClusterByCpuNum(i));
+                        KernelCpuSpeedReader cpuStepJiffiesReader = new KernelCpuSpeedReader(i, numSpeedSteps);
+                        long[] cpuCoreStepJiffies = cpuStepJiffiesReader.readAbsolute();
+                        ListEntry<DigitEntry<Long>> cpuCoreState = ListEntry.ofDigits(cpuCoreStepJiffies);
+                        snapshot.cpuCoreStates.add(cpuCoreState);
+                    }
                 }
-
                 // Proc cluster steps jiffies
                 int[] clusterSteps = new int[mPowerProfile.getNumCpuClusters()];
                 for (int i = 0; i < clusterSteps.length; i++) {
                     clusterSteps[i] = mPowerProfile.getNumSpeedStepsInCpuCluster(i);
                 }
-                KernelCpuUidFreqTimeReader procStepJiffiesReader = new KernelCpuUidFreqTimeReader(Process.myPid(), clusterSteps);
+                KernelCpuUidFreqTimeReader procStepJiffiesReader = new KernelCpuUidFreqTimeReader(pid, clusterSteps);
                 List<long[]> procStepJiffies = procStepJiffiesReader.readAbsolute();
                 snapshot.procCpuCoreStates = new ArrayList<>();
                 for (long[] item : procStepJiffies) {
@@ -146,7 +150,44 @@ public class CpuStatFeature extends AbsTaskMonitorFeature {
     }
 
     public UidCpuStateSnapshot currentUidCpuStateSnapshot() {
-        return UidCpuStateSnapshot.of(mCore.getContext(), mCore.getConfig());
+        UidCpuStateSnapshot curr = new UidCpuStateSnapshot();
+        try {
+            List<Pair<Integer, String>> procList = TopThreadFeature.getProcList(mCore.getContext());
+            curr.pidCurrCupSateList = new ArrayList<>(procList.size());
+
+            for (Pair<Integer, String> item : procList) {
+                //noinspection ConstantConditions
+                int pid = item.first;
+                String procName = String.valueOf(item.second);
+                CpuStateSnapshot snapshot = null;
+
+                if (pid == Process.myPid()) {
+                    // from local
+                    snapshot = currentCpuStateSnapshot();
+                } else {
+                    if (ProcStatUtil.exists(pid)) {
+                        // from pid
+                        snapshot = currentCpuStateSnapshot(pid);
+                    }
+                    if (snapshot != null && !snapshot.isValid() && mCore.getConfig().ipcCpuStatCollector != null) {
+                        // from ipc
+                        UidCpuStateSnapshot.IpcCpuStat.RemoteStat remote = mCore.getConfig().ipcCpuStatCollector.apply(item);
+                        if (remote != null) {
+                            snapshot = UidCpuStateSnapshot.IpcCpuStat.toLocal(remote);
+                        }
+                    }
+                }
+                if (snapshot != null) {
+                    snapshot.pid = pid;
+                    snapshot.name = TopThreadIndicator.getProcSuffix(procName);
+                    curr.pidCurrCupSateList.add(snapshot);
+                }
+            }
+        } catch (Exception e) {
+            MatrixLog.w(TAG, "get curr UidCpuStatSnapshot failed: " + e.getMessage());
+            curr.setValid(false);
+        }
+        return curr;
     }
 
     public static final class CpuStateSnapshot extends Snapshot<CpuStateSnapshot> {
@@ -262,33 +303,6 @@ public class CpuStatFeature extends AbsTaskMonitorFeature {
     }
 
     public static final class UidCpuStateSnapshot extends MonitorFeature.Snapshot<UidCpuStateSnapshot> {
-        public static UidCpuStateSnapshot of(Context context, BatteryMonitorConfig config) {
-            UidCpuStateSnapshot curr = new UidCpuStateSnapshot();
-            try {
-                List<Pair<Integer, String>> procList = TopThreadFeature.getProcList(context);
-                curr.pidCurrCupSateList = new ArrayList<>(procList.size());
-
-                for (Pair<Integer, String> item : procList) {
-                    //noinspection ConstantConditions
-                    int pid = item.first;
-                    String procName = String.valueOf(item.second);
-                    if (config.ipcCpuStatCollector != null) {
-                        IpcCpuStat.RemoteStat remote = config.ipcCpuStatCollector.apply(item);
-                        if (remote != null) {
-                            CpuStateSnapshot snapshot = IpcCpuStat.toLocal(remote);
-                            snapshot.pid = pid;
-                            snapshot.name = TopThreadIndicator.getProcSuffix(procName);
-                            curr.pidCurrCupSateList.add(snapshot);
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                MatrixLog.w(TAG, "get curr UidCpuStatSnapshot failed: " + e.getMessage());
-                curr.setValid(false);
-            }
-            return curr;
-        }
-
         public List<CpuStateSnapshot> pidCurrCupSateList = Collections.emptyList();
         public List<MonitorFeature.Snapshot.Delta<CpuStateSnapshot>> pidDeltaCpuSateList = Collections.emptyList();
 
