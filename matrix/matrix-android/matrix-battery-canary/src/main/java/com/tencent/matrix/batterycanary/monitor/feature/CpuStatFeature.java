@@ -1,9 +1,16 @@
 package com.tencent.matrix.batterycanary.monitor.feature;
 
+import android.content.Context;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.os.Process;
 
+import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.DigitEntry;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.ListEntry;
+import com.tencent.matrix.batterycanary.shell.TopThreadFeature;
+import com.tencent.matrix.batterycanary.shell.ui.TopThreadIndicator;
+import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.KernelCpuSpeedReader;
 import com.tencent.matrix.batterycanary.utils.KernelCpuUidFreqTimeReader;
 import com.tencent.matrix.batterycanary.utils.PowerProfile;
@@ -15,6 +22,7 @@ import java.util.Collections;
 import java.util.List;
 
 import androidx.annotation.WorkerThread;
+import androidx.core.util.Pair;
 
 import static com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil.JIFFY_MILLIS;
 import static com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil.ONE_HOR;
@@ -24,7 +32,7 @@ import static com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil.ONE_HOR;
  * @since 2021/9/10
  */
 @SuppressWarnings("SpellCheckingInspection")
-public class CpuStatFeature extends  AbsTaskMonitorFeature {
+public class CpuStatFeature extends AbsTaskMonitorFeature {
     private static final String TAG = "Matrix.battery.CpuStatFeature";
     private PowerProfile mPowerProfile;
 
@@ -137,6 +145,10 @@ public class CpuStatFeature extends  AbsTaskMonitorFeature {
         return snapshot;
     }
 
+    public UidCpuStateSnapshot currentUidCpuStateSnapshot() {
+        return UidCpuStateSnapshot.of(mCore.getContext(), mCore.getConfig());
+    }
+
     public static final class CpuStateSnapshot extends Snapshot<CpuStateSnapshot> {
         /*
          * cpuCoreStates
@@ -155,6 +167,8 @@ public class CpuStatFeature extends  AbsTaskMonitorFeature {
          */
         public List<ListEntry<DigitEntry<Long>>> cpuCoreStates = Collections.emptyList();
         public List<ListEntry<DigitEntry<Long>>> procCpuCoreStates = Collections.emptyList();
+        public int pid = Process.myPid();
+        public String name = BatteryCanaryUtil.getProcessName();
 
         public long totalCpuJiffies() {
             long sum = 0;
@@ -227,6 +241,8 @@ public class CpuStatFeature extends  AbsTaskMonitorFeature {
                 @Override
                 protected CpuStateSnapshot computeDelta() {
                     CpuStateSnapshot delta = new CpuStateSnapshot();
+                    delta.pid = end.pid;
+                    delta.name = end.name;
                     if (bgn.cpuCoreStates.size() != end.cpuCoreStates.size()) {
                         delta.setValid(false);
                     } else {
@@ -242,6 +258,140 @@ public class CpuStatFeature extends  AbsTaskMonitorFeature {
                     return delta;
                 }
             };
+        }
+    }
+
+    public static final class UidCpuStateSnapshot extends Snapshot<UidCpuStateSnapshot> {
+        public static UidCpuStateSnapshot of(Context context, BatteryMonitorConfig config) {
+            UidCpuStateSnapshot curr = new UidCpuStateSnapshot();
+            try {
+                List<Pair<Integer, String>> procList = TopThreadFeature.getProcList(context);
+                curr.pidCurrCupSateList = new ArrayList<>(procList.size());
+
+                for (Pair<Integer, String> item : procList) {
+                    //noinspection ConstantConditions
+                    int pid = item.first;
+                    String procName = String.valueOf(item.second);
+                    if (config.ipcCpuStatCollector != null) {
+                        IpcCpuStat.RemoteStat remote = config.ipcCpuStatCollector.apply(item);
+                        if (remote != null) {
+                            CpuStateSnapshot snapshot = IpcCpuStat.toLocal(remote);
+                            snapshot.pid = pid;
+                            snapshot.name = TopThreadIndicator.getProcSuffix(procName);
+                            curr.pidCurrCupSateList.add(snapshot);
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                MatrixLog.w(TAG, "get curr UidCpuStatSnapshot failed: " + e.getMessage());
+                curr.setValid(false);
+            }
+            return curr;
+        }
+
+        public List<CpuStateSnapshot> pidCurrCupSateList = Collections.emptyList();
+        public List<Delta<CpuStateSnapshot>> pidDeltaCpuSateList = Collections.emptyList();
+
+        @Override
+        public Delta<UidCpuStateSnapshot> diff(UidCpuStateSnapshot bgn) {
+            return new Delta<UidCpuStateSnapshot>(bgn, this) {
+                @Override
+                protected UidCpuStateSnapshot computeDelta() {
+                    UidCpuStateSnapshot delta = new UidCpuStateSnapshot();
+                    if (end.pidCurrCupSateList.size() > 0) {
+                        delta.pidDeltaCpuSateList = new ArrayList<>();
+                        for (CpuStateSnapshot end : end.pidCurrCupSateList) {
+                            CpuStateSnapshot last = null;
+                            for (CpuStateSnapshot bgn : bgn.pidCurrCupSateList) {
+                                if (bgn.pid == end.pid) {
+                                    last = bgn;
+                                    break;
+                                }
+                            }
+                            if (last == null) {
+                                // newAdded Pid
+                                CpuStateSnapshot empty = new CpuStateSnapshot();
+                                empty.pid = end.pid;
+                                empty.name = end.name;
+                                empty.procCpuCoreStates = new ArrayList<>(end.procCpuCoreStates.size());
+                                for (ListEntry<DigitEntry<Long>> item : end.procCpuCoreStates) {
+                                    long[] emptyStats = new long[item.getList().size()];
+                                    empty.procCpuCoreStates.add(ListEntry.ofDigits(emptyStats));
+                                }
+                                last = empty;
+                            }
+                            Delta<CpuStateSnapshot> deltaPidCpuState = end.diff(last);
+                            delta.pidDeltaCpuSateList.add(deltaPidCpuState);
+                        }
+                    }
+                    return delta;
+                }
+            };
+        }
+
+
+        public static class IpcCpuStat {
+            public static RemoteStat toIpc(CpuStateSnapshot local) {
+                RemoteStat remote = new RemoteStat();
+                remote.procCpuCoreStates = new ArrayList<>(local.procCpuCoreStates.size());
+                for (ListEntry<DigitEntry<Long>> item : local.procCpuCoreStates) {
+                    long[] stats = new long[item.getList().size()];
+                    for (int i = 0; i < stats.length; i++) {
+                        stats[i] = item.getList().get(i).get();
+                    }
+                    remote.procCpuCoreStates.add(stats);
+                }
+                return remote;
+            }
+
+            public static CpuStateSnapshot toLocal(RemoteStat remote) {
+                CpuStateSnapshot local = new CpuStateSnapshot();
+                local.procCpuCoreStates = new ArrayList<>(remote.procCpuCoreStates.size());
+                for (long[] item : remote.procCpuCoreStates) {
+                    local.procCpuCoreStates.add(ListEntry.ofDigits(item));
+                }
+                return local;
+            }
+
+            public static class RemoteStat implements Parcelable {
+                public List<long[]> procCpuCoreStates = Collections.emptyList();
+
+                public RemoteStat() {
+                }
+
+                protected RemoteStat(Parcel in) {
+                    int size = in.readInt();
+                    procCpuCoreStates = new ArrayList<>(size);
+                    for (int i = 0; i < size; i++) {
+                        procCpuCoreStates.add(in.createLongArray());
+                    }
+                }
+
+                @Override
+                public void writeToParcel(Parcel dest, int flags) {
+                    int numOfArrays = procCpuCoreStates.size();
+                    dest.writeInt(numOfArrays);
+                    for (int i = 0; i < numOfArrays; i++) {
+                        dest.writeLongArray(procCpuCoreStates.get(i));
+                    }
+                }
+
+                @Override
+                public int describeContents() {
+                    return 0;
+                }
+
+                public static final Creator<RemoteStat> CREATOR = new Creator<RemoteStat>() {
+                    @Override
+                    public RemoteStat createFromParcel(Parcel in) {
+                        return new RemoteStat(in);
+                    }
+                    @Override
+                    public RemoteStat[] newArray(int size) {
+                        return new RemoteStat[size];
+                    }
+                };
+            }
         }
     }
 }

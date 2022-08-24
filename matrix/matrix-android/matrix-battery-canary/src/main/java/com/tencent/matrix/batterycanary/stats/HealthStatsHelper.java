@@ -728,7 +728,7 @@ public final class HealthStatsHelper {
     }
 
     /**
-     * @see com.android.internal.os.IdlePowerCalculator#IdlePowerCalculator
+     * @see com.android.internal.os.IdlePowerCalculator
      */
     @RequiresApi(api = Build.VERSION_CODES.N)
     public static double calcIdlePower(PowerProfile powerProfile, HealthStats healthStats) {

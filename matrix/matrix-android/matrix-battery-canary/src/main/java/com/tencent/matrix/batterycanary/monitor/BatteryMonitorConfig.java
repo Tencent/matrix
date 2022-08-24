@@ -3,6 +3,7 @@ package com.tencent.matrix.batterycanary.monitor;
 import android.app.ActivityManager;
 
 import com.tencent.matrix.batterycanary.BuildConfig;
+import com.tencent.matrix.batterycanary.monitor.feature.CpuStatFeature.UidCpuStateSnapshot.IpcCpuStat.RemoteStat;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.UidJiffiesSnapshot.IpcJiffies.IpcProcessJiffies;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature;
 import com.tencent.matrix.batterycanary.stats.BatteryRecorder;
@@ -68,6 +69,7 @@ public class BatteryMonitorConfig {
     public BatteryStats batteryStats;
     public CallStackCollector callStackCollector;
     public Function<Pair<Integer, String>, IpcProcessJiffies> ipcJiffiesCollector;
+    public Function<Pair<Integer, String>, RemoteStat> ipcCpuStatCollector;
 
     private BatteryMonitorConfig() {
     }

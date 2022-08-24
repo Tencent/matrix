@@ -531,6 +531,13 @@ public class CompositeMonitors {
             }
             return snapshot;
         }
+        if (snapshotClass == CpuStatFeature.UidCpuStateSnapshot.class) {
+            CpuStatFeature feature = getFeature(CpuStatFeature.class);
+            if (feature != null && feature.isSupported()) {
+                snapshot = feature.currentUidCpuStateSnapshot();
+            }
+            return snapshot;
+        }
         if (snapshotClass == AppStatMonitorFeature.AppStatSnapshot.class) {
             AppStatMonitorFeature feature = getFeature(AppStatMonitorFeature.class);
             if (feature != null) {
