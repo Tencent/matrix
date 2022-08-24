@@ -119,6 +119,7 @@ public final class BatteryCanaryInitHelper {
                 .setRecorder(new BatteryRecorder.MMKVRecorder(mmkv))
                 .setStats(new BatteryStats.BatteryStatsImpl())
                 .enable(HealthStatsFeature.class)
+                .enable(HealthStatsFeature.class)
 
                 // Lab Feature:
                 // network monitor

@@ -54,6 +54,7 @@ import com.tencent.matrix.batterycanary.utils.Consumer;
 import com.tencent.matrix.batterycanary.utils.PowerProfile;
 import com.tencent.matrix.util.MatrixLog;
 
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -510,7 +511,9 @@ final public class TopThreadIndicator {
                         CompositeMonitors monitors = new CompositeMonitors(mCore, CompositeMonitors.SCOPE_TOP_INDICATOR);
                         monitors.metric(JiffiesMonitorFeature.UidJiffiesSnapshot.class);
                         monitors.metric(CpuStatFeature.CpuStateSnapshot.class);
+                        monitors.metric(CpuStatFeature.UidCpuStateSnapshot.class);
                         monitors.metric(HealthStatsFeature.HealthStatsSnapshot.class);
+                        monitors.sample(DeviceStatMonitorFeature.CpuFreqSnapshot.class, 500L);
                         monitors.sample(DeviceStatMonitorFeature.BatteryCurrentSnapshot.class, 500L);
                         return monitors;
                     }
@@ -714,8 +717,27 @@ final public class TopThreadIndicator {
                 if (healthStatsDelta != null) {
                     powerMap.put("total", healthStatsDelta.dlt.getTotalPower());
                     powerMap.put("cpu", healthStatsDelta.dlt.cpuPower.get());
-                    powerMap.put("----cpuUsrTimeMs", healthStatsDelta.dlt.cpuUsrTimeMs.get() + 0d);
-                    powerMap.put("----cpuSysTimeMs", healthStatsDelta.dlt.cpuSysTimeMs.get() + 0d);
+                    {
+                        List<String> modes = Arrays.asList("JiffyUid");
+                        for (String mode : modes) {
+                            Object powers = healthStatsDelta.dlt.extras.get(mode);
+                            if (powers != null) {
+                                if (powers instanceof Map<?, ?>) {
+                                    // tuning cpu powers
+                                    for (Map.Entry<?, ?> entry : ((Map<?, ?>) powers).entrySet()) {
+                                        String key = String.valueOf(entry.getKey());
+                                        Object val = entry.getValue();
+                                        if (key.startsWith("power-cpu") && val instanceof Double) {
+                                            double cpuPower = (Double) val;
+                                            powerMap.put(key.replace("power-cpu", "cpu"), cpuPower);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    // powerMap.put("----cpuUsrTimeMs", healthStatsDelta.dlt.cpuUsrTimeMs.get() + 0d);
+                    // powerMap.put("----cpuSysTimeMs", healthStatsDelta.dlt.cpuSysTimeMs.get() + 0d);
                     powerMap.put("wakelocks", healthStatsDelta.dlt.wakelocksPower.get());
                     powerMap.put("mobile", healthStatsDelta.dlt.mobilePower.get());
                     powerMap.put("wifi", healthStatsDelta.dlt.wifiPower.get());
@@ -727,10 +749,11 @@ final public class TopThreadIndicator {
                     powerMap.put("audio", healthStatsDelta.dlt.audioPower.get());
                     powerMap.put("video", healthStatsDelta.dlt.videoPower.get());
                     powerMap.put("screen", healthStatsDelta.dlt.screenPower.get());
-                    powerMap.put("systemService", healthStatsDelta.dlt.systemServicePower.get());
+                    // powerMap.put("systemService", healthStatsDelta.dlt.systemServicePower.get());
                     powerMap.put("idle", healthStatsDelta.dlt.idlePower.get());
-                    powerMap.put("----realTimeMs", healthStatsDelta.dlt.realTimeMs.get() + 0d);
-                    powerMap.put("----upTimeMs", healthStatsDelta.dlt.upTimeMs.get() + 0d);
+
+                    // powerMap.put("----realTimeMs", healthStatsDelta.dlt.realTimeMs.get() + 0d);
+                    // powerMap.put("----upTimeMs", healthStatsDelta.dlt.upTimeMs.get() + 0d);
                 }
                 // for (Iterator<Map.Entry<String, Double>> iterator = powerMap.entrySet().iterator(); iterator.hasNext(); ) {
                 //     Map.Entry<String, Double> item = iterator.next();

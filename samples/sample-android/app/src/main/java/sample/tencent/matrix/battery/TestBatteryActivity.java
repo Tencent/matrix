@@ -51,7 +51,6 @@ import com.tencent.matrix.batterycanary.stats.BatteryStatsFeature;
 import com.tencent.matrix.batterycanary.stats.ui.BatteryStatsActivity;
 import com.tencent.matrix.batterycanary.utils.Consumer;
 import com.tencent.matrix.batterycanary.utils.PowerProfile;
-import com.tencent.matrix.batterycanary.utils.TestPowerProfile;
 import com.tencent.matrix.util.MatrixLog;
 
 import androidx.annotation.NonNull;
