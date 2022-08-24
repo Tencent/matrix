@@ -653,6 +653,9 @@ public final class HealthStatsHelper {
     public static double calcAudioPower(PowerProfile powerProfile, HealthStats healthStats) {
         long timeMs = getTimerTime(healthStats, UidHealthStats.TIMER_AUDIO);
         double powerMa = powerProfile.getAveragePowerUni(PowerProfile.POWER_AUDIO);
+        if (powerMa == 0) {
+            powerMa = powerProfile.getAveragePowerUni(PowerProfile.POWER_AUDIO_DSP);
+        }
         double power = new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
         if (power > 0) {
             return power;
@@ -667,6 +670,9 @@ public final class HealthStatsHelper {
     public static double calcVideoPower(PowerProfile powerProfile, HealthStats healthStats) {
         long timeMs = getTimerTime(healthStats, UidHealthStats.TIMER_VIDEO);
         double powerMa = powerProfile.getAveragePowerUni(PowerProfile.POWER_VIDEO);
+        if (powerMa == 0) {
+            powerMa = powerProfile.getAveragePowerUni(PowerProfile.POWER_VIDEO_DSP);
+        }
         double power = new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
         if (power > 0) {
             return power;

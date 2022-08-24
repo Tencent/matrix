@@ -244,12 +244,14 @@ public class PowerProfile {
      * to the CPU power, probably due to a DSP and / or amplifier.
      */
     public static final String POWER_AUDIO = "audio";
+    public static final String POWER_AUDIO_DSP = "dsp.audio";
 
     /**
      * Power consumed by any media hardware when playing back video content. This is in addition
      * to the CPU power, probably due to a DSP.
      */
     public static final String POWER_VIDEO = "video";
+    public static final String POWER_VIDEO_DSP = "dsp.video";
 
     /**
      * Average power consumption when camera flashlight is on.
