@@ -261,7 +261,7 @@ public class CpuStatFeature extends AbsTaskMonitorFeature {
         }
     }
 
-    public static final class UidCpuStateSnapshot extends Snapshot<UidCpuStateSnapshot> {
+    public static final class UidCpuStateSnapshot extends MonitorFeature.Snapshot<UidCpuStateSnapshot> {
         public static UidCpuStateSnapshot of(Context context, BatteryMonitorConfig config) {
             UidCpuStateSnapshot curr = new UidCpuStateSnapshot();
             try {
@@ -290,11 +290,11 @@ public class CpuStatFeature extends AbsTaskMonitorFeature {
         }
 
         public List<CpuStateSnapshot> pidCurrCupSateList = Collections.emptyList();
-        public List<Delta<CpuStateSnapshot>> pidDeltaCpuSateList = Collections.emptyList();
+        public List<MonitorFeature.Snapshot.Delta<CpuStateSnapshot>> pidDeltaCpuSateList = Collections.emptyList();
 
         @Override
-        public Delta<UidCpuStateSnapshot> diff(UidCpuStateSnapshot bgn) {
-            return new Delta<UidCpuStateSnapshot>(bgn, this) {
+        public MonitorFeature.Snapshot.Delta<UidCpuStateSnapshot> diff(UidCpuStateSnapshot bgn) {
+            return new MonitorFeature.Snapshot.Delta<UidCpuStateSnapshot>(bgn, this) {
                 @Override
                 protected UidCpuStateSnapshot computeDelta() {
                     UidCpuStateSnapshot delta = new UidCpuStateSnapshot();
@@ -320,7 +320,7 @@ public class CpuStatFeature extends AbsTaskMonitorFeature {
                                 }
                                 last = empty;
                             }
-                            Delta<CpuStateSnapshot> deltaPidCpuState = end.diff(last);
+                            MonitorFeature.Snapshot.Delta<CpuStateSnapshot> deltaPidCpuState = end.diff(last);
                             delta.pidDeltaCpuSateList.add(deltaPidCpuState);
                         }
                     }
