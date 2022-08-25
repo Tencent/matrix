@@ -22,9 +22,9 @@
        android:layout_height="wrap_content">
 
        <TextView
-           android:gravity="center"
-           android:id="@+id/tv_status"
-           android:layout_width="20dp"
+           android:gravity="left"
+           android:id="@+id/tv_unit"
+           android:layout_width="30dp"
            android:layout_height="wrap_content"
            android:layout_marginRight="5dp"
            android:ellipsize="end"

@@ -42,6 +42,7 @@ import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.Ji
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Sampler.Result;
+import com.tencent.matrix.batterycanary.monitor.feature.TrafficMonitorFeature;
 import com.tencent.matrix.batterycanary.shell.TopThreadFeature;
 import com.tencent.matrix.batterycanary.shell.TopThreadFeature.ContinuousCallback;
 import com.tencent.matrix.batterycanary.stats.BatteryStatsFeature;
@@ -513,6 +514,7 @@ final public class TopThreadIndicator {
                         monitors.metric(CpuStatFeature.CpuStateSnapshot.class);
                         monitors.metric(CpuStatFeature.UidCpuStateSnapshot.class);
                         monitors.metric(HealthStatsFeature.HealthStatsSnapshot.class);
+                        monitors.metric(TrafficMonitorFeature.RadioStatSnapshot.class);
                         monitors.sample(DeviceStatMonitorFeature.CpuFreqSnapshot.class, 500L);
                         monitors.sample(DeviceStatMonitorFeature.BatteryCurrentSnapshot.class, 500L);
                         return monitors;
@@ -658,7 +660,7 @@ final public class TopThreadIndicator {
                                 float threadLoad = figureCupLoad(entryJffies, delta.during / 10L);
 
                                 View threadItemView = threadEntryGroup.getChildAt(idx);
-                                threadItemView.setVisibility(View.VISIBLE);
+                                // threadItemView.setVisibility(View.VISIBLE);
                                 TextView tvName = threadItemView.findViewById(R.id.tv_name);
                                 TextView tvTid = threadItemView.findViewById(R.id.tv_tid);
                                 TextView tvStatus = threadItemView.findViewById(R.id.tv_status);
@@ -706,17 +708,17 @@ final public class TopThreadIndicator {
                 for (int i = 0; i < powerEntryGroup.getChildCount(); i++) {
                     powerEntryGroup.getChildAt(i).setVisibility(View.GONE);
                 }
-                Map<String, Double> powerMap = new LinkedHashMap<>();
+                final Map<String, Pair<String, Double>> powerMap = new LinkedHashMap<>();
                 Result result = monitors.getSamplingResult(DeviceStatMonitorFeature.BatteryCurrentSnapshot.class);
                 if (result != null) {
                     double power = (result.sampleAvg / -1000) * (appStats.duringMillis * 1f / BatteryCanaryUtil.ONE_HOR);
                     double deltaPh = (Double) power * BatteryCanaryUtil.ONE_HOR / appStats.duringMillis;
-                    powerMap.put("currency", deltaPh / 1000);
+                    powerMap.put("currency", new Pair<>("mAh", deltaPh / 1000));
                 }
-                Delta<HealthStatsFeature.HealthStatsSnapshot> healthStatsDelta = monitors.getDelta(HealthStatsFeature.HealthStatsSnapshot.class);
+                final Delta<HealthStatsFeature.HealthStatsSnapshot> healthStatsDelta = monitors.getDelta(HealthStatsFeature.HealthStatsSnapshot.class);
                 if (healthStatsDelta != null) {
-                    powerMap.put("total", healthStatsDelta.dlt.getTotalPower());
-                    powerMap.put("cpu", healthStatsDelta.dlt.cpuPower.get());
+                    powerMap.put("total", new Pair<>("mAh", healthStatsDelta.dlt.getTotalPower()));
+                    powerMap.put("cpu", new Pair<>("mAh", healthStatsDelta.dlt.cpuPower.get()));
                     {
                         List<String> modes = Arrays.asList("JiffyUid");
                         for (String mode : modes) {
@@ -729,7 +731,7 @@ final public class TopThreadIndicator {
                                         Object val = entry.getValue();
                                         if (key.startsWith("power-cpu") && val instanceof Double) {
                                             double cpuPower = (Double) val;
-                                            powerMap.put(key.replace("power-cpu", "cpu"), cpuPower);
+                                            powerMap.put(key.replace("power-cpu", " - cpu"), new Pair<>("mAh", cpuPower));
                                         }
                                     }
                                 }
@@ -738,19 +740,58 @@ final public class TopThreadIndicator {
                     }
                     // powerMap.put("----cpuUsrTimeMs", healthStatsDelta.dlt.cpuUsrTimeMs.get() + 0d);
                     // powerMap.put("----cpuSysTimeMs", healthStatsDelta.dlt.cpuSysTimeMs.get() + 0d);
-                    powerMap.put("wakelocks", healthStatsDelta.dlt.wakelocksPower.get());
-                    powerMap.put("mobile", healthStatsDelta.dlt.mobilePower.get());
-                    powerMap.put("wifi", healthStatsDelta.dlt.wifiPower.get());
-                    powerMap.put("blueTooth", healthStatsDelta.dlt.blueToothPower.get());
-                    powerMap.put("gps", healthStatsDelta.dlt.gpsPower.get());
-                    powerMap.put("sensors", healthStatsDelta.dlt.sensorsPower.get());
-                    powerMap.put("camera", healthStatsDelta.dlt.cameraPower.get());
-                    powerMap.put("flashLight", healthStatsDelta.dlt.flashLightPower.get());
-                    powerMap.put("audio", healthStatsDelta.dlt.audioPower.get());
-                    powerMap.put("video", healthStatsDelta.dlt.videoPower.get());
-                    powerMap.put("screen", healthStatsDelta.dlt.screenPower.get());
+                    powerMap.put("wakelocks", new Pair<>("mAh", healthStatsDelta.dlt.wakelocksPower.get()));
+                    powerMap.put("mobile", new Pair<>("mAh", healthStatsDelta.dlt.mobilePower.get()));
+                    powerMap.put("wifi", new Pair<>("mAh", healthStatsDelta.dlt.wifiPower.get()));
+                    {
+                        monitors.getDelta(TrafficMonitorFeature.RadioStatSnapshot.class, new Consumer<Delta<TrafficMonitorFeature.RadioStatSnapshot>>() {
+                            @Override
+                            public void accept(final Delta<TrafficMonitorFeature.RadioStatSnapshot> delta) {
+                                monitors.getFeature(CpuStatFeature.class, new Consumer<CpuStatFeature>() {
+                                    @SuppressLint("VisibleForTests")
+                                    @Override
+                                    public void accept(CpuStatFeature feat) {
+                                        if (feat.isSupported()) {
+                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && mCore != null) {
+                                                {
+                                                    double power = HealthStatsHelper.calcWifiPowerByNetworkStatBytes(mCore.getContext(), feat.getPowerProfile(), delta.dlt);
+                                                    if (power > 0) {
+                                                        powerMap.put(" - wifi-PowerBytes", new Pair<>("mAh", power));
+                                                        powerMap.put("   - wifi-TxBytes", new Pair<>("byte", (double) delta.dlt.wifiTxBytes.get()));
+                                                        powerMap.put("   - wifi-RxBytes", new Pair<>("byte", (double) delta.dlt.wifiRxBytes.get()));
+                                                    }
+                                                }
+                                                {
+                                                    double power = HealthStatsHelper.calcWifiPowerByNetworkStatPackets(feat.getPowerProfile(), delta.dlt);
+                                                    if (power > 0) {
+                                                        powerMap.put(" - wifi-PowerPackets", new Pair<>("mAh", power));
+                                                        powerMap.put("   - wifi-RxPackets", new Pair<>("packet", (double) delta.dlt.wifiRxPackets.get()));
+                                                        powerMap.put("   - wifi-TxPackets", new Pair<>("packet", (double) delta.dlt.wifiTxPackets.get()));
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                });
+                                // powerMap.put("mobile-TxBytes", new Pair<>(false, (double) delta.dlt.mobileTxBytes.get()));
+                                // powerMap.put("mobile-RxBytes", new Pair<>(false, (double) delta.dlt.mobileRxBytes.get()));
+                                // powerMap.put("mobile-RxPackets", new Pair<>(false, (double) delta.dlt.mobileRxPackets.get()));
+                                // powerMap.put("wifi-TxBytes", new Pair<>(false, (double) delta.dlt.wifiTxBytes.get()));
+                                // powerMap.put("wifi-RxBytes", new Pair<>(false, (double) delta.dlt.wifiRxBytes.get()));
+                                // powerMap.put("wifi-RxPackets", new Pair<>(false, (double) delta.dlt.wifiRxPackets.get()));
+                            }
+                        });
+                    }
+                    powerMap.put("blueTooth", new Pair<>("mAh", healthStatsDelta.dlt.blueToothPower.get()));
+                    powerMap.put("gps", new Pair<>("mAh", healthStatsDelta.dlt.gpsPower.get()));
+                    powerMap.put("sensors", new Pair<>("mAh", healthStatsDelta.dlt.sensorsPower.get()));
+                    powerMap.put("camera", new Pair<>("mAh", healthStatsDelta.dlt.cameraPower.get()));
+                    powerMap.put("flashLight", new Pair<>("mAh", healthStatsDelta.dlt.flashLightPower.get()));
+                    powerMap.put("audio", new Pair<>("mAh", healthStatsDelta.dlt.audioPower.get()));
+                    powerMap.put("video", new Pair<>("mAh", healthStatsDelta.dlt.videoPower.get()));
+                    powerMap.put("screen", new Pair<>("mAh", healthStatsDelta.dlt.screenPower.get()));
                     // powerMap.put("systemService", healthStatsDelta.dlt.systemServicePower.get());
-                    powerMap.put("idle", healthStatsDelta.dlt.idlePower.get());
+                    powerMap.put("idle", new Pair<>("mAh", healthStatsDelta.dlt.idlePower.get()));
 
                     // powerMap.put("----realTimeMs", healthStatsDelta.dlt.realTimeMs.get() + 0d);
                     // powerMap.put("----upTimeMs", healthStatsDelta.dlt.upTimeMs.get() + 0d);
@@ -762,16 +803,29 @@ final public class TopThreadIndicator {
                 //     }
                 // }
                 int idx = 0;
-                for (Map.Entry<String, Double> entry : powerMap.entrySet()) {
+                for (Map.Entry<String, Pair<String, Double>> entry : powerMap.entrySet()) {
                     String module = entry.getKey();
-                    double power = entry.getValue();
-                    double powerPh = power * BatteryCanaryUtil.ONE_HOR / appStats.duringMillis;
+                    String unit = "";
+                    double value = 0d;
+                    Pair<String, Double> pair = entry.getValue();
+                    if (pair.first != null && pair.second != null) {
+                        if (pair.first.equals("mAh")) {
+                            unit = "mAph";
+                            double power = (double) pair.second;
+                            value = power * BatteryCanaryUtil.ONE_HOR / appStats.duringMillis;
+                        } else {
+                            unit = pair.first;
+                            value = pair.second;
+                        }
+                    }
                     View threadItemView = powerEntryGroup.getChildAt(idx);
                     threadItemView.setVisibility(View.VISIBLE);
                     TextView tvName = threadItemView.findViewById(R.id.tv_name);
+                    TextView tvUnit = threadItemView.findViewById(R.id.tv_unit);
                     TextView tvPower = threadItemView.findViewById(R.id.tv_power);
                     tvName.setText(module);
-                    tvPower.setText(String.valueOf(HealthStatsHelper.round(powerPh, 5)));
+                    tvUnit.setText(unit);
+                    tvPower.setText(String.valueOf(HealthStatsHelper.round(value, 5)));
                     idx++;
                     if (idx >= MAX_POWER_NUM) {
                         break;
