@@ -708,6 +708,26 @@ public class HealthStatsTest {
         Assert.assertEquals(delta.dlt.getTotalPower(), end.getTotalPower() - bgn.getTotalPower(), 0.001d);
     }
 
+    @Test
+    public void testCalcAvgPowerPerPacket() throws IOException {
+        PowerProfile powerProfile = PowerProfile.init(mContext);
+        Assert.assertNotNull(powerProfile);
+        Assert.assertTrue(powerProfile.isSupported());
+
+        final long MOBILE_BPS = 200000;
+        final double MOBILE_POWER = powerProfile.getAveragePowerOrDefault(PowerProfile.POWER_RADIO_ACTIVE, 120) / 3600;
+        final double mobilePps = (((double) MOBILE_BPS) / 8 / 2048);
+        double mobilePowerPerPacket = (MOBILE_POWER / mobilePps) / (60 * 60);
+        Assert.assertTrue(mobilePowerPerPacket > 0);
+
+        final long wifiBps = 1000000;
+        final double averageWifiActivePower = powerProfile.getAveragePowerOrDefault(PowerProfile.POWER_WIFI_ACTIVE, 120) / 3600;
+        double wifiPowerPerPacket = averageWifiActivePower / (((double) wifiBps) / 8 / 2048);
+        Assert.assertTrue(wifiPowerPerPacket > 0);
+
+        Assert.assertTrue(mobilePowerPerPacket < wifiPowerPerPacket);
+    }
+
 
     public static class UsageBasedPowerEstimator {
         private static final double MILLIS_IN_HOUR = 1000.0 * 60 * 60;

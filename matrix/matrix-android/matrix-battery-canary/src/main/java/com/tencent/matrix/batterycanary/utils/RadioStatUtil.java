@@ -4,6 +4,7 @@ import android.app.usage.NetworkStats;
 import android.app.usage.NetworkStatsManager;
 import android.content.Context;
 import android.net.NetworkCapabilities;
+
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
 
@@ -20,6 +21,7 @@ public final class RadioStatUtil {
     private static final String TAG = "Matrix.battery.ProcStatUtil";
     static final long MIN_QUERY_INTERVAL = BuildConfig.DEBUG ? 0L : 2000L;
     static long sLastQueryMillis;
+    static RadioStat sLastRef;
 
     private static boolean checkIfFrequently() {
         long currentTimeMillis = System.currentTimeMillis();
@@ -36,8 +38,7 @@ public final class RadioStatUtil {
             return null;
         }
         if (checkIfFrequently()) {
-            MatrixLog.i(TAG, "over frequently just return");
-            return null;
+            return sLastRef;
         }
 
         try {
@@ -53,6 +54,8 @@ public final class RadioStatUtil {
                         if (bucket.getUid() == android.os.Process.myUid()) {
                             stat.wifiRxBytes += bucket.getRxBytes();
                             stat.wifiTxBytes += bucket.getTxBytes();
+                            stat.wifiRxPackets += bucket.getRxPackets();
+                            stat.wifiTxPackets += bucket.getTxPackets();
                         }
                     }
                 }
@@ -64,15 +67,18 @@ public final class RadioStatUtil {
                         if (bucket.getUid() == android.os.Process.myUid()) {
                             stat.mobileRxBytes += bucket.getRxBytes();
                             stat.mobileTxBytes += bucket.getTxBytes();
+                            stat.mobileRxPackets += bucket.getRxPackets();
+                            stat.mobileTxPackets += bucket.getTxPackets();
                         }
                     }
                 }
             }
-
+            sLastRef = stat;
             return stat;
 
         } catch (Throwable e) {
             MatrixLog.w(TAG, "querySummary fail: " + e.getMessage());
+            sLastRef = null;
             return null;
         }
     }
@@ -80,7 +86,12 @@ public final class RadioStatUtil {
     public static final class RadioStat {
         public long wifiRxBytes;
         public long wifiTxBytes;
+        public long wifiRxPackets;
+        public long wifiTxPackets;
+
         public long mobileRxBytes;
         public long mobileTxBytes;
+        public long mobileRxPackets;
+        public long mobileTxPackets;
     }
 }

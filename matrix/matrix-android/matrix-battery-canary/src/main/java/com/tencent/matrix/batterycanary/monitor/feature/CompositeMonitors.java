@@ -975,18 +975,39 @@ public class CompositeMonitors {
         getDelta(HealthStatsFeature.HealthStatsSnapshot.class, new Consumer<Delta<HealthStatsSnapshot>>() {
             @Override
             public void accept(Delta<HealthStatsSnapshot> healthStatsDelta) {
-                // Reset cpuPower if exists
                 tuningPowers(healthStatsDelta.dlt);
-                double cpuPower = 0;
-                Object powers = healthStatsDelta.dlt.extras.get("JiffyUid");
-                if (powers instanceof Map<?, ?>) {
-                    // Take power-cpu-uidDiff or 0 as default
-                    Object val = ((Map<?, ?>) powers).get("power-cpu-uidDiff");
-                    if (val instanceof Double) {
-                        cpuPower = (double) val;
+
+                {
+                    // Reset cpuPower if exists
+                    double power = 0;
+                    Object powers = healthStatsDelta.dlt.extras.get("JiffyUid");
+                    if (powers instanceof Map<?, ?>) {
+                        // Take power-cpu-uidDiff or 0 as default
+                        Object val = ((Map<?, ?>) powers).get("power-cpu-uidDiff");
+                        if (val instanceof Double) {
+                            power = (double) val;
+                        }
                     }
+                    healthStatsDelta.dlt.cpuPower = DigitEntry.of(power);
                 }
-                healthStatsDelta.dlt.cpuPower = DigitEntry.of(cpuPower);
+                {
+                    // Reset mobilePower if exists
+                    double power = 0;
+                    Object val = healthStatsDelta.dlt.extras.get("power-mobile-statByte");
+                    if (val instanceof Double) {
+                        power = (double) val;
+                    }
+                    healthStatsDelta.dlt.mobilePower = DigitEntry.of(power);
+                }
+                {
+                    // Reset wifiPower if exists
+                    double power = 0;
+                    Object val = healthStatsDelta.dlt.extras.get("power-wifi-statByte");
+                    if (val instanceof Double) {
+                        power = (double) val;
+                    }
+                    healthStatsDelta.dlt.wifiPower = DigitEntry.of(power);
+                }
             }
         });
     }
@@ -1001,6 +1022,8 @@ public class CompositeMonitors {
             public void accept(CpuStatFeature feat) {
                 if (feat.isSupported()) {
                     final PowerProfile powerProfile = feat.getPowerProfile();
+
+                    // Tune CPU
                     getDelta(CpuStatFeature.CpuStateSnapshot.class, new Consumer<Delta<CpuStatFeature.CpuStateSnapshot>>() {
                         @Override
                         public void accept(final Delta<CpuStatFeature.CpuStateSnapshot> cpuStatDelta) {
@@ -1095,6 +1118,23 @@ public class CompositeMonitors {
                                     }));
                                 }
                             });
+                        }
+                    });
+
+                    // Tune Network
+                    getDelta(TrafficMonitorFeature.RadioStatSnapshot.class, new Consumer<Delta<TrafficMonitorFeature.RadioStatSnapshot>>() {
+                        @Override
+                        public void accept(Delta<TrafficMonitorFeature.RadioStatSnapshot> delta) {
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP && mMonitor != null) {
+                                {
+                                    double power = HealthStatsHelper.calcMobilePowerByNetworkStatBytes(mMonitor.getContext(), powerProfile, delta.dlt);
+                                    snapshot.extras.put("power-mobile-statByte", power);
+                                }
+                                {
+                                    double power = HealthStatsHelper.calcWifiPowerByNetworkStatBytes(mMonitor.getContext(), powerProfile, delta.dlt);
+                                    snapshot.extras.put("power-wifi-statByte", power);
+                                }
+                            }
                         }
                     });
                 }

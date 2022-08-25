@@ -1,9 +1,15 @@
 package com.tencent.matrix.batterycanary.stats;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
+import android.net.NetworkInfo;
 import android.os.Build;
 import android.os.health.HealthStats;
 import android.os.health.SystemHealthManager;
@@ -15,6 +21,7 @@ import com.tencent.matrix.batterycanary.monitor.feature.CpuStatFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.CpuStatFeature.CpuStateSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.DigitEntry;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.ListEntry;
+import com.tencent.matrix.batterycanary.monitor.feature.TrafficMonitorFeature;
 import com.tencent.matrix.batterycanary.utils.PowerProfile;
 import com.tencent.matrix.util.MatrixLog;
 
@@ -444,6 +451,51 @@ public final class HealthStatsHelper {
         return power;
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+    public static double calcMobilePowerByNetworkStatBytes(Context context, PowerProfile powerProfile, TrafficMonitorFeature.RadioStatSnapshot snapshot) {
+        if (context.checkCallingOrSelfPermission(Manifest.permission.ACCESS_NETWORK_STATE) == PackageManager.PERMISSION_GRANTED) {
+            ConnectivityManager manager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+            int txBwKBps = 0, rxBwKBps = 0;
+            for (Network item : manager.getAllNetworks()) {
+                NetworkInfo networkInfo = manager.getNetworkInfo(item);
+                if (networkInfo != null
+                        && (networkInfo.isConnected() || networkInfo.isConnectedOrConnecting())
+                        && networkInfo.getTypeName().equalsIgnoreCase("MOBILE")) {
+                    NetworkCapabilities capabilities = manager.getNetworkCapabilities(item);
+                    if (capabilities != null) {
+                        txBwKBps = capabilities.getLinkUpstreamBandwidthKbps() / 8;
+                        rxBwKBps = capabilities.getLinkDownstreamBandwidthKbps() / 8;
+                        if (txBwKBps > 0 || rxBwKBps > 0) {
+                            break;
+                        }
+                    }
+                }
+            }
+            if (txBwKBps > 0 || rxBwKBps > 0) {
+                long txMs = (long) ((snapshot.mobileTxBytes.get() / (1000f * txBwKBps)) * 1000);
+                long rxMs = (long) ((snapshot.mobileRxBytes.get() / (1000f * rxBwKBps)) * 1000);
+                double power = 0;
+                {
+                    double avgPower = powerProfile.getAveragePowerUni(PowerProfile.POWER_MODEM_CONTROLLER_RX);
+                    UsageBasedPowerEstimator estimator = new UsageBasedPowerEstimator(avgPower);
+                    power += estimator.calculatePower(rxMs);
+                }
+                {
+                    double avgPower = powerProfile.getAveragePowerUni(PowerProfile.POWER_MODEM_CONTROLLER_TX);
+                    UsageBasedPowerEstimator estimator = new UsageBasedPowerEstimator(avgPower);
+                    power += estimator.calculatePower(txMs);
+                }
+                {
+                    double avgPower = powerProfile.getAveragePowerUni(PowerProfile.POWER_MODEM_CONTROLLER_IDLE);
+                    UsageBasedPowerEstimator estimator = new UsageBasedPowerEstimator(avgPower);
+                    power += estimator.calculatePower(txMs + rxMs);
+                }
+                return power;
+            }
+        }
+        return 0;
+    }
+
     /**
      * @see com.android.internal.os.WifiPowerCalculator
      */
@@ -515,6 +567,64 @@ public final class HealthStatsHelper {
             double powerMa = powerProfile.getAveragePowerUni(PowerProfile.POWER_WIFI_SCAN);
             long timeMs = getTimerTime(healthStats, UidHealthStats.TIMER_WIFI_SCAN);
             power += new UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
+        }
+        return power;
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+    public static double calcWifiPowerByNetworkStatBytes(Context context, PowerProfile powerProfile, TrafficMonitorFeature.RadioStatSnapshot snapshot) {
+        if (context.checkCallingOrSelfPermission(Manifest.permission.ACCESS_NETWORK_STATE) == PackageManager.PERMISSION_GRANTED) {
+            ConnectivityManager manager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+            int txBwKBps = 0, rxBwKBps = 0;
+            for (Network item : manager.getAllNetworks()) {
+                NetworkInfo networkInfo = manager.getNetworkInfo(item);
+                if (networkInfo != null
+                        && (networkInfo.isConnected() || networkInfo.isConnectedOrConnecting())
+                        && networkInfo.getTypeName().equalsIgnoreCase("WIFI")) {
+                    NetworkCapabilities capabilities = manager.getNetworkCapabilities(item);
+                    if (capabilities != null) {
+                        txBwKBps = capabilities.getLinkUpstreamBandwidthKbps() / 8;
+                        rxBwKBps = capabilities.getLinkDownstreamBandwidthKbps() / 8;
+                        if (txBwKBps > 0 || rxBwKBps > 0) {
+                            break;
+                        }
+                    }
+                }
+            }
+            if (txBwKBps > 0 || rxBwKBps > 0) {
+                long txMs = (long) ((snapshot.wifiTxBytes.get() / (1000f * txBwKBps)) * 1000);
+                long rxMs = (long) ((snapshot.wifiRxBytes.get() / (1000f * rxBwKBps)) * 1000);
+                double power = 0;
+                {
+                    double avgPower = powerProfile.getAveragePowerUni(PowerProfile.POWER_WIFI_CONTROLLER_RX);
+                    UsageBasedPowerEstimator estimator = new UsageBasedPowerEstimator(avgPower);
+                    power += estimator.calculatePower(rxMs);
+                }
+                {
+                    double avgPower = powerProfile.getAveragePowerUni(PowerProfile.POWER_WIFI_CONTROLLER_TX);
+                    UsageBasedPowerEstimator estimator = new UsageBasedPowerEstimator(avgPower);
+                    power += estimator.calculatePower(txMs);
+                }
+                {
+                    double avgPower = powerProfile.getAveragePowerUni(PowerProfile.POWER_WIFI_CONTROLLER_IDLE);
+                    UsageBasedPowerEstimator estimator = new UsageBasedPowerEstimator(avgPower);
+                    power += estimator.calculatePower(txMs + rxMs);
+                }
+                return power;
+            }
+        }
+        return 0;
+    }
+
+    @VisibleForTesting
+    public static double calcWifiPowerByNetworkStatPackets(PowerProfile powerProfile, TrafficMonitorFeature.RadioStatSnapshot snapshot) {
+        double power = 0;
+        {
+            final long wifiBps = 1000000;
+            final double averageWifiActivePower = powerProfile.getAveragePowerUni(PowerProfile.POWER_WIFI_ACTIVE) / 3600;
+            double powerMaPerPacket = averageWifiActivePower / (((double) wifiBps) / 8 / 2048);
+            long packets = snapshot.wifiRxPackets.get() + snapshot.wifiTxPackets.get();
+            power += powerMaPerPacket * packets;
         }
         return power;
     }
