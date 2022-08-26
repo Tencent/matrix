@@ -515,6 +515,7 @@ final public class TopThreadIndicator {
                         monitors.metric(TrafficMonitorFeature.RadioStatSnapshot.class);
                         monitors.sample(DeviceStatMonitorFeature.CpuFreqSnapshot.class, 500L);
                         monitors.sample(DeviceStatMonitorFeature.BatteryCurrentSnapshot.class, 500L);
+                        monitors.sample(TrafficMonitorFeature.RadioBpsSnapshot.class, 500L);
                         return monitors;
                     }
                 }, new ContinuousCallback() {
@@ -710,8 +711,8 @@ final public class TopThreadIndicator {
                                     if (val instanceof Double) {
                                         double power = (double) val;
                                         powerMap.put(" - mobile-PowerBytes", new Pair<>("mAh", power));
-                                        powerMap.put("   - mobile-TxBytes", new Pair<>("byte", (double) delta.dlt.mobileTxBytes.get()));
                                         powerMap.put("   - mobile-RxBytes", new Pair<>("byte", (double) delta.dlt.mobileRxBytes.get()));
+                                        powerMap.put("   - mobile-TxBytes", new Pair<>("byte", (double) delta.dlt.mobileTxBytes.get()));
                                     }
                                 }
                             }
@@ -728,8 +729,8 @@ final public class TopThreadIndicator {
                                     if (val instanceof Double) {
                                         double power = (double) val;
                                         powerMap.put(" - wifi-PowerBytes", new Pair<>("mAh", power));
-                                        powerMap.put("   - wifi-TxBytes", new Pair<>("byte", (double) delta.dlt.wifiTxBytes.get()));
                                         powerMap.put("   - wifi-RxBytes", new Pair<>("byte", (double) delta.dlt.wifiRxBytes.get()));
+                                        powerMap.put("   - wifi-TxBytes", new Pair<>("byte", (double) delta.dlt.wifiTxBytes.get()));
                                     }
                                 }
                                 if (healthStatsDelta.dlt.extras.containsKey("power-wifi-statPacket")) {
