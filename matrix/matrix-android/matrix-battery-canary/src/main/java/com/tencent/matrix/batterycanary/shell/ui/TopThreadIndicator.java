@@ -39,7 +39,6 @@ import com.tencent.matrix.batterycanary.monitor.feature.CpuStatFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot;
-import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Sampler.Result;
 import com.tencent.matrix.batterycanary.monitor.feature.TrafficMonitorFeature;
@@ -52,7 +51,6 @@ import com.tencent.matrix.batterycanary.stats.ui.BatteryStatsActivity;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.CallStackCollector;
 import com.tencent.matrix.batterycanary.utils.Consumer;
-import com.tencent.matrix.batterycanary.utils.PowerProfile;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.Arrays;
@@ -522,46 +520,6 @@ final public class TopThreadIndicator {
                 }, new ContinuousCallback() {
                     @Override
                     public boolean onGetDeltas(final CompositeMonitors monitors, long windowMillis) {
-                        monitors.getDelta(HealthStatsFeature.HealthStatsSnapshot.class, new Consumer<Delta<HealthStatsFeature.HealthStatsSnapshot>>() {
-                            @Override
-                            public void accept(final Delta<HealthStatsFeature.HealthStatsSnapshot> healthStatsDelta) {
-                                monitors.getFeature(CpuStatFeature.class, new Consumer<CpuStatFeature>() {
-                                    @Override
-                                    public void accept(CpuStatFeature cpuStatFeat) {
-                                        if (cpuStatFeat.isSupported()) {
-                                            final PowerProfile powerProfile = cpuStatFeat.getPowerProfile();
-                                            monitors.getDelta(JiffiesMonitorFeature.UidJiffiesSnapshot.class, new Consumer<Delta<JiffiesMonitorFeature.UidJiffiesSnapshot>>() {
-                                                @Override
-                                                public void accept(final Delta<JiffiesMonitorFeature.UidJiffiesSnapshot> uidJiffiesDelta) {
-                                                    monitors.getDelta(CpuStatFeature.CpuStateSnapshot.class, new Consumer<Delta<CpuStatFeature.CpuStateSnapshot>>() {
-                                                        @SuppressLint("VisibleForTests")
-                                                        @Override
-                                                        public void accept(Delta<CpuStatFeature.CpuStateSnapshot> cpuStatDelta) {
-                                                            CpuStatFeature.CpuStateSnapshot cpuStatsSnapshot = cpuStatDelta.dlt;
-                                                            // CPU
-                                                            long cpuTimeMs = uidJiffiesDelta.dlt.totalUidJiffies.get() * 10;
-                                                            double cpuPower = HealthStatsHelper.estimateCpuActivePower(powerProfile, cpuTimeMs)
-                                                                    + HealthStatsHelper.estimateCpuClustersPower(powerProfile, cpuStatsSnapshot, cpuTimeMs, false)
-                                                                    + HealthStatsHelper.estimateCpuCoresPower(powerProfile, cpuStatsSnapshot, cpuTimeMs, false);
-                                                            healthStatsDelta.dlt.cpuPower = MonitorFeature.Snapshot.Entry.DigitEntry.of(cpuPower);
-                                                            // SysSrv
-                                                            if (healthStatsDelta.dlt.jobsMs.get() >= 0 && healthStatsDelta.dlt.syncMs.get() >= 0) {
-                                                                long sysSrvTimeMs = healthStatsDelta.dlt.jobsMs.get() + healthStatsDelta.dlt.syncMs.get();
-                                                                double systemServicePower = HealthStatsHelper.estimateCpuActivePower(powerProfile, sysSrvTimeMs)
-                                                                        + HealthStatsHelper.estimateCpuClustersPower(powerProfile, cpuStatsSnapshot, sysSrvTimeMs, false)
-                                                                        + HealthStatsHelper.estimateCpuCoresPower(powerProfile, cpuStatsSnapshot, sysSrvTimeMs, false);
-                                                                healthStatsDelta.dlt.systemServicePower = MonitorFeature.Snapshot.Entry.DigitEntry.of(systemServicePower);
-                                                            }
-                                                        }
-                                                    });
-                                                }
-                                            });
-                                        }
-                                    }
-                                });
-                            }
-                        });
-
                         refresh(monitors);
                         if (mRootView == null || !mRunningRef.get(hashcode, false)) {
                             return true;
@@ -714,6 +672,8 @@ final public class TopThreadIndicator {
                     double power = (result.sampleAvg / -1000) * (appStats.duringMillis * 1f / BatteryCanaryUtil.ONE_HOR);
                     double deltaPh = (Double) power * BatteryCanaryUtil.ONE_HOR / appStats.duringMillis;
                     powerMap.put("currency", new Pair<>("mAh", deltaPh / 1000));
+                } else {
+                    powerMap.put("currency", new Pair<String, Double>("mAh", null));
                 }
                 final Delta<HealthStatsFeature.HealthStatsSnapshot> healthStatsDelta = monitors.getDelta(HealthStatsFeature.HealthStatsSnapshot.class);
                 if (healthStatsDelta != null) {
@@ -738,47 +698,49 @@ final public class TopThreadIndicator {
                             }
                         }
                     }
-                    // powerMap.put("----cpuUsrTimeMs", healthStatsDelta.dlt.cpuUsrTimeMs.get() + 0d);
-                    // powerMap.put("----cpuSysTimeMs", healthStatsDelta.dlt.cpuSysTimeMs.get() + 0d);
                     powerMap.put("wakelocks", new Pair<>("mAh", healthStatsDelta.dlt.wakelocksPower.get()));
                     powerMap.put("mobile", new Pair<>("mAh", healthStatsDelta.dlt.mobilePower.get()));
-                    powerMap.put("wifi", new Pair<>("mAh", healthStatsDelta.dlt.wifiPower.get()));
                     {
+
                         monitors.getDelta(TrafficMonitorFeature.RadioStatSnapshot.class, new Consumer<Delta<TrafficMonitorFeature.RadioStatSnapshot>>() {
                             @Override
                             public void accept(final Delta<TrafficMonitorFeature.RadioStatSnapshot> delta) {
-                                monitors.getFeature(CpuStatFeature.class, new Consumer<CpuStatFeature>() {
-                                    @SuppressLint("VisibleForTests")
-                                    @Override
-                                    public void accept(CpuStatFeature feat) {
-                                        if (feat.isSupported()) {
-                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && mCore != null) {
-                                                {
-                                                    double power = HealthStatsHelper.calcWifiPowerByNetworkStatBytes(mCore.getContext(), feat.getPowerProfile(), delta.dlt);
-                                                    if (power > 0) {
-                                                        powerMap.put(" - wifi-PowerBytes", new Pair<>("mAh", power));
-                                                        powerMap.put("   - wifi-TxBytes", new Pair<>("byte", (double) delta.dlt.wifiTxBytes.get()));
-                                                        powerMap.put("   - wifi-RxBytes", new Pair<>("byte", (double) delta.dlt.wifiRxBytes.get()));
-                                                    }
-                                                }
-                                                {
-                                                    double power = HealthStatsHelper.calcWifiPowerByNetworkStatPackets(feat.getPowerProfile(), delta.dlt);
-                                                    if (power > 0) {
-                                                        powerMap.put(" - wifi-PowerPackets", new Pair<>("mAh", power));
-                                                        powerMap.put("   - wifi-RxPackets", new Pair<>("packet", (double) delta.dlt.wifiRxPackets.get()));
-                                                        powerMap.put("   - wifi-TxPackets", new Pair<>("packet", (double) delta.dlt.wifiTxPackets.get()));
-                                                    }
-                                                }
-                                            }
-                                        }
+                                if (healthStatsDelta.dlt.extras.containsKey("power-mobile-statByte")) {
+                                    Object val = healthStatsDelta.dlt.extras.get("power-mobile-statByte");
+                                    if (val instanceof Double) {
+                                        double power = (double) val;
+                                        powerMap.put(" - mobile-PowerBytes", new Pair<>("mAh", power));
+                                        powerMap.put("   - mobile-TxBytes", new Pair<>("byte", (double) delta.dlt.mobileTxBytes.get()));
+                                        powerMap.put("   - mobile-RxBytes", new Pair<>("byte", (double) delta.dlt.mobileRxBytes.get()));
                                     }
-                                });
-                                // powerMap.put("mobile-TxBytes", new Pair<>(false, (double) delta.dlt.mobileTxBytes.get()));
-                                // powerMap.put("mobile-RxBytes", new Pair<>(false, (double) delta.dlt.mobileRxBytes.get()));
-                                // powerMap.put("mobile-RxPackets", new Pair<>(false, (double) delta.dlt.mobileRxPackets.get()));
-                                // powerMap.put("wifi-TxBytes", new Pair<>(false, (double) delta.dlt.wifiTxBytes.get()));
-                                // powerMap.put("wifi-RxBytes", new Pair<>(false, (double) delta.dlt.wifiRxBytes.get()));
-                                // powerMap.put("wifi-RxPackets", new Pair<>(false, (double) delta.dlt.wifiRxPackets.get()));
+                                }
+                            }
+                        });
+                    }
+                    powerMap.put("wifi", new Pair<>("mAh", healthStatsDelta.dlt.wifiPower.get()));
+                    {
+
+                        monitors.getDelta(TrafficMonitorFeature.RadioStatSnapshot.class, new Consumer<Delta<TrafficMonitorFeature.RadioStatSnapshot>>() {
+                            @Override
+                            public void accept(final Delta<TrafficMonitorFeature.RadioStatSnapshot> delta) {
+                                if (healthStatsDelta.dlt.extras.containsKey("power-wifi-statByte")) {
+                                    Object val = healthStatsDelta.dlt.extras.get("power-wifi-statByte");
+                                    if (val instanceof Double) {
+                                        double power = (double) val;
+                                        powerMap.put(" - wifi-PowerBytes", new Pair<>("mAh", power));
+                                        powerMap.put("   - wifi-TxBytes", new Pair<>("byte", (double) delta.dlt.wifiTxBytes.get()));
+                                        powerMap.put("   - wifi-RxBytes", new Pair<>("byte", (double) delta.dlt.wifiRxBytes.get()));
+                                    }
+                                }
+                                if (healthStatsDelta.dlt.extras.containsKey("power-wifi-statPacket")) {
+                                    Object val = healthStatsDelta.dlt.extras.get("power-wifi-statPacket");
+                                    if (val instanceof Double) {
+                                        double power = (double) val;
+                                        powerMap.put(" - wifi-PowerPackets", new Pair<>("mAh", power));
+                                        powerMap.put("   - wifi-RxPackets", new Pair<>("packet", (double) delta.dlt.wifiRxPackets.get()));
+                                        powerMap.put("   - wifi-TxPackets", new Pair<>("packet", (double) delta.dlt.wifiTxPackets.get()));
+                                    }
+                                }
                             }
                         });
                     }
@@ -792,9 +754,6 @@ final public class TopThreadIndicator {
                     powerMap.put("screen", new Pair<>("mAh", healthStatsDelta.dlt.screenPower.get()));
                     // powerMap.put("systemService", healthStatsDelta.dlt.systemServicePower.get());
                     powerMap.put("idle", new Pair<>("mAh", healthStatsDelta.dlt.idlePower.get()));
-
-                    // powerMap.put("----realTimeMs", healthStatsDelta.dlt.realTimeMs.get() + 0d);
-                    // powerMap.put("----upTimeMs", healthStatsDelta.dlt.upTimeMs.get() + 0d);
                 }
                 // for (Iterator<Map.Entry<String, Double>> iterator = powerMap.entrySet().iterator(); iterator.hasNext(); ) {
                 //     Map.Entry<String, Double> item = iterator.next();
@@ -806,16 +765,20 @@ final public class TopThreadIndicator {
                 for (Map.Entry<String, Pair<String, Double>> entry : powerMap.entrySet()) {
                     String module = entry.getKey();
                     String unit = "";
-                    double value = 0d;
+                    Double value = null;
                     Pair<String, Double> pair = entry.getValue();
-                    if (pair.first != null && pair.second != null) {
+                    if (pair.first != null) {
                         if (pair.first.equals("mAh")) {
-                            unit = "mAph";
-                            double power = (double) pair.second;
-                            value = power * BatteryCanaryUtil.ONE_HOR / appStats.duringMillis;
+                            unit = "";
+                            if (pair.second != null) {
+                                double power = (double) pair.second;
+                                value = power * BatteryCanaryUtil.ONE_HOR / appStats.duringMillis;
+                            }
                         } else {
                             unit = pair.first;
-                            value = pair.second;
+                            if (pair.second != null) {
+                                value = pair.second;
+                            }
                         }
                     }
                     View threadItemView = powerEntryGroup.getChildAt(idx);
@@ -825,7 +788,11 @@ final public class TopThreadIndicator {
                     TextView tvPower = threadItemView.findViewById(R.id.tv_power);
                     tvName.setText(module);
                     tvUnit.setText(unit);
-                    tvPower.setText(String.valueOf(HealthStatsHelper.round(value, 5)));
+                    if (value == null) {
+                        tvPower.setText("NULL");
+                    } else {
+                        tvPower.setText(String.valueOf(HealthStatsHelper.round(value, 5)));
+                    }
                     idx++;
                     if (idx >= MAX_POWER_NUM) {
                         break;

@@ -11,7 +11,7 @@
 
         android:ellipsize="end"
         android:maxLines="1"
-        android:text="ThreadName"
+        android:text="ModuleName"
         android:textColor="@color/FG_2"
         android:textSize="10sp" />
 
@@ -22,7 +22,7 @@
        android:layout_height="wrap_content">
 
        <TextView
-           android:gravity="left"
+           android:gravity="center"
            android:id="@+id/tv_unit"
            android:layout_width="30dp"
            android:layout_height="wrap_content"
