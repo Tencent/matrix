@@ -49,6 +49,21 @@ public final class TrafficMonitorFeature extends AbsMonitorFeature {
         return snapshot;
     }
 
+    @Nullable
+    public TrafficMonitorFeature.RadioBpsSnapshot currentRadioBpsSnapshot(Context context) {
+        RadioStatUtil.RadioBps stat = RadioStatUtil.getCurrentBps(context);
+        if (stat == null) {
+            return null;
+        }
+
+        TrafficMonitorFeature.RadioBpsSnapshot snapshot = new TrafficMonitorFeature.RadioBpsSnapshot();
+        snapshot.wifiRxBps = Snapshot.Entry.DigitEntry.of(stat.wifiRxBps);
+        snapshot.wifiTxBps = Snapshot.Entry.DigitEntry.of(stat.wifiTxBps);
+        snapshot.mobileRxBps = Snapshot.Entry.DigitEntry.of(stat.mobileRxBps);
+        snapshot.mobileTxBps = Snapshot.Entry.DigitEntry.of(stat.mobileTxBps);
+        return snapshot;
+    }
+
     public static class RadioStatSnapshot extends Snapshot<RadioStatSnapshot> {
         public Entry.DigitEntry<Long> wifiRxBytes = Entry.DigitEntry.of(0L);
         public Entry.DigitEntry<Long> wifiTxBytes = Entry.DigitEntry.of(0L);
@@ -75,6 +90,28 @@ public final class TrafficMonitorFeature extends AbsMonitorFeature {
                     delta.mobileTxBytes = DigitDiffer.globalDiff(bgn.mobileTxBytes, end.mobileTxBytes);
                     delta.mobileRxPackets = DigitDiffer.globalDiff(bgn.mobileRxPackets, end.mobileRxPackets);
                     delta.mobileTxPackets = DigitDiffer.globalDiff(bgn.mobileTxPackets, end.mobileTxPackets);
+                    return delta;
+                }
+            };
+        }
+    }
+
+    public static class RadioBpsSnapshot extends Snapshot<RadioBpsSnapshot> {
+        public Entry.DigitEntry<Long> wifiRxBps = Entry.DigitEntry.of(0L);
+        public Entry.DigitEntry<Long> wifiTxBps = Entry.DigitEntry.of(0L);
+        public Entry.DigitEntry<Long> mobileRxBps = Entry.DigitEntry.of(0L);
+        public Entry.DigitEntry<Long> mobileTxBps = Entry.DigitEntry.of(0L);
+
+        @Override
+        public Delta<RadioBpsSnapshot> diff(RadioBpsSnapshot bgn) {
+            return new Delta<RadioBpsSnapshot>(bgn, this) {
+                @Override
+                protected RadioBpsSnapshot computeDelta() {
+                    RadioBpsSnapshot delta = new RadioBpsSnapshot();
+                    delta.wifiRxBps = DigitDiffer.globalDiff(bgn.wifiRxBps, end.wifiRxBps);
+                    delta.wifiTxBps = DigitDiffer.globalDiff(bgn.wifiTxBps, end.wifiTxBps);
+                    delta.mobileRxBps = DigitDiffer.globalDiff(bgn.mobileRxBps, end.mobileRxBps);
+                    delta.mobileTxBps = DigitDiffer.globalDiff(bgn.mobileTxBps, end.mobileTxBps);
                     return delta;
                 }
             };

@@ -1,15 +1,23 @@
 package com.tencent.matrix.batterycanary.utils;
 
+import android.Manifest;
 import android.app.usage.NetworkStats;
 import android.app.usage.NetworkStatsManager;
 import android.content.Context;
+import android.content.pm.PackageManager;
+import android.net.ConnectivityManager;
+import android.net.Network;
 import android.net.NetworkCapabilities;
-
-import androidx.annotation.Nullable;
-import androidx.annotation.RestrictTo;
+import android.net.NetworkInfo;
+import android.os.Build;
 
 import com.tencent.matrix.batterycanary.BuildConfig;
 import com.tencent.matrix.util.MatrixLog;
+
+import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
+import androidx.annotation.RestrictTo;
+import androidx.core.util.Pair;
 
 /**
  * @author Kaede
@@ -37,9 +45,10 @@ public final class RadioStatUtil {
         if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.M) {
             return null;
         }
-        if (checkIfFrequently()) {
-            return sLastRef;
-        }
+
+        // if (checkIfFrequently()) {
+        //     return sLastRef;
+        // }
 
         try {
             NetworkStatsManager network = (NetworkStatsManager) context.getSystemService(Context.NETWORK_STATS_SERVICE);
@@ -83,6 +92,46 @@ public final class RadioStatUtil {
         }
     }
 
+    @Nullable
+    public static RadioBps getCurrentBps(Context context) {
+        if (android.os.Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+            return null;
+        }
+        RadioBps stat = new RadioBps();
+        Pair<Long, Long> wifi = getCurrentBps(context, "WIFI");
+        stat.wifiRxBps = wifi.first == null ? 0 : wifi.first;
+        stat.wifiTxBps = wifi.second == null ? 0 : wifi.second;
+
+        Pair<Long, Long> mobile = getCurrentBps(context, "MOBILE");
+        stat.mobileRxBps = mobile.first == null ? 0 : mobile.first;
+        stat.mobileTxBps = mobile.second == null ? 0 : mobile.second;
+        return stat;
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+    private static Pair<Long, Long> getCurrentBps(Context context, String typeName) {
+        long rxBwBps = 0, txBwBps = 0;
+        if (context.checkCallingOrSelfPermission(Manifest.permission.ACCESS_NETWORK_STATE) == PackageManager.PERMISSION_GRANTED) {
+            ConnectivityManager manager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+            for (Network item : manager.getAllNetworks()) {
+                NetworkInfo networkInfo = manager.getNetworkInfo(item);
+                if (networkInfo != null
+                        && (networkInfo.isConnected() || networkInfo.isConnectedOrConnecting())
+                        && networkInfo.getTypeName().equalsIgnoreCase(typeName)) {
+                    NetworkCapabilities capabilities = manager.getNetworkCapabilities(item);
+                    if (capabilities != null) {
+                        rxBwBps = capabilities.getLinkDownstreamBandwidthKbps() * 1024L;
+                        txBwBps = capabilities.getLinkUpstreamBandwidthKbps() * 1024L;
+                        if (rxBwBps > 0 || txBwBps > 0) {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        return new Pair<>(rxBwBps, txBwBps);
+    }
+
     public static final class RadioStat {
         public long wifiRxBytes;
         public long wifiTxBytes;
@@ -93,5 +142,13 @@ public final class RadioStatUtil {
         public long mobileTxBytes;
         public long mobileRxPackets;
         public long mobileTxPackets;
+    }
+
+    public static final class RadioBps {
+        public long wifiRxBps;
+        public long wifiTxBps;
+
+        public long mobileRxBps;
+        public long mobileTxBps;
     }
 }

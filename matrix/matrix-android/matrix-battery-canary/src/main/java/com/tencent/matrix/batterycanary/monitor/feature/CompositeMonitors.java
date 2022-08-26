@@ -74,6 +74,8 @@ public class CompositeMonitors {
     protected AppStats mAppStats;
     @Nullable
     protected CpuFreqSampler mCpuFreqSampler;
+    @Nullable
+    protected BpsSampler mBpsSampler;
 
     protected long mBgnMillis = SystemClock.uptimeMillis();
     protected String mScope;
@@ -767,14 +769,31 @@ public class CompositeMonitors {
             }
             return sampler;
         }
+        if (snapshotClass == TrafficMonitorFeature.RadioBpsSnapshot.class) {
+            final TrafficMonitorFeature feature = getFeature(TrafficMonitorFeature.class);
+            if (feature != null && mMonitor != null) {
+                mBpsSampler = new BpsSampler();
+                sampler = new MonitorFeature.Snapshot.Sampler("trafficBps", mMonitor.getHandler(), new Function<Snapshot.Sampler, Number>() {
+                    @Override
+                    public Number apply(Snapshot.Sampler sampler) {
+                        TrafficMonitorFeature.RadioBpsSnapshot snapshot = feature.currentRadioBpsSnapshot(mMonitor.getContext());
+                        if (snapshot != null) {
+                            mBpsSampler.count(snapshot);
+                        }
+                        return 0;
+                    }
+                });
+                mSamplers.put(snapshotClass, sampler);
+            }
+            return sampler;
+        }
         if (snapshotClass == DeviceStatMonitorFeature.BatteryCurrentSnapshot.class) {
             final DeviceStatMonitorFeature feature = getFeature(DeviceStatMonitorFeature.class);
             if (feature != null && mMonitor != null) {
                 sampler = new MonitorFeature.Snapshot.Sampler("batt-curr", mMonitor.getHandler(), new Function<Snapshot.Sampler, Number>() {
                     @Override
                     public Number apply(Snapshot.Sampler sampler) {
-                        DeviceStatMonitorFeature.BatteryCurrentSnapshot snapshot = feature.currentBatteryCurrency(mMonitor.getContext());
-                        Long value = snapshot.stat.get();
+                        long value = BatteryCanaryUtil.getBatteryCurrencyImmediately(mMonitor.getContext());
                         MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + ", val = " + value);
                         if (value == -1L) {
                             return Snapshot.Sampler.INVALID;
@@ -900,6 +919,11 @@ public class CompositeMonitors {
         return mCpuFreqSampler;
     }
 
+    @Nullable
+    public BpsSampler getBpsSampler() {
+        return mBpsSampler;
+    }
+
     @Override
     @NonNull
     public String toString() {
@@ -945,7 +969,7 @@ public class CompositeMonitors {
         }
 
         public void count(int[] cpuCurrentFreq) {
-            this.cpuCurrentFreq = BatteryCanaryUtil.getCpuCurrentFreq();
+            this.cpuCurrentFreq = cpuCurrentFreq;
             for (int i = 0; i < cpuCurrentFreq.length; i++) {
                 int speed = cpuCurrentFreq[i];
                 int[] steps = cpuFreqSteps.get(i);
@@ -967,6 +991,29 @@ public class CompositeMonitors {
                     }
                 }
             }
+        }
+    }
+
+    public static class BpsSampler {
+        public int count;
+        public long wifiRxBps;
+        public long wifiTxBps;
+        public long mobileRxBps;
+        public long mobileTxBps;
+
+        public void count(TrafficMonitorFeature.RadioBpsSnapshot snapshot) {
+            count++;
+            wifiRxBps += snapshot.wifiRxBps.get();
+            wifiTxBps += snapshot.wifiTxBps.get();
+            mobileRxBps += snapshot.mobileRxBps.get();
+            mobileTxBps += snapshot.mobileTxBps.get();
+        }
+
+        public double getAverage(long input) {
+            if (count != 0) {
+                return input * 1f / count;
+            }
+            return 0;
         }
     }
 
@@ -1126,13 +1173,29 @@ public class CompositeMonitors {
                         @Override
                         public void accept(Delta<TrafficMonitorFeature.RadioStatSnapshot> delta) {
                             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP && mMonitor != null) {
-                                {
-                                    double power = HealthStatsHelper.calcMobilePowerByNetworkStatBytes(mMonitor.getContext(), powerProfile, delta.dlt);
+                                BpsSampler bpsSampler = getBpsSampler();
+                                if (bpsSampler != null) {
+                                    // mobile
+                                    double power = HealthStatsHelper.calcMobilePowerByNetworkStatBytes(
+                                            powerProfile,
+                                            delta.dlt,
+                                            bpsSampler.getAverage(bpsSampler.mobileRxBps),
+                                            bpsSampler.getAverage(bpsSampler.mobileTxBps));
                                     snapshot.extras.put("power-mobile-statByte", power);
-                                }
-                                {
-                                    double power = HealthStatsHelper.calcWifiPowerByNetworkStatBytes(mMonitor.getContext(), powerProfile, delta.dlt);
+
+                                    // wifi
+                                    power = HealthStatsHelper.calcWifiPowerByNetworkStatBytes(
+                                            powerProfile,
+                                            delta.dlt,
+                                            bpsSampler.getAverage(bpsSampler.wifiRxBps),
+                                            bpsSampler.getAverage(bpsSampler.wifiTxBps));
                                     snapshot.extras.put("power-wifi-statByte", power);
+                                    power = HealthStatsHelper.calcWifiPowerByNetworkStatPackets(
+                                            powerProfile,
+                                            delta.dlt,
+                                            bpsSampler.getAverage(bpsSampler.wifiRxBps),
+                                            bpsSampler.getAverage(bpsSampler.wifiTxBps));
+                                    snapshot.extras.put("power-wifi-statPacket", power);
                                 }
                             }
                         }
