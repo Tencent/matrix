@@ -26,6 +26,7 @@ import com.tencent.matrix.plugin.trace.MatrixTrace
 import com.tencent.matrix.trace.Configuration
 import com.tencent.matrix.trace.extension.MatrixTraceExtension
 import org.gradle.api.Project
+import shadow.bundletool.com.android.tools.r8.jetbrains.kotlin.io.FilesKt
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
@@ -151,7 +152,7 @@ class MatrixTraceTransform(
     }
 
     private fun toOutputFile(outputDir: File, inputDir: File, inputFile: File): File {
-        return File(outputDir, FileUtils.relativePossiblyNonExistingPath(inputFile, inputDir))
+        return File(outputDir, FilesKt.toRelativeString(inputFile, inputDir))
     }
 
     private fun configure(transformInvocation: TransformInvocation): Configuration {
