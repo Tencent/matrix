@@ -1039,24 +1039,24 @@ public class CompositeMonitors {
                     }
                     healthStatsDelta.dlt.cpuPower = DigitEntry.of(power);
                 }
-                {
-                    // Reset mobilePower if exists
-                    double power = 0;
-                    Object val = healthStatsDelta.dlt.extras.get("power-mobile-statByte");
-                    if (val instanceof Double) {
-                        power = (double) val;
-                    }
-                    healthStatsDelta.dlt.mobilePower = DigitEntry.of(power);
-                }
-                {
-                    // Reset wifiPower if exists
-                    double power = 0;
-                    Object val = healthStatsDelta.dlt.extras.get("power-wifi-statByte");
-                    if (val instanceof Double) {
-                        power = (double) val;
-                    }
-                    healthStatsDelta.dlt.wifiPower = DigitEntry.of(power);
-                }
+                // {
+                //     // Reset mobilePower if exists
+                //     double power = 0;
+                //     Object val = healthStatsDelta.dlt.extras.get("power-mobile-statByte");
+                //     if (val instanceof Double) {
+                //         power = (double) val;
+                //     }
+                //     healthStatsDelta.dlt.mobilePower = DigitEntry.of(power);
+                // }
+                // {
+                //     // Reset wifiPower if exists
+                //     double power = 0;
+                //     Object val = healthStatsDelta.dlt.extras.get("power-wifi-statByte");
+                //     if (val instanceof Double) {
+                //         power = (double) val;
+                //     }
+                //     healthStatsDelta.dlt.wifiPower = DigitEntry.of(power);
+                // }
             }
         });
     }
@@ -1184,6 +1184,12 @@ public class CompositeMonitors {
                                             bpsSampler.getAverage(bpsSampler.mobileRxBps),
                                             bpsSampler.getAverage(bpsSampler.mobileTxBps));
                                     snapshot.extras.put("power-mobile-statByte", power);
+                                    power = HealthStatsHelper.calcMobilePowerByNetworkStatPackets(
+                                            powerProfile,
+                                            delta.dlt,
+                                            bpsSampler.getAverage(bpsSampler.mobileRxBps),
+                                            bpsSampler.getAverage(bpsSampler.mobileTxBps));
+                                    snapshot.extras.put("power-mobile-statPacket", power);
 
                                     // wifi
                                     power = HealthStatsHelper.calcWifiPowerByNetworkStatBytes(

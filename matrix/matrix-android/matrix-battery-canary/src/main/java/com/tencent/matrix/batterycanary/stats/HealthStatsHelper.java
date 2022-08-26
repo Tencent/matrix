@@ -15,7 +15,7 @@ import com.tencent.matrix.batterycanary.monitor.feature.CpuStatFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.CpuStatFeature.CpuStateSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.DigitEntry;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.ListEntry;
-import com.tencent.matrix.batterycanary.monitor.feature.TrafficMonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.TrafficMonitorFeature.RadioStatSnapshot;
 import com.tencent.matrix.batterycanary.utils.PowerProfile;
 import com.tencent.matrix.util.MatrixLog;
 
@@ -446,7 +446,7 @@ public final class HealthStatsHelper {
     }
 
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-    public static double calcMobilePowerByNetworkStatBytes(PowerProfile powerProfile, TrafficMonitorFeature.RadioStatSnapshot snapshot, double rxBps, double txBps) {
+    public static double calcMobilePowerByNetworkStatBytes(PowerProfile powerProfile, RadioStatSnapshot snapshot, double rxBps, double txBps) {
         long rxMs = (long) ((snapshot.mobileRxBytes.get() / (rxBps / 8)) * 1000);
         long txMs = (long) ((snapshot.mobileTxBytes.get() / (txBps / 8)) * 1000);
         double power = 0;
@@ -467,6 +467,30 @@ public final class HealthStatsHelper {
         }
         return power;
     }
+
+    public static double calcMobilePowerByNetworkStatPackets(PowerProfile powerProfile, RadioStatSnapshot snapshot, double rxBps, double txBps) {
+        double power = 0;
+        {
+            double powerMa = powerProfile.getAveragePowerUni(PowerProfile.POWER_RADIO_ACTIVE);
+            if (powerMa <= 0) {
+                double sum = 0;
+                sum += powerProfile.getAveragePower(PowerProfile.POWER_MODEM_CONTROLLER_RX);
+                int num = powerProfile.getNumElements(PowerProfile.POWER_MODEM_CONTROLLER_TX);
+                for (int i = 0; i < num; i++) {
+                    sum += powerProfile.getAveragePower(PowerProfile.POWER_MODEM_CONTROLLER_TX, i);
+                }
+                powerMa = sum / (num + 1);
+            }
+            double mobileBps = rxBps + txBps;
+            double powerPs = powerMa / 3600;
+            double mobilePps = ((double) mobileBps) / 8 / 2048;
+            double powerMaPerPacket = (powerPs / mobilePps) / (60 * 60);
+            long packets = snapshot.mobileRxPackets.get() + snapshot.mobileTxPackets.get();
+            power += powerMaPerPacket * packets;
+        }
+        return power;
+    }
+
 
     /**
      * @see com.android.internal.os.WifiPowerCalculator
@@ -544,7 +568,7 @@ public final class HealthStatsHelper {
     }
 
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
-    public static double calcWifiPowerByNetworkStatBytes(PowerProfile powerProfile, TrafficMonitorFeature.RadioStatSnapshot snapshot, double rxBps, double txBps) {
+    public static double calcWifiPowerByNetworkStatBytes(PowerProfile powerProfile, RadioStatSnapshot snapshot, double rxBps, double txBps) {
         long rxMs = (long) ((snapshot.wifiRxBytes.get() / (rxBps / 8)) * 1000);
         long txMs = (long) ((snapshot.wifiTxBytes.get() / (txBps / 8)) * 1000);
         double power = 0;
@@ -566,11 +590,11 @@ public final class HealthStatsHelper {
         return power;
     }
 
-    public static double calcWifiPowerByNetworkStatPackets(PowerProfile powerProfile, TrafficMonitorFeature.RadioStatSnapshot snapshot, double rxBps, double txBps) {
+    public static double calcWifiPowerByNetworkStatPackets(PowerProfile powerProfile, RadioStatSnapshot snapshot, double rxBps, double txBps) {
         double power = 0;
         {
             final double wifiBps = rxBps + txBps;
-            final double averageWifiActivePower = powerProfile.getAveragePowerOrDefault(PowerProfile.POWER_WIFI_ACTIVE, 120) / 3600;
+            final double averageWifiActivePower = powerProfile.getAveragePowerUni(PowerProfile.POWER_WIFI_ACTIVE) / 3600;
             double powerMaPerPacket = averageWifiActivePower / (((double) wifiBps) / 8 / 2048);
             long packets = snapshot.wifiRxPackets.get() + snapshot.wifiTxPackets.get();
             power += powerMaPerPacket * packets;
