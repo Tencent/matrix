@@ -22,6 +22,7 @@ import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -63,11 +64,6 @@ public class HealthStatsFeature extends AbsMonitorFeature {
             if (cpuStatFeat != null) {
                 PowerProfile powerProfile = cpuStatFeat.getPowerProfile();
                 if (powerProfile != null && powerProfile.isSupported()) {
-                    snapshot.mobilePowerByRadioActive = DigitEntry.of(HealthStatsHelper.calcMobilePowerByRadioActive(powerProfile, healthStats));
-                    snapshot.mobilePowerByController = DigitEntry.of(HealthStatsHelper.calcMobilePowerByController(powerProfile, healthStats));
-                    snapshot.wifiPowerByController = DigitEntry.of(HealthStatsHelper.calcWifiPowerByController(powerProfile, healthStats));
-                    snapshot.wifiPowerByPackets = DigitEntry.of(HealthStatsHelper.calcWifiPowerByPackets(powerProfile, healthStats));
-
                     snapshot.cpuPower = DigitEntry.of(HealthStatsHelper.calcCpuPower(powerProfile, healthStats));
                     snapshot.wakelocksPower = DigitEntry.of(HealthStatsHelper.calcWakelocksPower(powerProfile, healthStats));
                     snapshot.mobilePower = DigitEntry.of(HealthStatsHelper.calcMobilePower(powerProfile, healthStats));
@@ -248,12 +244,8 @@ public class HealthStatsFeature extends AbsMonitorFeature {
     }
 
     public static class HealthStatsSnapshot extends Snapshot<HealthStatsSnapshot> {
-        @VisibleForTesting public HealthStats healthStats;
-        @VisibleForTesting public DigitEntry<Double> mobilePowerByRadioActive = DigitEntry.of(0D);
-        @VisibleForTesting public DigitEntry<Double> mobilePowerByController = DigitEntry.of(0D);
-        @VisibleForTesting public DigitEntry<Double> wifiPowerByController = DigitEntry.of(0D);
-        @VisibleForTesting public DigitEntry<Double> wifiPowerByPackets = DigitEntry.of(0D);
-
+        @VisibleForTesting
+        public HealthStats healthStats;
         public Map<String, Object> extras = Collections.emptyMap();
 
         // Estimated Powers
@@ -343,7 +335,7 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                     + audioPower.get()
                     + videoPower.get()
                     + screenPower.get()
-                    // + systemServicePower.get()
+                    // + systemServicePower.get() // WIP
                     + idlePower.get();
         }
 
@@ -353,17 +345,8 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                 @Override
                 protected HealthStatsSnapshot computeDelta() {
                     HealthStatsSnapshot delta = new HealthStatsSnapshot();
-
-                    // For test
-                    delta.mobilePowerByRadioActive = Differ.DigitDiffer.globalDiff(bgn.mobilePowerByRadioActive, end.mobilePowerByRadioActive);
-                    delta.mobilePowerByController = Differ.DigitDiffer.globalDiff(bgn.mobilePowerByController, end.mobilePowerByController);
-                    delta.wifiPowerByController = Differ.DigitDiffer.globalDiff(bgn.wifiPowerByController, end.wifiPowerByController);
-                    delta.wifiPowerByPackets = Differ.DigitDiffer.globalDiff(bgn.wifiPowerByPackets, end.wifiPowerByPackets);
-                    delta.extras = new HashMap<>();
-                    delta.extras.put("power-mobile-radio", mobilePowerByRadioActive.get());
-                    delta.extras.put("power-mobile-controller", mobilePowerByController.get());
-                    delta.extras.put("power-wifi-controller", wifiPowerByController.get());
-                    delta.extras.put("power-wifi-packets", wifiPowerByPackets.get());
+                    // For test & tunings
+                    delta.extras = new LinkedHashMap<>();
 
                     // UID
                     delta.cpuPower = Differ.DigitDiffer.globalDiff(bgn.cpuPower, end.cpuPower);

@@ -21,6 +21,7 @@ import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.Consumer;
 import com.tencent.matrix.batterycanary.utils.Function;
 import com.tencent.matrix.batterycanary.utils.PowerProfile;
+import com.tencent.matrix.batterycanary.utils.RadioStatUtil;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.ArrayList;
@@ -28,6 +29,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -1072,11 +1074,11 @@ public class CompositeMonitors {
                 if (feat.isSupported()) {
                     final PowerProfile powerProfile = feat.getPowerProfile();
 
-                    // Tune CPU
+                    // 1. Tune CPU
                     getDelta(CpuStatFeature.CpuStateSnapshot.class, new Consumer<Delta<CpuStatFeature.CpuStateSnapshot>>() {
                         @Override
                         public void accept(final Delta<CpuStatFeature.CpuStateSnapshot> cpuStatDelta) {
-                            // CpuTimeMs
+                            // 1.1 CpuTimeMs
                             getDelta(HealthStatsFeature.HealthStatsSnapshot.class, new Consumer<Delta<HealthStatsFeature.HealthStatsSnapshot>>() {
                                 @Override
                                 public void accept(final Delta<HealthStatsFeature.HealthStatsSnapshot> healthStats) {
@@ -1117,7 +1119,7 @@ public class CompositeMonitors {
                                 }
                             });
 
-                            // CpuTimeJiffies
+                            // 1.2 CpuTimeJiffies
                             getDelta(JiffiesMonitorFeature.UidJiffiesSnapshot.class, new Consumer<Delta<JiffiesMonitorFeature.UidJiffiesSnapshot>>() {
                                 @Override
                                 public void accept(final Delta<JiffiesMonitorFeature.UidJiffiesSnapshot> delta) {
@@ -1170,44 +1172,92 @@ public class CompositeMonitors {
                         }
                     });
 
-                    // Tune Network
-                    getDelta(TrafficMonitorFeature.RadioStatSnapshot.class, new Consumer<Delta<TrafficMonitorFeature.RadioStatSnapshot>>() {
-                        @Override
-                        public void accept(Delta<TrafficMonitorFeature.RadioStatSnapshot> delta) {
-                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP && mMonitor != null) {
-                                BpsSampler bpsSampler = getBpsSampler();
-                                if (bpsSampler != null) {
-                                    // mobile
-                                    double power = HealthStatsHelper.calcMobilePowerByNetworkStatBytes(
-                                            powerProfile,
-                                            delta.dlt,
-                                            bpsSampler.getAverage(bpsSampler.mobileRxBps),
-                                            bpsSampler.getAverage(bpsSampler.mobileTxBps));
-                                    snapshot.extras.put("power-mobile-statByte", power);
-                                    power = HealthStatsHelper.calcMobilePowerByNetworkStatPackets(
-                                            powerProfile,
-                                            delta.dlt,
-                                            bpsSampler.getAverage(bpsSampler.mobileRxBps),
-                                            bpsSampler.getAverage(bpsSampler.mobileTxBps));
-                                    snapshot.extras.put("power-mobile-statPacket", power);
-
-                                    // wifi
-                                    power = HealthStatsHelper.calcWifiPowerByNetworkStatBytes(
-                                            powerProfile,
-                                            delta.dlt,
-                                            bpsSampler.getAverage(bpsSampler.wifiRxBps),
-                                            bpsSampler.getAverage(bpsSampler.wifiTxBps));
-                                    snapshot.extras.put("power-wifi-statByte", power);
-                                    power = HealthStatsHelper.calcWifiPowerByNetworkStatPackets(
-                                            powerProfile,
-                                            delta.dlt,
-                                            bpsSampler.getAverage(bpsSampler.wifiRxBps),
-                                            bpsSampler.getAverage(bpsSampler.wifiTxBps));
-                                    snapshot.extras.put("power-wifi-statPacket", power);
+                    // 2. Tune Network
+                    {
+                        double mobileRxBps = 0, mobileTxBps = 0;
+                        double wifiRxBps = 0, wifiTxBps = 0;
+                        BpsSampler bpsSampler = getBpsSampler();
+                        if (bpsSampler != null) {
+                            mobileRxBps = bpsSampler.getAverage(bpsSampler.mobileRxBps);
+                            mobileTxBps = bpsSampler.getAverage(bpsSampler.mobileTxBps);
+                            wifiRxBps = bpsSampler.getAverage(bpsSampler.wifiRxBps);
+                            wifiTxBps = bpsSampler.getAverage(bpsSampler.wifiTxBps);
+                        } else {
+                            if (mMonitor != null) {
+                                RadioStatUtil.RadioBps bpsStat = RadioStatUtil.getCurrentBps(mMonitor.getContext());
+                                if (bpsStat != null) {
+                                    mobileRxBps = bpsStat.mobileRxBps;
+                                    mobileTxBps = bpsStat.mobileTxBps;
+                                    wifiRxBps = bpsStat.wifiRxBps;
+                                    wifiTxBps = bpsStat.wifiTxBps;
                                 }
                             }
                         }
-                    });
+
+                        final double finalMobileRxBps = mobileRxBps;
+                        final double finalMobileTxBps = mobileTxBps;
+                        final double finalWifiRxBps = wifiRxBps;
+                        final double finalWifiTxBps = wifiTxBps;
+
+                        // 2.1 HealthStats
+                        getDelta(HealthStatsSnapshot.class, new Consumer<Delta<HealthStatsSnapshot>>() {
+                            @SuppressLint("VisibleForTests")
+                            @Override
+                            public void accept(Delta<HealthStatsSnapshot> delta) {
+                                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                                    // mobile
+                                    {
+                                        double powerBgn = HealthStatsHelper.calcMobilePowerByRadioActive(powerProfile, delta.bgn.healthStats);
+                                        double powerEnd = HealthStatsHelper.calcMobilePowerByRadioActive(powerProfile, delta.end.healthStats);
+                                        snapshot.extras.put("power-mobile-radio", powerEnd - powerBgn);
+                                    }
+                                    {
+                                        double powerBgn = HealthStatsHelper.calcMobilePowerByController(powerProfile, delta.bgn.healthStats);
+                                        double powerEnd = HealthStatsHelper.calcMobilePowerByController(powerProfile, delta.end.healthStats);
+                                        snapshot.extras.put("power-mobile-controller", powerEnd - powerBgn);
+                                    }
+                                    {
+                                        double powerBgn = HealthStatsHelper.calcMobilePowerByPackets(powerProfile, delta.bgn.healthStats, finalMobileRxBps, finalMobileTxBps);
+                                        double powerEnd = HealthStatsHelper.calcMobilePowerByPackets(powerProfile, delta.end.healthStats, finalMobileRxBps, finalMobileTxBps);
+                                        snapshot.extras.put("power-mobile-packet", powerEnd - powerBgn);
+                                    }
+                                    // wifi
+                                    {
+                                        double powerBgn = HealthStatsHelper.calcWifiPowerByController(powerProfile, delta.bgn.healthStats);
+                                        double powerEnd = HealthStatsHelper.calcWifiPowerByController(powerProfile, delta.end.healthStats);
+                                        snapshot.extras.put("power-wifi-controller", powerEnd - powerBgn);
+                                    }
+                                    {
+                                        double powerBgn = HealthStatsHelper.calcWifiPowerByPackets(powerProfile, delta.bgn.healthStats, finalWifiRxBps, finalWifiTxBps);
+                                        double powerEnd = HealthStatsHelper.calcWifiPowerByPackets(powerProfile, delta.end.healthStats, finalWifiRxBps, finalWifiTxBps);
+                                        snapshot.extras.put("power-wifi-packet", powerEnd - powerBgn);
+                                    }
+                                }
+                            }
+                        });
+
+                        // 2.2 RadioStat
+                        getDelta(TrafficMonitorFeature.RadioStatSnapshot.class, new Consumer<Delta<TrafficMonitorFeature.RadioStatSnapshot>>() {
+                            @Override
+                            public void accept(Delta<TrafficMonitorFeature.RadioStatSnapshot> delta) {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && mMonitor != null) {
+                                    BpsSampler bpsSampler = getBpsSampler();
+                                    if (bpsSampler != null) {
+                                        // mobile
+                                        double power = HealthStatsHelper.calcMobilePowerByNetworkStatBytes(powerProfile, delta.dlt, finalMobileRxBps, finalMobileTxBps);
+                                        snapshot.extras.put("power-mobile-statByte", power);
+                                        power = HealthStatsHelper.calcMobilePowerByNetworkStatPackets(powerProfile, delta.dlt, finalMobileRxBps, finalMobileTxBps);
+                                        snapshot.extras.put("power-mobile-statPacket", power);
+                                        // wifi
+                                        power = HealthStatsHelper.calcWifiPowerByNetworkStatBytes(powerProfile, delta.dlt, finalWifiRxBps, finalWifiTxBps);
+                                        snapshot.extras.put("power-wifi-statByte", power);
+                                        power = HealthStatsHelper.calcWifiPowerByNetworkStatPackets(powerProfile, delta.dlt, finalWifiRxBps, finalWifiTxBps);
+                                        snapshot.extras.put("power-wifi-statPacket", power);
+                                    }
+                                }
+                            }
+                        });
+                    }
                 }
             }
         });
@@ -1223,7 +1273,7 @@ public class CompositeMonitors {
         }
 
         public Map<String, Object> tuningCpuPowers(final PowerProfile powerProfile, final CompositeMonitors monitors, final CpuTime cpuTime) {
-            final Map<String, Object> dict = new HashMap<>();
+            final Map<String, Object> dict = new LinkedHashMap<>();
             monitors.getDelta(CpuStatFeature.UidCpuStateSnapshot.class, new Consumer<Delta<CpuStatFeature.UidCpuStateSnapshot>>() {
                 @SuppressLint("VisibleForTests")
                 @Override
