@@ -24,7 +24,7 @@ import com.tencent.matrix.fd.FDDumpBridge;
 import com.tencent.matrix.hook.HookManager;
 import com.tencent.matrix.hook.memory.MemoryHook;
 import com.tencent.matrix.hook.pthread.PthreadHook;
-import com.tencent.matrix.jectl.JeCtl;
+import com.tencent.matrix.mallctl.MallCtl;
 
 import java.io.File;
 
@@ -231,8 +231,8 @@ public class TestHooksActivity extends Activity {
     }
 
     public void jectlTest(View view) {
-        Log.d(TAG, "jemalloc version = " + JeCtl.version());
-        Log.d(TAG, "set retain, old value = " + JeCtl.setRetain(true));
+        Log.d(TAG, "jemalloc version = " + MallCtl.jeVersion());
+        Log.d(TAG, "set retain, old value = " + MallCtl.jeSetRetain(true));
     }
 
     public void killSelf(View view) {
