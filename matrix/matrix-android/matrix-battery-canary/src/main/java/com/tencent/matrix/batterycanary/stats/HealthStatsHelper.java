@@ -348,6 +348,7 @@ public final class HealthStatsHelper {
 
     /**
      * WIP
+     * Memory TimeStats support needed, see "com.android.internal.os.KernelMemoryBandwidthStats"
      *
      * @see com.android.internal.os.MemoryPowerCalculator
      */
@@ -355,7 +356,7 @@ public final class HealthStatsHelper {
         double power = 0;
         int numBuckets = powerProfile.getNumElements(PowerProfile.POWER_MEMORY);
         for (int i = 0; i < numBuckets; i++) {
-            long timeMs = 0; // TODO: Memory TimeStats supported, see "com.android.internal.os.KernelMemoryBandwidthStats"
+            long timeMs = 0;
             power += new UsageBasedPowerEstimator(powerProfile.getAveragePower(PowerProfile.POWER_MEMORY, i)).calculatePower(timeMs);
         }
         return power;
@@ -472,6 +473,7 @@ public final class HealthStatsHelper {
 
 
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+    @VisibleForTesting
     public static double calcMobilePowerByNetworkStatBytes(PowerProfile powerProfile, RadioStatSnapshot snapshot, double rxBps, double txBps) {
         long rxMs = (long) ((snapshot.mobileRxBytes.get() / (rxBps / 8)) * 1000);
         long txMs = (long) ((snapshot.mobileTxBytes.get() / (txBps / 8)) * 1000);
@@ -494,6 +496,7 @@ public final class HealthStatsHelper {
         return power;
     }
 
+    @VisibleForTesting
     public static double calcMobilePowerByNetworkStatPackets(PowerProfile powerProfile, RadioStatSnapshot snapshot, double rxBps, double txBps) {
         double power = 0;
         {
@@ -533,11 +536,11 @@ public final class HealthStatsHelper {
             MatrixLog.i(TAG, "estimate WIFI by controller");
             return power;
         }
-        power = calcWifiPowerByPackets(powerProfile, healthStats, 500000, 500000);
-        if (power > 0) {
-            MatrixLog.i(TAG, "estimate WIFI by packets");
-            return power;
-        }
+        // power = calcWifiPowerByPackets(powerProfile, healthStats, 500000, 500000);
+        // if (power > 0) {
+        //     MatrixLog.i(TAG, "estimate WIFI by packets");
+        //     return power;
+        // }
         return 0;
     }
 
@@ -572,7 +575,6 @@ public final class HealthStatsHelper {
     public static double calcWifiPowerByPackets(PowerProfile powerProfile, HealthStats healthStats, double rxBps, double txBps) {
         // calc from packets
         double power = 0;
-        MatrixLog.i(TAG, "estimate WIFI by packets");
         if (rxBps >= 0 && txBps >= 0) {
             if (rxBps == 0 && txBps == 0) {
                 return power;
@@ -599,6 +601,7 @@ public final class HealthStatsHelper {
     }
 
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+    @VisibleForTesting
     public static double calcWifiPowerByNetworkStatBytes(PowerProfile powerProfile, RadioStatSnapshot snapshot, double rxBps, double txBps) {
         long rxMs = (long) ((snapshot.wifiRxBytes.get() / (rxBps / 8)) * 1000);
         long txMs = (long) ((snapshot.wifiTxBytes.get() / (txBps / 8)) * 1000);
@@ -621,6 +624,7 @@ public final class HealthStatsHelper {
         return power;
     }
 
+    @VisibleForTesting
     public static double calcWifiPowerByNetworkStatPackets(PowerProfile powerProfile, RadioStatSnapshot snapshot, double rxBps, double txBps) {
         double power = 0;
         {
@@ -733,6 +737,10 @@ public final class HealthStatsHelper {
     }
 
     /**
+     * WIP
+     * Calculate camera power usage.  Right now, this is a (very) rough estimate based on the
+     * average power usage for a typical camera application.
+     *
      * @see com.android.internal.os.CameraPowerCalculator
      */
     @RequiresApi(api = Build.VERSION_CODES.N)
@@ -762,6 +770,7 @@ public final class HealthStatsHelper {
 
     /**
      * @see com.android.internal.os.MediaPowerCalculator
+     * @see com.android.internal.os.AudioPowerCalculator
      */
     @RequiresApi(api = Build.VERSION_CODES.N)
     public static double calcAudioPower(PowerProfile powerProfile, HealthStats healthStats) {
@@ -779,6 +788,7 @@ public final class HealthStatsHelper {
 
     /**
      * @see com.android.internal.os.MediaPowerCalculator
+     * @see com.android.internal.os.VideoPowerCalculator
      */
     @RequiresApi(api = Build.VERSION_CODES.N)
     public static double calcVideoPower(PowerProfile powerProfile, HealthStats healthStats) {
@@ -812,6 +822,7 @@ public final class HealthStatsHelper {
 
     /**
      * WIP
+     * Binder cup time_in_state can not be collected right now
      *
      * @see com.android.internal.os.SystemServicePowerCalculator
      */

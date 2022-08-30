@@ -26,6 +26,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.VisibleForTesting;
 
 /**
@@ -96,10 +97,21 @@ public class HealthStatsFeature extends AbsMonitorFeature {
             snapshot.mobileRxMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_MOBILE_RX_MS));
             snapshot.mobileTxMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_MOBILE_TX_MS));
 
+            snapshot.mobileRxBytes = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_MOBILE_RX_BYTES));
+            snapshot.mobileTxBytes = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_MOBILE_TX_BYTES));
+            snapshot.mobileRxPackets = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_MOBILE_RX_PACKETS));
+            snapshot.mobileTxPackets = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_MOBILE_TX_PACKETS));
+
             snapshot.wifiPowerMams = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_POWER_MAMS));
             snapshot.wifiIdleMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_IDLE_MS));
             snapshot.wifiRxMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_RX_MS));
             snapshot.wifiTxMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_TX_MS));
+            snapshot.wifiRunningMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_RUNNING_MS));
+            snapshot.wifiLockMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_FULL_LOCK_MS));
+            snapshot.wifiScanMs = DigitEntry.of(HealthStatsHelper.getTimerTime(healthStats, UidHealthStats.TIMER_WIFI_SCAN));
+            snapshot.wifiMulticastMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_MULTICAST_MS));
+            snapshot.wifiRxBytes = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_RX_BYTES));
+            snapshot.wifiTxBytes = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_TX_BYTES));
             snapshot.wifiRxPackets = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_RX_PACKETS));
             snapshot.wifiTxPackets = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_TX_PACKETS));
 
@@ -280,11 +292,21 @@ public class HealthStatsFeature extends AbsMonitorFeature {
         public DigitEntry<Long> mobileIdleMs = DigitEntry.of(0L);
         public DigitEntry<Long> mobileRxMs = DigitEntry.of(0L);
         public DigitEntry<Long> mobileTxMs = DigitEntry.of(0L);
+        public DigitEntry<Long> mobileRxBytes = DigitEntry.of(0L);
+        public DigitEntry<Long> mobileTxBytes = DigitEntry.of(0L);
+        public DigitEntry<Long> mobileRxPackets = DigitEntry.of(0L);
+        public DigitEntry<Long> mobileTxPackets = DigitEntry.of(0L);
 
         public DigitEntry<Long> wifiPowerMams = DigitEntry.of(0L);
         public DigitEntry<Long> wifiIdleMs = DigitEntry.of(0L);
         public DigitEntry<Long> wifiRxMs = DigitEntry.of(0L);
         public DigitEntry<Long> wifiTxMs = DigitEntry.of(0L);
+        public DigitEntry<Long> wifiRunningMs = DigitEntry.of(0L);
+        public DigitEntry<Long> wifiLockMs = DigitEntry.of(0L);
+        public DigitEntry<Long> wifiScanMs = DigitEntry.of(0L);
+        public DigitEntry<Long> wifiMulticastMs = DigitEntry.of(0L);
+        public DigitEntry<Long> wifiRxBytes = DigitEntry.of(0L);
+        public DigitEntry<Long> wifiTxBytes = DigitEntry.of(0L);
         public DigitEntry<Long> wifiRxPackets = DigitEntry.of(0L);
         public DigitEntry<Long> wifiTxPackets = DigitEntry.of(0L);
 
@@ -330,11 +352,11 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                     + blueToothPower.get()
                     + gpsPower.get()
                     + sensorsPower.get()
-                    + cameraPower.get()
                     + flashLightPower.get()
                     + audioPower.get()
                     + videoPower.get()
                     + screenPower.get()
+                    // + cameraPower.get()        // WIP
                     // + systemServicePower.get() // WIP
                     + idlePower.get();
         }
@@ -375,11 +397,22 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                     delta.mobileIdleMs = Differ.DigitDiffer.globalDiff(bgn.mobileIdleMs, end.mobileIdleMs);
                     delta.mobileRxMs = Differ.DigitDiffer.globalDiff(bgn.mobileRxMs, end.mobileRxMs);
                     delta.mobileTxMs = Differ.DigitDiffer.globalDiff(bgn.mobileTxMs, end.mobileTxMs);
+                    delta.mobileRxBytes = Differ.DigitDiffer.globalDiff(bgn.mobileRxBytes, end.mobileRxBytes);
+                    delta.mobileTxBytes = Differ.DigitDiffer.globalDiff(bgn.mobileTxBytes, end.mobileTxBytes);
+                    delta.mobileRxPackets = Differ.DigitDiffer.globalDiff(bgn.mobileRxPackets, end.mobileRxPackets);
+                    delta.mobileTxPackets = Differ.DigitDiffer.globalDiff(bgn.mobileTxPackets, end.mobileTxPackets);
+
 
                     delta.wifiPowerMams = Differ.DigitDiffer.globalDiff(bgn.wifiPowerMams, end.wifiPowerMams);
                     delta.wifiIdleMs = Differ.DigitDiffer.globalDiff(bgn.wifiIdleMs, end.wifiIdleMs);
                     delta.wifiRxMs = Differ.DigitDiffer.globalDiff(bgn.wifiRxMs, end.wifiRxMs);
                     delta.wifiTxMs = Differ.DigitDiffer.globalDiff(bgn.wifiTxMs, end.wifiTxMs);
+                    delta.wifiRunningMs = Differ.DigitDiffer.globalDiff(bgn.wifiRunningMs, end.wifiRunningMs);
+                    delta.wifiLockMs = Differ.DigitDiffer.globalDiff(bgn.wifiLockMs, end.wifiLockMs);
+                    delta.wifiScanMs = Differ.DigitDiffer.globalDiff(bgn.wifiScanMs, end.wifiScanMs);
+                    delta.wifiMulticastMs = Differ.DigitDiffer.globalDiff(bgn.wifiMulticastMs, end.wifiMulticastMs);
+                    delta.wifiRxBytes = Differ.DigitDiffer.globalDiff(bgn.wifiRxBytes, end.wifiRxBytes);
+                    delta.wifiTxBytes = Differ.DigitDiffer.globalDiff(bgn.wifiTxBytes, end.wifiTxBytes);
                     delta.wifiRxPackets = Differ.DigitDiffer.globalDiff(bgn.wifiRxPackets, end.wifiRxPackets);
                     delta.wifiTxPackets = Differ.DigitDiffer.globalDiff(bgn.wifiTxPackets, end.wifiTxPackets);
 
@@ -469,6 +502,14 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                     });
                 }
             };
+        }
+
+        public static double getPower(@NonNull Map<String, ?> extra, String key) {
+            Object val = extra.get(key);
+            if (val instanceof Double) {
+                return (double) val;
+            }
+            return 0;
         }
     }
 }
