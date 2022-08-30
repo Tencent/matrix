@@ -24,6 +24,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.view.animation.AccelerateInterpolator;
+import android.widget.CheckBox;
 import android.widget.LinearLayout;
 import android.widget.PopupMenu;
 import android.widget.TextView;
@@ -95,6 +96,7 @@ final public class TopThreadIndicator {
     private BatteryMonitorCore mCore;
     @Nullable
     private Delta<JiffiesSnapshot> mCurrDelta;
+    private boolean mShowPower = false;
     @NonNull
     private CallStackCollector mCollector = new CallStackCollector();
     @NonNull
@@ -304,6 +306,9 @@ final public class TopThreadIndicator {
             final TextView tvProc = mRootView.findViewById(R.id.tv_proc);
             tvProc.setText(mCurrProc.second);
 
+            final CheckBox checkPower = mRootView.findViewById(R.id.check_power);
+            mShowPower = checkPower.isChecked();
+
             // init thread entryGroup
             LinearLayout procEntryGroup = mRootView.findViewById(R.id.layout_entry_proc_group);
             for (int i = 0; i < MAX_PROC_NUM - 1; i++) {
@@ -442,6 +447,12 @@ final public class TopThreadIndicator {
                         mRootView.findViewById(R.id.iv_logo_minify).setVisibility(View.VISIBLE);
                         return;
                     }
+                    if (v.getId() == R.id.layout_check_power) {
+                        CheckBox view = v.findViewById(R.id.check_power);
+                        view.setChecked(!view.isChecked());
+                        mShowPower = view.isChecked();
+                        return;
+                    }
                     if (v == mRootView && mRootView.findViewById(R.id.layout_top).getVisibility() == View.GONE) {
                         // Minify LOGO
                         View anchorView = mRootView.findViewById(R.id.iv_logo_minify);
@@ -481,6 +492,7 @@ final public class TopThreadIndicator {
             mRootView.findViewById(R.id.layout_dump).setOnClickListener(listener);
             mRootView.findViewById(R.id.iv_logo).setOnClickListener(listener);
             mRootView.findViewById(R.id.tv_minify).setOnClickListener(listener);
+            mRootView.findViewById(R.id.layout_check_power).setOnClickListener(listener);
             mRootView.setOnClickListener(listener);
             return true;
         } catch (Exception e) {
@@ -619,7 +631,9 @@ final public class TopThreadIndicator {
                                 float threadLoad = figureCupLoad(entryJffies, delta.during / 10L);
 
                                 View threadItemView = threadEntryGroup.getChildAt(idx);
-                                // threadItemView.setVisibility(View.VISIBLE);
+                                if (!mShowPower) {
+                                    threadItemView.setVisibility(View.VISIBLE);
+                                }
                                 TextView tvName = threadItemView.findViewById(R.id.tv_name);
                                 TextView tvTid = threadItemView.findViewById(R.id.tv_tid);
                                 TextView tvStatus = threadItemView.findViewById(R.id.tv_status);
@@ -667,136 +681,138 @@ final public class TopThreadIndicator {
                 for (int i = 0; i < powerEntryGroup.getChildCount(); i++) {
                     powerEntryGroup.getChildAt(i).setVisibility(View.GONE);
                 }
-                final Map<String, Pair<String, Double>> powerMap = new LinkedHashMap<>();
-                Result result = monitors.getSamplingResult(DeviceStatMonitorFeature.BatteryCurrentSnapshot.class);
-                if (result != null) {
-                    double power = (result.sampleAvg / -1000) * (appStats.duringMillis * 1f / BatteryCanaryUtil.ONE_HOR);
-                    double deltaPh = (Double) power * BatteryCanaryUtil.ONE_HOR / appStats.duringMillis;
-                    powerMap.put("currency", new Pair<>("mAh", deltaPh / 1000));
-                } else {
-                    powerMap.put("currency", new Pair<String, Double>("mAh", null));
-                }
-                final Delta<HealthStatsFeature.HealthStatsSnapshot> healthStatsDelta = monitors.getDelta(HealthStatsFeature.HealthStatsSnapshot.class);
-                if (healthStatsDelta != null) {
-                    powerMap.put("total", new Pair<>("mAh", healthStatsDelta.dlt.getTotalPower()));
-                    powerMap.put("cpu", new Pair<>("mAh", healthStatsDelta.dlt.cpuPower.get()));
-                    {
-                        List<String> modes = Arrays.asList("JiffyUid");
-                        for (String mode : modes) {
-                            Object powers = healthStatsDelta.dlt.extras.get(mode);
-                            if (powers != null) {
-                                if (powers instanceof Map<?, ?>) {
-                                    // tuning cpu powers
-                                    for (Map.Entry<?, ?> entry : ((Map<?, ?>) powers).entrySet()) {
-                                        String key = String.valueOf(entry.getKey());
-                                        Object val = entry.getValue();
-                                        if (key.startsWith("power-cpu") && val instanceof Double) {
-                                            double cpuPower = (Double) val;
-                                            powerMap.put(key.replace("power-cpu", " - cpu"), new Pair<>("mAh", cpuPower));
+                if (mShowPower) {
+                    final Map<String, Pair<String, Double>> powerMap = new LinkedHashMap<>();
+                    Result result = monitors.getSamplingResult(DeviceStatMonitorFeature.BatteryCurrentSnapshot.class);
+                    if (result != null) {
+                        double power = (result.sampleAvg / -1000) * (appStats.duringMillis * 1f / BatteryCanaryUtil.ONE_HOR);
+                        double deltaPh = (Double) power * BatteryCanaryUtil.ONE_HOR / appStats.duringMillis;
+                        powerMap.put("currency", new Pair<>("mAh", deltaPh / 1000));
+                    } else {
+                        powerMap.put("currency", new Pair<String, Double>("mAh", null));
+                    }
+                    final Delta<HealthStatsFeature.HealthStatsSnapshot> healthStatsDelta = monitors.getDelta(HealthStatsFeature.HealthStatsSnapshot.class);
+                    if (healthStatsDelta != null) {
+                        powerMap.put("total", new Pair<>("mAh", healthStatsDelta.dlt.getTotalPower()));
+                        powerMap.put("cpu", new Pair<>("mAh", healthStatsDelta.dlt.cpuPower.get()));
+                        {
+                            List<String> modes = Arrays.asList("JiffyUid");
+                            for (String mode : modes) {
+                                Object powers = healthStatsDelta.dlt.extras.get(mode);
+                                if (powers != null) {
+                                    if (powers instanceof Map<?, ?>) {
+                                        // tuning cpu powers
+                                        for (Map.Entry<?, ?> entry : ((Map<?, ?>) powers).entrySet()) {
+                                            String key = String.valueOf(entry.getKey());
+                                            Object val = entry.getValue();
+                                            if (key.startsWith("power-cpu") && val instanceof Double) {
+                                                double cpuPower = (Double) val;
+                                                powerMap.put(key.replace("power-cpu", " - cpu"), new Pair<>("mAh", cpuPower));
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
-                    }
-                    powerMap.put("wakelocks", new Pair<>("mAh", healthStatsDelta.dlt.wakelocksPower.get()));
-                    powerMap.put("mobile", new Pair<>("mAh", healthStatsDelta.dlt.mobilePower.get()));
-                    {
+                        powerMap.put("wakelocks", new Pair<>("mAh", healthStatsDelta.dlt.wakelocksPower.get()));
+                        powerMap.put("mobile", new Pair<>("mAh", healthStatsDelta.dlt.mobilePower.get()));
+                        {
 
-                        monitors.getDelta(TrafficMonitorFeature.RadioStatSnapshot.class, new Consumer<Delta<TrafficMonitorFeature.RadioStatSnapshot>>() {
-                            @Override
-                            public void accept(final Delta<TrafficMonitorFeature.RadioStatSnapshot> delta) {
-                                if (healthStatsDelta.dlt.extras.containsKey("power-mobile-statByte")) {
-                                    Object val = healthStatsDelta.dlt.extras.get("power-mobile-statByte");
-                                    if (val instanceof Double) {
-                                        double power = (double) val;
-                                        powerMap.put(" - mobile-PowerBytes", new Pair<>("mAh", power));
-                                        powerMap.put("   - mobile-RxBytes", new Pair<>("byte", (double) delta.dlt.mobileRxBytes.get()));
-                                        powerMap.put("   - mobile-TxBytes", new Pair<>("byte", (double) delta.dlt.mobileTxBytes.get()));
+                            monitors.getDelta(TrafficMonitorFeature.RadioStatSnapshot.class, new Consumer<Delta<TrafficMonitorFeature.RadioStatSnapshot>>() {
+                                @Override
+                                public void accept(final Delta<TrafficMonitorFeature.RadioStatSnapshot> delta) {
+                                    if (healthStatsDelta.dlt.extras.containsKey("power-mobile-statByte")) {
+                                        Object val = healthStatsDelta.dlt.extras.get("power-mobile-statByte");
+                                        if (val instanceof Double) {
+                                            double power = (double) val;
+                                            powerMap.put(" - mobile-PowerBytes", new Pair<>("mAh", power));
+                                            powerMap.put("   - mobile-RxBytes", new Pair<>("byte", (double) delta.dlt.mobileRxBytes.get()));
+                                            powerMap.put("   - mobile-TxBytes", new Pair<>("byte", (double) delta.dlt.mobileTxBytes.get()));
+                                        }
                                     }
                                 }
-                            }
-                        });
-                    }
-                    powerMap.put("wifi", new Pair<>("mAh", healthStatsDelta.dlt.wifiPower.get()));
-                    {
+                            });
+                        }
+                        powerMap.put("wifi", new Pair<>("mAh", healthStatsDelta.dlt.wifiPower.get()));
+                        {
 
-                        monitors.getDelta(TrafficMonitorFeature.RadioStatSnapshot.class, new Consumer<Delta<TrafficMonitorFeature.RadioStatSnapshot>>() {
-                            @Override
-                            public void accept(final Delta<TrafficMonitorFeature.RadioStatSnapshot> delta) {
-                                if (healthStatsDelta.dlt.extras.containsKey("power-wifi-statByte")) {
-                                    Object val = healthStatsDelta.dlt.extras.get("power-wifi-statByte");
-                                    if (val instanceof Double) {
-                                        double power = (double) val;
-                                        powerMap.put(" - wifi-PowerBytes", new Pair<>("mAh", power));
-                                        powerMap.put("   - wifi-RxBytes", new Pair<>("byte", (double) delta.dlt.wifiRxBytes.get()));
-                                        powerMap.put("   - wifi-TxBytes", new Pair<>("byte", (double) delta.dlt.wifiTxBytes.get()));
+                            monitors.getDelta(TrafficMonitorFeature.RadioStatSnapshot.class, new Consumer<Delta<TrafficMonitorFeature.RadioStatSnapshot>>() {
+                                @Override
+                                public void accept(final Delta<TrafficMonitorFeature.RadioStatSnapshot> delta) {
+                                    if (healthStatsDelta.dlt.extras.containsKey("power-wifi-statByte")) {
+                                        Object val = healthStatsDelta.dlt.extras.get("power-wifi-statByte");
+                                        if (val instanceof Double) {
+                                            double power = (double) val;
+                                            powerMap.put(" - wifi-PowerBytes", new Pair<>("mAh", power));
+                                            powerMap.put("   - wifi-RxBytes", new Pair<>("byte", (double) delta.dlt.wifiRxBytes.get()));
+                                            powerMap.put("   - wifi-TxBytes", new Pair<>("byte", (double) delta.dlt.wifiTxBytes.get()));
+                                        }
+                                    }
+                                    if (healthStatsDelta.dlt.extras.containsKey("power-wifi-statPacket")) {
+                                        Object val = healthStatsDelta.dlt.extras.get("power-wifi-statPacket");
+                                        if (val instanceof Double) {
+                                            double power = (double) val;
+                                            powerMap.put(" - wifi-PowerPackets", new Pair<>("mAh", power));
+                                            powerMap.put("   - wifi-RxPackets", new Pair<>("packet", (double) delta.dlt.wifiRxPackets.get()));
+                                            powerMap.put("   - wifi-TxPackets", new Pair<>("packet", (double) delta.dlt.wifiTxPackets.get()));
+                                        }
                                     }
                                 }
-                                if (healthStatsDelta.dlt.extras.containsKey("power-wifi-statPacket")) {
-                                    Object val = healthStatsDelta.dlt.extras.get("power-wifi-statPacket");
-                                    if (val instanceof Double) {
-                                        double power = (double) val;
-                                        powerMap.put(" - wifi-PowerPackets", new Pair<>("mAh", power));
-                                        powerMap.put("   - wifi-RxPackets", new Pair<>("packet", (double) delta.dlt.wifiRxPackets.get()));
-                                        powerMap.put("   - wifi-TxPackets", new Pair<>("packet", (double) delta.dlt.wifiTxPackets.get()));
-                                    }
-                                }
-                            }
-                        });
+                            });
+                        }
+                        powerMap.put("blueTooth", new Pair<>("mAh", healthStatsDelta.dlt.blueToothPower.get()));
+                        powerMap.put("gps", new Pair<>("mAh", healthStatsDelta.dlt.gpsPower.get()));
+                        powerMap.put("sensors", new Pair<>("mAh", healthStatsDelta.dlt.sensorsPower.get()));
+                        powerMap.put("camera", new Pair<>("mAh", healthStatsDelta.dlt.cameraPower.get()));
+                        powerMap.put("flashLight", new Pair<>("mAh", healthStatsDelta.dlt.flashLightPower.get()));
+                        powerMap.put("audio", new Pair<>("mAh", healthStatsDelta.dlt.audioPower.get()));
+                        powerMap.put("video", new Pair<>("mAh", healthStatsDelta.dlt.videoPower.get()));
+                        powerMap.put("screen", new Pair<>("mAh", healthStatsDelta.dlt.screenPower.get()));
+                        // powerMap.put("systemService", healthStatsDelta.dlt.systemServicePower.get());
+                        powerMap.put("idle", new Pair<>("mAh", healthStatsDelta.dlt.idlePower.get()));
                     }
-                    powerMap.put("blueTooth", new Pair<>("mAh", healthStatsDelta.dlt.blueToothPower.get()));
-                    powerMap.put("gps", new Pair<>("mAh", healthStatsDelta.dlt.gpsPower.get()));
-                    powerMap.put("sensors", new Pair<>("mAh", healthStatsDelta.dlt.sensorsPower.get()));
-                    powerMap.put("camera", new Pair<>("mAh", healthStatsDelta.dlt.cameraPower.get()));
-                    powerMap.put("flashLight", new Pair<>("mAh", healthStatsDelta.dlt.flashLightPower.get()));
-                    powerMap.put("audio", new Pair<>("mAh", healthStatsDelta.dlt.audioPower.get()));
-                    powerMap.put("video", new Pair<>("mAh", healthStatsDelta.dlt.videoPower.get()));
-                    powerMap.put("screen", new Pair<>("mAh", healthStatsDelta.dlt.screenPower.get()));
-                    // powerMap.put("systemService", healthStatsDelta.dlt.systemServicePower.get());
-                    powerMap.put("idle", new Pair<>("mAh", healthStatsDelta.dlt.idlePower.get()));
-                }
-                // for (Iterator<Map.Entry<String, Double>> iterator = powerMap.entrySet().iterator(); iterator.hasNext(); ) {
-                //     Map.Entry<String, Double> item = iterator.next();
-                //     if (item.getValue() == 0d) {
-                //         iterator.remove();
-                //     }
-                // }
-                int idx = 0;
-                for (Map.Entry<String, Pair<String, Double>> entry : powerMap.entrySet()) {
-                    String module = entry.getKey();
-                    String unit = "";
-                    Double value = null;
-                    Pair<String, Double> pair = entry.getValue();
-                    if (pair.first != null) {
-                        if (pair.first.equals("mAh")) {
-                            unit = "";
-                            if (pair.second != null) {
-                                double power = (double) pair.second;
-                                value = power * BatteryCanaryUtil.ONE_HOR / appStats.duringMillis;
-                            }
-                        } else {
-                            unit = pair.first;
-                            if (pair.second != null) {
-                                value = pair.second;
+                    // for (Iterator<Map.Entry<String, Double>> iterator = powerMap.entrySet().iterator(); iterator.hasNext(); ) {
+                    //     Map.Entry<String, Double> item = iterator.next();
+                    //     if (item.getValue() == 0d) {
+                    //         iterator.remove();
+                    //     }
+                    // }
+                    int idx = 0;
+                    for (Map.Entry<String, Pair<String, Double>> entry : powerMap.entrySet()) {
+                        String module = entry.getKey();
+                        String unit = "";
+                        Double value = null;
+                        Pair<String, Double> pair = entry.getValue();
+                        if (pair.first != null) {
+                            if (pair.first.equals("mAh")) {
+                                unit = "";
+                                if (pair.second != null) {
+                                    double power = (double) pair.second;
+                                    value = power * BatteryCanaryUtil.ONE_HOR / appStats.duringMillis;
+                                }
+                            } else {
+                                unit = pair.first;
+                                if (pair.second != null) {
+                                    value = pair.second;
+                                }
                             }
                         }
-                    }
-                    View threadItemView = powerEntryGroup.getChildAt(idx);
-                    threadItemView.setVisibility(View.VISIBLE);
-                    TextView tvName = threadItemView.findViewById(R.id.tv_name);
-                    TextView tvUnit = threadItemView.findViewById(R.id.tv_unit);
-                    TextView tvPower = threadItemView.findViewById(R.id.tv_power);
-                    tvName.setText(module);
-                    tvUnit.setText(unit);
-                    if (value == null) {
-                        tvPower.setText("NULL");
-                    } else {
-                        tvPower.setText(String.valueOf(HealthStatsHelper.round(value, 5)));
-                    }
-                    idx++;
-                    if (idx >= MAX_POWER_NUM) {
-                        break;
+                        View threadItemView = powerEntryGroup.getChildAt(idx);
+                        threadItemView.setVisibility(View.VISIBLE);
+                        TextView tvName = threadItemView.findViewById(R.id.tv_name);
+                        TextView tvUnit = threadItemView.findViewById(R.id.tv_unit);
+                        TextView tvPower = threadItemView.findViewById(R.id.tv_power);
+                        tvName.setText(module);
+                        tvUnit.setText(unit);
+                        if (value == null) {
+                            tvPower.setText("NULL");
+                        } else {
+                            tvPower.setText(String.valueOf(HealthStatsHelper.round(value, 5)));
+                        }
+                        idx++;
+                        if (idx >= MAX_POWER_NUM) {
+                            break;
+                        }
                     }
                 }
             }

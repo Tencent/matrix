@@ -29,6 +29,41 @@
             android:textSize="12sp" />
 
         <RelativeLayout
+            android:id="@+id/layout_check_power"
+            android:layout_width="70dp"
+            android:layout_height="20dp"
+            android:layout_centerVertical="true"
+            android:layout_marginRight="10dp"
+            android:layout_toLeftOf="@+id/layout_proc"
+            android:foreground="?attr/selectableItemBackground">
+
+            <CheckBox
+                android:id="@+id/check_power"
+                android:layout_width="25dp"
+                android:layout_height="20dp"
+                android:layout_alignParentLeft="true"
+                android:layout_marginTop="2dp"
+                android:checked="true"
+                android:clickable="false"
+                android:scaleX="0.35"
+                android:scaleY="0.35" />
+
+            <TextView
+                android:layout_marginLeft="-5dp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerVertical="true"
+                android:layout_gravity="center_vertical"
+                android:layout_toRightOf="@+id/check_power"
+                android:ellipsize="end"
+                android:gravity="right"
+                android:maxLines="1"
+                android:paddingLeft="5dp"
+                android:text="power"
+                android:textSize="12sp" />
+        </RelativeLayout>
+
+        <RelativeLayout
             android:id="@+id/layout_proc"
             android:layout_width="60dp"
             android:layout_height="20dp"
