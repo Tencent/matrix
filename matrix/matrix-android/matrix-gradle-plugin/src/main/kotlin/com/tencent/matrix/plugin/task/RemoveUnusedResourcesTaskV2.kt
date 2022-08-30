@@ -259,8 +259,10 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
                                 if (zipEntry.method == ZipEntry.DEFLATED) {
                                     compressedEntry.add(destFile)
                                 }
-                                Log.d(TAG, "unzip %s to file %s", zipEntry.name, destFile)
-                                ApkUtil.unzipEntry(zipInputFile, zipEntry, destFile)
+                                if (!zipEntry.isDirectory) {
+                                    Log.d(TAG, "unzip %s to file %s", zipEntry.name, destFile)
+                                    ApkUtil.unzipEntry(zipInputFile, zipEntry, destFile)
+                                }
                             }
                         } else {
                             Log.w(TAG, "parse entry %s resource name failed!", zipEntry.name)
@@ -270,7 +272,7 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
                             if (zipEntry.method == ZipEntry.DEFLATED) {
                                 compressedEntry.add(destFile)
                             }
-                            if (zipEntry.name != ARSC_FILE_NAME) {                            // has already unzip resources.arsc before
+                            if (!zipEntry.isDirectory && zipEntry.name != ARSC_FILE_NAME) {                            // has already unzip resources.arsc before
                                 Log.d(TAG, "unzip %s to file %s", zipEntry.name, destFile)
                                 ApkUtil.unzipEntry(zipInputFile, zipEntry, destFile)
                             }
