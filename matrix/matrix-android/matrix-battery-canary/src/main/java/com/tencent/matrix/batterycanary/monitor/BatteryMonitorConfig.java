@@ -70,6 +70,7 @@ public class BatteryMonitorConfig {
     public CallStackCollector callStackCollector;
     public Function<Pair<Integer, String>, IpcProcessJiffies> ipcJiffiesCollector;
     public Function<Pair<Integer, String>, RemoteStat> ipcCpuStatCollector;
+    public boolean isTuningPowers = BuildConfig.DEBUG;
 
     private BatteryMonitorConfig() {
     }
@@ -293,6 +294,11 @@ public class BatteryMonitorConfig {
 
         public Builder setCollector(Function<Pair<Integer, String>, IpcProcessJiffies> collector) {
             config.ipcJiffiesCollector = collector;
+            return this;
+        }
+
+        public Builder enableTuningPowers(boolean enable) {
+            config.isTuningPowers = enable;
             return this;
         }
 

@@ -1027,9 +1027,8 @@ public class CompositeMonitors {
             @Override
             public void accept(Delta<HealthStatsSnapshot> healthStatsDelta) {
                 tuningPowers(healthStatsDelta.dlt);
-
                 {
-                    // Reset cpuPower if exists
+                    // Reset cpuPower
                     double power = 0;
                     Object powers = healthStatsDelta.dlt.extras.get("JiffyUid");
                     if (powers instanceof Map<?, ?>) {
@@ -1041,24 +1040,30 @@ public class CompositeMonitors {
                     }
                     healthStatsDelta.dlt.cpuPower = DigitEntry.of(power);
                 }
-                // {
-                //     // Reset mobilePower if exists
-                //     double power = 0;
-                //     Object val = healthStatsDelta.dlt.extras.get("power-mobile-statByte");
-                //     if (val instanceof Double) {
-                //         power = (double) val;
-                //     }
-                //     healthStatsDelta.dlt.mobilePower = DigitEntry.of(power);
-                // }
-                // {
-                //     // Reset wifiPower if exists
-                //     double power = 0;
-                //     Object val = healthStatsDelta.dlt.extras.get("power-wifi-statByte");
-                //     if (val instanceof Double) {
-                //         power = (double) val;
-                //     }
-                //     healthStatsDelta.dlt.wifiPower = DigitEntry.of(power);
-                // }
+                {
+                    // Reset mobilePower if exists
+                    if (healthStatsDelta.dlt.mobilePower.get() <= 0) {
+                        double power = 0;
+                        // Take power-mobile-statByte
+                        Object val = healthStatsDelta.dlt.extras.get("power-mobile-statByte");
+                        if (val instanceof Double) {
+                            power = (double) val;
+                        }
+                        healthStatsDelta.dlt.mobilePower = DigitEntry.of(power);
+                    }
+                }
+                {
+                    // Reset wifiPower if exists
+                    if (healthStatsDelta.dlt.wifiPower.get() <= 0) {
+                        double power = 0;
+                        // Take power-wifi-statByte
+                        Object val = healthStatsDelta.dlt.extras.get("power-wifi-statByte");
+                        if (val instanceof Double) {
+                            power = (double) val;
+                        }
+                        healthStatsDelta.dlt.wifiPower = DigitEntry.of(power);
+                    }
+                }
             }
         });
     }
@@ -1067,7 +1072,14 @@ public class CompositeMonitors {
         if (!snapshot.isDelta) {
             throw new IllegalStateException("Only support delta snapshot");
         }
+        BatteryMonitorCore monitor = getMonitor();
+        if (monitor == null) {
+            return;
+        }
+
+        final boolean tunning = monitor.getConfig().isTuningPowers;
         final Tuner tuner = new Tuner();
+
         getFeature(CpuStatFeature.class, new Consumer<CpuStatFeature>() {
             @Override
             public void accept(CpuStatFeature feat) {
@@ -1079,45 +1091,47 @@ public class CompositeMonitors {
                         @Override
                         public void accept(final Delta<CpuStatFeature.CpuStateSnapshot> cpuStatDelta) {
                             // 1.1 CpuTimeMs
-                            getDelta(HealthStatsFeature.HealthStatsSnapshot.class, new Consumer<Delta<HealthStatsFeature.HealthStatsSnapshot>>() {
-                                @Override
-                                public void accept(final Delta<HealthStatsFeature.HealthStatsSnapshot> healthStats) {
-                                    healthStats.dlt.extras.put("TimeUid", tuner.tuningCpuPowers(powerProfile, CompositeMonitors.this, new Tuner.CpuTime() {
-                                        @Override
-                                        public long getBgnMs(String procSuffix) {
-                                            return getCpuTimeMs(procSuffix, healthStats.bgn);
-                                        }
-
-                                        @Override
-                                        public long getEndMs(String procSuffix) {
-                                            return getCpuTimeMs(procSuffix, healthStats.end);
-                                        }
-
-                                        @Override
-                                        public long getDltMs(String procSuffix) {
-                                            return getCpuTimeMs(procSuffix, healthStats.dlt);
-                                        }
-
-                                        private long getCpuTimeMs(String procSuffix, HealthStatsFeature.HealthStatsSnapshot healthStatsSnapshot) {
-                                            if (procSuffix == null) {
-                                                return healthStatsSnapshot.cpuUsrTimeMs.get()
-                                                        + healthStatsSnapshot.cpuSysTimeMs.get();
-                                            } else {
-                                                if (mMonitor != null) {
-                                                    String procName = mMonitor.getContext().getPackageName();
-                                                    if ("main".equals(procSuffix)) {
-                                                        procName = mMonitor.getContext().getPackageName() + ":" + procSuffix;
-                                                    }
-                                                    DigitEntry<Long> usrTime = healthStatsSnapshot.procStatsCpuUsrTimeMs.get(procName);
-                                                    DigitEntry<Long> sysTime = healthStatsSnapshot.procStatsCpuSysTimeMs.get(procName);
-                                                    return (usrTime == null ? 0 : usrTime.get()) + (sysTime == null ? 0 : sysTime.get());
-                                                }
+                            if (tunning) {
+                                getDelta(HealthStatsSnapshot.class, new Consumer<Delta<HealthStatsSnapshot>>() {
+                                    @Override
+                                    public void accept(final Delta<HealthStatsSnapshot> healthStats) {
+                                        healthStats.dlt.extras.put("TimeUid", tuner.tuningCpuPowers(powerProfile, CompositeMonitors.this, new Tuner.CpuTime() {
+                                            @Override
+                                            public long getBgnMs(String procSuffix) {
+                                                return getCpuTimeMs(procSuffix, healthStats.bgn);
                                             }
-                                            return 0L;
-                                        }
-                                    }));
-                                }
-                            });
+
+                                            @Override
+                                            public long getEndMs(String procSuffix) {
+                                                return getCpuTimeMs(procSuffix, healthStats.end);
+                                            }
+
+                                            @Override
+                                            public long getDltMs(String procSuffix) {
+                                                return getCpuTimeMs(procSuffix, healthStats.dlt);
+                                            }
+
+                                            private long getCpuTimeMs(String procSuffix, HealthStatsSnapshot healthStatsSnapshot) {
+                                                if (procSuffix == null) {
+                                                    return healthStatsSnapshot.cpuUsrTimeMs.get()
+                                                            + healthStatsSnapshot.cpuSysTimeMs.get();
+                                                } else {
+                                                    if (mMonitor != null) {
+                                                        String procName = mMonitor.getContext().getPackageName();
+                                                        if ("main".equals(procSuffix)) {
+                                                            procName = mMonitor.getContext().getPackageName() + ":" + procSuffix;
+                                                        }
+                                                        DigitEntry<Long> usrTime = healthStatsSnapshot.procStatsCpuUsrTimeMs.get(procName);
+                                                        DigitEntry<Long> sysTime = healthStatsSnapshot.procStatsCpuSysTimeMs.get(procName);
+                                                        return (usrTime == null ? 0 : usrTime.get()) + (sysTime == null ? 0 : sysTime.get());
+                                                    }
+                                                }
+                                                return 0L;
+                                            }
+                                        }));
+                                    }
+                                });
+                            }
 
                             // 1.2 CpuTimeJiffies
                             getDelta(JiffiesMonitorFeature.UidJiffiesSnapshot.class, new Consumer<Delta<JiffiesMonitorFeature.UidJiffiesSnapshot>>() {
@@ -1265,7 +1279,7 @@ public class CompositeMonitors {
 
 
     @SuppressLint("RestrictedApi")
-    static class Tuner {
+    protected static class Tuner {
         interface CpuTime {
             long getBgnMs(String procSuffix);
             long getEndMs(String procSuffix);
@@ -1278,6 +1292,11 @@ public class CompositeMonitors {
                 @SuppressLint("VisibleForTests")
                 @Override
                 public void accept(Delta<CpuStatFeature.UidCpuStateSnapshot> uidCpuStatDelta) {
+                    BatteryMonitorCore monitor = monitors.getMonitor();
+                    if (monitor == null) {
+                        return;
+                    }
+
                     // Calc by DIff
                     {
                         // UID Diff
@@ -1292,6 +1311,12 @@ public class CompositeMonitors {
                         }
                         dict.put("power-cpu-uidDiff", cpuPower);
                     }
+
+                    boolean tunning = monitor.getConfig().isTuningPowers;
+                    if (!tunning) {
+                        return;
+                    }
+
                     {
                         // UID Diff Scaled
                         double cpuPower = 0;
