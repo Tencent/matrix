@@ -40,8 +40,11 @@ import java.io.RandomAccessFile;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 import androidx.annotation.IntRange;
@@ -78,6 +81,7 @@ public final class BatteryCanaryUtil {
     public static final int JIFFY_MILLIS = 1000 / JIFFY_HZ;
 
     public interface Proxy {
+
         String getProcessName();
         String getPackageName();
         int getBatteryTemperature(Context context);
@@ -789,5 +793,16 @@ public final class BatteryCanaryUtil {
         } else {
             return input / Math.max(1, (millis) / ONE_MIN);
         }
+    }
+
+    public static <K, V> Map<K, V> sortMapByValue(Map<K, V> map, Comparator<? super Map.Entry<K, V>> comparator) {
+        List<Map.Entry<K, V>> list = new ArrayList<>(map.entrySet());
+        Collections.sort(list, comparator);
+
+        Map<K, V> result = new LinkedHashMap<>();
+        for (Map.Entry<K, V> entry : list) {
+            result.put(entry.getKey(), entry.getValue());
+        }
+        return result;
     }
 }

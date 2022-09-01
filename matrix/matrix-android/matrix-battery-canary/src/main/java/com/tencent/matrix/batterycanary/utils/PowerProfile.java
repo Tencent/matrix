@@ -64,7 +64,7 @@ public class PowerProfile {
         }
     }
 
-    public PowerProfile smoke() throws IOException {
+    PowerProfile smoke() throws IOException {
         if (getNumCpuClusters() <= 0) {
             throw new IOException("Invalid cpu clusters: " + getNumCpuClusters());
         }
@@ -244,12 +244,14 @@ public class PowerProfile {
      * to the CPU power, probably due to a DSP and / or amplifier.
      */
     public static final String POWER_AUDIO = "audio";
+    public static final String POWER_AUDIO_DSP = "dsp.audio";
 
     /**
      * Power consumed by any media hardware when playing back video content. This is in addition
      * to the CPU power, probably due to a DSP.
      */
     public static final String POWER_VIDEO = "video";
+    public static final String POWER_VIDEO_DSP = "dsp.video";
 
     /**
      * Average power consumption when camera flashlight is on.
@@ -298,7 +300,7 @@ public class PowerProfile {
 
     private static final Object sLock = new Object();
 
-    private PowerProfile(Context context) {
+    PowerProfile(Context context) {
         // Read the XML file for the given profile (normally only one per device)
         synchronized (sLock) {
             if (sPowerItemMap.size() == 0 && sPowerArrayMap.size() == 0) {
@@ -338,6 +340,7 @@ public class PowerProfile {
             mResType = "framework";
         } catch (Exception e) {
             MatrixLog.w(TAG, "read from framework failed: " + e);
+            clear();
             exception = e;
         }
 
@@ -362,24 +365,28 @@ public class PowerProfile {
                 }
             };
             try {
+                exception = null;
                 readPowerValuesFromFilePath(context, findBlock.call());
                 initCpuClusters();
                 smoke();
                 mResType = "custom";
             } catch (Exception e) {
                 MatrixLog.w(TAG, "read from custom failed: " + e);
+                clear();
                 exception = e;
             }
         }
 
         if (exception != null) {
             try {
+                exception = null;
                 readPowerValuesFromRes(context, "power_profile_test");
                 initCpuClusters();
                 smoke();
                 mResType = "test";
             } catch (Exception e) {
                 MatrixLog.w(TAG, "read from test failed: " + e);
+                clear();
                 exception = e;
             }
         }
@@ -389,7 +396,8 @@ public class PowerProfile {
         }
     }
 
-    private void readPowerValuesFromRes(Context context, String fileName) {
+    @VisibleForTesting
+    public void readPowerValuesFromRes(Context context, String fileName) {
         XmlResourceParser parser = null;
         try {
             final int id = context.getResources().getIdentifier(fileName, "xml", "android");
@@ -409,7 +417,8 @@ public class PowerProfile {
         }
     }
 
-    private void readPowerValuesFromFilePath(Context context, File xmlFile) {
+    @VisibleForTesting
+    public void readPowerValuesFromFilePath(Context context, File xmlFile) {
         FileInputStream is = null;
         try {
             XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
@@ -429,6 +438,12 @@ public class PowerProfile {
                 }
             }
         }
+    }
+
+    @VisibleForTesting
+    public void clear() {
+        sPowerItemMap.clear();
+        sPowerArrayMap.clear();
     }
 
     @SuppressWarnings({"ToArrayCallWithZeroLengthArrayArgument", "UnnecessaryBoxing", "CatchMayIgnoreException", "TryWithIdenticalCatches"})
@@ -518,7 +533,7 @@ public class PowerProfile {
     private static final String CPU_CORE_SPEED_PREFIX = "cpu.core_speeds.cluster";
     private static final String CPU_CORE_POWER_PREFIX = "cpu.core_power.cluster";
 
-    private void initCpuClusters() {
+    void initCpuClusters() {
         if (sPowerArrayMap.containsKey(CPU_PER_CLUSTER_CORE_COUNT)) {
             final Double[] data = sPowerArrayMap.get(CPU_PER_CLUSTER_CORE_COUNT);
             mCpuClusters = new CpuClusterKey[data.length];

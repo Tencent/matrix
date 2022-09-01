@@ -28,6 +28,7 @@ import android.text.TextUtils;
 import android.util.Log;
 
 import com.tencent.matrix.batterycanary.TestUtils;
+import com.tencent.matrix.batterycanary.monitor.feature.CompositeMonitors;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -35,11 +36,9 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.xmlpull.v1.XmlPullParser;
-import org.xmlpull.v1.XmlPullParserFactory;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.lang.reflect.Constructor;
@@ -135,25 +134,55 @@ public class BatteryMetricsTest {
             }
         };
 
-
         File file = findBlock.call();
         if (file != null) {
-            XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
-            factory.setNamespaceAware(true);
-            XmlPullParser parser = factory.newPullParser();
-            parser.setInput(new FileInputStream(file), "UTF-8");
-            while (parser.getEventType() != XmlPullParser.END_DOCUMENT) {
-                if (parser.getEventType() == XmlPullParser.START_TAG) {
-                    String tagName = parser.getName();
-                    String tagText = parser.getText();
-                    for (int i = 0; i < parser.getAttributeCount(); i++) {
-                        String attrName = parser.getAttributeName(i);
-                        String attrValue = parser.getAttributeValue(i);
-                        if (attrValue.startsWith("cpu.core_speeds.cluster")) {
-                        }
-                    }
+            PowerProfile powerProfile = new PowerProfile(mContext);
+            Assert.fail(PowerProfile.getResType());
+            powerProfile.readPowerValuesFromFilePath(mContext, file);
+            powerProfile.initCpuClusters();
+            powerProfile.smoke();
+        }
+    }
+
+    @Test
+    public void KernelCpuUidFreqTimeReaderCompat() throws IOException {
+        PowerProfile powerProfile = PowerProfile.init(mContext);
+        Assert.assertNotNull(powerProfile);
+        Assert.assertTrue(powerProfile.isSupported());
+
+        int[] clusterSteps = new int[powerProfile.getNumCpuClusters()];
+        for (int i = 0; i < clusterSteps.length; i++) {
+            clusterSteps[i] = powerProfile.getNumSpeedStepsInCpuCluster(i);
+        }
+        KernelCpuUidFreqTimeReader reader = new KernelCpuUidFreqTimeReader(Process.myPid(), clusterSteps);
+        reader.smoke();
+    }
+
+    @Test
+    public void testCpuCoreStepSpeedsSampling() throws IOException, InterruptedException {
+        PowerProfile powerProfile = PowerProfile.init(mContext);
+        Assert.assertNotNull(powerProfile);
+        Assert.assertTrue(powerProfile.isSupported());
+
+        List<int[]> cpuFreqSteps = BatteryCanaryUtil.getCpuFreqSteps();
+        int[] cpuCurrentFreq = BatteryCanaryUtil.getCpuCurrentFreq();
+        Assert.assertNotNull(cpuFreqSteps);
+        Assert.assertNotNull(cpuCurrentFreq);
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (true) {
                 }
-                parser.nextToken();
+            }
+        }).start();
+
+        CompositeMonitors.CpuFreqSampler sampler = new CompositeMonitors.CpuFreqSampler(BatteryCanaryUtil.getCpuFreqSteps());
+        Assert.assertTrue(sampler.isCompat(powerProfile));
+        if (!TestUtils.isAssembleTest()) {
+            while (true) {
+                sampler.count(BatteryCanaryUtil.getCpuCurrentFreq());
+                Thread.sleep(5000L);
             }
         }
     }

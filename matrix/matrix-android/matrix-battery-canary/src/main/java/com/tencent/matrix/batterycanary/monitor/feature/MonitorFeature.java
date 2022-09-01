@@ -434,6 +434,7 @@ public interface MonitorFeature {
                         if (!currSample.equals(INVALID)) {
                             mSampleLst = currSample.doubleValue();
                             mCount++;
+                            // FIXME: calc vag on finished
                             mSampleAvg = (mSampleAvg * (mCount - 1) + mSampleLst) / mCount;
                             if (mSampleFst == Double.MIN_VALUE) {
                                 mSampleFst = mSampleLst;

@@ -1,5 +1,6 @@
 package com.tencent.matrix.batterycanary.monitor.feature;
 
+import android.annotation.SuppressLint;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.SystemClock;
@@ -14,9 +15,13 @@ import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.DigitEntry;
 import com.tencent.matrix.batterycanary.stats.HealthStatsFeature;
+import com.tencent.matrix.batterycanary.stats.HealthStatsFeature.HealthStatsSnapshot;
+import com.tencent.matrix.batterycanary.stats.HealthStatsHelper;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.Consumer;
 import com.tencent.matrix.batterycanary.utils.Function;
+import com.tencent.matrix.batterycanary.utils.PowerProfile;
+import com.tencent.matrix.batterycanary.utils.RadioStatUtil;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.ArrayList;
@@ -44,6 +49,8 @@ public class CompositeMonitors {
     public static final String SCOPE_CANARY = "canary";
     public static final String SCOPE_INTERNAL = "internal";
     public static final String SCOPE_OVERHEAT = "overheat";
+    public static final String SCOPE_TOP_SHELL = "topShell";
+    public static final String SCOPE_TOP_INDICATOR = "topIndicator";
 
     // Differing
     protected final List<Class<? extends Snapshot<?>>> mMetrics = new ArrayList<>();
@@ -69,6 +76,11 @@ public class CompositeMonitors {
     protected BatteryMonitorCore mMonitor;
     @Nullable
     protected AppStats mAppStats;
+    @Nullable
+    protected CpuFreqSampler mCpuFreqSampler;
+    @Nullable
+    protected BpsSampler mBpsSampler;
+
     protected long mBgnMillis = SystemClock.uptimeMillis();
     protected String mScope;
 
@@ -97,6 +109,7 @@ public class CompositeMonitors {
         mTaskDeltasCollect.clear();
         mExtras.clear();
         mStacks.clear();
+        mCpuFreqSampler = null;
     }
 
     public CompositeMonitors fork() {
@@ -123,6 +136,7 @@ public class CompositeMonitors {
         that.mTaskDeltasCollect.putAll(this.mTaskDeltasCollect);
         that.mExtras.putAll(this.mExtras);
         that.mStacks.putAll(this.mStacks);
+        that.mCpuFreqSampler = this.mCpuFreqSampler;
         return that;
     }
 
@@ -381,6 +395,9 @@ public class CompositeMonitors {
         collectStacks();
         configureSampleResults();
         mAppStats = AppStats.current(SystemClock.uptimeMillis() - mBgnMillis);
+
+        // For further procedures
+        polishEstimatedPower();
     }
 
     protected void configureBgnSnapshots() {
@@ -517,6 +534,13 @@ public class CompositeMonitors {
             }
             return snapshot;
         }
+        if (snapshotClass == CpuStatFeature.UidCpuStateSnapshot.class) {
+            CpuStatFeature feature = getFeature(CpuStatFeature.class);
+            if (feature != null && feature.isSupported()) {
+                snapshot = feature.currentUidCpuStateSnapshot();
+            }
+            return snapshot;
+        }
         if (snapshotClass == AppStatMonitorFeature.AppStatSnapshot.class) {
             AppStatMonitorFeature feature = getFeature(AppStatMonitorFeature.class);
             if (feature != null) {
@@ -524,7 +548,7 @@ public class CompositeMonitors {
             }
             return snapshot;
         }
-        if (snapshotClass == HealthStatsFeature.HealthStatsSnapshot.class) {
+        if (snapshotClass == HealthStatsSnapshot.class) {
             HealthStatsFeature feature = getFeature(HealthStatsFeature.class);
             if (feature != null) {
                 snapshot = feature.currHealthStatsSnapshot();
@@ -561,10 +585,22 @@ public class CompositeMonitors {
         if (snapshotClass == DeviceStatMonitorFeature.CpuFreqSnapshot.class) {
             final DeviceStatMonitorFeature feature = getFeature(DeviceStatMonitorFeature.class);
             if (feature != null && mMonitor != null) {
+                final CpuStatFeature cpuStatsFeat = getFeature(CpuStatFeature.class);
+                if (cpuStatsFeat != null) {
+                    if (cpuStatsFeat.isSupported()) {
+                        mCpuFreqSampler = new CpuFreqSampler(BatteryCanaryUtil.getCpuFreqSteps());
+                    }
+                }
                 sampler = new Snapshot.Sampler("cpufreq", mMonitor.getHandler(), new Function<Snapshot.Sampler, Number>() {
                     @Override
                     public Number apply(Snapshot.Sampler sampler) {
-                        DeviceStatMonitorFeature.CpuFreqSnapshot snapshot = feature.currentCpuFreq();
+                        int[] cpuFreqs = BatteryCanaryUtil.getCpuCurrentFreq();
+                        if (cpuStatsFeat != null && cpuStatsFeat.isSupported()) {
+                            if (mCpuFreqSampler != null && mCpuFreqSampler.isCompat(cpuStatsFeat.getPowerProfile())) {
+                                mCpuFreqSampler.count(cpuFreqs);
+                            }
+                        }
+                        DeviceStatMonitorFeature.CpuFreqSnapshot snapshot = feature.currentCpuFreq(cpuFreqs);
                         List<DigitEntry<Integer>> list = snapshot.cpuFreqs.getList();
                         MatrixLog.i(TAG, CompositeMonitors.this.hashCode() + " #onSampling: " + mScope);
                         MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + ", val = " + list);
@@ -737,14 +773,31 @@ public class CompositeMonitors {
             }
             return sampler;
         }
+        if (snapshotClass == TrafficMonitorFeature.RadioBpsSnapshot.class) {
+            final TrafficMonitorFeature feature = getFeature(TrafficMonitorFeature.class);
+            if (feature != null && mMonitor != null) {
+                mBpsSampler = new BpsSampler();
+                sampler = new MonitorFeature.Snapshot.Sampler("trafficBps", mMonitor.getHandler(), new Function<Snapshot.Sampler, Number>() {
+                    @Override
+                    public Number apply(Snapshot.Sampler sampler) {
+                        TrafficMonitorFeature.RadioBpsSnapshot snapshot = feature.currentRadioBpsSnapshot(mMonitor.getContext());
+                        if (snapshot != null) {
+                            mBpsSampler.count(snapshot);
+                        }
+                        return 0;
+                    }
+                });
+                mSamplers.put(snapshotClass, sampler);
+            }
+            return sampler;
+        }
         if (snapshotClass == DeviceStatMonitorFeature.BatteryCurrentSnapshot.class) {
             final DeviceStatMonitorFeature feature = getFeature(DeviceStatMonitorFeature.class);
             if (feature != null && mMonitor != null) {
                 sampler = new MonitorFeature.Snapshot.Sampler("batt-curr", mMonitor.getHandler(), new Function<Snapshot.Sampler, Number>() {
                     @Override
                     public Number apply(Snapshot.Sampler sampler) {
-                        DeviceStatMonitorFeature.BatteryCurrentSnapshot snapshot = feature.currentBatteryCurrency(mMonitor.getContext());
-                        Long value = snapshot.stat.get();
+                        long value = BatteryCanaryUtil.getBatteryCurrencyImmediately(mMonitor.getContext());
                         MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + ", val = " + value);
                         if (value == -1L) {
                             return Snapshot.Sampler.INVALID;
@@ -815,7 +868,7 @@ public class CompositeMonitors {
             return mTaskDeltasCollect;
         }
         // Sorting by jiffies sum
-        return sortMapByValue(mTaskDeltasCollect, new Comparator<Map.Entry<String, List<Pair<Class<? extends AbsTaskMonitorFeature>, Delta<TaskJiffiesSnapshot>>>>>() {
+        return BatteryCanaryUtil.sortMapByValue(mTaskDeltasCollect, new Comparator<Map.Entry<String, List<Pair<Class<? extends AbsTaskMonitorFeature>, Delta<TaskJiffiesSnapshot>>>>>() {
             @SuppressWarnings("ConstantConditions")
             @Override
             public int compare(Map.Entry<String, List<Pair<Class<? extends AbsTaskMonitorFeature>, Delta<TaskJiffiesSnapshot>>>> o1, Map.Entry<String, List<Pair<Class<? extends AbsTaskMonitorFeature>, Delta<TaskJiffiesSnapshot>>>> o2) {
@@ -865,6 +918,16 @@ public class CompositeMonitors {
         return mExtras;
     }
 
+    @Nullable
+    public CpuFreqSampler getCpuFreqSampler() {
+        return mCpuFreqSampler;
+    }
+
+    @Nullable
+    public BpsSampler getBpsSampler() {
+        return mBpsSampler;
+    }
+
     @Override
     @NonNull
     public String toString() {
@@ -882,14 +945,455 @@ public class CompositeMonitors {
                 '}';
     }
 
-    static <K, V> Map<K, V> sortMapByValue(Map<K, V> map, Comparator<? super Map.Entry<K, V>> comparator) {
-        List<Map.Entry<K, V>> list = new ArrayList<>(map.entrySet());
-        Collections.sort(list, comparator);
+    public static class CpuFreqSampler {
+        public int[] cpuCurrentFreq;
+        public final List<int[]> cpuFreqSteps;
+        public final List<int[]> cpuFreqCounters;
 
-        Map<K, V> result = new LinkedHashMap<>();
-        for (Map.Entry<K, V> entry : list) {
-            result.put(entry.getKey(), entry.getValue());
+        public CpuFreqSampler(List<int[]> cpuFreqSteps) {
+            this.cpuFreqSteps = cpuFreqSteps;
+            this.cpuFreqCounters = new ArrayList<>(cpuFreqSteps.size());
+            for (int[] item : cpuFreqSteps) {
+                this.cpuFreqCounters.add(new int[item.length]);
+            }
         }
-        return result;
+
+        public boolean isCompat(PowerProfile powerProfile) {
+            if (cpuFreqSteps.size() == powerProfile.getCpuCoreNum()) {
+                for (int i = 0; i < cpuFreqSteps.size(); i++) {
+                    int clusterByCpuNum = powerProfile.getClusterByCpuNum(i);
+                    int steps = powerProfile.getNumSpeedStepsInCpuCluster(clusterByCpuNum);
+                    if (cpuFreqSteps.get(i).length != steps) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            return false;
+        }
+
+        public void count(int[] cpuCurrentFreq) {
+            this.cpuCurrentFreq = cpuCurrentFreq;
+            for (int i = 0; i < cpuCurrentFreq.length; i++) {
+                int speed = cpuCurrentFreq[i];
+                int[] steps = cpuFreqSteps.get(i);
+                if (speed < steps[0]) {
+                    cpuFreqCounters.get(i)[0]++;
+                    continue;
+                }
+                boolean found = false;
+                for (int j = 0; j < steps.length; j++) {
+                    if (speed <= steps[j]) {
+                        cpuFreqCounters.get(i)[j]++;
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    if (speed > steps[steps.length - 1]) {
+                        cpuFreqCounters.get(i)[steps.length - 1]++;
+                    }
+                }
+            }
+        }
+    }
+
+    public static class BpsSampler {
+        public int count;
+        public long wifiRxBps;
+        public long wifiTxBps;
+        public long mobileRxBps;
+        public long mobileTxBps;
+
+        public void count(TrafficMonitorFeature.RadioBpsSnapshot snapshot) {
+            count++;
+            wifiRxBps += snapshot.wifiRxBps.get();
+            wifiTxBps += snapshot.wifiTxBps.get();
+            mobileRxBps += snapshot.mobileRxBps.get();
+            mobileTxBps += snapshot.mobileTxBps.get();
+        }
+
+        public double getAverage(long input) {
+            if (count != 0) {
+                return input * 1f / count;
+            }
+            return 0;
+        }
+    }
+
+
+    protected void polishEstimatedPower() {
+        getDelta(HealthStatsFeature.HealthStatsSnapshot.class, new Consumer<Delta<HealthStatsSnapshot>>() {
+            @Override
+            public void accept(Delta<HealthStatsSnapshot> healthStatsDelta) {
+                tuningPowers(healthStatsDelta.dlt);
+                {
+                    // Reset cpuPower
+                    double power = 0;
+                    Object powers = healthStatsDelta.dlt.extras.get("JiffyUid");
+                    if (powers instanceof Map<?, ?>) {
+                        // Take power-cpu-uidDiff or 0 as default
+                        Object val = ((Map<?, ?>) powers).get("power-cpu-uidDiff");
+                        if (val instanceof Double) {
+                            power = (double) val;
+                        }
+                    }
+                    healthStatsDelta.dlt.cpuPower = DigitEntry.of(power);
+                }
+                {
+                    // Reset mobilePower if exists
+                    if (healthStatsDelta.dlt.mobilePower.get() <= 0) {
+                        double power = 0;
+                        // Take power-mobile-statByte
+                        Object val = healthStatsDelta.dlt.extras.get("power-mobile-statByte");
+                        if (val instanceof Double) {
+                            power = (double) val;
+                        }
+                        healthStatsDelta.dlt.mobilePower = DigitEntry.of(power);
+                    }
+                }
+                {
+                    // Reset wifiPower if exists
+                    if (healthStatsDelta.dlt.wifiPower.get() <= 0) {
+                        double power = 0;
+                        // Take power-wifi-statByte
+                        Object val = healthStatsDelta.dlt.extras.get("power-wifi-statByte");
+                        if (val instanceof Double) {
+                            power = (double) val;
+                        }
+                        healthStatsDelta.dlt.wifiPower = DigitEntry.of(power);
+                    }
+                }
+            }
+        });
+    }
+
+    protected void tuningPowers(final HealthStatsFeature.HealthStatsSnapshot snapshot) {
+        if (!snapshot.isDelta) {
+            throw new IllegalStateException("Only support delta snapshot");
+        }
+        BatteryMonitorCore monitor = getMonitor();
+        if (monitor == null) {
+            return;
+        }
+
+        final boolean tunning = monitor.getConfig().isTuningPowers;
+        final Tuner tuner = new Tuner();
+
+        getFeature(CpuStatFeature.class, new Consumer<CpuStatFeature>() {
+            @Override
+            public void accept(CpuStatFeature feat) {
+                if (feat.isSupported()) {
+                    final PowerProfile powerProfile = feat.getPowerProfile();
+
+                    // 1. Tune CPU
+                    getDelta(CpuStatFeature.CpuStateSnapshot.class, new Consumer<Delta<CpuStatFeature.CpuStateSnapshot>>() {
+                        @Override
+                        public void accept(final Delta<CpuStatFeature.CpuStateSnapshot> cpuStatDelta) {
+                            // 1.1 CpuTimeMs
+                            if (tunning) {
+                                getDelta(HealthStatsSnapshot.class, new Consumer<Delta<HealthStatsSnapshot>>() {
+                                    @Override
+                                    public void accept(final Delta<HealthStatsSnapshot> healthStats) {
+                                        healthStats.dlt.extras.put("TimeUid", tuner.tuningCpuPowers(powerProfile, CompositeMonitors.this, new Tuner.CpuTime() {
+                                            @Override
+                                            public long getBgnMs(String procSuffix) {
+                                                return getCpuTimeMs(procSuffix, healthStats.bgn);
+                                            }
+
+                                            @Override
+                                            public long getEndMs(String procSuffix) {
+                                                return getCpuTimeMs(procSuffix, healthStats.end);
+                                            }
+
+                                            @Override
+                                            public long getDltMs(String procSuffix) {
+                                                return getCpuTimeMs(procSuffix, healthStats.dlt);
+                                            }
+
+                                            private long getCpuTimeMs(String procSuffix, HealthStatsSnapshot healthStatsSnapshot) {
+                                                if (procSuffix == null) {
+                                                    return healthStatsSnapshot.cpuUsrTimeMs.get()
+                                                            + healthStatsSnapshot.cpuSysTimeMs.get();
+                                                } else {
+                                                    if (mMonitor != null) {
+                                                        String procName = mMonitor.getContext().getPackageName();
+                                                        if ("main".equals(procSuffix)) {
+                                                            procName = mMonitor.getContext().getPackageName() + ":" + procSuffix;
+                                                        }
+                                                        DigitEntry<Long> usrTime = healthStatsSnapshot.procStatsCpuUsrTimeMs.get(procName);
+                                                        DigitEntry<Long> sysTime = healthStatsSnapshot.procStatsCpuSysTimeMs.get(procName);
+                                                        return (usrTime == null ? 0 : usrTime.get()) + (sysTime == null ? 0 : sysTime.get());
+                                                    }
+                                                }
+                                                return 0L;
+                                            }
+                                        }));
+                                    }
+                                });
+                            }
+
+                            // 1.2 CpuTimeJiffies
+                            getDelta(JiffiesMonitorFeature.UidJiffiesSnapshot.class, new Consumer<Delta<JiffiesMonitorFeature.UidJiffiesSnapshot>>() {
+                                @Override
+                                public void accept(final Delta<JiffiesMonitorFeature.UidJiffiesSnapshot> delta) {
+                                    snapshot.extras.put("JiffyUid", tuner.tuningCpuPowers(powerProfile, CompositeMonitors.this, new Tuner.CpuTime() {
+                                        @Override
+                                        public long getBgnMs(String procSuffix) {
+                                            if (procSuffix == null) {
+                                                // All
+                                                return delta.bgn.totalUidJiffies.get() * 10L;
+                                            } else {
+                                                for (JiffiesSnapshot item : delta.bgn.pidCurrJiffiesList) {
+                                                    if (item.name.equals(procSuffix)) {
+                                                        return item.totalJiffies.get() * 10L;
+                                                    }
+                                                }
+                                            }
+                                            return 0L;
+                                        }
+                                        @Override
+                                        public long getEndMs(String procSuffix) {
+                                            if (procSuffix == null) {
+                                                // All
+                                                return delta.end.totalUidJiffies.get() * 10L;
+                                            } else {
+                                                for (JiffiesSnapshot item : delta.end.pidCurrJiffiesList) {
+                                                    if (item.name.equals(procSuffix)) {
+                                                        return item.totalJiffies.get() * 10L;
+                                                    }
+                                                }
+                                            }
+                                            return 0L;
+                                        }
+                                        @Override
+                                        public long getDltMs(String procSuffix) {
+                                            if (procSuffix == null) {
+                                                // All
+                                                return delta.dlt.totalUidJiffies.get() * 10L;
+                                            } else {
+                                                for (Delta<JiffiesSnapshot> item : delta.dlt.pidDeltaJiffiesList) {
+                                                    if (item.dlt.name.equals(procSuffix)) {
+                                                        return item.dlt.totalJiffies.get() * 10L;
+                                                    }
+                                                }
+                                            }
+                                            return 0L;
+                                        }
+                                    }));
+                                }
+                            });
+                        }
+                    });
+
+                    // 2. Tune Network
+                    {
+                        double mobileRxBps = 0, mobileTxBps = 0;
+                        double wifiRxBps = 0, wifiTxBps = 0;
+                        BpsSampler bpsSampler = getBpsSampler();
+                        if (bpsSampler != null) {
+                            mobileRxBps = bpsSampler.getAverage(bpsSampler.mobileRxBps);
+                            mobileTxBps = bpsSampler.getAverage(bpsSampler.mobileTxBps);
+                            wifiRxBps = bpsSampler.getAverage(bpsSampler.wifiRxBps);
+                            wifiTxBps = bpsSampler.getAverage(bpsSampler.wifiTxBps);
+                        } else {
+                            if (mMonitor != null) {
+                                RadioStatUtil.RadioBps bpsStat = RadioStatUtil.getCurrentBps(mMonitor.getContext());
+                                if (bpsStat != null) {
+                                    mobileRxBps = bpsStat.mobileRxBps;
+                                    mobileTxBps = bpsStat.mobileTxBps;
+                                    wifiRxBps = bpsStat.wifiRxBps;
+                                    wifiTxBps = bpsStat.wifiTxBps;
+                                }
+                            }
+                        }
+
+                        final double finalMobileRxBps = mobileRxBps;
+                        final double finalMobileTxBps = mobileTxBps;
+                        final double finalWifiRxBps = wifiRxBps;
+                        final double finalWifiTxBps = wifiTxBps;
+
+                        // 2.1 HealthStats
+                        getDelta(HealthStatsSnapshot.class, new Consumer<Delta<HealthStatsSnapshot>>() {
+                            @SuppressLint("VisibleForTests")
+                            @Override
+                            public void accept(Delta<HealthStatsSnapshot> delta) {
+                                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                                    // mobile
+                                    {
+                                        double powerBgn = HealthStatsHelper.calcMobilePowerByRadioActive(powerProfile, delta.bgn.healthStats);
+                                        double powerEnd = HealthStatsHelper.calcMobilePowerByRadioActive(powerProfile, delta.end.healthStats);
+                                        snapshot.extras.put("power-mobile-radio", powerEnd - powerBgn);
+                                    }
+                                    {
+                                        double powerBgn = HealthStatsHelper.calcMobilePowerByController(powerProfile, delta.bgn.healthStats);
+                                        double powerEnd = HealthStatsHelper.calcMobilePowerByController(powerProfile, delta.end.healthStats);
+                                        snapshot.extras.put("power-mobile-controller", powerEnd - powerBgn);
+                                    }
+                                    {
+                                        double powerBgn = HealthStatsHelper.calcMobilePowerByPackets(powerProfile, delta.bgn.healthStats, finalMobileRxBps, finalMobileTxBps);
+                                        double powerEnd = HealthStatsHelper.calcMobilePowerByPackets(powerProfile, delta.end.healthStats, finalMobileRxBps, finalMobileTxBps);
+                                        snapshot.extras.put("power-mobile-packet", powerEnd - powerBgn);
+                                    }
+                                    // wifi
+                                    {
+                                        double powerBgn = HealthStatsHelper.calcWifiPowerByController(powerProfile, delta.bgn.healthStats);
+                                        double powerEnd = HealthStatsHelper.calcWifiPowerByController(powerProfile, delta.end.healthStats);
+                                        snapshot.extras.put("power-wifi-controller", powerEnd - powerBgn);
+                                    }
+                                    {
+                                        double powerBgn = HealthStatsHelper.calcWifiPowerByPackets(powerProfile, delta.bgn.healthStats, finalWifiRxBps, finalWifiTxBps);
+                                        double powerEnd = HealthStatsHelper.calcWifiPowerByPackets(powerProfile, delta.end.healthStats, finalWifiRxBps, finalWifiTxBps);
+                                        snapshot.extras.put("power-wifi-packet", powerEnd - powerBgn);
+                                    }
+                                }
+                            }
+                        });
+
+                        // 2.2 RadioStat
+                        getDelta(TrafficMonitorFeature.RadioStatSnapshot.class, new Consumer<Delta<TrafficMonitorFeature.RadioStatSnapshot>>() {
+                            @Override
+                            public void accept(Delta<TrafficMonitorFeature.RadioStatSnapshot> delta) {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && mMonitor != null) {
+                                    BpsSampler bpsSampler = getBpsSampler();
+                                    if (bpsSampler != null) {
+                                        // mobile
+                                        double power = HealthStatsHelper.calcMobilePowerByNetworkStatBytes(powerProfile, delta.dlt, finalMobileRxBps, finalMobileTxBps);
+                                        snapshot.extras.put("power-mobile-statByte", power);
+                                        power = HealthStatsHelper.calcMobilePowerByNetworkStatPackets(powerProfile, delta.dlt, finalMobileRxBps, finalMobileTxBps);
+                                        snapshot.extras.put("power-mobile-statPacket", power);
+                                        // wifi
+                                        power = HealthStatsHelper.calcWifiPowerByNetworkStatBytes(powerProfile, delta.dlt, finalWifiRxBps, finalWifiTxBps);
+                                        snapshot.extras.put("power-wifi-statByte", power);
+                                        power = HealthStatsHelper.calcWifiPowerByNetworkStatPackets(powerProfile, delta.dlt, finalWifiRxBps, finalWifiTxBps);
+                                        snapshot.extras.put("power-wifi-statPacket", power);
+                                    }
+                                }
+                            }
+                        });
+                    }
+                }
+            }
+        });
+    }
+
+
+    @SuppressLint("RestrictedApi")
+    protected static class Tuner {
+        interface CpuTime {
+            long getBgnMs(String procSuffix);
+            long getEndMs(String procSuffix);
+            long getDltMs(String procSuffix);
+        }
+
+        public Map<String, Object> tuningCpuPowers(final PowerProfile powerProfile, final CompositeMonitors monitors, final CpuTime cpuTime) {
+            final Map<String, Object> dict = new LinkedHashMap<>();
+            monitors.getDelta(CpuStatFeature.UidCpuStateSnapshot.class, new Consumer<Delta<CpuStatFeature.UidCpuStateSnapshot>>() {
+                @SuppressLint("VisibleForTests")
+                @Override
+                public void accept(Delta<CpuStatFeature.UidCpuStateSnapshot> uidCpuStatDelta) {
+                    BatteryMonitorCore monitor = monitors.getMonitor();
+                    if (monitor == null) {
+                        return;
+                    }
+
+                    // Calc by DIff
+                    {
+                        // UID Diff
+                        double cpuPower = 0;
+                        boolean scaled = false;
+                        for (Delta<CpuStatFeature.CpuStateSnapshot> cpuStateDelta : uidCpuStatDelta.dlt.pidDeltaCpuSateList) {
+                            CpuStatFeature.CpuStateSnapshot cpuStatsSnapshot = cpuStateDelta.dlt;
+                            long cpuTimeMs = cpuTime.getDltMs(cpuStatsSnapshot.name);
+                            cpuPower += HealthStatsHelper.estimateCpuActivePower(powerProfile, cpuTimeMs)
+                                    + HealthStatsHelper.estimateCpuClustersPowerByUidStats(powerProfile, cpuStatsSnapshot, cpuTimeMs, scaled)
+                                    + HealthStatsHelper.estimateCpuCoresPowerByUidStats(powerProfile, cpuStatsSnapshot, cpuTimeMs, scaled);
+                        }
+                        dict.put("power-cpu-uidDiff", cpuPower);
+                    }
+
+                    boolean tunning = monitor.getConfig().isTuningPowers;
+                    if (!tunning) {
+                        return;
+                    }
+
+                    {
+                        // UID Diff Scaled
+                        double cpuPower = 0;
+                        boolean scaled = true;
+                        for (Delta<CpuStatFeature.CpuStateSnapshot> cpuStateDelta : uidCpuStatDelta.dlt.pidDeltaCpuSateList) {
+                            CpuStatFeature.CpuStateSnapshot cpuStatsSnapshot = cpuStateDelta.dlt;
+                            long cpuTimeMs = cpuTime.getDltMs(cpuStatsSnapshot.name);
+                            cpuPower += HealthStatsHelper.estimateCpuActivePower(powerProfile, cpuTimeMs)
+                                    + HealthStatsHelper.estimateCpuClustersPowerByUidStats(powerProfile, cpuStatsSnapshot, cpuTimeMs, scaled)
+                                    + HealthStatsHelper.estimateCpuCoresPowerByUidStats(powerProfile, cpuStatsSnapshot, cpuTimeMs, scaled);
+                        }
+                        dict.put("power-cpu-uidDiffScale", cpuPower);
+                    }
+
+                    monitors.getDelta(CpuStatFeature.CpuStateSnapshot.class, new Consumer<Delta<CpuStatFeature.CpuStateSnapshot>>() {
+                        @Override
+                        public void accept(Delta<CpuStatFeature.CpuStateSnapshot> pidCpuStatDelta) {
+                            {
+                                // DEV Diff
+                                CpuStatFeature.CpuStateSnapshot cpuStatsSnapshot = pidCpuStatDelta.dlt;
+                                long cpuTimeMs = cpuTime.getDltMs(null);
+                                double cpuPower = HealthStatsHelper.estimateCpuActivePower(powerProfile, cpuTimeMs)
+                                        + HealthStatsHelper.estimateCpuClustersPowerByDevStats(powerProfile, cpuStatsSnapshot, cpuTimeMs)
+                                        + HealthStatsHelper.estimateCpuCoresPowerByDevStats(powerProfile, cpuStatsSnapshot, cpuTimeMs);
+                                dict.put("power-cpu-devDiff", cpuPower);
+                            }
+                            {
+                                // CpuFreq Diff
+                                CompositeMonitors.CpuFreqSampler cpuFreqSampler = monitors.getCpuFreqSampler();
+                                if (cpuFreqSampler != null) {
+                                    if (cpuFreqSampler.isCompat(powerProfile)) {
+                                        long cpuTimeMs = cpuTime.getDltMs(null);
+                                        double cpuPower = HealthStatsHelper.estimateCpuActivePower(powerProfile, cpuTimeMs)
+                                                + estimateCpuPowerByCpuFreqStats(powerProfile, cpuFreqSampler, cpuTimeMs);
+                                        dict.put("power-cpu-cpuFreq", cpuPower);
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            });
+
+            return dict;
+        }
+
+        private static double estimateCpuPowerByCpuFreqStats(PowerProfile powerProfile, CompositeMonitors.CpuFreqSampler sampler, long cpuTimeMs) {
+            double powerMah = 0;
+            if (cpuTimeMs > 0) {
+                long totalSum = 0;
+                for (int i = 0; i < sampler.cpuFreqCounters.size(); i++) {
+                    for (int j = 0; j < sampler.cpuFreqCounters.get(i).length; j++) {
+                        totalSum += sampler.cpuFreqCounters.get(i)[j];
+                    }
+                }
+                if (totalSum > 0) {
+                    for (int i = 0; i < sampler.cpuFreqCounters.size(); i++) {
+                        int clusterNum = powerProfile.getClusterByCpuNum(i);
+                        long coreSum = 0;
+                        for (int j = 0; j < sampler.cpuFreqCounters.get(i).length; j++) {
+                            int step = sampler.cpuFreqCounters.get(i)[j];
+                            if (step > 0) {
+                                long figuredCoreTimeMs = (long) ((step * 1.0f / totalSum) * cpuTimeMs);
+                                double powerMa = powerProfile.getAveragePowerForCpuCore(clusterNum, j);
+                                powerMah += new HealthStatsHelper.UsageBasedPowerEstimator(powerMa).calculatePower(figuredCoreTimeMs);
+                            }
+                            coreSum += step;
+                        }
+                        if (coreSum > 0) {
+                            long figuredClusterTimeMs = (long) ((coreSum * 1.0f / totalSum) * cpuTimeMs);
+                            double powerMa = powerProfile.getAveragePowerForCpuCluster(clusterNum);
+                            powerMah += new HealthStatsHelper.UsageBasedPowerEstimator(powerMa).calculatePower(figuredClusterTimeMs);
+                        }
+                    }
+                }
+            }
+            return powerMah;
+        }
     }
 }

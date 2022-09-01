@@ -14,15 +14,19 @@ import android.os.health.UidHealthStats;
 import com.tencent.matrix.batterycanary.monitor.feature.AbsMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.CpuStatFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.DigitEntry;
+import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.PowerProfile;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.lang.reflect.Method;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.VisibleForTesting;
 
 /**
@@ -46,6 +50,7 @@ public class HealthStatsFeature extends AbsMonitorFeature {
         return HealthStatsHelper.getCurrStats(mCore.getContext());
     }
 
+    @SuppressLint("VisibleForTests")
     public HealthStatsSnapshot currHealthStatsSnapshot() {
         HealthStatsSnapshot snapshot = new HealthStatsSnapshot();
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
@@ -87,17 +92,28 @@ public class HealthStatsFeature extends AbsMonitorFeature {
             snapshot.offUpTimeMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_UPTIME_SCREEN_OFF_BATTERY_MS));
 
             snapshot.mobilePowerMams = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_MOBILE_POWER_MAMS));
-            snapshot.mobileRadioActiveMs = DigitEntry.of(HealthStatsHelper.getTimerTime(healthStats, UidHealthStats.TIMER_MOBILE_RADIO_ACTIVE));
+            snapshot.mobileRadioActiveMs = DigitEntry.of(HealthStatsHelper.getTimerTime(healthStats, UidHealthStats.TIMER_MOBILE_RADIO_ACTIVE) / 1000L);
             snapshot.mobileIdleMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_MOBILE_IDLE_MS));
             snapshot.mobileRxMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_MOBILE_RX_MS));
             snapshot.mobileTxMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_MOBILE_TX_MS));
+
+            snapshot.mobileRxBytes = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_MOBILE_RX_BYTES));
+            snapshot.mobileTxBytes = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_MOBILE_TX_BYTES));
+            snapshot.mobileRxPackets = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_MOBILE_RX_PACKETS));
+            snapshot.mobileTxPackets = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_MOBILE_TX_PACKETS));
 
             snapshot.wifiPowerMams = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_POWER_MAMS));
             snapshot.wifiIdleMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_IDLE_MS));
             snapshot.wifiRxMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_RX_MS));
             snapshot.wifiTxMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_TX_MS));
+            snapshot.wifiRunningMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_RUNNING_MS));
+            snapshot.wifiLockMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_FULL_LOCK_MS));
+            snapshot.wifiScanMs = DigitEntry.of(HealthStatsHelper.getTimerTime(healthStats, UidHealthStats.TIMER_WIFI_SCAN));
+            snapshot.wifiMulticastMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_MULTICAST_MS));
             snapshot.wifiRxBytes = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_RX_BYTES));
             snapshot.wifiTxBytes = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_TX_BYTES));
+            snapshot.wifiRxPackets = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_RX_PACKETS));
+            snapshot.wifiTxPackets = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_TX_PACKETS));
 
             snapshot.blueToothPowerMams = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_BLUETOOTH_POWER_MAMS));
             snapshot.blueToothIdleMs = DigitEntry.of(HealthStatsHelper.getMeasure(healthStats, UidHealthStats.MEASUREMENT_BLUETOOTH_IDLE_MS));
@@ -242,6 +258,7 @@ public class HealthStatsFeature extends AbsMonitorFeature {
     public static class HealthStatsSnapshot extends Snapshot<HealthStatsSnapshot> {
         @VisibleForTesting
         public HealthStats healthStats;
+        public Map<String, Object> extras = Collections.emptyMap();
 
         // Estimated Powers
         public DigitEntry<Double> cpuPower = DigitEntry.of(0D);
@@ -256,7 +273,7 @@ public class HealthStatsFeature extends AbsMonitorFeature {
         public DigitEntry<Double> audioPower = DigitEntry.of(0D);
         public DigitEntry<Double> videoPower = DigitEntry.of(0D);
         public DigitEntry<Double> screenPower = DigitEntry.of(0D);
-        public DigitEntry<Double> systemServicePower = DigitEntry.of(0D);
+        public DigitEntry<Double> systemServicePower = DigitEntry.of(0D); // WIP
         public DigitEntry<Double> idlePower = DigitEntry.of(0D);
 
         // Meta Data:
@@ -275,13 +292,23 @@ public class HealthStatsFeature extends AbsMonitorFeature {
         public DigitEntry<Long> mobileIdleMs = DigitEntry.of(0L);
         public DigitEntry<Long> mobileRxMs = DigitEntry.of(0L);
         public DigitEntry<Long> mobileTxMs = DigitEntry.of(0L);
+        public DigitEntry<Long> mobileRxBytes = DigitEntry.of(0L);
+        public DigitEntry<Long> mobileTxBytes = DigitEntry.of(0L);
+        public DigitEntry<Long> mobileRxPackets = DigitEntry.of(0L);
+        public DigitEntry<Long> mobileTxPackets = DigitEntry.of(0L);
 
         public DigitEntry<Long> wifiPowerMams = DigitEntry.of(0L);
         public DigitEntry<Long> wifiIdleMs = DigitEntry.of(0L);
         public DigitEntry<Long> wifiRxMs = DigitEntry.of(0L);
         public DigitEntry<Long> wifiTxMs = DigitEntry.of(0L);
+        public DigitEntry<Long> wifiRunningMs = DigitEntry.of(0L);
+        public DigitEntry<Long> wifiLockMs = DigitEntry.of(0L);
+        public DigitEntry<Long> wifiScanMs = DigitEntry.of(0L);
+        public DigitEntry<Long> wifiMulticastMs = DigitEntry.of(0L);
         public DigitEntry<Long> wifiRxBytes = DigitEntry.of(0L);
         public DigitEntry<Long> wifiTxBytes = DigitEntry.of(0L);
+        public DigitEntry<Long> wifiRxPackets = DigitEntry.of(0L);
+        public DigitEntry<Long> wifiTxPackets = DigitEntry.of(0L);
 
         public DigitEntry<Long> blueToothPowerMams = DigitEntry.of(0L);
         public DigitEntry<Long> blueToothIdleMs = DigitEntry.of(0L);
@@ -325,12 +352,12 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                     + blueToothPower.get()
                     + gpsPower.get()
                     + sensorsPower.get()
-                    + cameraPower.get()
                     + flashLightPower.get()
                     + audioPower.get()
                     + videoPower.get()
                     + screenPower.get()
-                    + systemServicePower.get()
+                    // + cameraPower.get()        // WIP
+                    // + systemServicePower.get() // WIP
                     + idlePower.get();
         }
 
@@ -340,6 +367,10 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                 @Override
                 protected HealthStatsSnapshot computeDelta() {
                     HealthStatsSnapshot delta = new HealthStatsSnapshot();
+                    // For test & tunings
+                    delta.extras = new LinkedHashMap<>();
+
+                    // UID
                     delta.cpuPower = Differ.DigitDiffer.globalDiff(bgn.cpuPower, end.cpuPower);
                     delta.wakelocksPower = Differ.DigitDiffer.globalDiff(bgn.wakelocksPower, end.wakelocksPower);
                     delta.mobilePower = Differ.DigitDiffer.globalDiff(bgn.mobilePower, end.mobilePower);
@@ -366,13 +397,24 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                     delta.mobileIdleMs = Differ.DigitDiffer.globalDiff(bgn.mobileIdleMs, end.mobileIdleMs);
                     delta.mobileRxMs = Differ.DigitDiffer.globalDiff(bgn.mobileRxMs, end.mobileRxMs);
                     delta.mobileTxMs = Differ.DigitDiffer.globalDiff(bgn.mobileTxMs, end.mobileTxMs);
+                    delta.mobileRxBytes = Differ.DigitDiffer.globalDiff(bgn.mobileRxBytes, end.mobileRxBytes);
+                    delta.mobileTxBytes = Differ.DigitDiffer.globalDiff(bgn.mobileTxBytes, end.mobileTxBytes);
+                    delta.mobileRxPackets = Differ.DigitDiffer.globalDiff(bgn.mobileRxPackets, end.mobileRxPackets);
+                    delta.mobileTxPackets = Differ.DigitDiffer.globalDiff(bgn.mobileTxPackets, end.mobileTxPackets);
+
 
                     delta.wifiPowerMams = Differ.DigitDiffer.globalDiff(bgn.wifiPowerMams, end.wifiPowerMams);
                     delta.wifiIdleMs = Differ.DigitDiffer.globalDiff(bgn.wifiIdleMs, end.wifiIdleMs);
                     delta.wifiRxMs = Differ.DigitDiffer.globalDiff(bgn.wifiRxMs, end.wifiRxMs);
                     delta.wifiTxMs = Differ.DigitDiffer.globalDiff(bgn.wifiTxMs, end.wifiTxMs);
+                    delta.wifiRunningMs = Differ.DigitDiffer.globalDiff(bgn.wifiRunningMs, end.wifiRunningMs);
+                    delta.wifiLockMs = Differ.DigitDiffer.globalDiff(bgn.wifiLockMs, end.wifiLockMs);
+                    delta.wifiScanMs = Differ.DigitDiffer.globalDiff(bgn.wifiScanMs, end.wifiScanMs);
+                    delta.wifiMulticastMs = Differ.DigitDiffer.globalDiff(bgn.wifiMulticastMs, end.wifiMulticastMs);
                     delta.wifiRxBytes = Differ.DigitDiffer.globalDiff(bgn.wifiRxBytes, end.wifiRxBytes);
                     delta.wifiTxBytes = Differ.DigitDiffer.globalDiff(bgn.wifiTxBytes, end.wifiTxBytes);
+                    delta.wifiRxPackets = Differ.DigitDiffer.globalDiff(bgn.wifiRxPackets, end.wifiRxPackets);
+                    delta.wifiTxPackets = Differ.DigitDiffer.globalDiff(bgn.wifiTxPackets, end.wifiTxPackets);
 
                     delta.blueToothPowerMams = Differ.DigitDiffer.globalDiff(bgn.blueToothPowerMams, end.blueToothPowerMams);
                     delta.blueToothIdleMs = Differ.DigitDiffer.globalDiff(bgn.blueToothIdleMs, end.blueToothIdleMs);
@@ -401,42 +443,73 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                     delta.procBgMs = Differ.DigitDiffer.globalDiff(bgn.procBgMs, end.procBgMs);
                     delta.procCacheMs = Differ.DigitDiffer.globalDiff(bgn.procCacheMs, end.procCacheMs);
 
-                    delta.procStatsCpuUsrTimeMs = new HashMap<>();
-                    for (Map.Entry<String, DigitEntry<Long>> entry : end.procStatsCpuUsrTimeMs.entrySet()) {
-                        String key = entry.getKey();
-                        DigitEntry<Long> endEntry = entry.getValue();
-                        long bgnValue = 0L;
-                        DigitEntry<Long> bgnEntry = bgn.procStatsCpuUsrTimeMs.get(key);
-                        if (bgnEntry != null) {
-                            bgnValue = bgnEntry.get();
+                    // PID
+                    {
+                        Map<String, DigitEntry<Long>> map = new HashMap<>();
+                        for (Map.Entry<String, DigitEntry<Long>> entry : end.procStatsCpuUsrTimeMs.entrySet()) {
+                            String key = entry.getKey();
+                            DigitEntry<Long> endEntry = entry.getValue();
+                            long bgnValue = 0L;
+                            DigitEntry<Long> bgnEntry = bgn.procStatsCpuUsrTimeMs.get(key);
+                            if (bgnEntry != null) {
+                                bgnValue = bgnEntry.get();
+                            }
+                            map.put(key, Differ.DigitDiffer.globalDiff(DigitEntry.of(bgnValue), endEntry));
                         }
-                        delta.procStatsCpuUsrTimeMs.put(key, Differ.DigitDiffer.globalDiff(DigitEntry.of(bgnValue), endEntry));
+                        delta.procStatsCpuUsrTimeMs = decrease(map);
                     }
-                    delta.procStatsCpuSysTimeMs = new HashMap<>();
-                    for (Map.Entry<String, DigitEntry<Long>> entry : end.procStatsCpuSysTimeMs.entrySet()) {
-                        String key = entry.getKey();
-                        DigitEntry<Long> endEntry = entry.getValue();
-                        long bgnValue = 0L;
-                        DigitEntry<Long> bgnEntry = bgn.procStatsCpuSysTimeMs.get(key);
-                        if (bgnEntry != null) {
-                            bgnValue = bgnEntry.get();
+                    {
+                        Map<String, DigitEntry<Long>> map = new HashMap<>();
+                        for (Map.Entry<String, DigitEntry<Long>> entry : end.procStatsCpuSysTimeMs.entrySet()) {
+                            String key = entry.getKey();
+                            DigitEntry<Long> endEntry = entry.getValue();
+                            long bgnValue = 0L;
+                            DigitEntry<Long> bgnEntry = bgn.procStatsCpuSysTimeMs.get(key);
+                            if (bgnEntry != null) {
+                                bgnValue = bgnEntry.get();
+                            }
+                            map.put(key, Differ.DigitDiffer.globalDiff(DigitEntry.of(bgnValue), endEntry));
                         }
-                        delta.procStatsCpuSysTimeMs.put(key, Differ.DigitDiffer.globalDiff(DigitEntry.of(bgnValue), endEntry));
+                        delta.procStatsCpuSysTimeMs = decrease(map);
                     }
-                    delta.procStatsCpuFgTimeMs = new HashMap<>();
-                    for (Map.Entry<String, DigitEntry<Long>> entry : end.procStatsCpuFgTimeMs.entrySet()) {
-                        String key = entry.getKey();
-                        DigitEntry<Long> endEntry = entry.getValue();
-                        long bgnValue = 0L;
-                        DigitEntry<Long> bgnEntry = bgn.procStatsCpuFgTimeMs.get(key);
-                        if (bgnEntry != null) {
-                            bgnValue = bgnEntry.get();
+                    {
+                        Map<String, DigitEntry<Long>> map = new HashMap<>();
+                        for (Map.Entry<String, DigitEntry<Long>> entry : end.procStatsCpuFgTimeMs.entrySet()) {
+                            String key = entry.getKey();
+                            DigitEntry<Long> endEntry = entry.getValue();
+                            long bgnValue = 0L;
+                            DigitEntry<Long> bgnEntry = bgn.procStatsCpuFgTimeMs.get(key);
+                            if (bgnEntry != null) {
+                                bgnValue = bgnEntry.get();
+                            }
+                            map.put(key, Differ.DigitDiffer.globalDiff(DigitEntry.of(bgnValue), endEntry));
                         }
-                        delta.procStatsCpuFgTimeMs.put(key, Differ.DigitDiffer.globalDiff(DigitEntry.of(bgnValue), endEntry));
+                        delta.procStatsCpuFgTimeMs = decrease(map);
                     }
                     return delta;
                 }
+
+                private Map<String, DigitEntry<Long>> decrease(Map<String, DigitEntry<Long>> input) {
+                    return BatteryCanaryUtil.sortMapByValue(input, new Comparator<Map.Entry<String, DigitEntry<Long>>>() {
+                        @Override
+                        public int compare(Map.Entry<String, DigitEntry<Long>> o1, Map.Entry<String, DigitEntry<Long>> o2) {
+                            long sumLeft = o1.getValue().get(), sumRight = o2.getValue().get();
+                            long minus = sumLeft - sumRight;
+                            if (minus == 0) return 0;
+                            if (minus > 0) return -1;
+                            return 1;
+                        }
+                    });
+                }
             };
+        }
+
+        public static double getPower(@NonNull Map<String, ?> extra, String key) {
+            Object val = extra.get(key);
+            if (val instanceof Double) {
+                return (double) val;
+            }
+            return 0;
         }
     }
 }

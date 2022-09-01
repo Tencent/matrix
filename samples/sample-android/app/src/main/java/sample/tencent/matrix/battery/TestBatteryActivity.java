@@ -41,6 +41,7 @@ import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCallback;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCallback.BatteryPrinter.Printer;
 import com.tencent.matrix.batterycanary.monitor.feature.CompositeMonitors;
+import com.tencent.matrix.batterycanary.monitor.feature.CpuStatFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature.BatteryTmpSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.DeviceStatMonitorFeature.CpuFreqSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
@@ -49,6 +50,7 @@ import com.tencent.matrix.batterycanary.shell.ui.TopThreadIndicator;
 import com.tencent.matrix.batterycanary.stats.BatteryStatsFeature;
 import com.tencent.matrix.batterycanary.stats.ui.BatteryStatsActivity;
 import com.tencent.matrix.batterycanary.utils.Consumer;
+import com.tencent.matrix.batterycanary.utils.PowerProfile;
 import com.tencent.matrix.util.MatrixLog;
 
 import androidx.annotation.NonNull;
@@ -83,6 +85,17 @@ public class TestBatteryActivity extends Activity {
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.test_battery);
+
+        // TestPowerProfile.parse(getApplication());
+        // BatteryCanary.getMonitorFeature(CpuStatFeature.class, new Consumer<CpuStatFeature>() {
+        //     @Override
+        //     public void accept(CpuStatFeature cpuStatFeature) {
+        //         double averagePowerUni = cpuStatFeature.getPowerProfile().getAveragePowerUni(PowerProfile.POWER_CAMERA);
+        //         if (averagePowerUni > 0) {
+        //
+        //         }
+        //     }
+        // });
 
         BatteryCanaryInitHelper.startBatteryMonitor(this);
 

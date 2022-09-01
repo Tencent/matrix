@@ -20,6 +20,7 @@ import android.app.Application;
 import android.content.Context;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
+import android.os.Debug;
 import android.os.health.HealthStats;
 import android.os.health.SystemHealthManager;
 import android.os.health.TimerStat;
@@ -34,6 +35,7 @@ import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
 import com.tencent.matrix.batterycanary.stats.HealthStatsFeature.HealthStatsSnapshot;
 import com.tencent.matrix.batterycanary.utils.PowerProfile;
+import com.tencent.matrix.util.MatrixLog;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -54,6 +56,8 @@ import java.util.Map;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
+import static com.tencent.matrix.batterycanary.stats.HealthStatsHelper.getMeasure;
+import static com.tencent.matrix.batterycanary.stats.HealthStatsHelper.getTimerTime;
 import static com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil.JIFFY_MILLIS;
 import static com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil.ONE_HOR;
 
@@ -89,6 +93,17 @@ public class HealthStatsTest {
         return new BatteryMonitorCore(config);
     }
 
+    @Test
+    public void testRoundDecimalPlace() {
+        Assert.assertEquals(1.1d, HealthStatsHelper.round(1.12345d, 1), 0.00001d);
+        Assert.assertEquals(1.2d, HealthStatsHelper.round(1.19945d, 1), 0.00001d);
+        Assert.assertEquals(1.12d, HealthStatsHelper.round(1.12345d, 2), 0.00001d);
+        Assert.assertEquals(1.13d, HealthStatsHelper.round(1.12945d, 2), 0.00001d);
+        Assert.assertEquals(1.1234d, HealthStatsHelper.round(1.12341d, 4), 0.00001d);
+        Assert.assertEquals(1.1235d, HealthStatsHelper.round(1.12345d, 4), 0.00001d);
+        Assert.assertEquals(1.1200d, HealthStatsHelper.round(1.12d, 2), 0.00001d);
+        Assert.assertEquals(1.1200d, HealthStatsHelper.round(1.1245d, 2), 0.00001d);
+    }
 
     @Test
     public void testGetSenorsHandle() throws NoSuchFieldException, IllegalAccessException, NoSuchMethodException, InvocationTargetException {
@@ -371,18 +386,41 @@ public class HealthStatsTest {
 
 
         double wifiIdlePower = powerProfile.getAveragePower("wifi.controller.idle");
-        Assert.assertTrue(wifiIdlePower > 0);
+        Assert.assertTrue(wifiIdlePower >= 0);
         UsageBasedPowerEstimator etmWifiIdlePower = new UsageBasedPowerEstimator(wifiIdlePower);
         double wifiRxPower = powerProfile.getAveragePower("wifi.controller.rx");
-        Assert.assertTrue(wifiRxPower > 0);
+        Assert.assertTrue(wifiRxPower >= 0);
         UsageBasedPowerEstimator etmWifiRxPower = new UsageBasedPowerEstimator(wifiIdlePower);
         double wifiTxPower = powerProfile.getAveragePower("wifi.controller.tx");
-        Assert.assertTrue(wifiTxPower > 0);
+        Assert.assertTrue(wifiTxPower >= 0);
         UsageBasedPowerEstimator etmWifiTxPower = new UsageBasedPowerEstimator(wifiIdlePower);
 
         SystemHealthManager manager = (SystemHealthManager) mContext.getSystemService(Context.SYSTEM_HEALTH_SERVICE);
         HealthStats healthStats = manager.takeMyUidSnapshot();
         Assert.assertNotNull(healthStats);
+
+        // calc from packets
+        // double power = 0;
+        // double powerMaPerPacket = 0;
+        // MatrixLog.i(TAG, "estimate WIFI by packets");
+        // {
+        //     final long wifiBps = 1000000;
+        //     final double averageWifiActivePower = powerProfile.getAveragePowerUni(PowerProfile.POWER_WIFI_ACTIVE) / 3600;
+        //     powerMaPerPacket = averageWifiActivePower / (((double) wifiBps) / 8 / 2048);
+        //     long packets = 1213737 + 244433;
+        //     power += powerMaPerPacket * packets;
+        // }
+        // {
+        //     double powerMa = powerProfile.getAveragePowerUni(PowerProfile.POWER_WIFI_ON);
+        //     long timeMs = getMeasure(healthStats, UidHealthStats.MEASUREMENT_WIFI_RUNNING_MS);
+        //     power += new HealthStatsHelper.UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
+        // }
+        // {
+        //     double powerMa = powerProfile.getAveragePowerUni(PowerProfile.POWER_WIFI_SCAN);
+        //     long timeMs = getTimerTime(healthStats, UidHealthStats.TIMER_WIFI_SCAN);
+        //     power += new HealthStatsHelper.UsageBasedPowerEstimator(powerMa).calculatePower(timeMs);
+        // }
+        // Assert.fail("power: " + power + ", watt: " + powerMaPerPacket);
 
         if (healthStats.hasMeasurement(UidHealthStats.MEASUREMENT_WIFI_POWER_MAMS)) {
             double powerMahByHealthStats = healthStats.getMeasurement(UidHealthStats.MEASUREMENT_WIFI_POWER_MAMS) / (1000.0 * 60 * 60);
@@ -668,6 +706,26 @@ public class HealthStatsTest {
         Assert.assertNull(delta.dlt.healthStats);
 
         Assert.assertEquals(delta.dlt.getTotalPower(), end.getTotalPower() - bgn.getTotalPower(), 0.001d);
+    }
+
+    @Test
+    public void testCalcAvgPowerPerPacket() throws IOException {
+        PowerProfile powerProfile = PowerProfile.init(mContext);
+        Assert.assertNotNull(powerProfile);
+        Assert.assertTrue(powerProfile.isSupported());
+
+        final long MOBILE_BPS = 200000;
+        final double MOBILE_POWER = powerProfile.getAveragePowerOrDefault(PowerProfile.POWER_RADIO_ACTIVE, 120) / 3600;
+        final double mobilePps = (((double) MOBILE_BPS) / 8 / 2048);
+        double mobilePowerPerPacket = (MOBILE_POWER / mobilePps) / (60 * 60);
+        Assert.assertTrue(mobilePowerPerPacket > 0);
+
+        final long wifiBps = 1000000;
+        final double averageWifiActivePower = powerProfile.getAveragePowerOrDefault(PowerProfile.POWER_WIFI_ACTIVE, 120) / 3600;
+        double wifiPowerPerPacket = averageWifiActivePower / (((double) wifiBps) / 8 / 2048);
+        Assert.assertTrue(wifiPowerPerPacket > 0);
+
+        Assert.assertTrue(mobilePowerPerPacket < wifiPowerPerPacket);
     }
 
 
