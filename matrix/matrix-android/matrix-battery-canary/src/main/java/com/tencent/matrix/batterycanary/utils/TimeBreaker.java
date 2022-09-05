@@ -11,6 +11,7 @@ import java.util.Map;
 
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
+import androidx.annotation.VisibleForTesting;
 
 /**
  * Configure timeline portions & ratio for the given stamps and return split-portions with each weight.
@@ -184,6 +185,22 @@ public final class TimeBreaker {
             this.key = key;
             this.upTime = upTime;
             this.statMillis = System.currentTimeMillis();
+        }
+
+        @VisibleForTesting
+        public Stamp(String key, long upTime, long statMillis) {
+            this.key = key;
+            this.upTime = upTime;
+            this.statMillis = statMillis;
+        }
+
+        @Override
+        public String toString() {
+            return "Stamp{" +
+                    "key='" + key + '\'' +
+                    ", upTime=" + upTime +
+                    ", statMillis=" + statMillis +
+                    '}';
         }
     }
 
