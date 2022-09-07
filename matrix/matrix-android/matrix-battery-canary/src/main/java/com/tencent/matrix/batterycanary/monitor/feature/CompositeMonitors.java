@@ -1221,30 +1221,50 @@ public class CompositeMonitors {
                                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
                                     // mobile
                                     {
-                                        double powerBgn = HealthStatsHelper.calcMobilePowerByRadioActive(powerProfile, delta.bgn.healthStats);
-                                        double powerEnd = HealthStatsHelper.calcMobilePowerByRadioActive(powerProfile, delta.end.healthStats);
-                                        snapshot.extras.put("power-mobile-radio", powerEnd - powerBgn);
+                                        double power = 0;
+                                        if (delta.bgn.healthStats != null && delta.end.healthStats != null) {
+                                            double powerBgn = HealthStatsHelper.calcMobilePowerByRadioActive(powerProfile, delta.bgn.healthStats);
+                                            double powerEnd = HealthStatsHelper.calcMobilePowerByRadioActive(powerProfile, delta.end.healthStats);
+                                            power = powerEnd - powerBgn;
+                                        }
+                                        snapshot.extras.put("power-mobile-radio", power);
                                     }
                                     {
-                                        double powerBgn = HealthStatsHelper.calcMobilePowerByController(powerProfile, delta.bgn.healthStats);
-                                        double powerEnd = HealthStatsHelper.calcMobilePowerByController(powerProfile, delta.end.healthStats);
-                                        snapshot.extras.put("power-mobile-controller", powerEnd - powerBgn);
+                                        double power = 0;
+                                        if (delta.bgn.healthStats != null && delta.end.healthStats != null) {
+                                            double powerBgn = HealthStatsHelper.calcMobilePowerByController(powerProfile, delta.bgn.healthStats);
+                                            double powerEnd = HealthStatsHelper.calcMobilePowerByController(powerProfile, delta.end.healthStats);
+                                            power = powerEnd - powerBgn;
+                                        }
+                                        snapshot.extras.put("power-mobile-controller", power);
                                     }
                                     {
-                                        double powerBgn = HealthStatsHelper.calcMobilePowerByPackets(powerProfile, delta.bgn.healthStats, finalMobileRxBps, finalMobileTxBps);
-                                        double powerEnd = HealthStatsHelper.calcMobilePowerByPackets(powerProfile, delta.end.healthStats, finalMobileRxBps, finalMobileTxBps);
-                                        snapshot.extras.put("power-mobile-packet", powerEnd - powerBgn);
+                                        double power = 0;
+                                        if (delta.bgn.healthStats != null && delta.end.healthStats != null) {
+                                            double powerBgn = HealthStatsHelper.calcMobilePowerByPackets(powerProfile, delta.bgn.healthStats, finalMobileRxBps, finalMobileTxBps);
+                                            double powerEnd = HealthStatsHelper.calcMobilePowerByPackets(powerProfile, delta.end.healthStats, finalMobileRxBps, finalMobileTxBps);
+                                            power = powerEnd - powerBgn;
+                                        }
+                                        snapshot.extras.put("power-mobile-packet", power);
                                     }
                                     // wifi
                                     {
-                                        double powerBgn = HealthStatsHelper.calcWifiPowerByController(powerProfile, delta.bgn.healthStats);
-                                        double powerEnd = HealthStatsHelper.calcWifiPowerByController(powerProfile, delta.end.healthStats);
-                                        snapshot.extras.put("power-wifi-controller", powerEnd - powerBgn);
+                                        double power = 0;
+                                        if (delta.bgn.healthStats != null && delta.end.healthStats != null) {
+                                            double powerBgn = HealthStatsHelper.calcWifiPowerByController(powerProfile, delta.bgn.healthStats);
+                                            double powerEnd = HealthStatsHelper.calcWifiPowerByController(powerProfile, delta.end.healthStats);
+                                            power = powerEnd - powerBgn;
+                                        }
+                                        snapshot.extras.put("power-wifi-controller", power);
                                     }
                                     {
-                                        double powerBgn = HealthStatsHelper.calcWifiPowerByPackets(powerProfile, delta.bgn.healthStats, finalWifiRxBps, finalWifiTxBps);
-                                        double powerEnd = HealthStatsHelper.calcWifiPowerByPackets(powerProfile, delta.end.healthStats, finalWifiRxBps, finalWifiTxBps);
-                                        snapshot.extras.put("power-wifi-packet", powerEnd - powerBgn);
+                                        double power = 0;
+                                        if (delta.bgn.healthStats != null && delta.end.healthStats != null) {
+                                            double powerBgn = HealthStatsHelper.calcWifiPowerByPackets(powerProfile, delta.bgn.healthStats, finalWifiRxBps, finalWifiTxBps);
+                                            double powerEnd = HealthStatsHelper.calcWifiPowerByPackets(powerProfile, delta.end.healthStats, finalWifiRxBps, finalWifiTxBps);
+                                            power = powerEnd - powerBgn;
+                                        }
+                                        snapshot.extras.put("power-wifi-packet", power);
                                     }
                                 }
                             }
@@ -1252,6 +1272,7 @@ public class CompositeMonitors {
 
                         // 2.2 RadioStat
                         getDelta(TrafficMonitorFeature.RadioStatSnapshot.class, new Consumer<Delta<TrafficMonitorFeature.RadioStatSnapshot>>() {
+                            @SuppressLint("VisibleForTests")
                             @Override
                             public void accept(Delta<TrafficMonitorFeature.RadioStatSnapshot> delta) {
                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && mMonitor != null) {
