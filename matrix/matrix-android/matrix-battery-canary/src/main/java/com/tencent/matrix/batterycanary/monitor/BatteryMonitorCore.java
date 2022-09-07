@@ -93,6 +93,7 @@ public class BatteryMonitorCore implements
 
     private final BatteryMonitorConfig mConfig;
     @NonNull private final Handler mHandler;
+    @NonNull private final Handler mCanaryHandler;
     @Nullable private ForegroundLoopCheckTask mFgLooperTask;
     @Nullable private BackgroundLoopCheckTask mBgLooperTask;
     @Nullable private TaskJiffiesSnapshot mLastInternalSnapshot;
@@ -121,7 +122,8 @@ public class BatteryMonitorCore implements
             mSupplier = config.onSceneSupplier;
         }
 
-        mHandler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper(), this);
+        mHandler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper(), this);       // For BatteryMonitorCore only
+        mCanaryHandler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper(), this); // For BatteryCanary
         enableForegroundLoopCheck(config.isForegroundModeEnabled);
         enableBackgroundLoopCheck(config.isBackgroundModeEnabled);
         mMonitorDelayMillis = config.greyTime;
@@ -265,7 +267,7 @@ public class BatteryMonitorCore implements
 
     @NonNull
     public Handler getHandler() {
-        return mHandler;
+        return mCanaryHandler;
     }
 
     public Context getContext() {
