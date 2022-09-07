@@ -358,7 +358,9 @@ public class FrameDecorator extends IDoFrameListener implements IAppForeground {
                         mainHandler.post(new Runnable() {
                             @Override
                             public void run() {
-                                instance = new FrameDecorator(context, new FloatFrameView(context));
+                                if (instance == null) {
+                                    instance = new FrameDecorator(context, new FloatFrameView(context));
+                                }
                                 synchronized (lock) {
                                     lock.notifyAll();
                                 }
