@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
 
 /**
@@ -257,6 +258,7 @@ public class HealthStatsFeature extends AbsMonitorFeature {
 
     public static class HealthStatsSnapshot extends Snapshot<HealthStatsSnapshot> {
         @VisibleForTesting
+        @Nullable
         public HealthStats healthStats;
         public Map<String, Object> extras = Collections.emptyMap();
 
