@@ -8,7 +8,7 @@ buildscript {
 
     }
 
-    gradle.ext.KOTLIN_VERSION = "1.3.72"
+    gradle.ext.KOTLIN_VERSION = "1.4.32"
 
     dependencies {
         // classpath
@@ -52,7 +52,7 @@ ext {
     // For android sub-projects
     minSdkVersion = 19
     targetSdkVersion = 29
-    compileSdkVersion = 29
+    compileSdkVersion = 31
     buildToolsVersion = '29.0.2'
 
     MIN_SDK_VERSION_FOR_HOOK = 21
@@ -86,6 +86,8 @@ ext {
 
     ABI_FILTERS = ['armeabi-v7a', 'arm64-v8a']
     LOGGER_VERSION = 1.1 // fixme logger
+
+    LIFECYCLE_VERSION = '2.3.1'
 }
 
 // Build sample project

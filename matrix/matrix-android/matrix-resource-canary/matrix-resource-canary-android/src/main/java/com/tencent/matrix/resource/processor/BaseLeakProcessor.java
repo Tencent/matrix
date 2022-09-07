@@ -106,6 +106,10 @@ public abstract class BaseLeakProcessor {
     }
 
     final protected void publishIssue(int issueType, ResourceConfig.DumpMode dumpMode, String activity, String refKey, String detail, String cost) {
+        publishIssue(issueType, dumpMode, activity, refKey, detail, cost, 0);
+    }
+
+    final protected void publishIssue(int issueType, ResourceConfig.DumpMode dumpMode, String activity, String refKey, String detail, String cost, int retryCount) {
         Issue issue = new Issue(issueType);
         JSONObject content = new JSONObject();
         try {
@@ -114,6 +118,7 @@ public abstract class BaseLeakProcessor {
             content.put(SharePluginInfo.ISSUE_REF_KEY, refKey);
             content.put(SharePluginInfo.ISSUE_LEAK_DETAIL, detail);
             content.put(SharePluginInfo.ISSUE_COST_MILLIS, cost);
+            content.put(SharePluginInfo.ISSUE_RETRY_COUNT, retryCount);
         } catch (JSONException jsonException) {
             MatrixLog.printErrStackTrace(TAG, jsonException, "");
         }

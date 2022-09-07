@@ -6,13 +6,11 @@ import android.content.Context;
 import android.os.Handler;
 import android.os.Message;
 
-import com.tencent.matrix.AppActiveMatrixDelegate;
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.BatteryEventDelegate;
 import com.tencent.matrix.batterycanary.monitor.feature.AbsTaskMonitorFeature.TaskJiffiesSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.AppStatMonitorFeature;
-import com.tencent.matrix.batterycanary.monitor.feature.InternalMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot.ThreadJiffiesEntry;
 import com.tencent.matrix.batterycanary.monitor.feature.LooperTaskMonitorFeature;
@@ -24,6 +22,7 @@ import com.tencent.matrix.batterycanary.monitor.feature.NotificationMonitorFeatu
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature.WakeLockTrace.WakeLockRecord;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
+import com.tencent.matrix.lifecycle.owners.ProcessUILifecycleOwner;
 import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 
@@ -33,7 +32,6 @@ import java.util.concurrent.Callable;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
-import androidx.annotation.WorkerThread;
 
 public class BatteryMonitorCore implements
         LooperTaskMonitorFeature.LooperTaskListener,
@@ -108,7 +106,7 @@ public class BatteryMonitorCore implements
     };
 
     private volatile boolean mTurnOn = false;
-    private boolean mAppForeground = AppActiveMatrixDelegate.INSTANCE.isAppForeground();
+    private boolean mAppForeground = ProcessUILifecycleOwner.INSTANCE.isProcessForeground();
     private boolean mForegroundModeEnabled;
     private boolean mBackgroundModeEnabled;
     private final long mMonitorDelayMillis;
@@ -206,16 +204,6 @@ public class BatteryMonitorCore implements
                 mTurnOn = false;
             }
         }
-    }
-
-    /**
-     * Removed to {@link InternalMonitorFeature#configureMonitorConsuming()}
-     */
-    @WorkerThread
-    @Nullable
-    @Deprecated
-    public TaskJiffiesSnapshot configureMonitorConsuming() {
-        return null;
     }
 
     public void onForeground(boolean isForeground) {

@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    tools:ignore="RtlHardcoded">
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/BG_1">
+
+        <!-- BG TimeLine  -->
+        <RelativeLayout
+            android:layout_width="40dp"
+            android:layout_height="match_parent"
+            android:layout_centerVertical="true"
+            android:layout_marginLeft="60dp">
+
+            <View
+                android:layout_width="1px"
+                android:layout_height="match_parent"
+                android:layout_centerInParent="true"
+                android:background="@color/BW_70" />
+        </RelativeLayout>
+
+        <!--  Left  -->
+        <RelativeLayout
+            android:id="@+id/layout_left"
+            android:layout_width="wrap_content"
+            android:layout_height="45dp"
+            tools:background="#2000">
+
+            <TextView
+                android:id="@+id/tv_time"
+                android:layout_width="60dp"
+                android:layout_height="wrap_content"
+                android:layout_centerVertical="true"
+                android:gravity="right"
+                android:text="20:00"
+                android:textColor="@color/FG_2" />
+
+            <RelativeLayout
+                android:id="@+id/layout_timeline"
+                android:layout_width="40dp"
+                android:layout_height="45dp"
+                android:layout_centerVertical="true"
+                android:layout_toRightOf="@+id/tv_time">
+
+                <View
+                    android:layout_width="1px"
+                    android:layout_height="match_parent"
+                    android:layout_centerInParent="true"
+                    android:background="@color/BW_70" />
+
+                <ImageView
+                    android:id="@+id/iv_indicator"
+                    android:layout_width="10dp"
+                    android:layout_height="10dp"
+                    android:layout_centerInParent="true"
+                    android:src="@drawable/stats_icon_circle_list" />
+            </RelativeLayout>
+
+        </RelativeLayout>
+
+
+        <!--  Title  -->
+        <RelativeLayout
+            android:id="@+id/layout_title"
+            android:layout_width="match_parent"
+            android:layout_height="45dp"
+            android:layout_toLeftOf="@+id/layout_right"
+            android:layout_toRightOf="@+id/layout_left"
+            android:background="?attr/selectableItemBackground"
+            android:gravity="center_vertical"
+            android:orientation="vertical"
+            tools:background="#4000">
+
+            <TextView
+                android:id="@+id/tv_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerVertical="true"
+                android:text="电量报告"
+                android:textColor="@color/FG_0"
+                android:textStyle="normal|bold" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentRight="true"
+                android:layout_centerVertical="true"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tv_title_sub_1"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="right"
+                    android:text="10:00 - 14:00"
+                    android:textColor="@color/FG_2"
+                    android:textSize="10sp"
+                    android:textStyle="normal" />
+
+                <TextView
+                    android:id="@+id/tv_title_sub_2"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="right"
+                    android:text="正常"
+                    android:textColor="@color/FG_2"
+                    android:textSize="10sp"
+                    android:textStyle="normal" />
+            </LinearLayout>
+        </RelativeLayout>
+
+
+        <!--  Right  -->
+        <RelativeLayout
+            android:id="@+id/layout_right"
+            android:layout_width="50dp"
+            android:layout_height="45dp"
+            android:layout_alignParentRight="true"
+            android:background="?attr/selectableItemBackground"
+            tools:background="#6000">
+
+            <TextView
+                android:id="@+id/tv_more"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerInParent="true"
+                android:drawableRight="@drawable/stats_icon_triangle"
+                android:textSize="12sp" />
+        </RelativeLayout>
+
+
+        <!--  Expand  -->
+        <RelativeLayout
+            android:id="@+id/layout_expand"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/layout_title"
+            android:layout_marginLeft="60dp"
+            android:layout_marginRight="50dp"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <RelativeLayout
+                android:id="@+id/layout_timeline_expand"
+                android:layout_width="40dp"
+                android:layout_height="match_parent"
+                android:layout_centerVertical="true">
+
+                <View
+                    android:layout_width="1px"
+                    android:layout_height="match_parent"
+                    android:layout_centerInParent="true"
+                    android:background="@color/BW_70" />
+            </RelativeLayout>
+
+            <LinearLayout
+                android:id="@+id/layout_expand_entry_header"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_toRightOf="@+id/layout_timeline_expand"
+                android:visibility="visible"
+                tools:background="#2000">
+
+                <include layout="@layout/stats_item_event_dump_entry_header" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/layout_expand_entry_thread"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_below="@+id/layout_expand_entry_header"
+                android:layout_toRightOf="@+id/layout_timeline_expand"
+                android:background="?attr/selectableItemBackground"
+                android:visibility="gone"
+                tools:background="#2000"
+                tools:visibility="visible">
+
+                <include layout="@layout/stats_item_event_dump_entry_thread" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/layout_expand_entry_1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_below="@+id/layout_expand_entry_thread"
+                android:layout_toRightOf="@+id/layout_timeline_expand"
+                android:visibility="gone"
+                tools:background="#2000"
+                tools:visibility="visible">
+
+                <include layout="@layout/stats_item_event_dump_entry_general" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/layout_expand_entry_2"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_below="@+id/layout_expand_entry_1"
+                android:layout_toRightOf="@+id/layout_timeline_expand"
+                android:visibility="gone"
+                tools:background="#2000"
+                tools:visibility="visible">
+
+                <include layout="@layout/stats_item_event_dump_entry_general" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/layout_expand_entry_3"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_below="@+id/layout_expand_entry_2"
+                android:layout_toRightOf="@+id/layout_timeline_expand"
+                android:visibility="gone"
+                tools:background="#2000"
+                tools:visibility="visible">
+
+                <include layout="@layout/stats_item_event_dump_entry_general" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/layout_expand_entry_4"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_below="@+id/layout_expand_entry_3"
+                android:layout_toRightOf="@+id/layout_timeline_expand"
+                android:visibility="gone"
+                tools:background="#2000"
+                tools:visibility="visible">
+
+                <include layout="@layout/stats_item_event_dump_entry_general" />
+
+            </LinearLayout>
+
+        </RelativeLayout>
+
+    </RelativeLayout>
+
+</LinearLayout>

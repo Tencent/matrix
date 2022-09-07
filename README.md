@@ -1,7 +1,7 @@
 ![Matrix-icon](assets/img/readme/header.png)
 [![license](http://img.shields.io/badge/license-BSD3-brightgreen.svg?style=flat)](https://github.com/Tencent/matrix/blob/master/LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Tencent/matrix/pulls)
-[![WeChat Approved](https://img.shields.io/badge/Wechat%20Approved-2.0.5-red.svg)](https://github.com/Tencent/matrix/wiki)
+[![WeChat Approved](https://img.shields.io/badge/Wechat%20Approved-2.0.8-red.svg)](https://github.com/Tencent/matrix/wiki)
 [![CircleCI](https://circleci.com/gh/Tencent/matrix.svg?style=shield)](https://app.circleci.com/pipelines/github/Tencent/matrix)
 
 (中文版本请参看[这里](#matrix_cn))  
@@ -215,7 +215,7 @@ At this point, Matrix has been integrated into the app and is beginning to colle
 
 1. Configure `MATRIX_VERSION` in gradle.properties.
 ``` gradle
-  MATRIX_VERSION=2.0.5
+  MATRIX_VERSION=2.0.8
 ```
 
 2. Add `matrix-gradle-plugin` in your build.gradle:
@@ -364,11 +364,11 @@ Then other components in Matrix could use Quikcen Backtrace to unwind stacktrace
 
 #### APK Checker Usage
 
-APK Checker can run independently in Jar ([matrix-apk-canary-2.0.5.jar](https://repo.maven.apache.org/maven2/com/tencent/matrix/matrix-apk-canary/2.0.5/matrix-apk-canary-2.0.5.jar)）  mode, usage:
+APK Checker can run independently in Jar ([matrix-apk-canary-2.0.8.jar](https://repo.maven.apache.org/maven2/com/tencent/matrix/matrix-apk-canary/2.0.8/matrix-apk-canary-2.0.8.jar)）  mode, usage:
 
 
 ```shell
-java -jar matrix-apk-canary-2.0.5.jar
+java -jar matrix-apk-canary-2.0.8.jar
 Usages: 
     --config CONFIG-FILE-PATH
 or
@@ -427,7 +427,7 @@ Matrix is under the BSD license. See the [LICENSE](https://github.com/Tencent/Ma
 
 # <a name="matrix_cn">Matrix</a>
 ![Matrix-icon](assets/img/readme/header.png)
-[![license](http://img.shields.io/badge/license-BSD3-brightgreen.svg?style=flat)](https://github.com/Tencent/matrix/blob/master/LICENSE)[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Tencent/matrix/pulls)  [![WeChat Approved](https://img.shields.io/badge/Wechat%20Approved-2.0.5-red.svg)](https://github.com/Tencent/matrix/wiki)
+[![license](http://img.shields.io/badge/license-BSD3-brightgreen.svg?style=flat)](https://github.com/Tencent/matrix/blob/master/LICENSE)[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Tencent/matrix/pulls)  [![WeChat Approved](https://img.shields.io/badge/Wechat%20Approved-2.0.8-red.svg)](https://github.com/Tencent/matrix/wiki)
 
 **Matrix** 是一款微信研发并日常使用的应用性能接入框架，支持iOS, macOS和Android。
 Matrix 通过接入各种性能监控方案，对性能监控项的异常数据进行采集和分析，输出相应的问题分析、定位与优化建议，从而帮助开发者开发出更高质量的应用。
@@ -628,7 +628,7 @@ Matrix-android 当前监控范围包括：应用安装包大小，帧率变化�
 
 1. 在你项目根目录下的 gradle.properties 中配置要依赖的 Matrix 版本号，如：
 ``` gradle
-  MATRIX_VERSION=2.0.5
+  MATRIX_VERSION=2.0.8
 ```
 
 2. 在你项目根目录下的 build.gradle 文件添加 Matrix 依赖，如：
@@ -774,10 +774,10 @@ WeChatBacktrace.instance().configure(getApplicationContext()).commit();
 
 #### APK Checker
 
-APK Check 以独立的 jar 包提供 ([matrix-apk-canary-2.0.5.jar](https://repo.maven.apache.org/maven2/com/tencent/matrix/matrix-apk-canary/2.0.5/matrix-apk-canary-2.0.5.jar)），你可以运行：
+APK Check 以独立的 jar 包提供 ([matrix-apk-canary-2.0.8.jar](https://repo.maven.apache.org/maven2/com/tencent/matrix/matrix-apk-canary/2.0.8/matrix-apk-canary-2.0.8.jar)），你可以运行：
 
 ```cmd
-java -jar matrix-apk-canary-2.0.5.jar
+java -jar matrix-apk-canary-2.0.8.jar
 ```
 
 查看 Usages 来使用它。
@@ -838,3 +838,7 @@ Options:
 # License
 
 Matrix is under the BSD license. See the [LICENSE](https://github.com/Tencent/Matrix/blob/master/LICENSE) file for details
+
+# 个人信息保护规则
+
+[Matrix SDK个人信息保护规则](https://support.weixin.qq.com/cgi-bin/mmsupportacctnodeweb-bin/pages/yTezupX6yF028Mpf)

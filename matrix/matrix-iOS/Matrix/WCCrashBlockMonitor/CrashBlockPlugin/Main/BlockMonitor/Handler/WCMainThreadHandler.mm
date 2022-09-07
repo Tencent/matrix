@@ -22,8 +22,6 @@
 
 #define STACK_PER_MAX_COUNT 100 // the max address count of one stack
 
-#define SHORTEST_LENGTH_OF_STACK 10
-
 @interface WCMainThreadHandler () {
     pthread_mutex_t m_threadLock;
     int m_cycleArrayCount;
@@ -167,8 +165,7 @@
     BOOL trueStack = NO;
     for (int i = 0; i < m_cycleArrayCount; i++) {
         size_t currentValue = m_topStackAddressRepeatArray[i];
-        int stackCount = (int)m_mainThreadStackCount[i];
-        if (currentValue >= maxValue && stackCount > SHORTEST_LENGTH_OF_STACK) {
+        if (currentValue >= maxValue) {
             maxValue = currentValue;
             trueStack = YES;
         }
@@ -182,8 +179,7 @@
     size_t currentIndex = (m_tailPoint + m_cycleArrayCount - 1) % m_cycleArrayCount;
     for (int i = 0; i < m_cycleArrayCount; i++) {
         int trueIndex = (m_tailPoint + m_cycleArrayCount - i - 1) % m_cycleArrayCount;
-        int stackCount = (int)m_mainThreadStackCount[trueIndex];
-        if (m_topStackAddressRepeatArray[trueIndex] == maxValue && stackCount > SHORTEST_LENGTH_OF_STACK) {
+        if (m_topStackAddressRepeatArray[trueIndex] == maxValue) {
             currentIndex = trueIndex;
             break;
         }

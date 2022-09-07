@@ -1,0 +1,10 @@
+cmake_minimum_required(VERSION 3.10.2)
+project(matrix_hprof_analyzer)
+
+set(CMAKE_CXX_STANDARD 17)
+
+add_executable(matrix_hprof_analyzer_reader_test reader.cpp)
+target_link_libraries(matrix_hprof_analyzer_reader_test matrix_hprof_analyzer_reader)
+target_link_libraries(matrix_hprof_analyzer_reader_test gtest_main)
+
+gtest_discover_tests(matrix_hprof_analyzer_reader_test)

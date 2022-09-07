@@ -2,6 +2,9 @@
     package="com.tencent.matrix.batterycanary">
 
     <application>
+        <activity
+            android:theme="@style/Theme.AppCompat.NoActionBar"
+            android:name=".stats.ui.BatteryStatsActivity" />
     </application>
 
 </manifest>

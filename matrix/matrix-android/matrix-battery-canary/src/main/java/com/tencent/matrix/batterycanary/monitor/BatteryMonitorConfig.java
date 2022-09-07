@@ -1,17 +1,21 @@
 package com.tencent.matrix.batterycanary.monitor;
 
 import android.app.ActivityManager;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 
 import com.tencent.matrix.batterycanary.BuildConfig;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature;
+import com.tencent.matrix.batterycanary.stats.BatteryRecorder;
+import com.tencent.matrix.batterycanary.stats.BatteryStats;
+import com.tencent.matrix.batterycanary.utils.CallStackCollector;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.concurrent.Callable;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 /**
  * @author Kaede
@@ -57,6 +61,9 @@ public class BatteryMonitorConfig {
     public List<String> looperWatchList = Collections.emptyList();
     public List<String> threadWatchList = Collections.emptyList();
     public final List<MonitorFeature> features = new ArrayList<>(3);
+    public BatteryRecorder batteryRecorder;
+    public BatteryStats batteryStats;
+    public CallStackCollector callStackCollector;
 
     private BatteryMonitorConfig() {
     }
@@ -88,6 +95,9 @@ public class BatteryMonitorConfig {
                 + ", looperWatchList=" + looperWatchList
                 + ", threadWatchList=" + threadWatchList
                 + ", features=" + features
+                + ", batteryRecorder=" + batteryRecorder
+                + ", batteryStats=" + batteryStats
+                + ", callStackCollector=" + callStackCollector
                 + '}';
     }
 
@@ -260,6 +270,21 @@ public class BatteryMonitorConfig {
             return this;
         }
 
+        public Builder setRecorder(BatteryRecorder recorder) {
+            config.batteryRecorder = recorder;
+            return this;
+        }
+
+        public Builder setStats(BatteryStats stats) {
+            config.batteryStats = stats;
+            return this;
+        }
+
+        public Builder setCollector(CallStackCollector collector) {
+            config.callStackCollector = collector;
+            return this;
+        }
+
         public BatteryMonitorConfig build() {
             Collections.sort(config.features, new Comparator<MonitorFeature>() {
                 @Override
@@ -267,6 +292,13 @@ public class BatteryMonitorConfig {
                     return Integer.compare(o2.weight(), o1.weight());
                 }
             });
+
+            if (config.batteryStats == null) {
+                config.batteryStats = new BatteryStats.BatteryStatsImpl();
+            }
+            if (config.callStackCollector == null) {
+                config.callStackCollector = new CallStackCollector();
+            }
             return config;
         }
     }

@@ -10,7 +10,7 @@ import android.os.Build;
 import android.os.Parcel;
 import android.os.Parcelable;
 
-import com.tencent.matrix.memorydump.MemoryDumpManager;
+import com.tencent.matrix.resource.MemoryUtil;
 import com.tencent.matrix.resource.R;
 import com.tencent.matrix.resource.analyzer.model.ActivityLeakResult;
 import com.tencent.matrix.resource.analyzer.model.DestroyedActivityInfo;
@@ -170,52 +170,29 @@ public class ManualDumpProcessor extends BaseLeakProcessor {
      * @return
      */
     private ManualDumpData dumpAndAnalyse(String activity, String key) {
-        long dumpStart = System.currentTimeMillis();
 
         getWatcher().triggerGc();
 
         File file = getDumpStorageManager().newHprofFile();
-        if (file != null) {
-            MemoryDumpManager.dumpBlock(file.getPath());
-        }
-        if (file == null || file.length() <= 0) {
+        final ActivityLeakResult result = MemoryUtil.dumpAndAnalyze(file.getAbsolutePath(), key, 600);
+        if (result.mLeakFound) {
+            final String leakChain = result.toString();
             publishIssue(
-                    SharePluginInfo.IssueType.ERR_FILE_NOT_FOUND,
-                    ResourceConfig.DumpMode.MANUAL_DUMP,
-                    activity, key, "FileNull", "0");
-            MatrixLog.e(TAG, "file is null!");
+                    SharePluginInfo.IssueType.LEAK_FOUND,
+                    ResourceConfig.DumpMode.FORK_ANALYSE,
+                    activity, key, leakChain, String.valueOf(result.mAnalysisDurationMs)
+            );
+            return new ManualDumpData(file.getAbsolutePath(), leakChain);
+        } else if (result.mFailure != null) {
+            publishIssue(
+                    SharePluginInfo.IssueType.ERR_EXCEPTION,
+                    ResourceConfig.DumpMode.FORK_ANALYSE,
+                    activity, key, result.mFailure.toString(), "0"
+            );
             return null;
+        } else {
+            return new ManualDumpData(file.getAbsolutePath(), null);
         }
-
-        MatrixLog.i(TAG, String.format("dump cost=%sms refString=%s path=%s",
-                System.currentTimeMillis() - dumpStart, key, file.getAbsolutePath()));
-
-        long analyseBegin = System.currentTimeMillis();
-        try {
-            final ActivityLeakResult result = analyze(file, key);
-            MatrixLog.i(TAG, String.format("analyze cost=%sms refString=%s",
-                    System.currentTimeMillis() - analyseBegin, key));
-            String leakChain = result.toString();
-            if (result.mLeakFound) {
-                MatrixLog.i(TAG, "leakFound,refcChain = %s", leakChain);
-                publishIssue(
-                        SharePluginInfo.IssueType.LEAK_FOUND,
-                        ResourceConfig.DumpMode.MANUAL_DUMP,
-                        activity, key, leakChain,
-                        String.valueOf(System.currentTimeMillis() - dumpStart));
-                return new ManualDumpData(file.getAbsolutePath(), leakChain);
-            } else {
-                MatrixLog.i(TAG, "leak not found");
-                return new ManualDumpData(file.getAbsolutePath(), null);
-            }
-        } catch (OutOfMemoryError error) {
-            publishIssue(
-                    SharePluginInfo.IssueType.ERR_ANALYSE_OOM,
-                    ResourceConfig.DumpMode.MANUAL_DUMP,
-                    activity, key, "OutOfMemoryError", "0");
-            MatrixLog.printErrStackTrace(TAG, error.getCause(), "");
-        }
-        return null;
     }
 
     public static class ManualDumpData implements Parcelable {

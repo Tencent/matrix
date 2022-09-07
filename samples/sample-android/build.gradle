@@ -6,8 +6,8 @@ buildscript {
         compileSdkVersion = 29
         buildToolsVersion = '29.0.2'
         javaVersion = JavaVersion.VERSION_1_8
-        
-        MATRIX_VERSION = "2.0.5"
+
+        MATRIX_VERSION = "2.0.8"
 
         GROUP = 'com.tencent.matrix'
         VERSION_NAME = "${MATRIX_VERSION}"
@@ -46,6 +46,7 @@ buildscript {
             changing = true
             exclude group: 'com.android.tools.build', module: 'gradle'
         }
+        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.4.32'
     }
 }
 

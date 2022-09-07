@@ -7,6 +7,7 @@
 #include <backtrace/Backtrace.h>
 #include <xhook.h>
 #include <xhook_ext.h>
+#include <xh_maps.h>
 #include <android/log.h>
 #include <sys/resource.h>
 #include <set>
@@ -75,6 +76,7 @@ namespace matrix {
         std::lock_guard lock(sDlOpenHandlerMutex);
         void* hLib = dlopen_fn(args);
         if (hLib != nullptr && (args->flags & RTLD_NOLOAD) == 0) {
+            xh_maps_invalidate();
             NotifySoLoad(args->filename);
         }
         return hLib;
@@ -146,8 +148,8 @@ namespace matrix {
     }
 
 #ifdef __LP64__
-#define LINKER_NAME "linker64"
-#define LINKER_NAME_PATTERN ".*/linker64$"
+    #define LINKER_NAME "linker64"
+    #define LINKER_NAME_PATTERN ".*/linker64$"
 #else
     #define LINKER_NAME "linker"
     #define LINKER_NAME_PATTERN ".*/linker$"
@@ -161,6 +163,7 @@ namespace matrix {
 
         int sdkVer = android_get_device_api_level();
 
+        // fixme: remove
         if (sdkVer == 24 || sdkVer == 25) {
             LOGE(LOG_TAG, "Does not support N and N_MR1 so far.");
             return false;
@@ -186,10 +189,14 @@ namespace matrix {
             if (UNLIKELY(orig_dlopen_N == nullptr)) {
                 orig_dlopen_N = reinterpret_cast<decltype(orig_dlopen_N)>(
                         semi_dlsym(hLinker, "__dl__Z8__dlopenPKciPKv"));
-                if (UNLIKELY(orig_dlopen_N == nullptr)) {
-                    LOGE(LOG_TAG, "Fail to find original dlopen.");
-                    return false;
-                }
+            }
+            if (UNLIKELY(orig_dlopen_N == nullptr)) {
+                orig_dlopen_N = reinterpret_cast<decltype(orig_dlopen_N)>(
+                        semi_dlsym(hLinker, "__loader_dlopen"));
+            }
+            if (UNLIKELY(orig_dlopen_N == nullptr)) {
+                LOGE(LOG_TAG, "Fail to find original dlopen.");
+                return false;
             }
             if (UNLIKELY(xhook_grouped_register(HOOK_REQUEST_GROUPID_DLOPEN_MON, ".*\\.so$", "dlopen",
                                         reinterpret_cast<void*>(dlopen_handler_N), nullptr) != 0)) {
@@ -202,10 +209,14 @@ namespace matrix {
             if (UNLIKELY(orig_android_dlopen_ext_N == nullptr)) {
                 orig_android_dlopen_ext_N = reinterpret_cast<decltype(orig_android_dlopen_ext_N)>(
                         semi_dlsym(hLinker, "__dl__Z20__android_dlopen_extPKciPK17android_dlextinfoPKv"));
-                if (UNLIKELY(orig_android_dlopen_ext_N == nullptr)) {
-                    LOGE(LOG_TAG, "Fail to find original android_dlopen_ext.");
-                    return false;
-                }
+            }
+            if (UNLIKELY(orig_android_dlopen_ext_N == nullptr)) {
+                orig_android_dlopen_ext_N = reinterpret_cast<decltype(orig_android_dlopen_ext_N)>(
+                        semi_dlsym(hLinker, "__loader_android_dlopen_ext"));
+            }
+            if (UNLIKELY(orig_android_dlopen_ext_N == nullptr)) {
+                LOGE(LOG_TAG, "Fail to find original android_dlopen_ext.");
+                return false;
             }
             if (UNLIKELY(xhook_grouped_register(HOOK_REQUEST_GROUPID_DLOPEN_MON, ".*\\.so$", "android_dlopen_ext",
                                         reinterpret_cast<void*>(android_dlopen_ext_handler_N), nullptr) != 0)) {
@@ -216,10 +227,13 @@ namespace matrix {
             orig_dlclose = reinterpret_cast<decltype(orig_dlclose)>(semi_dlsym(hLinker, "__dl___loader_dlclose"));
             if (UNLIKELY(orig_dlclose == nullptr)) {
                 orig_dlclose = reinterpret_cast<decltype(orig_dlclose)>(semi_dlsym(hLinker, "__dl__Z9__dlclosePv"));
-                if (UNLIKELY(orig_dlclose == nullptr)) {
-                    LOGE(LOG_TAG, "Fail to find original dlclose.");
-                    return false;
-                }
+            }
+            if (UNLIKELY(orig_dlclose == nullptr)) {
+                orig_dlclose = reinterpret_cast<decltype(orig_dlclose)>(semi_dlsym(hLinker, "__loader_dlclose"));
+            }
+            if (UNLIKELY(orig_dlclose == nullptr)) {
+                LOGE(LOG_TAG, "Fail to find original dlclose.");
+                return false;
             }
             if (UNLIKELY(xhook_grouped_register(HOOK_REQUEST_GROUPID_DLOPEN_MON, ".*\\.so$", "dlclose",
                                         reinterpret_cast<void*>(dlclose_handler), nullptr) != 0)) {

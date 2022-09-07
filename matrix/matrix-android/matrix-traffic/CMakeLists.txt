@@ -31,6 +31,7 @@ find_library( log-lib
 target_link_libraries(matrix-traffic
         PRIVATE ${log-lib}
         PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/libxhook.a
+        PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/libsemi_dlfcn.a
         PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/libwechatbacktrace.so
                     )
 

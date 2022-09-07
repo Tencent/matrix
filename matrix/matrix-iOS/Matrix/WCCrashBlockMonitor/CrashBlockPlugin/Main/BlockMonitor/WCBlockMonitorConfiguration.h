@@ -32,8 +32,9 @@ const static size_t g_defaultSingleWriteLimit = 100 * 1024;
 const static size_t g_defaultTotalReadLimit = 500 * 1024 * 1024;
 const static size_t g_defaultTotalWriteLimit = 200 * 1024 * 1024;
 const static uint32_t g_defaultMemoryThresholdInMB = 1024;
+const static int g_defaultDumpDailyLimit = 100;
 
-@interface WCBlockMonitorConfiguration : NSObject <NSCoding>
+@interface WCBlockMonitorConfiguration : NSObject
 
 + (id)defaultConfig;
 
@@ -77,10 +78,13 @@ const static uint32_t g_defaultMemoryThresholdInMB = 1024;
 @property (nonatomic, assign) float powerConsumeStackCPULimit;
 
 /// enable to filter the same stack in one day, the stack be captured over "triggerToBeFilteredCount" times would be filtered
-@property (nonatomic, assign) BOOL bFilterSameStack;
+@property (nonatomic, assign) BOOL bFilterSameStack DEPRECATED_MSG_ATTRIBUTE("use dumpDailyLimit instead");
 
 /// define the count that a stack can be captured in one day, see above "bFilterSameStack"
-@property (nonatomic, assign) uint32_t triggerToBeFilteredCount;
+@property (nonatomic, assign) uint32_t triggerToBeFilteredCount DEPRECATED_MSG_ATTRIBUTE("use dumpDailyLimit instead");
+
+/// define the max number of lag dump per day
+@property (nonatomic, assign) uint32_t dumpDailyLimit;
 
 /// enable printing the memory use
 @property (nonatomic, assign) BOOL bPrintMemomryUse;
