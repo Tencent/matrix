@@ -36,7 +36,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 @RunWith(AndroidJUnit4.class)
 public class WifiManagerHookerTest {
-    static final String TAG = "Matrix.test.WifiManagerHookerTest";
+    static final String TAG = "Matrix.test.BleManagerHookerTest";
 
     Context mContext;
 

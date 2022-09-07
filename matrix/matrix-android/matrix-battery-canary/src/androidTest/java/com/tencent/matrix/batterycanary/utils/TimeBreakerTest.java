@@ -20,21 +20,15 @@ import android.content.Context;
 import androidx.test.InstrumentationRegistry;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import java.sql.Timestamp;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 
@@ -282,54 +276,6 @@ public class TimeBreakerTest {
         for (TimePortions.Portion item : snapshot.portions) {
             Assert.assertTrue(item.totalStatMillis > 0L);
         }
-    }
-
-    @Test
-    public void testPortionFromJson() throws JSONException {
-        final List<TimeBreaker.Stamp> stampList = new ArrayList<>();
-        JSONArray json = new JSONArray("[\n" +
-                "  {\n" +
-                "    \"key\": \"1\",\n" +
-                "    \"upTime\": 13269846,\n" +
-                "    \"statMillis\": \"05:25:05\"\n" +
-                "  },\n" +
-                "  {\n" +
-                "    \"key\": \"1\",\n" +
-                "    \"upTime\": 13269845,\n" +
-                "    \"statMillis\": \"05:25:05\"\n" +
-                "  }\n" +
-                "]");
-
-        for (int i = 0; i < json.length(); i++) {
-            JSONObject jsonObject = json.getJSONObject(i);
-            long upTime = jsonObject.getLong("upTime");
-            Timestamp timestamp = Timestamp.valueOf(new SimpleDateFormat("yyyy-MM-dd ")
-                    .format(new Date())
-                    .concat(jsonObject.getString("statMillis")));
-            long statMillis = timestamp.getTime();
-            TimeBreaker.Stamp stamp = new TimeBreaker.Stamp(jsonObject.getString("key"), upTime, statMillis);
-            stampList.add(stamp);
-        }
-
-        Assert.assertFalse(stampList.isEmpty());
-
-        long windowMs = BatteryCanaryUtil.ONE_HOR;
-        final String currStat = "1";
-        final long currUpTimeMs = 16978289;
-        final long currStatMs = Timestamp.valueOf(new SimpleDateFormat("yyyy-MM-dd ")
-                .format(new Date())
-                .concat("06:26:54")).getTime();
-        TimeBreaker.TimePortions portions = TimeBreaker.configurePortions(
-                stampList,
-                windowMs,
-                10L,
-                new TimeBreaker.Stamp.Stamper() {
-                    @Override
-                    public TimeBreaker.Stamp stamp(String key) {
-                        return new TimeBreaker.Stamp(currStat, currUpTimeMs, currStatMs);
-                    }
-                });
-        Assert.assertTrue(portions.isValid());
     }
 
     @Test
