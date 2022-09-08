@@ -132,22 +132,27 @@ public class OpenglLeakPlugin extends Plugin {
 
     private void startImpl() {
         Intent service = new Intent(context, OpenglIndexDetectorService.class);
-        boolean result = context.bindService(service, new ServiceConnection() {
-            @Override
-            public void onServiceConnected(ComponentName componentName, final IBinder iBinder) {
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        executeHook(iBinder);
-                    }
-                }).start();
-            }
+        boolean result = false;
+        try {
+            result = context.bindService(service, new ServiceConnection() {
+                @Override
+                public void onServiceConnected(ComponentName componentName, final IBinder iBinder) {
+                    new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            executeHook(iBinder);
+                        }
+                    }).start();
+                }
 
-            @Override
-            public void onServiceDisconnected(ComponentName componentName) {
-                context.unbindService(this);
-            }
-        }, Context.BIND_AUTO_CREATE);
+                @Override
+                public void onServiceDisconnected(ComponentName componentName) {
+                    context.unbindService(this);
+                }
+            }, Context.BIND_AUTO_CREATE);
+        } catch (Exception e) {
+            MatrixLog.d(TAG, "bindService error = " + e.getCause());
+        }
 
         MatrixLog.d(TAG, "bindService result = " + result);
         if (result) {
