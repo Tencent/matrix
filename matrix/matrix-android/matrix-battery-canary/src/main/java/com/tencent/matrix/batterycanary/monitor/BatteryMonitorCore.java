@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.content.ComponentName;
 import android.content.Context;
 import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.Message;
 
 import com.tencent.matrix.Matrix;
@@ -122,8 +123,10 @@ public class BatteryMonitorCore implements
             mSupplier = config.onSceneSupplier;
         }
 
-        mHandler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper(), this);       // For BatteryMonitorCore only
-        mCanaryHandler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper(), this); // For BatteryCanary
+        //noinspection SpellCheckingInspection
+        HandlerThread thread = MatrixHandlerThread.getNewHandlerThread("matrix_batt", Thread.NORM_PRIORITY);
+        mHandler = new Handler(thread.getLooper(), this);       // For BatteryMonitorCore only
+        mCanaryHandler = new Handler(thread.getLooper(), this); // For BatteryCanary
         enableForegroundLoopCheck(config.isForegroundModeEnabled);
         enableBackgroundLoopCheck(config.isBackgroundModeEnabled);
         mMonitorDelayMillis = config.greyTime;
