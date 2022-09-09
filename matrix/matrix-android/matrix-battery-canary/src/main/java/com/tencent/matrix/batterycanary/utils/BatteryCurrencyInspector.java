@@ -20,7 +20,7 @@ public class BatteryCurrencyInspector {
      * microAmp or millisAmp.)
      */
     @Nullable
-    public static Boolean isMicroAmpCurr(Context context) {
+    public static Boolean isMicroAmpCurr(Context context, int threshold) {
         if (BatteryCanaryUtil.isDeviceCharging(context)) {
             // Currency might be very low in charge
             return null;
@@ -29,11 +29,16 @@ public class BatteryCurrencyInspector {
         if (val == -1) {
             return null;
         }
-        return isMicroAmp(val);
+        return isMicroAmp(val, threshold);
     }
 
-    public static boolean isMicroAmp(long amp) {
-        return amp > 1000L;
+    @Nullable
+    public static Boolean isMicroAmpCurr(Context context) {
+        return isMicroAmpCurr(context, 1000);
+    }
+
+    public static boolean isMicroAmp(long amp, int threshold) {
+        return amp > threshold;
     }
 
     @Nullable
