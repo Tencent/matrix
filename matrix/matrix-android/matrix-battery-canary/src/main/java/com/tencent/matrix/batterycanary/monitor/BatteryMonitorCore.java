@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.content.ComponentName;
 import android.content.Context;
 import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.Message;
 
 import com.tencent.matrix.Matrix;
@@ -93,9 +94,9 @@ public class BatteryMonitorCore implements
 
     private final BatteryMonitorConfig mConfig;
     @NonNull private final Handler mHandler;
+    @NonNull private final Handler mCanaryHandler;
     @Nullable private ForegroundLoopCheckTask mFgLooperTask;
     @Nullable private BackgroundLoopCheckTask mBgLooperTask;
-    @Nullable private TaskJiffiesSnapshot mLastInternalSnapshot;
 
     @NonNull
     Callable<String> mSupplier = new Callable<String>() {
@@ -121,7 +122,12 @@ public class BatteryMonitorCore implements
             mSupplier = config.onSceneSupplier;
         }
 
-        mHandler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper(), this);
+        HandlerThread thread = config.canaryThread;
+        if (thread == null) {
+            thread = MatrixHandlerThread.getNewHandlerThread("matrix_batt", Thread.NORM_PRIORITY);
+        }
+        mHandler = new Handler(thread.getLooper(), this);       // For BatteryMonitorCore only
+        mCanaryHandler = new Handler(thread.getLooper(), this); // For BatteryCanary
         enableForegroundLoopCheck(config.isForegroundModeEnabled);
         enableBackgroundLoopCheck(config.isBackgroundModeEnabled);
         mMonitorDelayMillis = config.greyTime;
@@ -265,7 +271,7 @@ public class BatteryMonitorCore implements
 
     @NonNull
     public Handler getHandler() {
-        return mHandler;
+        return mCanaryHandler;
     }
 
     public Context getContext() {
