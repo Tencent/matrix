@@ -122,12 +122,16 @@ public class BatteryMonitorCore implements
             mSupplier = config.onSceneSupplier;
         }
 
-        HandlerThread thread = config.canaryThread;
-        if (thread == null) {
-            thread = MatrixHandlerThread.getNewHandlerThread("matrix_batt", Thread.NORM_PRIORITY);
+        if (config.canaryThread != null) {
+            HandlerThread thread = config.canaryThread;
+            mHandler = new Handler(thread.getLooper(), this);       // For BatteryMonitorCore only
+            mCanaryHandler = new Handler(thread.getLooper(), this); // For BatteryCanary
+        } else {
+            HandlerThread thread = MatrixHandlerThread.getDefaultHandlerThread();
+            mHandler = new Handler(thread.getLooper(), this);       // For BatteryMonitorCore only
+            mCanaryHandler = mHandler;                                      // For BatteryCanary as legacy logic
         }
-        mHandler = new Handler(thread.getLooper(), this);       // For BatteryMonitorCore only
-        mCanaryHandler = new Handler(thread.getLooper(), this); // For BatteryCanary
+
         enableForegroundLoopCheck(config.isForegroundModeEnabled);
         enableBackgroundLoopCheck(config.isBackgroundModeEnabled);
         mMonitorDelayMillis = config.greyTime;

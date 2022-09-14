@@ -117,7 +117,7 @@ public class BatteryMonitorConfig {
     public static class Builder {
         private final BatteryMonitorConfig config = new BatteryMonitorConfig();
 
-        public Builder setCallback(HandlerThread thread) {
+        public Builder setCanaryThread(HandlerThread thread) {
             config.canaryThread = thread;
             return this;
         }
