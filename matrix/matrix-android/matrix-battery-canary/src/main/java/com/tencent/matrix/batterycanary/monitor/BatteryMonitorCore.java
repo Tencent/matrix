@@ -97,7 +97,6 @@ public class BatteryMonitorCore implements
     @NonNull private final Handler mCanaryHandler;
     @Nullable private ForegroundLoopCheckTask mFgLooperTask;
     @Nullable private BackgroundLoopCheckTask mBgLooperTask;
-    @Nullable private TaskJiffiesSnapshot mLastInternalSnapshot;
 
     @NonNull
     Callable<String> mSupplier = new Callable<String>() {
@@ -123,8 +122,10 @@ public class BatteryMonitorCore implements
             mSupplier = config.onSceneSupplier;
         }
 
-        //noinspection SpellCheckingInspection
-        HandlerThread thread = MatrixHandlerThread.getNewHandlerThread("matrix_batt", Thread.NORM_PRIORITY);
+        HandlerThread thread = config.canaryThread;
+        if (thread == null) {
+            thread = MatrixHandlerThread.getNewHandlerThread("matrix_batt", Thread.NORM_PRIORITY);
+        }
         mHandler = new Handler(thread.getLooper(), this);       // For BatteryMonitorCore only
         mCanaryHandler = new Handler(thread.getLooper(), this); // For BatteryCanary
         enableForegroundLoopCheck(config.isForegroundModeEnabled);
