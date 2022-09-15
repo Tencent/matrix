@@ -363,6 +363,13 @@ public class UnusedResourcesTask extends ApkTask {
                                 resourceRefSet.add(resourceDefMap.get(resId));
                             }
                         }
+                        if (line.trim().startsWith("0x")) {
+                            final String resId = parseResourceId(line.trim());
+                            if (!Util.isNullOrNil(resId) && resourceDefMap.containsKey(resId)) {
+                                Log.d(TAG, "array field resource, %s", resId);
+                                resourceRefSet.add(resourceDefMap.get(resId));
+                            }
+                        }
                     }
                 }
             }
