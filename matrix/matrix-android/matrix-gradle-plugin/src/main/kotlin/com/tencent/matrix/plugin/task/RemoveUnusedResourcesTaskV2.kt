@@ -27,6 +27,7 @@ import com.tencent.matrix.javalib.util.Util
 import com.tencent.matrix.plugin.compat.AgpCompat
 import com.tencent.matrix.plugin.compat.CreationConfig
 import com.tencent.matrix.plugin.extension.MatrixRemoveUnusedResExtension
+import com.tencent.matrix.resguard.ResguardMapping
 import com.tencent.matrix.shrinker.ApkUtil
 import com.tencent.matrix.shrinker.ProguardStringBuilder
 import com.tencent.mm.arscutil.ArscUtil
@@ -71,7 +72,8 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
 
     private var obfuscatedResourcesDirectoryName: String? = null
     private var overrideInputApkFiles: List<File> = emptyList()
-    private var resguardMapping: File? = null
+    private var resguardMappingFile: File? = null
+    private var resguardMapping: ResguardMapping? = null
 
     private lateinit var pathOfApkChecker: String
     private lateinit var pathOfApkSigner: String
@@ -85,7 +87,8 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
     }
 
     fun withResguardMapping(path: String) {
-        resguardMapping = File(path)
+        resguardMappingFile = File(path)
+        resguardMapping = ResguardMapping(resguardMappingFile!!)
     }
 
     @TaskAction
@@ -208,10 +211,10 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
                     val replaceIterator = mapOfDuplicatesReplacements.keys.iterator()
                     while (replaceIterator.hasNext()) {
                         val sourceFile = replaceIterator.next()
-                        val sourceRes = ApkUtil.entryToResourceName(sourceFile, obfuscatedResourcesDirectoryName)
+                        val sourceRes = ApkUtil.entryToResourceName(sourceFile, resguardMapping)
                         val sourceId = mapOfResources[sourceRes]!!
                         val targetFile = mapOfDuplicatesReplacements[sourceFile]
-                        val targetRes = ApkUtil.entryToResourceName(targetFile, obfuscatedResourcesDirectoryName)
+                        val targetRes = ApkUtil.entryToResourceName(targetFile, resguardMapping)
                         val targetId = mapOfResources[targetRes]!!
                         val success = ArscUtil.replaceFileResource(resTable, sourceId, sourceFile, targetId, targetFile)
                         if (!success) {
@@ -248,7 +251,7 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
                     var destFile = unzipDir.canonicalPath + File.separator + zipEntry.name.replace('/', File.separatorChar)
 
                     if (zipEntry.name.startsWith(obfuscatedResourcesDirectoryName ?: "res/")) {
-                        val resourceName = ApkUtil.entryToResourceName(zipEntry.name, obfuscatedResourcesDirectoryName)
+                        val resourceName = ApkUtil.entryToResourceName(zipEntry.name, resguardMapping)
                         if (!Util.isNullOrNil(resourceName)) {
                             if (mapOfResourcesGonnaRemoved.containsKey(resourceName)) {
                                 Log.i(TAG, "remove unused resource %s file %s", resourceName, zipEntry.name)
@@ -371,7 +374,7 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
                 pathOfOriginalApk: String,
                 pathOfMapping: String,
                 pathOfRTxt: String,
-                pathOfResguardMapping: String?,
+                resguardMappingFile: File?,
                 resultOfUnused: MutableSet<String>,
                 resultOfDuplicates: MutableMap<String, MutableSet<String>>
         ) {
@@ -394,15 +397,16 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
                 parameters.add(pathOfMapping)
             }
 
+            if (resguardMappingFile?.exists() == true) {
+                parameters.add("--resMappingTxt")
+                parameters.add(resguardMappingFile.absolutePath)
+            }
+
             parameters.add("--format")
             parameters.add("json")
             parameters.add("-unusedResources")
             parameters.add("--rTxt")
             parameters.add(pathOfRTxt)
-            if (pathOfResguardMapping != null) {
-                parameters.add("--resMappingTxt")
-                parameters.add(pathOfResguardMapping)
-            }
 
             val parametersOfIgnoredResources = StringBuilder()
             if (configOfIgnoredResources.isNotEmpty()) {
@@ -523,7 +527,7 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
                         Log.w(TAG, "   %s is not resource file!", entry)
                         continue
                     } else {
-                        duplicatesNames[entry] = ApkUtil.entryToResourceName(entry, obfuscatedResourcesDirectoryName)
+                        duplicatesNames[entry] = ApkUtil.entryToResourceName(entry, resguardMapping)
                     }
                 }
             }
@@ -690,7 +694,7 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
                 pathOfOriginalApk = originalApkPath,
                 pathOfMapping = mappingTxtFile.absolutePath,
                 pathOfRTxt = rTxtFile.absolutePath,
-                pathOfResguardMapping = resguardMapping?.absolutePath,
+                resguardMappingFile = resguardMappingFile,
 
                 // result
                 resultOfUnused = setOfUnusedResources,
