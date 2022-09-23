@@ -21,6 +21,7 @@ import com.tencent.matrix.javalib.util.Pair;
 import com.tencent.matrix.javalib.util.Util;
 
 import org.gradle.api.GradleException;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -61,10 +62,10 @@ public class ApkUtil {
         return "";
     }
 
-    public static String entryToResourceName(String entry) {
+    public static String entryToResourceName(String entry, @Nullable String obfuscatedDirName) {
         String resourceName = "";
         if (!Util.isNullOrNil(entry)) {
-            String typeName = parseEntryResourceType(entry);
+            String typeName = parseEntryResourceType(entry, obfuscatedDirName);
             String resName = entry.substring(entry.lastIndexOf('/') + 1, entry.indexOf('.'));
             if (!Util.isNullOrNil(typeName) && !Util.isNullOrNil(resName)) {
                 resourceName = "R." + typeName + "." + resName;
@@ -73,9 +74,13 @@ public class ApkUtil {
         return resourceName;
     }
 
-    public static String parseEntryResourceType(String entry) {
-        if (!Util.isNullOrNil(entry) && entry.length() > 4) {
-            String typeName = entry.substring(4, entry.lastIndexOf('/'));
+    public static String parseEntryResourceType(String entry, @Nullable String obfuscatedDirName) {
+        int prefixLength = 4; // "res/"
+        if (obfuscatedDirName != null) {
+            prefixLength = obfuscatedDirName.length() + 1;
+        }
+        if (!Util.isNullOrNil(entry) && entry.length() > prefixLength) {
+            String typeName = entry.substring(prefixLength, entry.lastIndexOf('/'));
             if (!Util.isNullOrNil(typeName)) {
                 int index = typeName.indexOf('-');
                 if (index >= 0) {
@@ -87,15 +92,15 @@ public class ApkUtil {
         return "";
     }
 
-    public static boolean isSameResourceType(Set<String> entries) {
+    public static boolean isSameResourceType(Set<String> entries, @Nullable String obfuscatedDirName) {
         String resType = "";
         for (String entry : entries) {
             if (!Util.isNullOrNil(entry)) {
                 if (Util.isNullOrNil(resType)) {
-                    resType = parseEntryResourceType(entry);
+                    resType = parseEntryResourceType(entry, obfuscatedDirName);
                     continue;
                 }
-                if (!resType.equals(parseEntryResourceType(entry))) {
+                if (!resType.equals(parseEntryResourceType(entry, obfuscatedDirName))) {
                     return false;
                 }
             } else {

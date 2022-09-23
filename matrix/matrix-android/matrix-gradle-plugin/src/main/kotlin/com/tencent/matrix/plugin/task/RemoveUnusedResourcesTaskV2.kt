@@ -208,10 +208,10 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
                     val replaceIterator = mapOfDuplicatesReplacements.keys.iterator()
                     while (replaceIterator.hasNext()) {
                         val sourceFile = replaceIterator.next()
-                        val sourceRes = ApkUtil.entryToResourceName(sourceFile)
+                        val sourceRes = ApkUtil.entryToResourceName(sourceFile, obfuscatedResourcesDirectoryName)
                         val sourceId = mapOfResources[sourceRes]!!
                         val targetFile = mapOfDuplicatesReplacements[sourceFile]
-                        val targetRes = ApkUtil.entryToResourceName(targetFile)
+                        val targetRes = ApkUtil.entryToResourceName(targetFile, obfuscatedResourcesDirectoryName)
                         val targetId = mapOfResources[targetRes]!!
                         val success = ArscUtil.replaceFileResource(resTable, sourceId, sourceFile, targetId, targetFile)
                         if (!success) {
@@ -243,11 +243,12 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
                 val compressedEntry = HashSet<String>()
 
                 for (zipEntry in zipInputFile.entries()) {
+                    if (zipEntry.isDirectory) continue
 
                     var destFile = unzipDir.canonicalPath + File.separator + zipEntry.name.replace('/', File.separatorChar)
 
-                    if (zipEntry.name.startsWith("res/")) {
-                        val resourceName = ApkUtil.entryToResourceName(zipEntry.name)
+                    if (zipEntry.name.startsWith(obfuscatedResourcesDirectoryName ?: "res/")) {
+                        val resourceName = ApkUtil.entryToResourceName(zipEntry.name, obfuscatedResourcesDirectoryName)
                         if (!Util.isNullOrNil(resourceName)) {
                             if (mapOfResourcesGonnaRemoved.containsKey(resourceName)) {
                                 Log.i(TAG, "remove unused resource %s file %s", resourceName, zipEntry.name)
@@ -277,10 +278,8 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
                                 if (zipEntry.method == ZipEntry.DEFLATED) {
                                     compressedEntry.add(destFile)
                                 }
-                                if (!zipEntry.isDirectory) {
-                                    Log.d(TAG, "unzip %s to file %s", zipEntry.name, destFile)
-                                    ApkUtil.unzipEntry(zipInputFile, zipEntry, destFile)
-                                }
+                                Log.d(TAG, "unzip %s to file %s", zipEntry.name, destFile)
+                                ApkUtil.unzipEntry(zipInputFile, zipEntry, destFile)
                             }
                         } else {
                             Log.w(TAG, "parse entry %s resource name failed!", zipEntry.name)
@@ -290,7 +289,7 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
                             if (zipEntry.method == ZipEntry.DEFLATED) {
                                 compressedEntry.add(destFile)
                             }
-                            if (!zipEntry.isDirectory && zipEntry.name != ARSC_FILE_NAME) {                            // has already unzip resources.arsc before
+                            if (zipEntry.name != ARSC_FILE_NAME) {                            // has already unzip resources.arsc before
                                 Log.d(TAG, "unzip %s to file %s", zipEntry.name, destFile)
                                 ApkUtil.unzipEntry(zipInputFile, zipEntry, destFile)
                             }
@@ -524,13 +523,13 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
                         Log.w(TAG, "   %s is not resource file!", entry)
                         continue
                     } else {
-                        duplicatesNames[entry] = ApkUtil.entryToResourceName(entry)
+                        duplicatesNames[entry] = ApkUtil.entryToResourceName(entry, obfuscatedResourcesDirectoryName)
                     }
                 }
             }
 
             if (duplicatesNames.size > 0) {
-                if (!ApkUtil.isSameResourceType(duplicatesNames.keys)) {
+                if (!ApkUtil.isSameResourceType(duplicatesNames.keys, obfuscatedResourcesDirectoryName)) {
                     Log.w(TAG, "the type of duplicated resources %s are not same!", duplicatesEntries)
                     continue
                 } else {
