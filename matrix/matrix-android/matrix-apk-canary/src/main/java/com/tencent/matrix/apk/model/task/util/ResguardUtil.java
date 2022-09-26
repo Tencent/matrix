@@ -8,6 +8,8 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class ResguardUtil {
 
@@ -55,13 +57,25 @@ public class ResguardUtil {
         }
     }
 
+    private static final Pattern RESOURCE_ID_PATTERN = Pattern.compile("^(\\S+\\.)*R\\.(\\S+?)\\.(\\S+)");
+
     private static String parseResourceNameFromResguard(String resName) {
-        if (!Util.isNullOrNil(resName)) {
-            int index = resName.indexOf('R');
-            if (index >= 0) {
-                return resName.substring(index);
-            }
+        if (Util.isNullOrNil(resName)) return "";
+        final Matcher matcher = RESOURCE_ID_PATTERN.matcher(resName);
+        if (matcher.find()) {
+            final StringBuilder builder = new StringBuilder();
+            builder.append("R.");
+            builder.append(matcher.group(2));
+            /*
+                The resource ID from resguard is read from ARSC file, which format is package-like
+                (for example: R.style.Theme.AppCompat.Light.DarkActionBar). We should convert it as the regular format
+                in code (for example: R.style.Theme_AppCompat_Light_DarkActionBar).
+             */
+            builder.append('.');
+            builder.append(matcher.group(3).replace('.', '_'));
+            return builder.toString();
+        } else {
+            return "";
         }
-        return "";
     }
 }
