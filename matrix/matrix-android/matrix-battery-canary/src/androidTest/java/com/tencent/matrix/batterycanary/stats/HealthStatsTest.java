@@ -20,22 +20,18 @@ import android.app.Application;
 import android.content.Context;
 import android.hardware.Sensor;
 import android.hardware.SensorManager;
-import android.os.Debug;
 import android.os.health.HealthStats;
 import android.os.health.SystemHealthManager;
 import android.os.health.TimerStat;
 import android.os.health.UidHealthStats;
 
 import com.tencent.matrix.Matrix;
-import com.tencent.matrix.batterycanary.BatteryCanary;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.batterycanary.monitor.feature.CpuStatFeature;
-import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
 import com.tencent.matrix.batterycanary.stats.HealthStatsFeature.HealthStatsSnapshot;
 import com.tencent.matrix.batterycanary.utils.PowerProfile;
-import com.tencent.matrix.util.MatrixLog;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -44,7 +40,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.io.IOException;
-import java.io.PipedWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -55,11 +50,6 @@ import java.util.Map;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
-
-import static com.tencent.matrix.batterycanary.stats.HealthStatsHelper.getMeasure;
-import static com.tencent.matrix.batterycanary.stats.HealthStatsHelper.getTimerTime;
-import static com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil.JIFFY_MILLIS;
-import static com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil.ONE_HOR;
 
 
 @RunWith(AndroidJUnit4.class)
@@ -706,6 +696,59 @@ public class HealthStatsTest {
         Assert.assertNull(delta.dlt.healthStats);
 
         Assert.assertEquals(delta.dlt.getTotalPower(), end.getTotalPower() - bgn.getTotalPower(), 0.001d);
+    }
+
+    @Test
+    public void testHealthStatsAccCollecting() throws InterruptedException {
+        HealthStatsFeature feature = new HealthStatsFeature();
+        feature.configure(mockMonitor());
+        feature.onTurnOn();
+
+        Assert.assertNotNull(feature.currHealthStats());
+
+        HealthStatsSnapshot bgn = feature.currHealthStatsSnapshot();
+        Assert.assertNotNull(bgn);
+
+        Assert.assertNull(bgn.accCollector);
+        HealthStatsSnapshot.AccCollector accCollector = bgn.startAccCollecting();
+        Assert.assertNotNull(accCollector);
+        Assert.assertSame(bgn.accCollector, accCollector);
+        Assert.assertSame(bgn, accCollector.last);
+
+        int accCount = 2;
+        long intervalMs = 2000L;
+        long accDuringMs = 0L;
+        for (int i = 0; i < accCount; i++) {
+            Thread.sleep(intervalMs);
+            HealthStatsSnapshot curr = feature.currHealthStatsSnapshot();
+            Delta<HealthStatsSnapshot> delta = bgn.accCollect(curr);
+            Assert.assertNotNull(delta);
+            Assert.assertEquals(i + 1, accCollector.count);
+            Assert.assertEquals(accDuringMs += delta.during, accCollector.duringMs);
+        }
+
+        Thread.sleep(intervalMs);
+        HealthStatsSnapshot end = feature.currHealthStatsSnapshot();
+        Assert.assertNotNull(end);
+
+        Assert.assertEquals(accCount, accCollector.count);
+        Delta<HealthStatsSnapshot> deltaByAcc = end.diffByAccCollector(bgn);
+        Assert.assertNotNull(deltaByAcc);
+        Assert.assertTrue(deltaByAcc instanceof Delta.SimpleDelta<?>);
+        Assert.assertEquals(accCount + 1, accCollector.count);
+
+        Delta<HealthStatsSnapshot> delta = end.diff(bgn);
+        Assert.assertNotNull(delta);
+        Assert.assertFalse(delta instanceof Delta.SimpleDelta<?>);
+
+        Assert.assertSame(delta.bgn, deltaByAcc.bgn);
+        Assert.assertSame(delta.end, deltaByAcc.end);
+        Assert.assertEquals(delta.during, deltaByAcc.during);
+        Assert.assertEquals(delta.dlt.isDelta, deltaByAcc.dlt.isDelta);
+        Assert.assertEquals(delta.dlt.getTotalPower(), deltaByAcc.dlt.getTotalPower(), 0.0001d);
+
+        Assert.assertSame(delta.end, accCollector.last);
+        Assert.assertEquals(delta.during, accCollector.duringMs);
     }
 
     @Test

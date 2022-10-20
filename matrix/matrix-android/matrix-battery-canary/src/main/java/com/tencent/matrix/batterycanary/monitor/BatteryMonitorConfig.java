@@ -1,6 +1,7 @@
 package com.tencent.matrix.batterycanary.monitor;
 
 import android.app.ActivityManager;
+import android.os.HandlerThread;
 
 import com.tencent.matrix.batterycanary.BuildConfig;
 import com.tencent.matrix.batterycanary.monitor.feature.CpuStatFeature.UidCpuStateSnapshot.IpcCpuStat.RemoteStat;
@@ -36,6 +37,8 @@ public class BatteryMonitorConfig {
 
     public static final int AMS_HOOK_FLAG_BT = 0b00000001;
 
+    @Nullable
+    public HandlerThread canaryThread = null;
     @NonNull
     public BatteryMonitorCallback callback = new BatteryMonitorCallback.BatteryPrinter();
     @Nullable
@@ -113,6 +116,11 @@ public class BatteryMonitorConfig {
      */
     public static class Builder {
         private final BatteryMonitorConfig config = new BatteryMonitorConfig();
+
+        public Builder setCanaryThread(HandlerThread thread) {
+            config.canaryThread = thread;
+            return this;
+        }
 
         public Builder setCallback(BatteryMonitorCallback callback) {
             config.callback = callback;

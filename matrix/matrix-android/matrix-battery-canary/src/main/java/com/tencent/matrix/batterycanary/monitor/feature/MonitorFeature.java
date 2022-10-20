@@ -68,11 +68,29 @@ public interface MonitorFeature {
                 dlt.isDelta = true;
             }
 
+            public Delta(RECORD bgn, RECORD end, RECORD dlt) {
+                this.bgn = bgn;
+                this.end = end;
+                this.during = end.time - bgn.time;
+                this.dlt = dlt;
+                dlt.isDelta = true;
+            }
+
             public boolean isValid() {
                 return bgn.isValid() && end.isValid();
             }
 
             protected abstract RECORD computeDelta();
+
+            public static class SimpleDelta<RECORD extends Snapshot> extends Delta<RECORD> {
+                public SimpleDelta(RECORD bgn, RECORD end, RECORD dlt) {
+                    super(bgn, end, dlt);
+                }
+                @Override
+                protected RECORD computeDelta() {
+                    throw new RuntimeException("stub!");
+                }
+            }
         }
 
         public abstract static class Entry<ENTRY> {
