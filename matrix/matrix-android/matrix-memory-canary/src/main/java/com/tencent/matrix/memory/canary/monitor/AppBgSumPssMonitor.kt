@@ -105,7 +105,7 @@ internal class AppBgSumPssMonitor(
                 MatrixLog.i(TAG,
                     "${it.processInfo!!.pid}-${it.processInfo!!.name}: extra total pss = ${it.amsPssInfo!!.totalPssK} KB"
                 )
-            }.sumBy { it.amsPssInfo!!.totalPssK }.also { MatrixLog.i(TAG, "extra sum pss = $it KB") }
+            }.sumBy { it.amsPssInfo!!.totalPssK }.also { if (extraPssInfo.isNotEmpty()) { MatrixLog.i(TAG, "extra sum pss = $it KB") } }
 
             val overThreshold = config.run {
                 // @formatter:off
