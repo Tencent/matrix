@@ -20,7 +20,9 @@ import com.android.builder.model.SigningConfig;
 import com.tencent.matrix.javalib.util.Pair;
 import com.tencent.matrix.javalib.util.Util;
 
+import com.tencent.matrix.resguard.ResguardMapping;
 import org.gradle.api.GradleException;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -61,11 +63,25 @@ public class ApkUtil {
         return "";
     }
 
-    public static String entryToResourceName(String entry) {
+    public static String entryToResourceName(String entry, @Nullable ResguardMapping resguardMapping) {
         String resourceName = "";
         if (!Util.isNullOrNil(entry)) {
-            String typeName = parseEntryResourceType(entry);
+            String typeName;
+            if (resguardMapping != null) {
+                int lastIndex = entry.lastIndexOf('/');
+                if (lastIndex == -1) return "";
+                String obfuscatedPath = entry.substring(0, lastIndex);
+                String originPath = resguardMapping.originPath(obfuscatedPath);
+                typeName = parseEntryResourceType(originPath + "/");
+            } else {
+                typeName = parseEntryResourceType(entry);
+            }
+
             String resName = entry.substring(entry.lastIndexOf('/') + 1, entry.indexOf('.'));
+            if (resguardMapping != null) {
+                resName = resguardMapping.originID(typeName, resName);
+            }
+
             if (!Util.isNullOrNil(typeName) && !Util.isNullOrNil(resName)) {
                 resourceName = "R." + typeName + "." + resName;
             }
@@ -74,8 +90,10 @@ public class ApkUtil {
     }
 
     public static String parseEntryResourceType(String entry) {
-        if (!Util.isNullOrNil(entry) && entry.length() > 4) {
-            String typeName = entry.substring(4, entry.lastIndexOf('/'));
+        int prefixLength = entry.indexOf('/');
+        if (prefixLength == -1) return "";
+        if (!Util.isNullOrNil(entry)) {
+            String typeName = entry.substring(prefixLength, entry.lastIndexOf('/'));
             if (!Util.isNullOrNil(typeName)) {
                 int index = typeName.indexOf('-');
                 if (index >= 0) {
@@ -87,7 +105,7 @@ public class ApkUtil {
         return "";
     }
 
-    public static boolean isSameResourceType(Set<String> entries) {
+    public static boolean isSameResourceType(Set<String> entries, @Nullable String obfuscatedDirName) {
         String resType = "";
         for (String entry : entries) {
             if (!Util.isNullOrNil(entry)) {
