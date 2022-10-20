@@ -49,7 +49,7 @@ public final class BatteryStatsFeature extends AbsMonitorFeature {
         mBatteryRecorder = mCore.getConfig().batteryRecorder;
         mBatteryStats = mCore.getConfig().batteryStats;
         if (mBatteryRecorder != null) {
-            mStatsThread = MatrixHandlerThread.getNewHandlerThread("matrix_stats", Thread.MIN_PRIORITY);
+            mStatsThread = MatrixHandlerThread.getNewHandlerThread("matrix_stats", Thread.NORM_PRIORITY);
             mStatsHandler = new Handler(mStatsThread.getLooper());
             mStatsHandler.post(new Runnable() {
                 @Override
