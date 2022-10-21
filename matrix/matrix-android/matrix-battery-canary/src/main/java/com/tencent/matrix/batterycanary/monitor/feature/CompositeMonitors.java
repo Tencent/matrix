@@ -405,6 +405,13 @@ public class CompositeMonitors {
             Snapshot<?> currSnapshot = statCurrSnapshot(item);
             if (currSnapshot != null) {
                 mBgnSnapshots.put(item, currSnapshot);
+
+                // Start acc collecting for HealthStatsSnapshot
+                if (currSnapshot instanceof HealthStatsSnapshot) {
+                    if (mSampleRegs.containsKey(HealthStatsSnapshot.class)) {
+                        ((HealthStatsSnapshot) currSnapshot).startAccCollecting();
+                    }
+                }
             }
         }
     }
@@ -417,7 +424,13 @@ public class CompositeMonitors {
                 Class<? extends Snapshot<?>> snapshotClass = item.getKey();
                 Snapshot currSnapshot = statCurrSnapshot(snapshotClass);
                 if (currSnapshot != null && currSnapshot.getClass() == lastSnapshot.getClass()) {
-                    putDelta(snapshotClass, currSnapshot.diff(lastSnapshot));
+                    Delta delta;
+                    if (lastSnapshot instanceof HealthStatsSnapshot && ((HealthStatsSnapshot) lastSnapshot).accCollector != null) {
+                        delta = ((HealthStatsSnapshot) currSnapshot).diffByAccCollector((HealthStatsSnapshot) lastSnapshot);
+                    } else {
+                        delta = currSnapshot.diff(lastSnapshot);
+                    }
+                    putDelta(snapshotClass, delta);
                 }
             }
         }
@@ -797,12 +810,34 @@ public class CompositeMonitors {
                 sampler = new MonitorFeature.Snapshot.Sampler("batt-curr", mMonitor.getHandler(), new Function<Snapshot.Sampler, Number>() {
                     @Override
                     public Number apply(Snapshot.Sampler sampler) {
+                        if (BatteryCanaryUtil.isDeviceCharging(mMonitor.getContext())) {
+                            // battery currency is meaningless when charging
+                            return Snapshot.Sampler.INVALID;
+                        }
                         long value = BatteryCanaryUtil.getBatteryCurrencyImmediately(mMonitor.getContext());
                         MatrixLog.i(TAG, "onSampling " + sampler.mCount + " " + sampler.mTag + ", val = " + value);
                         if (value == -1L) {
                             return Snapshot.Sampler.INVALID;
                         }
                         return value;
+                    }
+                });
+                mSamplers.put(snapshotClass, sampler);
+            }
+            return sampler;
+        }
+        if (snapshotClass == HealthStatsSnapshot.class) {
+            final HealthStatsFeature feature = getFeature(HealthStatsFeature.class);
+            if (feature != null && mMonitor != null) {
+                sampler = new MonitorFeature.Snapshot.Sampler("health-stats", mMonitor.getHandler(), new Function<Snapshot.Sampler, Number>() {
+                    @Override
+                    public Number apply(Snapshot.Sampler sampler) {
+                        Snapshot<?> snapshot = mBgnSnapshots.get(HealthStatsSnapshot.class);
+                        if (snapshot instanceof HealthStatsSnapshot) {
+                            MatrixLog.i(TAG, "onAcc " + sampler.mCount + " " + sampler.mTag);
+                            ((HealthStatsSnapshot) snapshot).accCollect(feature.currHealthStatsSnapshot());
+                        }
+                        return Snapshot.Sampler.INVALID;
                     }
                 });
                 mSamplers.put(snapshotClass, sampler);
@@ -1076,7 +1111,7 @@ public class CompositeMonitors {
         if (monitor == null) {
             return;
         }
-
+        snapshot.extras = new HashMap<>();
         final boolean tunning = monitor.getConfig().isTuningPowers;
         final Tuner tuner = new Tuner();
 
