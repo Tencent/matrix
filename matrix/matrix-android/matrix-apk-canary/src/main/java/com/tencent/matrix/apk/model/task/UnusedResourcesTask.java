@@ -52,6 +52,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import brut.androlib.AndrolibException;
 
@@ -160,6 +162,8 @@ public class UnusedResourcesTask extends ApkTask {
         return "";
     }
 
+    private static final Pattern sRClassPattern = Pattern.compile("(([a-zA-Z0-9_]*\\.)*)R\\$([a-z]+)");
+
     private String parseResourceNameFromProguard(String entry) {
         if (!Util.isNullOrNil(entry)) {
             String[] columns = entry.split("->");
@@ -173,7 +177,17 @@ public class UnusedResourcesTask extends ApkTask {
                         if (rclassProguardMap.containsKey(resource)) {
                             return rclassProguardMap.get(resource);
                         } else {
-                            return "";
+                            final Matcher matcher = sRClassPattern.matcher(className);
+                            if (matcher.find()) {
+                                final StringBuilder resultBuilder = new StringBuilder();
+                                resultBuilder.append("R.");
+                                resultBuilder.append(matcher.group(3));
+                                resultBuilder.append(".");
+                                resultBuilder.append(fieldName);
+                                return resultBuilder.toString();
+                            } else {
+                                return "";
+                            }
                         }
                     } else {
                         if (ApkUtil.isRClassName(ApkUtil.getPureClassName(className))) {
