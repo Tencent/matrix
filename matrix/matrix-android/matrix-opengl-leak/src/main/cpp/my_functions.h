@@ -16,6 +16,7 @@
 #include <pthread.h>
 #include "StackMeta.h"
 #include <android/log.h>
+#include <unistd.h>
 
 #ifndef OPENGL_API_HOOK_MY_FUNCTIONS_H
 #define OPENGL_API_HOOK_MY_FUNCTIONS_H
@@ -84,7 +85,7 @@ void enable_javastack(bool enable) {
     is_javastack_enabled = enable;
 }
 
-void thread_id_to_string(thread::id thread_id, char *&result) {
+void thread_id_to_string(int thread_id, char *&result) {
     stringstream stream;
     stream << thread_id;
     result = new char[stream.str().size() + 1];
@@ -193,7 +194,7 @@ gen_jni_callback(int alloc_count, GLuint *copy_resource, int throwable, const th
     env->SetIntArrayRegion(newArr, 0, alloc_count, result);
 
     char *thread_id_c_str;
-    thread_id_to_string(thread_id, thread_id_c_str);
+    thread_id_to_string(gettid(), thread_id_c_str);
     jstring j_thread_id = env->NewStringUTF(thread_id_c_str);
 
     jstring j_activity_info = env->NewStringUTF(activity_info);
