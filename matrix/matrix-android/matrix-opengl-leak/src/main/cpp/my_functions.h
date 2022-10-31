@@ -875,20 +875,22 @@ EGLAPI EGLBoolean EGLAPIENTRY my_egl_context_destroy(EGLDisplay dpy, EGLContext 
 
         char *thread_id_c_str;
         thread_id_to_string(gettid(), thread_id_c_str);
-        jstring j_thread_id = GET_ENV()->NewStringUTF(thread_id_c_str);
 
         EGLContext egl_context = eglGetCurrentContext();
 
         messages_containers
                 ->enqueue_message((uintptr_t) egl_context,
-                                  [j_thread_id, egl_context]() {
+                                  [thread_id_c_str, egl_context]() {
 
                                       JNIEnv *env = GET_ENV();
+                                      jstring j_thread_id = env->NewStringUTF(thread_id_c_str);
 
                                       env->CallStaticVoidMethod(class_OpenGLHook,
                                                                 method_onEglContextDestroy,
                                                                 j_thread_id,
                                                                 (jlong) egl_context);
+
+                                      env->DeleteLocalRef(j_thread_id);
                                   });
     }
     return ret;
