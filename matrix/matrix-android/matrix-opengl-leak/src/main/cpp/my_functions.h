@@ -809,12 +809,9 @@ my_glRenderbufferStorage(GLenum target, GLenum internalformat, GLsizei width, GL
     }
 }
 
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "opdeng" , __VA_ARGS__) // 定义LOGI类型
-
 EGLAPI EGLContext EGLAPIENTRY
 my_egl_context_create(EGLDisplay dpy, EGLConfig config, EGLContext share_context,
                       const EGLint *attrib_list) {
-    LOGI("- - - - - - - - - - my_egl_context_create - - - - - - - - - -");
     EGLContext ret = NULL;
     if (NULL != system_eglCreateContext) {
         ret = system_eglCreateContext(dpy, config, share_context, attrib_list);
@@ -829,7 +826,6 @@ my_egl_context_create(EGLDisplay dpy, EGLConfig config, EGLContext share_context
 
         char *thread_id_c_str;
         thread_id_to_string(gettid(), thread_id_c_str);
-        jstring j_thread_id = GET_ENV()->NewStringUTF(thread_id_c_str);
 
         char *activity_info = static_cast<char *>(malloc(BUF_SIZE));
         if (curr_activity_info != nullptr) {
@@ -840,7 +836,7 @@ my_egl_context_create(EGLDisplay dpy, EGLConfig config, EGLContext share_context
 
         messages_containers
                 ->enqueue_message((uintptr_t) ret,
-                                  [backtracePrt, throwable, j_thread_id, ret, activity_info]() {
+                                  [backtracePrt, throwable, thread_id_c_str, ret, activity_info]() {
 
                                       JNIEnv *env = GET_ENV();
 
@@ -848,6 +844,7 @@ my_egl_context_create(EGLDisplay dpy, EGLConfig config, EGLContext share_context
                                               backtracePrt);
 
                                       jstring j_activity_info = env->NewStringUTF(activity_info);
+                                      jstring j_thread_id = env->NewStringUTF(thread_id_c_str);
 
                                       env->CallStaticVoidMethod(class_OpenGLHook,
                                                                 method_onEglContextCreate,
@@ -857,6 +854,7 @@ my_egl_context_create(EGLDisplay dpy, EGLConfig config, EGLContext share_context
                                                                 (jlong) ret, j_activity_info);
 
                                       env->DeleteLocalRef(j_activity_info);
+                                      env->DeleteLocalRef(j_thread_id);
 
                                       if (activity_info != nullptr) {
                                           free(activity_info);

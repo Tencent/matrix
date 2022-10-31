@@ -101,23 +101,23 @@ JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
     return JNI_VERSION_1_6;
 }
 
-
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "opdeng" , __VA_ARGS__) // 定义LOGI类型
-
 extern "C"
 JNIEXPORT jboolean JNICALL
 Java_com_tencent_matrix_openglleak_hook_OpenGLHook_hookEglCreate(JNIEnv *env, jclass clazz) {
-    LOGI("start hook egl context");
-    return xhook_grouped_register(HOOK_REQUEST_GROUPID_EGL_HOOK, ".*\\.so$", "eglCreateContext",
+    bool ret = xhook_grouped_register(HOOK_REQUEST_GROUPID_EGL_HOOK, ".*\\.so$", "eglCreateContext",
                                   (void *) my_egl_context_create, (void **) (&system_eglCreateContext)) == 0;
+    xhook_refresh(true);
+    return ret;
 }
 
 extern "C"
 JNIEXPORT jboolean JNICALL
 Java_com_tencent_matrix_openglleak_hook_OpenGLHook_hookEglDestory(JNIEnv *env, jclass clazz) {
-    return xhook_grouped_register(HOOK_REQUEST_GROUPID_EGL_HOOK, ".*\\.so$", "eglDestroyContext",
+    bool ret =  xhook_grouped_register(HOOK_REQUEST_GROUPID_EGL_HOOK, ".*\\.so$", "eglDestroyContext",
                                   (void *) my_egl_context_destroy,
                                   (void **) (&system_eglDestroyContext)) == 0;
+    xhook_refresh(true);
+    return ret;
 }
 
 /*
