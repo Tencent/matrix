@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.IBinder;
 import android.os.RemoteException;
+import android.util.Log;
 
 import com.tencent.matrix.openglleak.comm.FuncNameString;
 import com.tencent.matrix.openglleak.detector.IOpenglIndexDetector;
@@ -116,6 +117,10 @@ public class OpenglLeakPlugin extends Plugin {
             OpenGLHook.getInstance().hook(FuncNameString.GL_BIND_RENDERBUFFER, map.get(FuncNameString.GL_BIND_RENDERBUFFER));
             OpenGLHook.getInstance().hook(FuncNameString.GL_BUFFER_DATA, map.get(FuncNameString.GL_BUFFER_DATA));
             OpenGLHook.getInstance().hook(FuncNameString.GL_RENDER_BUFFER_STORAGE, map.get(FuncNameString.GL_RENDER_BUFFER_STORAGE));
+            boolean ret = OpenGLHook.getInstance().hookEglCreate();
+            Log.e("opdeng", "create :" + ret);
+            ret = OpenGLHook.getInstance().hookEglDestory();
+            Log.e("opdeng", "destroy :" + ret);
             MatrixLog.e(TAG, "hook finish");
         } catch (Throwable e) {
             e.printStackTrace();

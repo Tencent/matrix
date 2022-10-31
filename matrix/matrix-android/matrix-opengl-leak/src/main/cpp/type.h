@@ -13,6 +13,7 @@
 #include <GLES3/gl32.h>
 #include <GLES3/gl3ext.h>
 #include <GLES3/gl3platform.h>
+#include <EGL/egl.h>
 
 #ifndef OPENGL_API_HOOK_TYPE_H
 #define OPENGL_API_HOOK_TYPE_H
@@ -60,6 +61,11 @@ typedef void (*System_GlRenderbufferStorage)(GLenum target,
                                              GLenum internalformat,
                                              GLsizei width,
                                              GLsizei height);
+
+typedef EGLContext (*System_eglCreateContext)(EGLDisplay dpy, EGLConfig config, EGLContext share_context,
+                                        const EGLint *attrib_list);
+
+typedef EGLBoolean (*System_eglDestroyContext)(EGLDisplay dpy, EGLContext ctx);
 
 System_GlNormal_TYPE get_target_func_ptr(const char *func_name);
 

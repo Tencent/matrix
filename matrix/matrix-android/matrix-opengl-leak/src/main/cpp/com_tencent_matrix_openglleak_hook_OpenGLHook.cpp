@@ -12,6 +12,9 @@
 #include "get_tls.h"
 #include "type.h"
 #include "my_functions.h"
+#include <xhook_ext.h>
+
+#define HOOK_REQUEST_GROUPID_EGL_HOOK 0x07
 
 extern "C" JNIEXPORT jboolean JNICALL Java_com_tencent_matrix_openglleak_hook_OpenGLHook_init
         (JNIEnv *env, jobject thiz) {
@@ -62,6 +65,11 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_tencent_matrix_openglleak_hook_Op
 
         method_getThrowable = env->GetStaticMethodID(class_OpenGLHook, "getThrowable", "()I");
 
+        method_onEglContextCreate = env->GetStaticMethodID(class_OpenGLHook, "onEglContextCreate",
+                                                           "(Ljava/lang/String;IJJLjava/lang/String;)V");
+        method_onEglContextDestroy = env->GetStaticMethodID(class_OpenGLHook, "onEglContextDestroy",
+                                                            "(Ljava/lang/String;J)V");
+
         messages_containers = new BufferManagement();
         messages_containers->start_process();
         pthread_key_create(&g_thread_name_key, [](void *thread_name) {
@@ -93,6 +101,24 @@ JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
     return JNI_VERSION_1_6;
 }
 
+
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "opdeng" , __VA_ARGS__) // 定义LOGI类型
+
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_com_tencent_matrix_openglleak_hook_OpenGLHook_hookEglCreate(JNIEnv *env, jclass clazz) {
+    LOGI("start hook egl context");
+    return xhook_grouped_register(HOOK_REQUEST_GROUPID_EGL_HOOK, ".*\\.so$", "eglCreateContext",
+                                  (void *) my_egl_context_create, (void **) (&system_eglCreateContext)) == 0;
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_com_tencent_matrix_openglleak_hook_OpenGLHook_hookEglDestory(JNIEnv *env, jclass clazz) {
+    return xhook_grouped_register(HOOK_REQUEST_GROUPID_EGL_HOOK, ".*\\.so$", "eglDestroyContext",
+                                  (void *) my_egl_context_destroy,
+                                  (void **) (&system_eglDestroyContext)) == 0;
+}
 
 /*
  * Class:     com_tencent_matrix_openglleak_hook_OpenGLHook
@@ -571,7 +597,8 @@ Java_com_tencent_matrix_openglleak_hook_OpenGLHook_isEglContextAlive(
 
 extern "C"
 JNIEXPORT jint JNICALL
-Java_com_tencent_matrix_openglleak_hook_OpenGLHook_getResidualQueueSize(JNIEnv *env, jobject clazz) {
+Java_com_tencent_matrix_openglleak_hook_OpenGLHook_getResidualQueueSize(JNIEnv *env,
+                                                                        jobject clazz) {
     return messages_containers->get_queue_size();
 }
 
