@@ -131,6 +131,10 @@ public class OpenGLHook {
 
     private static native boolean hookGlRenderbufferStorage(int index);
 
+    public static native boolean hookEglCreate();
+
+    public static native boolean hookEglDestory();
+
     public static native String dumpNativeStack(long nativeStackPtr);
 
     public static native void releaseNative(long nativeStackPtr);
@@ -256,6 +260,28 @@ public class OpenGLHook {
                     getInstance().mResourceListener.onGlDeleteRenderbuffers(openGLInfo);
                 }
             }
+        }
+    }
+
+    public static void onEglContextCreate(String threadId, final int throwable, long nativeStackPtr, final long eglContext, String activityInfo) {
+        AtomicInteger counter = new AtomicInteger(1);
+
+        JavaStacktrace.Trace trace = JavaStacktrace.getBacktraceValue(throwable);
+
+        final OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.EGL_CONTEXT, -1, threadId, eglContext, 0, 0, trace, nativeStackPtr, ActivityRecorder.revertActivityInfo(activityInfo), counter);
+        ResRecordManager.getInstance().gen(openGLInfo);
+
+        if (getInstance().mResourceListener != null) {
+            getInstance().mResourceListener.onGlGenRenderbuffers(openGLInfo);
+        }
+    }
+
+    public static void onEglContextDestroy(String threadId, final long eglContext) {
+        final OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.EGL_CONTEXT, -1, threadId, eglContext);
+        ResRecordManager.getInstance().delete(openGLInfo);
+
+        if (getInstance().mResourceListener != null) {
+            getInstance().mResourceListener.onGlDeleteRenderbuffers(openGLInfo);
         }
     }
 
