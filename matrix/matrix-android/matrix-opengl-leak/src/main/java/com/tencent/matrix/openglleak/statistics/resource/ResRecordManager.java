@@ -178,24 +178,25 @@ public class ResRecordManager {
     }
 
     public boolean isEglContextReleased(OpenGLInfo info) {
-        synchronized (mReleaseContext) {
-            long eglContextNativeHandle = info.getEglContextNativeHandle();
-            if (0L == eglContextNativeHandle) {
-                return true;
-            }
-
-            for (long item : mReleaseContext) {
-                if (item == eglContextNativeHandle) {
-                    return true;
-                }
-            }
-
-            boolean alive = OpenGLHook.isEglContextAlive(info.getEglContextNativeHandle());
-            if (!alive) {
-                mReleaseContext.add(info.getEglContextNativeHandle());
-            }
-            return !alive;
-        }
+        return false;
+//        synchronized (mReleaseContext) {
+//            long eglContextNativeHandle = info.getEglContextNativeHandle();
+//            if (0L == eglContextNativeHandle) {
+//                return true;
+//            }
+//
+//            for (long item : mReleaseContext) {
+//                if (item == eglContextNativeHandle) {
+//                    return true;
+//                }
+//            }
+//
+//            boolean alive = OpenGLHook.isEglContextAlive(info.getEglContextNativeHandle());
+//            if (!alive) {
+//                mReleaseContext.add(info.getEglContextNativeHandle());
+//            }
+//            return !alive;
+//        }
     }
 
     public boolean isEglSurfaceReleased(OpenGLInfo info) {
