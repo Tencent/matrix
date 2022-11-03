@@ -38,6 +38,7 @@ open class MatrixRemoveUnusedResExtension(
         var embedResGuard: Boolean = false,
         var sevenZipPath: String = "",
         var zipAlignPath: String = "",
+        var report: String? = null,
 
         // Deprecated
         var unusedResources: HashSet<String> = HashSet()

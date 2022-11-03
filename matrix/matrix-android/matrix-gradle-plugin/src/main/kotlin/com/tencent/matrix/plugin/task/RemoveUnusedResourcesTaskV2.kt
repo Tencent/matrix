@@ -82,6 +82,8 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
 
     private lateinit var rulesOfIgnore: Set<String>
 
+    private var reportFile: File? = null
+
     fun overrideInputApkFiles(inputApkFiles: List<String>) {
         this.overrideInputApkFiles = inputApkFiles.map { File(it) }
     }
@@ -140,6 +142,13 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
                 task.pathOfSevenZip = sevenZipPath
 
                 task.rulesOfIgnore = ignoreResources
+
+                task.reportFile = report?.let {
+                    File(it).apply {
+                        parentFile.mkdirs()
+                        if (exists()) delete()
+                    }
+                }
             }
 
             task.parametersInvalidation()
@@ -254,10 +263,10 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
                         val resourceName = ApkUtil.entryToResourceName(zipEntry.name, resguardMapping)
                         if (!Util.isNullOrNil(resourceName)) {
                             if (mapOfResourcesGonnaRemoved.containsKey(resourceName)) {
-                                Log.i(TAG, "remove unused resource %s file %s", resourceName, zipEntry.name)
+                                Log.d(TAG, "remove unused resource %s file %s", resourceName, zipEntry.name)
                                 continue
                             } else if (mapOfDuplicatesReplacements.containsKey(zipEntry.name)) {
-                                Log.i(TAG, "remove duplicated resource file %s", zipEntry.name)
+                                Log.d(TAG, "remove duplicated resource file %s", zipEntry.name)
                                 continue
                             } else {
                                 if (arsc != null && isResGuardEnabled) {
@@ -269,7 +278,7 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
                                             val proguardDir = dirProguard.generateNextProguardFileName()
                                             resultOfObfuscatedDirs[dir] = "$RES_DIR_PROGUARD_NAME/$proguardDir"
                                             dirFileProguard[dir] = ProguardStringBuilder()
-                                            Log.i(TAG, "dir %s, proguard builder", dir)
+                                            Log.d(TAG, "dir %s, proguard builder", dir)
                                         }
                                         resultOfObfuscatedFiles[zipEntry.name] = resultOfObfuscatedDirs[dir] + "/" + dirFileProguard[dir]!!.generateNextProguardFileName() + suffix
                                         val success = ArscUtil.replaceResFileName(resTable, mapOfResources[resourceName]!!, zipEntry.name, resultOfObfuscatedFiles[zipEntry.name])
@@ -316,7 +325,7 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
                     ApkUtil.sevenZipFile(pathOfSevenZip, unzipDir.canonicalPath + "${File.separator}*", toShrunkApkFile.canonicalPath, false)
 
                     if (compressedEntry.isNotEmpty()) {
-                        Log.i(TAG, "7zip %d DEFLATED files to apk", compressedEntry.size)
+                        Log.d(TAG, "7zip %d DEFLATED files to apk", compressedEntry.size)
                         val deflateDir = File(fromOriginalApkFile.parentFile, fromOriginalApkFile.name.substring(0, fromOriginalApkFile.name.lastIndexOf(".")) + "_deflated")
                         FileUtils.deleteRecursivelyIfExists(deflateDir)
                         deflateDir.mkdir()
@@ -358,7 +367,7 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
         } else {
             val zipEntry = ZipEntry(file.canonicalPath.substring(rootDir.length + 1))
             val method = if (compressedEntry.contains(file.canonicalPath)) ZipEntry.DEFLATED else ZipEntry.STORED
-            Log.i(TAG, "zip file %s -> entry %s, DEFLATED %s", file.canonicalPath, zipEntry.name, method == ZipEntry.DEFLATED)
+            Log.d(TAG, "zip file %s -> entry %s, DEFLATED %s", file.canonicalPath, zipEntry.name, method == ZipEntry.DEFLATED)
             zipEntry.method = method
             ApkUtil.addZipEntry(zipOutputStream, zipEntry, file)
         }
@@ -511,7 +520,7 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
                     resultOfResourcesGonnaRemoved[resName] = resId
                 }
             } else {
-                Log.i(TAG, "ignore remove unused resources %s", resName)
+                Log.d(TAG, "ignore remove unused resources %s", resName)
             }
         }
 
@@ -551,7 +560,7 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
                         val replace = it.next()
                         while (it.hasNext()) {
                             val dup = it.next()
-                            Log.i(TAG, "replace %s with %s", dup, replace)
+                            Log.d(TAG, "replace %s with %s", dup, replace)
                             resultOfDuplicatesReplacements[dup] = replace
                         }
                     }
@@ -579,7 +588,7 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
                     if (!checkIfIgnored(resName, regexpRules)) {
                         resultOfObfuscatedNames[resName] = "R." + resType + "." + resTypeBuilder.generateNextProguard()
                     } else {
-                        Log.i(TAG, "ignore proguard resource name %s", resName)
+                        Log.d(TAG, "ignore proguard resource name %s", resName)
                     }
                 }
             }
@@ -609,7 +618,7 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
                         }
                     }
                     if (attrs.isNotEmpty() && j == attrs.size) {
-                        Log.i(TAG, "removed styleable $styleable")
+                        Log.d(TAG, "removed styleable $styleable")
                         styleableIterator.remove()
                     }
                 }
@@ -704,7 +713,7 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
         Log.i(TAG, "find out %d unused resources:\n %s", setOfUnusedResources.size, setOfUnusedResources)
         Log.i(TAG, "find out %d duplicated resources:", mapOfDuplicatedResources.size)
         for (md5 in mapOfDuplicatedResources.keys) {
-            Log.i(TAG, "> md5:%s, files:%s", md5, mapOfDuplicatedResources[md5])
+            Log.d(TAG, "> md5:%s, files:%s", md5, mapOfDuplicatedResources[md5])
         }
         Log.i(TAG, "find unused resources cost time %fs ", (System.currentTimeMillis() - startTime) / 1000.0f)
 
@@ -763,7 +772,7 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
             // Zip align
             if (isZipAlignEnabled) {
                 val alignedApk = originalApkFile.parentFile.canonicalPath + File.separator + originalApkFile.name.substring(0, originalApkFile.name.indexOf(".")) + "_aligned.apk"
-                Log.i(TAG, "Zipalign apk...")
+                Log.d(TAG, "Zipalign apk...")
                 ApkUtil.zipAlignApk(shrunkApkPath, alignedApk, pathOfZipAlign)
                 shrunkApkFile.delete()
                 FileUtils.copyFile(File(alignedApk), shrunkApkFile)
@@ -772,8 +781,25 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
 
             // Signing apk
             if (isSigningEnabled) {
-                Log.i(TAG, "Signing apk...")
+                Log.d(TAG, "Signing apk...")
                 ApkUtil.signApk(shrunkApkPath, pathOfApkSigner, signingConfig)
+            }
+
+            reportFile?.bufferedWriter()?.use { writer ->
+                writer.write("removed resources:")
+                writer.newLine()
+                mapOfResourcesGonnaRemoved.keys.forEach { name ->
+                    writer.write("  $name")
+                    writer.newLine()
+                }
+                writer.newLine()
+
+                writer.write("duplicated resources:")
+                writer.newLine()
+                mapOfDuplicatesReplacements.forEach { (origin, replacement) ->
+                    writer.write("  $origin -> $replacement")
+                    writer.newLine()
+                }
             }
 
             // Backup original apk and swap shrunk apk

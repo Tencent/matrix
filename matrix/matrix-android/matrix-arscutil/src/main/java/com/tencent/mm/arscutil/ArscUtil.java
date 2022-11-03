@@ -115,7 +115,7 @@ public class ArscUtil {
                 resType.refresh();
             }
             if (resNameStringPoolIndex != -1) {
-                Log.i(TAG, "try to remove %s (%H), find resource %s", resourceName, resourceId, ResStringBlock.resolveStringPoolEntry(resPackage.getResNamePool().getStrings().get(resNameStringPoolIndex).array(), resPackage.getResNamePool().getCharSet()));
+                Log.d(TAG, "try to remove %s (%H), find resource %s", resourceName, resourceId, ResStringBlock.resolveStringPoolEntry(resPackage.getResNamePool().getStrings().get(resNameStringPoolIndex).array(), resPackage.getResNamePool().getCharSet()));
             }
             resPackage.shrinkResNameStringPool();
             resPackage.refresh();
@@ -126,7 +126,7 @@ public class ArscUtil {
     public static boolean replaceFileResource(ResTable resTable, int sourceResId, String sourceFile, int targetResId, String targetFile) throws IOException {
         int sourcePkgId = getPackageId(sourceResId);
         int targetPkgId = getPackageId(targetResId);
-        Log.i(TAG, "try to replace %H(%s) with %H(%s)", sourceResId, sourceFile, targetResId, targetFile);
+        Log.d(TAG, "try to replace %H(%s) with %H(%s)", sourceResId, sourceFile, targetResId, targetFile);
         if (sourcePkgId == targetPkgId) {
             ResPackage resPackage = findResPackage(resTable, sourcePkgId);
             if (resPackage != null) {
@@ -252,7 +252,7 @@ public class ArscUtil {
     }
 
     public static boolean replaceResFileName(ResTable resTable, int resId, String srcFileName, String targetFileName) {
-        Log.i(TAG, "try to replace resource (%H) file %s with %s", resId, srcFileName, targetFileName);
+        Log.d(TAG, "try to replace resource (%H) file %s with %s", resId, srcFileName, targetFileName);
         ResPackage resPackage = findResPackage(resTable, getPackageId(resId));
         boolean result = false;
         if (resPackage != null) {
