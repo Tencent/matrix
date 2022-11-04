@@ -64,11 +64,12 @@ data class ProcessInfo(
 
     override fun toString(): String {
         return String.format(
-            "%-21s\t%-21s %-21s %-21s",
+            "%-21s\t%-21s %-21s %-21s %-21s",
             name,
             "Activity=$activity",
             "AppForeground=$isAppFg",
-            "ProcessForeground=$isProcessFg"
+            "ProcessForeground=$isProcessFg",
+            "Pid=$pid"
         )
     }
 
