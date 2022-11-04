@@ -174,7 +174,7 @@ class MatrixTrace(
         }
         val traceClassLoader = TraceClassLoader.getClassLoader(project, allInputs)
         methodTracer.trace(dirInputOutMap, jarInputOutMap, traceClassLoader, skipCheckClass)
-
+        traceClassLoader.close()
         Log.i(TAG, "[doTransform] Step(3)[Trace]... cost:%sms", System.currentTimeMillis() - start)
 
     }

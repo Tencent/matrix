@@ -267,6 +267,7 @@ public class MethodCollector {
     }
 
     private class TraceClassAdapter extends ClassVisitor {
+        private int version;
         private String className;
         private boolean isABSClass = false;
         private boolean hasWindowFocusMethod = false;
@@ -278,6 +279,7 @@ public class MethodCollector {
         @Override
         public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
             super.visit(version, access, name, signature, superName, interfaces);
+            this.version = version;
             this.className = name;
             if ((access & Opcodes.ACC_ABSTRACT) > 0 || (access & Opcodes.ACC_INTERFACE) > 0) {
                 this.isABSClass = true;
@@ -294,7 +296,11 @@ public class MethodCollector {
                 if (!hasWindowFocusMethod) {
                     hasWindowFocusMethod = isWindowFocusChangeMethod(name, desc);
                 }
-                return new CollectMethodNode(className, access, name, desc, signature, exceptions);
+                MethodVisitor collectMethodNode = new CollectMethodNode(className, access, name, desc, signature, exceptions);
+                if (this.version <= Opcodes.V1_6) {
+                    collectMethodNode = new JSRAdapter(api, collectMethodNode, access, name, desc, signature, exceptions);
+                }
+                return collectMethodNode;
             }
         }
     }
