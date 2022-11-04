@@ -301,6 +301,7 @@ public class MethodTracer {
         private boolean hasWindowFocusMethod = false;
         private boolean isActivityOrSubClass;
         private boolean isNeedTrace;
+        private int version;
 
         TraceClassAdapter(int i, ClassVisitor classVisitor) {
             super(i, classVisitor);
@@ -309,6 +310,7 @@ public class MethodTracer {
         @Override
         public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
             super.visit(version, access, name, signature, superName, interfaces);
+            this.version = version;
             this.className = name;
             this.superName = superName;
             this.isActivityOrSubClass = isActivityOrSubClass(className, collectedClassExtendMap);
@@ -329,8 +331,12 @@ public class MethodTracer {
                 return super.visitMethod(access, name, desc, signature, exceptions);
             } else {
                 MethodVisitor methodVisitor = cv.visitMethod(access, name, desc, signature, exceptions);
-                return new TraceMethodAdapter(api, methodVisitor, access, name, desc, this.className,
+                methodVisitor = new TraceMethodAdapter(api, methodVisitor, access, name, desc, this.className,
                         hasWindowFocusMethod, isActivityOrSubClass, isNeedTrace);
+                if (this.version <= Opcodes.V1_6) {
+                    methodVisitor = new JSRAdapter(api, methodVisitor, access, name, desc, signature, exceptions);
+                }
+                return methodVisitor;
             }
         }
 
