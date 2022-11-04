@@ -34,7 +34,7 @@ public class TraceBuildConstants {
     public final static String MATRIX_TRACE_APPLICATION_CLASS = "android/app/Application";
     public final static String MATRIX_TRACE_METHOD_BEAT_CLASS = "com/tencent/matrix/trace/core/AppMethodBeat";
     public final static String MATRIX_TRACE_ON_WINDOW_FOCUS_METHOD_ARGS = "(Z)V";
-    public static final String[] UN_TRACE_CLASS = {"R.class", "R$", "Manifest", "BuildConfig"};
+    public static final String[] UN_TRACE_CLASS = {"R.class", "R$", "Manifest", "BuildConfig", "META-INF", "module-info"};
     public final static String DEFAULT_BLOCK_TRACE =
                     "[package]\n"
                     + "-keeppackage android/\n"
