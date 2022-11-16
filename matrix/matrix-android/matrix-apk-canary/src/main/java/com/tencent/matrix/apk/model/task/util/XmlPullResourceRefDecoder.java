@@ -93,6 +93,16 @@ public class XmlPullResourceRefDecoder implements ResStreamDecoder {
                         int index = value.indexOf('/');
                         if (index > 1) {
                             resourceRefSet.add(ApkConstants.R_ATTR_PREFIX + "." + value.substring(index + 1).replace('.', '_'));
+                        } else {
+                            // Attribute reference may be omitted the type, for example:
+                            // ?attr/xxx -> ?xxx
+                            // ?android:attr/xxx -> ?android:xxx
+                            int colonIndex = value.indexOf(':');
+                            if (colonIndex > 1) {
+                                resourceRefSet.add(ApkConstants.R_ATTR_PREFIX + value.substring(colonIndex + 1).replace('.', '_'));
+                            } else {
+                                resourceRefSet.add(ApkConstants.R_ATTR_PREFIX + value.substring(1).replace('.', '_'));
+                            }
                         }
                     }
                 }
