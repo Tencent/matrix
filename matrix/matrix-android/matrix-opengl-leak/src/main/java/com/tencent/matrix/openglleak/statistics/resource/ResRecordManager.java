@@ -348,6 +348,7 @@ public class ResRecordManager {
         List<OpenGLDumpInfo> bufferList = new ArrayList<>();
         List<OpenGLDumpInfo> framebufferList = new ArrayList<>();
         List<OpenGLDumpInfo> renderbufferList = new ArrayList<>();
+        List<OpenGLDumpInfo> eglContextList = new ArrayList<>();
 
         for (OpenGLDumpInfo reportInfo : infoMap.values()) {
             if (reportInfo.innerInfo.getType() == OpenGLInfo.TYPE.TEXTURE) {
@@ -361,6 +362,9 @@ public class ResRecordManager {
             }
             if (reportInfo.innerInfo.getType() == OpenGLInfo.TYPE.RENDER_BUFFERS) {
                 renderbufferList.add(reportInfo);
+            }
+            if (reportInfo.innerInfo.getType() == OpenGLInfo.TYPE.EGL_CONTEXT) {
+                eglContextList.add(reportInfo);
             }
         }
 
@@ -381,6 +385,7 @@ public class ResRecordManager {
         Collections.sort(bufferList, comparator);
         Collections.sort(framebufferList, comparator);
         Collections.sort(renderbufferList, comparator);
+        Collections.sort(eglContextList, comparator);
 
         AutoWrapBuilder builder = new AutoWrapBuilder();
         builder.appendDotted()
@@ -388,6 +393,7 @@ public class ResRecordManager {
                 .appendWithSpace(String.format("buffer Count = %d", bufferList.size()), 3)
                 .appendWithSpace(String.format("framebuffer Count = %d", framebufferList.size()), 3)
                 .appendWithSpace(String.format("renderbuffer Count = %d", renderbufferList.size()), 3)
+                .appendWithSpace(String.format("egl context Count = %d", eglContextList.size()), 3)
                 .appendDotted()
                 .appendWave()
                 .appendWithSpace("texture part :", 3)
@@ -401,6 +407,10 @@ public class ResRecordManager {
                 .appendWithSpace("renderbuffer part :", 3)
                 .appendWave()
                 .append(getResListString(renderbufferList))
+                .appendWave()
+                .appendWithSpace("egl context part :", 3)
+                .appendWave()
+                .append(getResListString(eglContextList))
                 .wrap();
 
         return builder.toString();
