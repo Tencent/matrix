@@ -96,7 +96,7 @@ public class ManualDumpProcessor extends BaseLeakProcessor {
         targetIntent.putExtra(SharePluginInfo.ISSUE_HPROF_PATH, hprofPath);
         targetIntent.putExtra(SharePluginInfo.ISSUE_LEAK_DETAIL, refChain);
 
-        PendingIntent pIntent = PendingIntent.getActivity(context, 0, targetIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+        PendingIntent pIntent = PendingIntent.getActivity(context, 0, targetIntent, Build.VERSION.SDK_INT >= 31 ? PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE : PendingIntent.FLAG_UPDATE_CURRENT);
 
         String dumpingHeapTitle = context.getString(R.string.resource_canary_leak_tip);
         ResourceConfig config = getWatcher().getResourcePlugin().getConfig();
