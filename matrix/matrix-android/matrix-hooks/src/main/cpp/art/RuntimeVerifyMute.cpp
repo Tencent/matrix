@@ -32,7 +32,7 @@ bool matrix::art_misc::Install(JNIEnv* env) {
         LOGE(LOG_TAG, "[-] Fail to get sdk version.");
         return false;
     }
-    if (sdk_ver < __ANDROID_API_Q__) {
+    if (sdk_ver < __ANDROID_API_P__) {
         LOGE(LOG_TAG, "[-] SDK version is lower than Q.");
         return false;
     }
