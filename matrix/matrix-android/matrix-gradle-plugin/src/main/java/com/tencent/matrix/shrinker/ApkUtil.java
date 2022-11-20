@@ -216,7 +216,7 @@ public class ApkUtil {
             new File(sevenZipPath).setExecutable(true);
         }
         ProcessBuilder processBuilder = new ProcessBuilder();
-        processBuilder.command(sevenZipPath, "a", "-tzip", outputFile, inputFile, deflated ? "-mx9" : "-mx0");
+        processBuilder.command(sevenZipPath, "a", "-tzip", outputFile, inputFile, deflated ? "-mx5" : "-mx0");
         //Log.i(TAG, "%s", processBuilder.command())
         Process process = processBuilder.start();
 //        process.waitForProcessOutput(System.out, System.err);
