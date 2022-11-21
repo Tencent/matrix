@@ -93,7 +93,7 @@ public class ApkUtil {
         int prefixLength = entry.indexOf('/');
         if (prefixLength == -1) return "";
         if (!Util.isNullOrNil(entry)) {
-            String typeName = entry.substring(prefixLength, entry.lastIndexOf('/'));
+            String typeName = entry.substring(prefixLength + 1, entry.lastIndexOf('/'));
             if (!Util.isNullOrNil(typeName)) {
                 int index = typeName.indexOf('-');
                 if (index >= 0) {
