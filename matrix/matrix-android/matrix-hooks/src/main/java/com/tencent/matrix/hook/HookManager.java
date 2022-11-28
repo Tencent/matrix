@@ -160,7 +160,12 @@ public class HookManager {
 
     @Keep
     public static String getStack() {
-        return stackTraceToString(Thread.currentThread().getStackTrace());
+        try {
+            return stackTraceToString(Thread.currentThread().getStackTrace());
+        } catch (Throwable e) {
+            MatrixLog.printErrStackTrace(TAG, e, "");
+            return "";
+        }
     }
 
     private static String stackTraceToString(final StackTraceElement[] arr) {
