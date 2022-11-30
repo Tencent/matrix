@@ -238,21 +238,21 @@ data class PssInfo(
 
 data class StatusInfo(
     val state: String = "default",
-    val fdSize: Int = -1,
-    val vmSizeK: Int = -1,
-    val vmRssK: Int = -1,
-    val vmSwapK: Int = -1,
-    val threads: Int = -1,
+    val fdSize: Long = -1,
+    val vmSizeK: Long = -1,
+    val vmRssK: Long = -1,
+    val vmSwapK: Long = -1,
+    val threads: Long = -1,
     val oomAdj: Int = -1,
     val oomScoreAdj: Int = -1
 ) : Parcelable {
     constructor(parcel: Parcel) : this(
         parcel.readString() ?: "default",
-        parcel.readInt(),
-        parcel.readInt(),
-        parcel.readInt(),
-        parcel.readInt(),
-        parcel.readInt(),
+        parcel.readLong(),
+        parcel.readLong(),
+        parcel.readLong(),
+        parcel.readLong(),
+        parcel.readLong(),
         parcel.readInt(),
         parcel.readInt()
     )
@@ -287,26 +287,26 @@ data class StatusInfo(
     companion object {
         @JvmStatic
         fun get(pid: Int = Process.myPid()): StatusInfo {
-            return convertProcStatus(pid).run {
+            return convertProcStatus(pid).safeLet(TAG, defVal = StatusInfo()) {
                 fun Map<String, String>.getString(key: String) = get(key) ?: "unknown"
 
-                fun Map<String, String>.getInt(key: String): Int {
+                fun Map<String, String>.getInt(key: String): Long {
                     getString(key).let {
                         val matcher = Pattern.compile("\\d+").matcher(it)
                         while (matcher.find()) {
-                            return matcher.group().toInt()
+                            return matcher.group().toLong()
                         }
                     }
                     return -2
                 }
 
                 StatusInfo(
-                    state = getString("State").trimIndent(),
-                    fdSize = getInt("FDSize"),
-                    vmSizeK = getInt("VmSize"),
-                    vmRssK = getInt("VmRSS"),
-                    vmSwapK = getInt("VmSwap"),
-                    threads = getInt("Threads"),
+                    state = it.getString("State").trimIndent(),
+                    fdSize = it.getInt("FDSize"),
+                    vmSizeK = it.getInt("VmSize"),
+                    vmRssK = it.getInt("VmRSS"),
+                    vmSwapK = it.getInt("VmSwap"),
+                    threads = it.getInt("Threads"),
                     oomAdj = getOomAdj(pid),
                     oomScoreAdj = getOomScoreAdj(pid)
                 )
@@ -357,11 +357,11 @@ data class StatusInfo(
 
     override fun writeToParcel(parcel: Parcel, flags: Int) {
         parcel.writeString(state)
-        parcel.writeInt(fdSize)
-        parcel.writeInt(vmSizeK)
-        parcel.writeInt(vmRssK)
-        parcel.writeInt(vmSwapK)
-        parcel.writeInt(threads)
+        parcel.writeLong(fdSize)
+        parcel.writeLong(vmSizeK)
+        parcel.writeLong(vmRssK)
+        parcel.writeLong(vmSwapK)
+        parcel.writeLong(threads)
         parcel.writeInt(oomAdj)
         parcel.writeInt(oomScoreAdj)
     }
