@@ -16,7 +16,7 @@
 
 package com.tencent.matrix.hook;
 
-import androidx.annotation.Nullable;
+import androidx.annotation.NonNull;
 
 /**
  * Created by Yves on 2020-03-18
@@ -40,7 +40,7 @@ public abstract class AbsHook {
         return mStatus;
     }
 
-    @Nullable
+    @NonNull
     protected abstract String getNativeLibraryName();
 
     protected abstract boolean onConfigure();

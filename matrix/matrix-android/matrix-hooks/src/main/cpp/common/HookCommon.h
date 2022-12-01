@@ -27,6 +27,7 @@
 #include <xhook_ext.h>
 #include "JNICommon.h"
 #include "Macros.h"
+#include "semi_dlfcn.h"
 
 // 0x01 was occupied by thread priority trace hook in MatrixTracer.cc.
 #define HOOK_REQUEST_GROUPID_DLOPEN_MON 0x02
@@ -62,20 +63,24 @@
         } \
     }
 
-#define CALL_ORIGIN_FUNC_RET(retType, ret, sym, params...) \
-    if (!ORIGINAL_FUNC_NAME(sym)) { \
-        void *handle = dlopen(ORIGINAL_LIB, RTLD_LAZY); \
+#define CALL_ORIGIN_FUNC_RET(handle, retType, ret, sym, params...) \
+    if (!ORIGINAL_FUNC_NAME(sym)) {                                \
+        if (!handle) {                                                           \
+            handle = semi_dlopen(ORIGINAL_LIB);     \
+        }                                                           \
         if (handle) { \
-            ORIGINAL_FUNC_NAME(sym) = (FUNC_TYPE(sym))dlsym(handle, #sym); \
+            ORIGINAL_FUNC_NAME(sym) = (FUNC_TYPE(sym)) semi_dlsym(handle, #sym); \
         } \
     } \
     retType ret = ORIGINAL_FUNC_NAME(sym)(params)
 
-#define CALL_ORIGIN_FUNC_VOID(sym, params...) \
-    if (!ORIGINAL_FUNC_NAME(sym)) { \
-        void *handle = dlopen(ORIGINAL_LIB, RTLD_LAZY); \
+#define CALL_ORIGIN_FUNC_VOID(handle, sym, params...) \
+    if (!ORIGINAL_FUNC_NAME(sym)) {                   \
+        if (!handle) {                                              \
+            handle = semi_dlopen(ORIGINAL_LIB);    \
+        }                                             \
         if (handle) { \
-            ORIGINAL_FUNC_NAME(sym) = (FUNC_TYPE(sym))dlsym(handle, #sym); \
+            ORIGINAL_FUNC_NAME(sym) = (FUNC_TYPE(sym)) semi_dlsym(handle, #sym); \
         } \
     } \
     ORIGINAL_FUNC_NAME(sym)(params)

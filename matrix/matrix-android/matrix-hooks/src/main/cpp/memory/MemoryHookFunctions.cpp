@@ -26,6 +26,7 @@
 #include "MemoryHook.h"
 
 #define ORIGINAL_LIB "libc.so"
+static void *libc_handle = nullptr;
 
 #define DO_HOOK_ACQUIRE(p, size) \
     GET_CALLER_ADDR(caller); \
@@ -35,21 +36,21 @@
     on_free_memory(p)
 
 DEFINE_HOOK_FUN(void *, malloc, size_t __byte_count) {
-    CALL_ORIGIN_FUNC_RET(void*, p, malloc, __byte_count);
+    CALL_ORIGIN_FUNC_RET(libc_handle, void*, p, malloc, __byte_count);
     LOGI(TAG, "+ malloc %p", p);
     DO_HOOK_ACQUIRE(p, __byte_count);
     return p;
 }
 
 DEFINE_HOOK_FUN(void *, calloc, size_t __item_count, size_t __item_size) {
-    CALL_ORIGIN_FUNC_RET(void *, p, calloc, __item_count, __item_size);
+    CALL_ORIGIN_FUNC_RET(libc_handle, void *, p, calloc, __item_count, __item_size);
     LOGI(TAG, "+ calloc %p", p);
     DO_HOOK_ACQUIRE(p, __item_count * __item_size);
     return p;
 }
 
 DEFINE_HOOK_FUN(void *, realloc, void *__ptr, size_t __byte_count) {
-    CALL_ORIGIN_FUNC_RET(void *, p, realloc, __ptr, __byte_count);
+    CALL_ORIGIN_FUNC_RET(libc_handle, void *, p, realloc, __ptr, __byte_count);
 
     GET_CALLER_ADDR(caller);
 
@@ -76,14 +77,14 @@ DEFINE_HOOK_FUN(void *, realloc, void *__ptr, size_t __byte_count) {
 }
 
 DEFINE_HOOK_FUN(void *, memalign, size_t __alignment, size_t __byte_count) {
-    CALL_ORIGIN_FUNC_RET(void *, p, memalign, __alignment, __byte_count);
+    CALL_ORIGIN_FUNC_RET(libc_handle, void *, p, memalign, __alignment, __byte_count);
     LOGI(TAG, "+ memalign %p", p);
     DO_HOOK_ACQUIRE(p, __byte_count);
     return p;
 }
 
 DEFINE_HOOK_FUN(int, posix_memalign, void** __memptr, size_t __alignment, size_t __size) {
-    CALL_ORIGIN_FUNC_RET(int, ret, posix_memalign, __memptr, __alignment, __size);
+    CALL_ORIGIN_FUNC_RET(libc_handle, int, ret, posix_memalign, __memptr, __alignment, __size);
     if (ret == 0) {
         LOGI(TAG, "+ posix_memalign %p", *__memptr);
         DO_HOOK_ACQUIRE(*__memptr, __size);
@@ -94,7 +95,7 @@ DEFINE_HOOK_FUN(int, posix_memalign, void** __memptr, size_t __alignment, size_t
 DEFINE_HOOK_FUN(void, free, void *__ptr) {
     LOGI(TAG, "- free %p", __ptr);
     DO_HOOK_RELEASE(__ptr);
-    CALL_ORIGIN_FUNC_VOID(free, __ptr);
+    CALL_ORIGIN_FUNC_VOID(libc_handle, free, __ptr);
 }
 
 #if defined(__USE_FILE_OFFSET64)
@@ -108,7 +109,7 @@ void*h_mmap(void* __addr, size_t __size, int __prot, int __flags, int __fd, off_
 
 DEFINE_HOOK_FUN(void *, mmap, void *__addr, size_t __size, int __prot, int __flags, int __fd,
                 off_t              __offset) {
-    CALL_ORIGIN_FUNC_RET(void *, p, mmap, __addr, __size, __prot, __flags, __fd, __offset);
+    CALL_ORIGIN_FUNC_RET(libc_handle, void *, p, mmap, __addr, __size, __prot, __flags, __fd, __offset);
     if (p == MAP_FAILED) {
         return p;// just return
     }
@@ -167,14 +168,14 @@ DEFINE_HOOK_FUN(int, munmap, void *__addr, size_t __size) {
 }
 
 DEFINE_HOOK_FUN(char*, strdup, const char *str) {
-    CALL_ORIGIN_FUNC_RET(char *, p, strdup, str);
+    CALL_ORIGIN_FUNC_RET(libc_handle, char *, p, strdup, str);
     LOGI(TAG, "+ strdup %p", (void *)p);
     DO_HOOK_ACQUIRE(p, sizeof(str));
     return p;
 }
 
 DEFINE_HOOK_FUN(char*, strndup, const char *str, size_t n) {
-    CALL_ORIGIN_FUNC_RET(char *, p, strndup, str, n);
+    CALL_ORIGIN_FUNC_RET(libc_handle, char *, p, strndup, str, n);
     LOGI(TAG, "+ strndup %p", (void *)p);
     DO_HOOK_ACQUIRE(p, sizeof(str) < n ? sizeof(str) : n);
     return p;
@@ -182,18 +183,19 @@ DEFINE_HOOK_FUN(char*, strndup, const char *str, size_t n) {
 
 #undef ORIGINAL_LIB
 #define ORIGINAL_LIB "libc++_shared.so"
+static void *libcxx_handle = nullptr;
 
 #ifndef __LP64__
 
 DEFINE_HOOK_FUN(void*, _Znwj, size_t size) {
-    CALL_ORIGIN_FUNC_RET(void*, p, _Znwj, size);
+    CALL_ORIGIN_FUNC_RET(libcxx_handle, void*, p, _Znwj, size);
     LOGI(TAG, "+ _Znwj %p", p);
     DO_HOOK_ACQUIRE(p, size);
     return p;
 }
 
 DEFINE_HOOK_FUN(void*, _ZnwjSt11align_val_t, size_t size, std::align_val_t align_val) {
-    CALL_ORIGIN_FUNC_RET(void*, p, _ZnwjSt11align_val_t, size, align_val);
+    CALL_ORIGIN_FUNC_RET(libcxx_handle, void*, p, _ZnwjSt11align_val_t, size, align_val);
     LOGI(TAG, "- _ZnwjSt11align_val_t %p", p);
     DO_HOOK_ACQUIRE(p, size);
     return p;
@@ -201,28 +203,28 @@ DEFINE_HOOK_FUN(void*, _ZnwjSt11align_val_t, size_t size, std::align_val_t align
 
 DEFINE_HOOK_FUN(void*, _ZnwjSt11align_val_tRKSt9nothrow_t, size_t size,
                 std::align_val_t align_val, std::nothrow_t const& nothrow) {
-    CALL_ORIGIN_FUNC_RET(void*, p, _ZnwjSt11align_val_tRKSt9nothrow_t, size, align_val, nothrow);
+    CALL_ORIGIN_FUNC_RET(libcxx_handle, void*, p, _ZnwjSt11align_val_tRKSt9nothrow_t, size, align_val, nothrow);
     LOGI(TAG, "+ _ZnwjSt11align_val_tRKSt9nothrow_t %p", p);
     DO_HOOK_ACQUIRE(p, size);
     return p;
 }
 
 DEFINE_HOOK_FUN(void*, _ZnwjRKSt9nothrow_t, size_t size, std::nothrow_t const& nothrow) {
-    CALL_ORIGIN_FUNC_RET(void*, p, _ZnwjRKSt9nothrow_t, size, nothrow);
+    CALL_ORIGIN_FUNC_RET(libcxx_handle, void*, p, _ZnwjRKSt9nothrow_t, size, nothrow);
     LOGI(TAG, "+ _ZnwjRKSt9nothrow_t %p", p);
     DO_HOOK_ACQUIRE(p, size);
     return p;
 }
 
 DEFINE_HOOK_FUN(void*, _Znaj, size_t size) {
-    CALL_ORIGIN_FUNC_RET(void*, p, _Znaj, size);
+    CALL_ORIGIN_FUNC_RET(libcxx_handle, void*, p, _Znaj, size);
     LOGI(TAG, "+ _Znaj %p", p);
     DO_HOOK_ACQUIRE(p, size);
     return p;
 }
 
 DEFINE_HOOK_FUN(void*, _ZnajSt11align_val_t, size_t size, std::align_val_t align_val) {
-    CALL_ORIGIN_FUNC_RET(void*, p, _ZnajSt11align_val_t, size, align_val);
+    CALL_ORIGIN_FUNC_RET(libcxx_handle, void*, p, _ZnajSt11align_val_t, size, align_val);
     LOGI(TAG, "+ _ZnajSt11align_val_t %p", p);
     DO_HOOK_ACQUIRE(p, size);
     return p;
@@ -230,14 +232,14 @@ DEFINE_HOOK_FUN(void*, _ZnajSt11align_val_t, size_t size, std::align_val_t align
 
 DEFINE_HOOK_FUN(void*, _ZnajSt11align_val_tRKSt9nothrow_t, size_t size,
                 std::align_val_t align_val, std::nothrow_t const& nothrow) {
-    CALL_ORIGIN_FUNC_RET(void*, p, _ZnajSt11align_val_tRKSt9nothrow_t, size, align_val, nothrow);
+    CALL_ORIGIN_FUNC_RET(libcxx_handle, void*, p, _ZnajSt11align_val_tRKSt9nothrow_t, size, align_val, nothrow);
     LOGI(TAG, "+ _ZnajSt11align_val_tRKSt9nothrow_t %p", p);
     DO_HOOK_ACQUIRE(p, size);
     return p;
 }
 
 DEFINE_HOOK_FUN(void*, _ZnajRKSt9nothrow_t, size_t size, std::nothrow_t const& nothrow) {
-    CALL_ORIGIN_FUNC_RET(void*, p, _ZnajRKSt9nothrow_t, size, nothrow);
+    CALL_ORIGIN_FUNC_RET(libcxx_handle, void*, p, _ZnajRKSt9nothrow_t, size, nothrow);
     LOGI(TAG, "+ _ZnajRKSt9nothrow_t %p", p);
     DO_HOOK_ACQUIRE(p, size);
     return p;
@@ -246,40 +248,40 @@ DEFINE_HOOK_FUN(void*, _ZnajRKSt9nothrow_t, size_t size, std::nothrow_t const& n
 DEFINE_HOOK_FUN(void, _ZdaPvj, void* ptr, size_t size) {
     LOGI(TAG, "- _ZdaPvj %p", ptr);
     DO_HOOK_RELEASE(ptr);
-    CALL_ORIGIN_FUNC_VOID(_ZdaPvj, ptr, size);
+    CALL_ORIGIN_FUNC_VOID(libcxx_handle, _ZdaPvj, ptr, size);
 }
 
 DEFINE_HOOK_FUN(void, _ZdaPvjSt11align_val_t, void* ptr, size_t size,
                 std::align_val_t align_val) {
     LOGI(TAG, "- _ZdaPvjSt11align_val_t %p", ptr);
     DO_HOOK_RELEASE(ptr);
-    CALL_ORIGIN_FUNC_VOID(_ZdaPvjSt11align_val_t, ptr, size, align_val);
+    CALL_ORIGIN_FUNC_VOID(libcxx_handle, _ZdaPvjSt11align_val_t, ptr, size, align_val);
 }
 
 DEFINE_HOOK_FUN(void, _ZdlPvj, void* ptr, size_t size) {
     LOGI(TAG, "- _ZdlPvj %p", ptr);
     DO_HOOK_RELEASE(ptr);
-    CALL_ORIGIN_FUNC_VOID(_ZdlPvj, ptr, size);
+    CALL_ORIGIN_FUNC_VOID(libcxx_handle, _ZdlPvj, ptr, size);
 }
 
 DEFINE_HOOK_FUN(void, _ZdlPvjSt11align_val_t, void* ptr, size_t size,
                 std::align_val_t align_val) {
     LOGI(TAG, "- _ZdlPvjSt11align_val_t %p", ptr);
     DO_HOOK_RELEASE(ptr);
-    CALL_ORIGIN_FUNC_VOID(_ZdlPvjSt11align_val_t, ptr, size, align_val);
+    CALL_ORIGIN_FUNC_VOID(libcxx_handle, _ZdlPvjSt11align_val_t, ptr, size, align_val);
 }
 
 #else
 
 DEFINE_HOOK_FUN(void*, _Znwm, size_t size) {
-    CALL_ORIGIN_FUNC_RET(void*, p, _Znwm, size);
+    CALL_ORIGIN_FUNC_RET(libcxx_handle, void*, p, _Znwm, size);
     LOGI(TAG, "+ _Znwm %p", p);
     DO_HOOK_ACQUIRE(p, size);
     return p;
 }
 
 DEFINE_HOOK_FUN(void*, _ZnwmSt11align_val_t, size_t size, std::align_val_t align_val) {
-    CALL_ORIGIN_FUNC_RET(void*, p, _ZnwmSt11align_val_t, size, align_val);
+    CALL_ORIGIN_FUNC_RET(libcxx_handle, void*, p, _ZnwmSt11align_val_t, size, align_val);
     LOGI(TAG, "+ _ZnwmSt11align_val_t %p", p);
     DO_HOOK_ACQUIRE(p, size);
     return p;
@@ -288,28 +290,28 @@ DEFINE_HOOK_FUN(void*, _ZnwmSt11align_val_t, size_t size, std::align_val_t align
 DEFINE_HOOK_FUN(void*, _ZnwmSt11align_val_tRKSt9nothrow_t, size_t size,
                 std::align_val_t                                  align_val,
                 std::nothrow_t const                              &nothrow) {
-    CALL_ORIGIN_FUNC_RET(void*, p, _ZnwmSt11align_val_tRKSt9nothrow_t, size, align_val, nothrow);
+    CALL_ORIGIN_FUNC_RET(libcxx_handle, void*, p, _ZnwmSt11align_val_tRKSt9nothrow_t, size, align_val, nothrow);
     LOGI(TAG, "+ _ZnwmSt11align_val_tRKSt9nothrow_t %p", p);
     DO_HOOK_ACQUIRE(p, size);
     return p;
 }
 
 DEFINE_HOOK_FUN(void*, _ZnwmRKSt9nothrow_t, size_t size, std::nothrow_t const &nothrow) {
-    CALL_ORIGIN_FUNC_RET(void*, p, _Znwm, size);
+    CALL_ORIGIN_FUNC_RET(libcxx_handle, void*, p, _Znwm, size);
     LOGI(TAG, "+ _ZnwmRKSt9nothrow_t %p", p);
     DO_HOOK_ACQUIRE(p, size);
     return p;
 }
 
 DEFINE_HOOK_FUN(void*, _Znam, size_t size) {
-    CALL_ORIGIN_FUNC_RET(void*, p, _Znam, size);
+    CALL_ORIGIN_FUNC_RET(libcxx_handle, void*, p, _Znam, size);
     LOGI(TAG, "+ _Znam %p", p);
     DO_HOOK_ACQUIRE(p, size);
     return p;
 }
 
 DEFINE_HOOK_FUN(void*, _ZnamSt11align_val_t, size_t size, std::align_val_t align_val) {
-    CALL_ORIGIN_FUNC_RET(void*, p, _ZnamSt11align_val_t, size, align_val);
+    CALL_ORIGIN_FUNC_RET(libcxx_handle, void*, p, _ZnamSt11align_val_t, size, align_val);
     LOGI(TAG, "+ _ZnamSt11align_val_t %p", p);
     DO_HOOK_ACQUIRE(p, size);
     return p;
@@ -318,14 +320,14 @@ DEFINE_HOOK_FUN(void*, _ZnamSt11align_val_t, size_t size, std::align_val_t align
 DEFINE_HOOK_FUN(void*, _ZnamSt11align_val_tRKSt9nothrow_t, size_t size,
                 std::align_val_t                                  align_val,
                 std::nothrow_t const                              &nothrow) {
-    CALL_ORIGIN_FUNC_RET(void*, p, _ZnamSt11align_val_tRKSt9nothrow_t, size, align_val, nothrow);
+    CALL_ORIGIN_FUNC_RET(libcxx_handle, void*, p, _ZnamSt11align_val_tRKSt9nothrow_t, size, align_val, nothrow);
     LOGI(TAG, "+ _ZnamSt11align_val_tRKSt9nothrow_t %p", p);
     DO_HOOK_ACQUIRE(p, size);
     return p;
 }
 
 DEFINE_HOOK_FUN(void*, _ZnamRKSt9nothrow_t, size_t size, std::nothrow_t const &nothrow) {
-    CALL_ORIGIN_FUNC_RET(void*, p, _ZnamRKSt9nothrow_t, size, nothrow);
+    CALL_ORIGIN_FUNC_RET(libcxx_handle, void*, p, _ZnamRKSt9nothrow_t, size, nothrow);
     LOGI(TAG, "+ _ZnamRKSt9nothrow_t %p", p);
     DO_HOOK_ACQUIRE(p, size);
     return p;
@@ -334,27 +336,27 @@ DEFINE_HOOK_FUN(void*, _ZnamRKSt9nothrow_t, size_t size, std::nothrow_t const &n
 DEFINE_HOOK_FUN(void, _ZdlPvm, void *ptr, size_t size) {
     LOGI(TAG, "- _ZdlPvm %p", ptr);
     DO_HOOK_RELEASE(ptr);
-    CALL_ORIGIN_FUNC_VOID(_ZdlPvm, ptr, size);
+    CALL_ORIGIN_FUNC_VOID(libcxx_handle, _ZdlPvm, ptr, size);
 }
 
 DEFINE_HOOK_FUN(void, _ZdlPvmSt11align_val_t, void *ptr, size_t size,
                 std::align_val_t                   align_val) {
     LOGI(TAG, "- _ZdlPvmSt11align_val_t %p", ptr);
     DO_HOOK_RELEASE(ptr);
-    CALL_ORIGIN_FUNC_VOID(_ZdlPvmSt11align_val_t, ptr, size, align_val);
+    CALL_ORIGIN_FUNC_VOID(libcxx_handle, _ZdlPvmSt11align_val_t, ptr, size, align_val);
 }
 
 DEFINE_HOOK_FUN(void, _ZdaPvm, void *ptr, size_t size) {
     LOGI(TAG, "- _ZdaPvm %p", ptr);
     DO_HOOK_RELEASE(ptr);
-    CALL_ORIGIN_FUNC_VOID(_ZdaPvm, ptr, size);
+    CALL_ORIGIN_FUNC_VOID(libcxx_handle, _ZdaPvm, ptr, size);
 }
 
 DEFINE_HOOK_FUN(void, _ZdaPvmSt11align_val_t, void *ptr, size_t size,
                 std::align_val_t                   align_val) {
     LOGI(TAG, "- _ZdaPvmSt11align_val_t %p", ptr);
     DO_HOOK_RELEASE(ptr);
-    CALL_ORIGIN_FUNC_VOID(_ZdaPvmSt11align_val_t, ptr, size, align_val);
+    CALL_ORIGIN_FUNC_VOID(libcxx_handle, _ZdaPvmSt11align_val_t, ptr, size, align_val);
 }
 
 #endif
@@ -362,13 +364,13 @@ DEFINE_HOOK_FUN(void, _ZdaPvmSt11align_val_t, void *ptr, size_t size,
 DEFINE_HOOK_FUN(void, _ZdlPv, void *p) {
     LOGI(TAG, "- _ZdlPv %p", p);
     DO_HOOK_RELEASE(p);
-    CALL_ORIGIN_FUNC_VOID(_ZdlPv, p);
+    CALL_ORIGIN_FUNC_VOID(libcxx_handle, _ZdlPv, p);
 }
 
 DEFINE_HOOK_FUN(void, _ZdlPvSt11align_val_t, void *ptr, std::align_val_t align_val) {
     LOGI(TAG, "- _ZdlPvSt11align_val_t %p", ptr);
     DO_HOOK_RELEASE(ptr);
-    CALL_ORIGIN_FUNC_VOID(_ZdlPvSt11align_val_t, ptr, align_val);
+    CALL_ORIGIN_FUNC_VOID(libcxx_handle, _ZdlPvSt11align_val_t, ptr, align_val);
 }
 
 DEFINE_HOOK_FUN(void, _ZdlPvSt11align_val_tRKSt9nothrow_t, void *ptr,
@@ -376,25 +378,25 @@ DEFINE_HOOK_FUN(void, _ZdlPvSt11align_val_tRKSt9nothrow_t, void *ptr,
                 std::nothrow_t const                            &nothrow) {
     LOGI(TAG, "- _ZdlPvSt11align_val_tRKSt9nothrow_t %p", ptr);
     DO_HOOK_RELEASE(ptr);
-    CALL_ORIGIN_FUNC_VOID(_ZdlPvSt11align_val_tRKSt9nothrow_t, ptr, align_val, nothrow);
+    CALL_ORIGIN_FUNC_VOID(libcxx_handle, _ZdlPvSt11align_val_tRKSt9nothrow_t, ptr, align_val, nothrow);
 }
 
 DEFINE_HOOK_FUN(void, _ZdlPvRKSt9nothrow_t, void *ptr, std::nothrow_t const &nothrow) {
     LOGI(TAG, "- _ZdlPvRKSt9nothrow_t %p", ptr);
     DO_HOOK_RELEASE(ptr);
-    CALL_ORIGIN_FUNC_VOID(_ZdlPvRKSt9nothrow_t, ptr, nothrow);
+    CALL_ORIGIN_FUNC_VOID(libcxx_handle, _ZdlPvRKSt9nothrow_t, ptr, nothrow);
 }
 
 DEFINE_HOOK_FUN(void, _ZdaPv, void *ptr) {
     LOGI(TAG, "- _ZdaPv %p", ptr);
     DO_HOOK_RELEASE(ptr);
-    CALL_ORIGIN_FUNC_VOID(_ZdaPv, ptr);
+    CALL_ORIGIN_FUNC_VOID(libcxx_handle, _ZdaPv, ptr);
 }
 
 DEFINE_HOOK_FUN(void, _ZdaPvSt11align_val_t, void *ptr, std::align_val_t align_val) {
     LOGI(TAG, "- _ZdaPvSt11align_val_t %p", ptr);
     DO_HOOK_RELEASE(ptr);
-    CALL_ORIGIN_FUNC_VOID(_ZdaPvSt11align_val_t, ptr, align_val);
+    CALL_ORIGIN_FUNC_VOID(libcxx_handle, _ZdaPvSt11align_val_t, ptr, align_val);
 }
 
 DEFINE_HOOK_FUN(void, _ZdaPvSt11align_val_tRKSt9nothrow_t, void *ptr,
@@ -402,13 +404,13 @@ DEFINE_HOOK_FUN(void, _ZdaPvSt11align_val_tRKSt9nothrow_t, void *ptr,
                 std::nothrow_t const                            &nothrow) {
     LOGI(TAG, "- _ZdaPvSt11align_val_tRKSt9nothrow_t %p", ptr);
     DO_HOOK_RELEASE(ptr);
-    CALL_ORIGIN_FUNC_VOID(_ZdaPvSt11align_val_tRKSt9nothrow_t, ptr, align_val, nothrow);
+    CALL_ORIGIN_FUNC_VOID(libcxx_handle, _ZdaPvSt11align_val_tRKSt9nothrow_t, ptr, align_val, nothrow);
 }
 
 DEFINE_HOOK_FUN(void, _ZdaPvRKSt9nothrow_t, void *ptr, std::nothrow_t const &nothrow) {
     LOGI(TAG, "- _ZdaPvRKSt9nothrow_t %p", ptr);
     DO_HOOK_RELEASE(ptr);
-    CALL_ORIGIN_FUNC_VOID(_ZdaPvRKSt9nothrow_t, ptr, nothrow);
+    CALL_ORIGIN_FUNC_VOID(libcxx_handle, _ZdaPvRKSt9nothrow_t, ptr, nothrow);
 }
 
 #undef ORIGINAL_LIB
