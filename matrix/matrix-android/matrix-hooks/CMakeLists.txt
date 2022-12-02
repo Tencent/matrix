@@ -74,6 +74,7 @@ add_library(
 target_link_libraries(
       ${TARGET}
       PRIVATE matrix-hookcommon
+      PRIVATE -Wl,--whole-archive ${EXT_DEP}/lib/${ANDROID_ABI}/libsemi_dlfcn.a -Wl,--no-whole-archive
       PRIVATE -Wl,--version-script=${SOURCE_DIR}/memory/memory.ver
 )
 #################################################################################
@@ -93,6 +94,7 @@ add_library(
 target_link_libraries(
       ${TARGET}
       PRIVATE matrix-hookcommon
+      PRIVATE -Wl,--whole-archive ${EXT_DEP}/lib/${ANDROID_ABI}/libsemi_dlfcn.a -Wl,--no-whole-archive
       PRIVATE -Wl,--version-script=${SOURCE_DIR}/pthread/pthread.ver
 )
 #################################################################################
