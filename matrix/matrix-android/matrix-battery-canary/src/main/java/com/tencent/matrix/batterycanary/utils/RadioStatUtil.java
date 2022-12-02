@@ -97,15 +97,20 @@ public final class RadioStatUtil {
         if (android.os.Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
             return null;
         }
-        RadioBps stat = new RadioBps();
-        Pair<Long, Long> wifi = getCurrentBps(context, "WIFI");
-        stat.wifiRxBps = wifi.first == null ? 0 : wifi.first;
-        stat.wifiTxBps = wifi.second == null ? 0 : wifi.second;
+        try {
+            RadioBps stat = new RadioBps();
+            Pair<Long, Long> wifi = getCurrentBps(context, "WIFI");
+            stat.wifiRxBps = wifi.first == null ? 0 : wifi.first;
+            stat.wifiTxBps = wifi.second == null ? 0 : wifi.second;
 
-        Pair<Long, Long> mobile = getCurrentBps(context, "MOBILE");
-        stat.mobileRxBps = mobile.first == null ? 0 : mobile.first;
-        stat.mobileTxBps = mobile.second == null ? 0 : mobile.second;
-        return stat;
+            Pair<Long, Long> mobile = getCurrentBps(context, "MOBILE");
+            stat.mobileRxBps = mobile.first == null ? 0 : mobile.first;
+            stat.mobileTxBps = mobile.second == null ? 0 : mobile.second;
+            return stat;
+        } catch (Exception e) {
+            MatrixLog.w(TAG, "getBps err: " + e.getMessage());
+            return null;
+        }
     }
 
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
