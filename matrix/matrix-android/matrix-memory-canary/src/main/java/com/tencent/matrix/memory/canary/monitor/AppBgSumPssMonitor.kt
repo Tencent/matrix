@@ -87,12 +87,14 @@ internal class AppBgSumPssMonitor(
             )
         }.sumBy { it.amsPssInfo!!.totalPssK }.also { MatrixLog.i(TAG, "sumPss = $it KB") }
 
-        val debugPssSum = debugMemInfos.onEach {
-            MatrixLog.i(
-                TAG,
-                "${it.processInfo?.pid}-${it.processInfo?.name}: dbgPss = ${it.debugPssInfo!!.totalPssK} KB, amsPss = ${it.amsPssInfo!!.totalPssK} KB"
-            )
-        }.sumBy { it.debugPssInfo!!.totalPssK }.also { MatrixLog.i(TAG, "ipc sumDbgPss = $it KB") }
+        val debugPssSum = safeLet(tag = TAG, defVal = 0) {
+            debugMemInfos.filter { it.processInfo != null && it.debugPssInfo != null && it.amsPssInfo != null }.onEach {
+                MatrixLog.i(
+                    TAG,
+                    "${it.processInfo?.pid}-${it.processInfo?.name}: dbgPss = ${it.debugPssInfo!!.totalPssK} KB, amsPss = ${it.amsPssInfo!!.totalPssK} KB"
+                )
+            }.sumBy { it.debugPssInfo!!.totalPssK }.also { MatrixLog.i(TAG, "ipc sumDbgPss = $it KB") }
+        }
 
         MatrixLog.i(TAG, "check with interval [$checkInterval] amsPssSum = $amsPssSum KB, ${amsMemInfos.contentToString()}")
         MatrixLog.i(TAG, "check with interval [$checkInterval] debugPssSum = $debugPssSum KB, ${debugMemInfos.contentToString()}")
