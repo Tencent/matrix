@@ -735,6 +735,8 @@ data class MemInfo(
                         javaMemInfo = null,
                         nativeMemInfo = null,
                         systemInfo = systemInfo,
+                        debugPssInfo = PssInfo(),
+                        amsPssInfo = PssInfo()
                     )
                 )
             }
