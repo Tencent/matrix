@@ -27,7 +27,7 @@
 #include <xhook_ext.h>
 #include "JNICommon.h"
 #include "Macros.h"
-#include "semi_dlfcn.h"
+#include "EnhanceDlsym.h"
 
 // 0x01 was occupied by thread priority trace hook in MatrixTracer.cc.
 #define HOOK_REQUEST_GROUPID_DLOPEN_MON 0x02
@@ -51,38 +51,30 @@
     extern ORIGINAL_FUNC_PTR(sym); \
     ret HANDLER_FUNC_NAME(sym)(params);
 
+#define DECLARE_HOOK_ORIG_ATTR(ret, sym, params...) \
+    typedef ret (*FUNC_TYPE(sym))(params); \
+    extern ORIGINAL_FUNC_PTR(sym); \
+    ret HANDLER_FUNC_NAME(sym)(params)
+
 #define DEFINE_HOOK_FUN(ret, sym, params...) \
     ORIGINAL_FUNC_PTR(sym); \
     ret HANDLER_FUNC_NAME(sym)(params)
 
-#define FETCH_ORIGIN_FUNC(sym) \
-    if (!ORIGINAL_FUNC_NAME(sym)) { \
-        void *handle = dlopen(ORIGINAL_LIB, RTLD_LAZY); \
+#define FETCH_ORIGIN_FUNC_OF_SO(sym, target_so) \
+     if (!ORIGINAL_FUNC_NAME(sym)) { \
+        void *handle = dlopen(target_so, RTLD_LAZY); \
         if (handle) { \
             ORIGINAL_FUNC_NAME(sym) = (FUNC_TYPE(sym))dlsym(handle, #sym); \
         } \
-    }
+    }\
+
+#define FETCH_ORIGIN_FUNC(sym) \
+    FETCH_ORIGIN_FUNC_OF_SO(sym, ORIGINAL_LIB)
 
 #define CALL_ORIGIN_FUNC_RET(handle, retType, ret, sym, params...) \
-    if (!ORIGINAL_FUNC_NAME(sym)) {                                \
-        if (!handle) {                                                           \
-            handle = semi_dlopen(ORIGINAL_LIB);     \
-        }                                                           \
-        if (handle) { \
-            ORIGINAL_FUNC_NAME(sym) = (FUNC_TYPE(sym)) semi_dlsym(handle, #sym); \
-        } \
-    } \
     retType ret = ORIGINAL_FUNC_NAME(sym)(params)
 
 #define CALL_ORIGIN_FUNC_VOID(handle, sym, params...) \
-    if (!ORIGINAL_FUNC_NAME(sym)) {                   \
-        if (!handle) {                                              \
-            handle = semi_dlopen(ORIGINAL_LIB);    \
-        }                                             \
-        if (handle) { \
-            ORIGINAL_FUNC_NAME(sym) = (FUNC_TYPE(sym)) semi_dlsym(handle, #sym); \
-        } \
-    } \
     ORIGINAL_FUNC_NAME(sym)(params)
 
 #define NOTIFY_COMMON_IGNORE_LIBS(group_id) \
@@ -109,17 +101,9 @@
       xhook_grouped_ignore(group_id, ".*/libmatrix-traffic\\.so$", NULL);\
     } while (0)
 
-#include <vector>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-typedef struct {
-    const char *name;
-    void       *handler_ptr;
-    void       **origin_ptr;
-} HookFunction;
 
 EXPORT bool get_java_stacktrace(char *stack_dst, size_t size);
 
