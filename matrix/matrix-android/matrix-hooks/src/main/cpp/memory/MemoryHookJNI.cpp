@@ -26,9 +26,6 @@
 #include "MemoryHookFunctions.h"
 #include "MemoryHook.h"
 
-#undef LOGD
-#define LOGD(TAG, FMT, args...) __android_log_print(ANDROID_LOG_DEBUG, TAG, FMT, ##args)
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -37,12 +34,11 @@ extern "C" {
     do {                                            \
         FETCH_ORIGIN_FUNC_OF_SO(target_sym, target_so); \
         if(!ORIGINAL_FUNC_NAME(target_sym)) {       \
-             LOGD(TAG, "hook failed: fetch origin func failed: %s", #target_sym);                                       \
+             LOGE(TAG, "hook failed: fetch origin func failed: %s", #target_sym);                                       \
              break;                                       \
         } \
         int ret = xhook_grouped_register(HOOK_REQUEST_GROUPID_MEMORY, regex, #target_sym, (void*) HANDLER_FUNC_NAME(target_sym), nullptr); \
         LOGD(TAG, "hook fn, regex: %s, sym: %s, ret: %d", regex, #target_sym, ret);                                                         \
-         \
     } while(0);
 
 #define HOOK_REGISTER_REGEX_LIBC(target_sym) \
