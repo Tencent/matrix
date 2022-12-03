@@ -123,9 +123,8 @@ DEFINE_HOOK_FUN(void *, mmap, void *__addr, size_t __size, int __prot, int __fla
 #endif
 
 #if __ANDROID_API__ >= __ANDROID_API_L__
-
-void *h_mmap64(void *__addr, size_t __size, int __prot, int __flags, int __fd,
-               off64_t __offset) __INTRODUCED_IN(21) {
+DEFINE_HOOK_FUN(void *, mmap64, void *__addr, size_t __size, int __prot, int __flags, int __fd,
+                off64_t __offset) {
     void *p = mmap64(__addr, __size, __prot, __flags, __fd, __offset);
     if (p == MAP_FAILED) {
         return p;// just return
@@ -135,7 +134,6 @@ void *h_mmap64(void *__addr, size_t __size, int __prot, int __flags, int __fd,
     on_mmap_memory(caller, p, __size);
     return p;
 }
-
 #endif
 
 DEFINE_HOOK_FUN(void *, mremap, void *__old_addr, size_t __old_size, size_t __new_size, int __flags,
