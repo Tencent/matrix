@@ -318,7 +318,10 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
                                 deltaThreadJiffies.name = endRecord.name;
                                 deltaThreadJiffies.stat = endRecord.stat;
                                 deltaThreadJiffies.isNewAdded = isNewAdded;
-                                deltaThreadEntries.add(deltaThreadJiffies);
+                                if (!isNewAdded) {
+                                    // Skip new added tid for now
+                                    deltaThreadEntries.add(deltaThreadJiffies);
+                                }
                             }
                         }
                         if (deltaThreadEntries.size() > 0) {
@@ -569,8 +572,11 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
                                 empty.threadNum = DigitEntry.of(0);
                                 last = empty;
                             }
-                            Delta<JiffiesSnapshot> deltaPidJiffies = end.diff(last);
-                            delta.pidDeltaJiffiesList.add(deltaPidJiffies);
+                            if (!end.isNewAdded) {
+                                // Skip new added pid for now
+                                Delta<JiffiesSnapshot> deltaPidJiffies = end.diff(last);
+                                delta.pidDeltaJiffiesList.add(deltaPidJiffies);
+                            }
                         }
 
                         Collections.sort(delta.pidDeltaJiffiesList, new Comparator<Delta<JiffiesSnapshot>>() {
