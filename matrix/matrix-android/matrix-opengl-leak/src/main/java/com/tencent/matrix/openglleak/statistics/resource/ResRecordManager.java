@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 
 import com.tencent.matrix.openglleak.hook.OpenGLHook;
 import com.tencent.matrix.openglleak.utils.AutoWrapBuilder;
+import com.tencent.matrix.util.MatrixLog;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -14,19 +15,23 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class ResRecordManager {
+    private static final String TAG = "Matrix.ResRecordManager";
 
     private static final ResRecordManager mInstance = new ResRecordManager();
 
     private final List<Callback> mCallbackList = new LinkedList<>();
     private final List<OpenGLInfo> mInfoList = new LinkedList<>();
-    private final List<Long> mReleaseContext = new LinkedList<>();
     private final List<Long> mReleaseSurface = new LinkedList<>();
+
+    private final Map<Long, Set<Long>> mContextGroup = new HashMap<>();
 
     private ResRecordManager() {
 
@@ -34,6 +39,32 @@ public class ResRecordManager {
 
     public static ResRecordManager getInstance() {
         return mInstance;
+    }
+
+    public void shareContext(Long shareContext, Long newContext) {
+        if (shareContext != 0) {
+            synchronized (mContextGroup) {
+                Set<Long> group = mContextGroup.get(shareContext);
+                if (group == null) {
+                    group = new HashSet<>();
+                    mContextGroup.put(shareContext, group);
+                }
+                mContextGroup.put(newContext, group);
+                group.add(newContext);
+                group.add(shareContext);
+            }
+        }
+    }
+
+    public void removeSharedContextIfNeeded(Long context) {
+        synchronized (mContextGroup) {
+            if (mContextGroup.containsKey(context)) {
+                Set<Long> group = mContextGroup.remove(context);
+                if (group != null) {
+                    group.remove(context);
+                }
+            }
+        }
     }
 
     public void gen(final OpenGLInfo gen) {
@@ -54,7 +85,7 @@ public class ResRecordManager {
         }
     }
 
-    public void delete(final OpenGLInfo del) {
+    public void delete(OpenGLInfo del) {
         if (del == null) {
             return;
         }
@@ -62,7 +93,22 @@ public class ResRecordManager {
         synchronized (mInfoList) {
             // 之前可能释放过
             int index = mInfoList.indexOf(del);
+
+            Set<Long> group = mContextGroup.get(del.getEglContextNativeHandle());
+
+            if (-1 == index && group != null) { // is shared context
+                for (Long ctx : group) {
+                    OpenGLInfo sharedInfo = new OpenGLInfo(del.getType(), del.getId(), del.getThreadId(), ctx);
+                    index = mInfoList.indexOf(sharedInfo);
+                    if (index != -1) {
+                        MatrixLog.d(TAG, "del info found with shared context: %d, %s", index, ctx);
+                        break;
+                    }
+                }
+            }
+
             if (-1 == index) {
+                MatrixLog.d(TAG, "del info not found");
                 return;
             }
 
@@ -89,7 +135,7 @@ public class ResRecordManager {
                 }
             }
 
-            mInfoList.remove(del);
+            mInfoList.remove(info);
         }
 
         synchronized (mCallbackList) {
@@ -171,9 +217,6 @@ public class ResRecordManager {
     public void clear() {
         synchronized (mInfoList) {
             mInfoList.clear();
-        }
-        synchronized (mReleaseContext) {
-            mReleaseContext.clear();
         }
     }
 

@@ -835,7 +835,7 @@ my_egl_context_create(EGLDisplay dpy, EGLConfig config, EGLContext share_context
 
         messages_containers
                 ->enqueue_message((uintptr_t) ret,
-                                  [backtracePrt, throwable, thread_id_c_str, ret, activity_info]() {
+                                  [backtracePrt, throwable, thread_id_c_str, ret, share_context, activity_info]() {
 
                                       JNIEnv *env = GET_ENV();
 
@@ -850,7 +850,9 @@ my_egl_context_create(EGLDisplay dpy, EGLConfig config, EGLContext share_context
                                                                 j_thread_id,
                                                                 (jint) throwable,
                                                                 (jlong) backtrace,
-                                                                (jlong) ret, j_activity_info);
+                                                                (jlong) ret,
+                                                                (jlong) share_context,
+                                                                j_activity_info);
 
                                       env->DeleteLocalRef(j_activity_info);
                                       env->DeleteLocalRef(j_thread_id);

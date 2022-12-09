@@ -157,7 +157,7 @@ public class OpenGLInfo {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || !(o instanceof OpenGLInfo)) return false;
+        if (!(o instanceof OpenGLInfo)) return false;
         OpenGLInfo that = (OpenGLInfo) o;
         return id == that.id &&
                 getEglContextNativeHandle() == that.getEglContextNativeHandle() &&
