@@ -90,6 +90,8 @@ public class ResRecordManager {
             return;
         }
 
+        OpenGLInfo infoDel;
+
         synchronized (mInfoList) {
             // 之前可能释放过
             int index = mInfoList.indexOf(del);
@@ -117,6 +119,8 @@ public class ResRecordManager {
                 return;
             }
 
+            infoDel = info;
+
             AtomicInteger counter = info.getCounter();
             counter.set(counter.get() - 1);
             if (counter.get() == 0) {
@@ -141,7 +145,7 @@ public class ResRecordManager {
         synchronized (mCallbackList) {
             for (Callback cb : mCallbackList) {
                 if (null != cb) {
-                    cb.delete(del);
+                    cb.delete(infoDel);
                 }
             }
         }
