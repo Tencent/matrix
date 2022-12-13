@@ -99,8 +99,7 @@ public class OpenglLeakPlugin extends Plugin {
             }
 
             // hook
-            OpenGLHook.hookEglCreateContext();
-            OpenGLHook.hookEglDestroyContext(); // hook eglCreateContext/eglDestroyContext first
+            OpenGLHook.hookEgl(); // hook eglCreateContext/eglDestroyContext first
             OpenGLHook.getInstance().hook(FuncNameString.GL_GEN_TEXTURES, map.get(FuncNameString.GL_GEN_TEXTURES));
             OpenGLHook.getInstance().hook(FuncNameString.GL_DELETE_TEXTURES, map.get(FuncNameString.GL_DELETE_TEXTURES));
             OpenGLHook.getInstance().hook(FuncNameString.GL_GEN_BUFFERS, map.get(FuncNameString.GL_GEN_BUFFERS));

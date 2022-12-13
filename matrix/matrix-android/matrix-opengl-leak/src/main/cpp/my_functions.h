@@ -823,6 +823,7 @@ my_egl_context_create(EGLDisplay dpy, EGLConfig config, EGLContext share_context
 
         int throwable = get_java_throwable();
 
+        // fixme: leak!!!
         char *thread_id_c_str;
         thread_id_to_string(pthread_gettid_np(pthread_self()), thread_id_c_str);
 

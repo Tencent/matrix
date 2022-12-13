@@ -134,9 +134,7 @@ public class OpenGLHook {
 
     private static native boolean hookGlRenderbufferStorage(int index);
 
-    public static native boolean hookEglCreateContext();
-
-    public static native boolean hookEglDestroyContext();
+    public static native boolean hookEgl();
 
     public static native String dumpNativeStack(long nativeStackPtr);
 

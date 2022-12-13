@@ -103,21 +103,24 @@ JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
 
 extern "C"
 JNIEXPORT jboolean JNICALL
-Java_com_tencent_matrix_openglleak_hook_OpenGLHook_hookEglCreateContext(JNIEnv *env, jclass clazz) {
-    bool ret = xhook_grouped_register(HOOK_REQUEST_GROUPID_EGL_HOOK, ".*\\.so$", "eglCreateContext",
-                                  (void *) my_egl_context_create, (void **) (&system_eglCreateContext)) == 0;
-    xhook_refresh(true);
-    return ret;
-}
+Java_com_tencent_matrix_openglleak_hook_OpenGLHook_hookEgl(JNIEnv *env, jclass clazz) {
+    system_eglCreateContext = eglCreateContext;
+    system_eglDestroyContext = eglDestroyContext;
+    // TODO hook eglCreateXxxSurface() / eglDestroySurface()
 
-extern "C"
-JNIEXPORT jboolean JNICALL
-Java_com_tencent_matrix_openglleak_hook_OpenGLHook_hookEglDestroyContext(JNIEnv *env, jclass clazz) {
-    bool ret =  xhook_grouped_register(HOOK_REQUEST_GROUPID_EGL_HOOK, ".*\\.so$", "eglDestroyContext",
-                                  (void *) my_egl_context_destroy,
-                                  (void **) (&system_eglDestroyContext)) == 0;
-    xhook_refresh(true);
-    return ret;
+    int ret = xhook_grouped_register(HOOK_REQUEST_GROUPID_EGL_HOOK, ".*\\.so$", "eglCreateContext",
+                                  (void *) my_egl_context_create, nullptr);
+
+    ret =  xhook_grouped_register(HOOK_REQUEST_GROUPID_EGL_HOOK, ".*\\.so$", "eglDestroyContext",
+                                       (void *) my_egl_context_destroy,
+                                       nullptr);
+
+    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_EGL_HOOK, ".*libmatrix-opengl-leak.\\so$", nullptr);
+
+    xhook_refresh(false);
+    xhook_export_symtable_hook("libEGL.so", "eglCreateContext", (void *) my_egl_context_create, nullptr);
+    xhook_export_symtable_hook("libEGL.so", "eglDestroyContext", (void *) my_egl_context_destroy, nullptr);
+    return ret == 0;
 }
 
 /*

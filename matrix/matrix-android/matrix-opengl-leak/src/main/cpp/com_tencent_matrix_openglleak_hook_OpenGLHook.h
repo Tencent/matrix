@@ -161,11 +161,7 @@ Java_com_tencent_matrix_openglleak_hook_OpenGLHook_getResidualQueueSize(JNIEnv *
 
 extern "C"
 JNIEXPORT jboolean JNICALL
-Java_com_tencent_matrix_openglleak_hook_OpenGLHook_hookEglCreateContext(JNIEnv *env, jclass clazz);
-
-extern "C"
-JNIEXPORT jboolean JNICALL
-Java_com_tencent_matrix_openglleak_hook_OpenGLHook_hookEglDestroyContext(JNIEnv *env, jclass clazz);
+Java_com_tencent_matrix_openglleak_hook_OpenGLHook_hookEgl(JNIEnv *env, jclass clazz);
 
 #ifdef __cplusplus
 }
