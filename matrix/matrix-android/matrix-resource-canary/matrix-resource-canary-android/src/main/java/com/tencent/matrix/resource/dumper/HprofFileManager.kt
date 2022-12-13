@@ -36,6 +36,7 @@ object HprofFileManager {
                     current - it.lastModified() > EXPIRED_TIME_MILLIS
                 }?.forEach {
                     if (it.exists()) {
+                        MatrixLog.i(TAG, "expired: ${it.absolutePath}")
                         it.delete()
                     }
                 }

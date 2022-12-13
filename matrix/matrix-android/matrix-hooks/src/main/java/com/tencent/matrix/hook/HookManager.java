@@ -16,6 +16,7 @@
 
 package com.tencent.matrix.hook;
 
+import android.os.Build;
 import android.text.TextUtils;
 
 import androidx.annotation.Keep;
@@ -24,6 +25,10 @@ import androidx.annotation.Nullable;
 
 import com.tencent.matrix.util.MatrixLog;
 
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -83,6 +88,47 @@ public class HookManager {
         }
     }
 
+    private boolean enableLibCxxSharedCheck = false;
+    public HookManager enableLibCxxSharedCheck(boolean enable) {
+        enableLibCxxSharedCheck = enable;
+        return this;
+    }
+
+    private boolean checkLibCxxSharedLoaded() {
+        if (Build.VERSION.SDK_INT != Build.VERSION_CODES.LOLLIPOP && Build.VERSION.SDK_INT != Build.VERSION_CODES.LOLLIPOP_MR1) {
+            return true;
+        }
+
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream("/proc/self/maps")))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                if (line.endsWith("libc++_shared.so")) {
+                    return true;
+                }
+            }
+        } catch (IOException e) {
+            MatrixLog.printErrStackTrace(TAG, e, "");
+        }
+
+        return false;
+    }
+
+    private void ensureLibCxxSharedLoadedForLollipop() throws RuntimeException {
+        if (!enableLibCxxSharedCheck) {
+            return;
+        }
+        enableLibCxxSharedCheck = false; // mark loaded
+        if (checkLibCxxSharedLoaded()) {
+            return;
+        }
+        if (mNativeLibLoader != null) {
+            mNativeLibLoader.loadLibrary("c++_shared");
+        } else {
+            System.loadLibrary("c++_shared");
+        }
+    }
+
+
     private void commitHooksLocked() throws HookFailedException {
         synchronized (mPendingHooks) {
             for (AbsHook hook : mPendingHooks) {
@@ -91,6 +137,7 @@ public class HookManager {
                     continue;
                 }
                 try {
+                    ensureLibCxxSharedLoadedForLollipop();
                     if (mNativeLibLoader != null) {
                         mNativeLibLoader.loadLibrary(nativeLibName);
                     } else {
@@ -160,7 +207,12 @@ public class HookManager {
 
     @Keep
     public static String getStack() {
-        return stackTraceToString(Thread.currentThread().getStackTrace());
+        try {
+            return stackTraceToString(Thread.currentThread().getStackTrace());
+        } catch (Throwable e) {
+            MatrixLog.printErrStackTrace(TAG, e, "");
+            return "";
+        }
     }
 
     private static String stackTraceToString(final StackTraceElement[] arr) {

@@ -75,7 +75,7 @@ public class MatrixHandlerThread {
         return defaultHandler;
     }
 
-    public static HandlerThread getNewHandlerThread(String name, int priority) {
+    public static synchronized HandlerThread getNewHandlerThread(String name, int priority) {
         for (Iterator<HandlerThread> i = handlerThreads.iterator(); i.hasNext(); ) {
             HandlerThread element = i.next();
             if (!element.isAlive()) {

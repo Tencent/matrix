@@ -29,6 +29,8 @@ open class MatrixRemoveUnusedResExtension(
 
         var variant: String = "",
 
+        var obfuscatedResourcesDirectoryName: String? = null,
+
         // WIP. Should not use these options yet.
         var use7zip: Boolean = false,
         var zipAlign: Boolean = false,
@@ -36,6 +38,7 @@ open class MatrixRemoveUnusedResExtension(
         var embedResGuard: Boolean = false,
         var sevenZipPath: String = "",
         var zipAlignPath: String = "",
+        var report: String? = null,
 
         // Deprecated
         var unusedResources: HashSet<String> = HashSet()
@@ -55,6 +58,8 @@ open class MatrixRemoveUnusedResExtension(
            | sevenZipPath = ${sevenZipPath}
            | zipAlignPath = ${zipAlignPath}
            | ignoreResources = ${ignoreResources}
+           | obfuscatedResourcesDirectoryName = ${obfuscatedResourcesDirectoryName}
+           | 
         """.trimMargin()
     }
 }

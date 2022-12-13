@@ -24,7 +24,7 @@ public class OpenGLInfo {
     private AtomicInteger counter;
 
     public enum TYPE {
-        TEXTURE, BUFFER, FRAME_BUFFERS, RENDER_BUFFERS
+        TEXTURE, BUFFER, FRAME_BUFFERS, RENDER_BUFFERS, EGL_CONTEXT
     }
 
     public OpenGLInfo(OpenGLInfo clone) {

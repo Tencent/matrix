@@ -96,3 +96,20 @@ target_link_libraries(
       PRIVATE -Wl,--version-script=${SOURCE_DIR}/pthread/pthread.ver
 )
 #################################################################################
+
+################################# ART Misc ##################################
+set(TARGET matrix-artmisc)
+
+add_library(
+        ${TARGET}
+        SHARED
+        ${SOURCE_DIR}/art/RuntimeVerifyMuteJNI.cpp
+        ${SOURCE_DIR}/art/RuntimeVerifyMute.cpp
+)
+
+target_link_libraries(
+        ${TARGET}
+        PRIVATE matrix-hookcommon
+        PRIVATE -Wl,--version-script=${SOURCE_DIR}/art/art_misc.ver
+)
+#################################################################################

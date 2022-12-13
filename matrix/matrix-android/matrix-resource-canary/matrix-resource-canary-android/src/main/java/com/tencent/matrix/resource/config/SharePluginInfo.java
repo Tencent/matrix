@@ -32,7 +32,9 @@ public class SharePluginInfo {
     public static final String ISSUE_COST_MILLIS   = "cost_millis";
     public static final String ISSUE_RETRY_COUNT   = "retry_count";
     public static final String ISSUE_LEAK_PROCESS  = "leak_process";
+    @Deprecated
     public static final String ISSUE_DUMP_DATA     = "dump_data";
+    public static final String ISSUE_HPROF_PATH     = "hprof_path";
     public static final String ISSUE_NOTIFICATION_ID     = "notification_id";
 
     public static final class IssueType {
