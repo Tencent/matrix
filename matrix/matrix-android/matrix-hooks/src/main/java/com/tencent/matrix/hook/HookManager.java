@@ -210,8 +210,7 @@ public class HookManager {
         try {
             return stackTraceToString(Thread.currentThread().getStackTrace());
         } catch (Throwable e) {
-            MatrixLog.printErrStackTrace(TAG, e, "");
-            return "";
+            return "ERROR: " + stackTraceToString(e.getStackTrace());
         }
     }
 
