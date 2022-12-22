@@ -271,17 +271,21 @@ public class OpenGLHook {
 
         final OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.EGL_CONTEXT, -1, threadId, eglContext, 0, 0, trace, nativeStackPtr, ActivityRecorder.revertActivityInfo(activityInfo), counter);
         ResRecordManager.getInstance().gen(openGLInfo);
-        ResRecordManager.getInstance().shareContext(shareContext, eglContext);
+        ResRecordManager.getInstance().createContext(shareContext, eglContext);
 
         if (getInstance().mResourceListener != null) {
             getInstance().mResourceListener.onEglContextCreate(openGLInfo);
         }
     }
 
+    public static void onEglContextDestroyFailed(String threadId, long eglContext, int ret) {
+        MatrixLog.e(TAG, "eglContextDestroy failed: thread=%s, context=%s, ret=%s", threadId, eglContext, ret);
+    }
+
     public static void onEglContextDestroy(String threadId, final long eglContext) {
         final OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.EGL_CONTEXT, -1, threadId, eglContext);
         ResRecordManager.getInstance().delete(openGLInfo);
-        ResRecordManager.getInstance().removeSharedContextIfNeeded(eglContext);
+        ResRecordManager.getInstance().destroyContext(eglContext);
 
         if (getInstance().mResourceListener != null) {
             getInstance().mResourceListener.onEglContextDestroy(openGLInfo);

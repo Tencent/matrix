@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
+// TODO: 2022/12/22 should be deprecated and move to native
 public class ResRecordManager {
     private static final String TAG = "Matrix.ResRecordManager";
 
@@ -32,6 +33,7 @@ public class ResRecordManager {
     private final List<Long> mReleaseSurface = new LinkedList<>();
 
     private final Map<Long, Set<Long>> mContextGroup = new HashMap<>();
+    private final List<Long> mContextRecord = new ArrayList<>();
 
     private ResRecordManager() {
 
@@ -41,7 +43,10 @@ public class ResRecordManager {
         return mInstance;
     }
 
-    public void shareContext(Long shareContext, Long newContext) {
+    public void createContext(Long shareContext, Long newContext) {
+        synchronized (mContextRecord) {
+            mContextRecord.add(newContext);
+        }
         if (shareContext != 0) {
             synchronized (mContextGroup) {
                 Set<Long> group = mContextGroup.get(shareContext);
@@ -56,7 +61,10 @@ public class ResRecordManager {
         }
     }
 
-    public void removeSharedContextIfNeeded(Long context) {
+    public void destroyContext(Long context) {
+        synchronized (mContextRecord) {
+            mContextRecord.remove(context);
+        }
         synchronized (mContextGroup) {
             if (mContextGroup.containsKey(context)) {
                 Set<Long> group = mContextGroup.remove(context);
@@ -92,14 +100,18 @@ public class ResRecordManager {
 
         OpenGLInfo infoDel;
 
+        Set<Long> ctxGroup;
+
+        synchronized (mContextGroup) {
+            ctxGroup = mContextGroup.get(del.getEglContextNativeHandle());
+        }
+
         synchronized (mInfoList) {
             // 之前可能释放过
             int index = mInfoList.indexOf(del);
 
-            Set<Long> group = mContextGroup.get(del.getEglContextNativeHandle());
-
-            if (-1 == index && group != null) { // is shared context
-                for (Long ctx : group) {
+            if (-1 == index && ctxGroup != null) { // is shared context
+                for (Long ctx : ctxGroup) {
                     OpenGLInfo sharedInfo = new OpenGLInfo(del.getType(), del.getId(), del.getThreadId(), ctx);
                     index = mInfoList.indexOf(sharedInfo);
                     if (index != -1) {
@@ -225,7 +237,9 @@ public class ResRecordManager {
     }
 
     public boolean isEglContextReleased(OpenGLInfo info) {
-        return false;
+        synchronized (mContextRecord) {
+            return mContextRecord.contains(info.getEglContextNativeHandle());
+        }
 //        synchronized (mReleaseContext) {
 //            long eglContextNativeHandle = info.getEglContextNativeHandle();
 //            if (0L == eglContextNativeHandle) {
