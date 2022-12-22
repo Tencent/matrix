@@ -63,5 +63,13 @@
         android:layout_marginBottom="10dp"
         android:layout_height="50dp" />
 
+    <Button
+        android:id="@+id/gl_shared_context"
+        android:text="gl_shared_context"
+        android:layout_width="match_parent"
+        android:layout_marginBottom="10dp"
+        android:onClick="testGLSharedContext"
+        android:layout_height="50dp" />
+
 
 </LinearLayout>

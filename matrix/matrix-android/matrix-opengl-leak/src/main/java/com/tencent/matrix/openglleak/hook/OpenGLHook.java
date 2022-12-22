@@ -2,6 +2,8 @@ package com.tencent.matrix.openglleak.hook;
 
 import static android.opengl.GLES30.GL_PIXEL_UNPACK_BUFFER;
 
+import androidx.annotation.Keep;
+
 import com.tencent.matrix.openglleak.comm.FuncNameString;
 import com.tencent.matrix.openglleak.statistics.BindCenter;
 import com.tencent.matrix.openglleak.statistics.resource.MemoryInfo;
@@ -13,6 +15,7 @@ import com.tencent.matrix.util.MatrixLog;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
+@Keep
 public class OpenGLHook {
 
     static {
@@ -131,9 +134,7 @@ public class OpenGLHook {
 
     private static native boolean hookGlRenderbufferStorage(int index);
 
-    public static native boolean hookEglCreate();
-
-    public static native boolean hookEglDestory();
+    public static native boolean hookEgl();
 
     public static native String dumpNativeStack(long nativeStackPtr);
 
@@ -263,25 +264,31 @@ public class OpenGLHook {
         }
     }
 
-    public static void onEglContextCreate(String threadId, final int throwable, long nativeStackPtr, final long eglContext, String activityInfo) {
+    public static void onEglContextCreate(String threadId, final int throwable, long nativeStackPtr, final long eglContext, final long shareContext, String activityInfo) {
         AtomicInteger counter = new AtomicInteger(1);
 
         JavaStacktrace.Trace trace = JavaStacktrace.getBacktraceValue(throwable);
 
         final OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.EGL_CONTEXT, -1, threadId, eglContext, 0, 0, trace, nativeStackPtr, ActivityRecorder.revertActivityInfo(activityInfo), counter);
         ResRecordManager.getInstance().gen(openGLInfo);
+        ResRecordManager.getInstance().createContext(shareContext, eglContext);
 
         if (getInstance().mResourceListener != null) {
-            getInstance().mResourceListener.onGlGenRenderbuffers(openGLInfo);
+            getInstance().mResourceListener.onEglContextCreate(openGLInfo);
         }
+    }
+
+    public static void onEglContextDestroyFailed(String threadId, long eglContext, int ret) {
+        MatrixLog.e(TAG, "eglContextDestroy failed: thread=%s, context=%s, ret=%s", threadId, eglContext, ret);
     }
 
     public static void onEglContextDestroy(String threadId, final long eglContext) {
         final OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.EGL_CONTEXT, -1, threadId, eglContext);
         ResRecordManager.getInstance().delete(openGLInfo);
+        ResRecordManager.getInstance().destroyContext(eglContext);
 
         if (getInstance().mResourceListener != null) {
-            getInstance().mResourceListener.onGlDeleteRenderbuffers(openGLInfo);
+            getInstance().mResourceListener.onEglContextDestroy(openGLInfo);
         }
     }
 
@@ -343,7 +350,7 @@ public class OpenGLHook {
     public static void onGlTexImage2D(final int target, final int level, final int internalFormat, final int width, final int height, final int border, final int format, final int type, final long size, final int throwable, final long nativeStack, final long eglContext) {
         final OpenGLInfo openGLInfo = BindCenter.getInstance().findCurrentResourceIdByTarget(OpenGLInfo.TYPE.TEXTURE, eglContext, target);
         if (openGLInfo == null) {
-            MatrixLog.e(TAG, "onGlTexImage2D: getCurrentResourceIdByTarget openGLID == null, maybe undo glBindTextures()");
+            MatrixLog.e(TAG, "onGlTexImage2D: getCurrentResourceIdByTarget openGLID == null, maybe didn't call glBindTextures()");
             return;
         }
 
@@ -363,7 +370,7 @@ public class OpenGLHook {
     public static void onGlTexImage3D(final int target, final int level, final int internalFormat, final int width, final int height, final int depth, final int border, final int format, final int type, final long size, final int throwable, final long nativeStack, final long eglContext) {
         final OpenGLInfo openGLInfo = BindCenter.getInstance().findCurrentResourceIdByTarget(OpenGLInfo.TYPE.TEXTURE, eglContext, target);
         if (openGLInfo == null) {
-            MatrixLog.e(TAG, "onGlTexImage3D: getCurrentResourceIdByTarget result == null, maybe undo glBindTextures()");
+            MatrixLog.e(TAG, "onGlTexImage3D: getCurrentResourceIdByTarget result == null, maybe didn't call glBindTextures()");
             return;
         }
 
@@ -383,7 +390,7 @@ public class OpenGLHook {
     public static void onGlBufferData(final int target, final int usage, final long size, final int throwable, final long nativeStack, final long eglContext) {
         final OpenGLInfo openGLInfo = BindCenter.getInstance().findCurrentResourceIdByTarget(OpenGLInfo.TYPE.BUFFER, eglContext, target);
         if (openGLInfo == null) {
-            MatrixLog.e(TAG, "onGlBufferData: getCurrentResourceIdByTarget result == null, maybe undo glBindBuffer()");
+            MatrixLog.e(TAG, "onGlBufferData: getCurrentResourceIdByTarget result == null, maybe didn't call glBindBuffer()");
             return;
         }
 
@@ -411,7 +418,7 @@ public class OpenGLHook {
     public static void onGlRenderbufferStorage(final int target, final int internalformat, final int width, final int height, final long size, final int key, final long nativeStack, final long eglContext) {
         final OpenGLInfo openGLInfo = BindCenter.getInstance().findCurrentResourceIdByTarget(OpenGLInfo.TYPE.RENDER_BUFFERS, eglContext, target);
         if (openGLInfo == null) {
-            MatrixLog.e(TAG, "onGlRenderbufferStorage: getCurrentResourceIdByTarget result == null, maybe undo glBindRenderbuffer()");
+            MatrixLog.e(TAG, "onGlRenderbufferStorage: getCurrentResourceIdByTarget result == null, maybe didn't call glBindRenderbuffer()");
             return;
         }
 
@@ -459,6 +466,10 @@ public class OpenGLHook {
     }
 
     public interface ResourceListener {
+
+        void onEglContextCreate(OpenGLInfo info);
+
+        void onEglContextDestroy(OpenGLInfo info);
 
         void onGlGenTextures(OpenGLInfo info);
 
