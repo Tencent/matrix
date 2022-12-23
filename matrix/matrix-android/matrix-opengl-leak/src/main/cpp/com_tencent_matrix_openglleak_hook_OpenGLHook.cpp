@@ -479,8 +479,7 @@ void get_native_stack(wechat_backtrace::Backtrace *backtrace, char *&stack) {
         int status = 0;
         demangled_name = abi::__cxa_demangle(it.function_name, nullptr, 0, &status);
 
-        full_stack_builder << "      | "
-                           << "#pc " << std::hex << it.rel_pc << " "
+        full_stack_builder << "#pc " << std::hex << it.rel_pc << " "
                            << (demangled_name ? demangled_name : "(null)")
                            << " ("
                            << it.map_name
