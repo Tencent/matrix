@@ -38,6 +38,7 @@ import androidx.core.util.Pair;
 @SuppressWarnings("NotNullFieldNotInitialized")
 public final class JiffiesMonitorFeature extends AbsMonitorFeature {
     private static final String TAG = "Matrix.battery.JiffiesMonitorFeature";
+    private static boolean sSkipNewAdded = false; // FIXME: move to feature's configuration
 
     public interface JiffiesListener {
         @Deprecated
@@ -52,6 +53,12 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
     @Override
     protected String getTag() {
         return TAG;
+    }
+
+    @Override
+    public void onTurnOn() {
+        super.onTurnOn();
+        sSkipNewAdded = mCore.getConfig().isSkipNewAddedPidTid;
     }
 
     @Override
@@ -318,7 +325,10 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
                                 deltaThreadJiffies.name = endRecord.name;
                                 deltaThreadJiffies.stat = endRecord.stat;
                                 deltaThreadJiffies.isNewAdded = isNewAdded;
-                                deltaThreadEntries.add(deltaThreadJiffies);
+                                if (!isNewAdded || !sSkipNewAdded) {
+                                    // Skip new added tid for now
+                                    deltaThreadEntries.add(deltaThreadJiffies);
+                                }
                             }
                         }
                         if (deltaThreadEntries.size() > 0) {
@@ -569,8 +579,11 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
                                 empty.threadNum = DigitEntry.of(0);
                                 last = empty;
                             }
-                            Delta<JiffiesSnapshot> deltaPidJiffies = end.diff(last);
-                            delta.pidDeltaJiffiesList.add(deltaPidJiffies);
+                            if (!end.isNewAdded || !sSkipNewAdded) {
+                                // Skip new added pid for now
+                                Delta<JiffiesSnapshot> deltaPidJiffies = end.diff(last);
+                                delta.pidDeltaJiffiesList.add(deltaPidJiffies);
+                            }
                         }
 
                         Collections.sort(delta.pidDeltaJiffiesList, new Comparator<Delta<JiffiesSnapshot>>() {

@@ -122,18 +122,30 @@ public class HealthStatsFeature extends AbsMonitorFeature {
 
             {
                 if (healthStats.hasTimers(UidHealthStats.TIMERS_WAKELOCKS_PARTIAL)) {
-                    Map<String, TimerStat> timers = healthStats.getTimers(UidHealthStats.TIMERS_WAKELOCKS_PARTIAL);
                     long timeMs = 0;
-                    for (TimerStat item : timers.values()) {
-                        timeMs += item.getTime();
+                    Map<String, TimerStat> timers = healthStats.getTimers(UidHealthStats.TIMERS_WAKELOCKS_PARTIAL);
+                    for (Map.Entry<String, TimerStat> item : timers.entrySet()) {
+                        String tag = item.getKey();
+                        long lockTime = item.getValue().getTime();
+                        if (snapshot.tagWakelocksPartialMs.isEmpty()) {
+                            snapshot.tagWakelocksPartialMs = new HashMap<>();
+                        }
+                        snapshot.tagWakelocksPartialMs.put(tag, DigitEntry.of(lockTime));
+                        timeMs += lockTime;
                     }
                     snapshot.wakelocksPartialMs = DigitEntry.of(timeMs);
                 }
                 if (healthStats.hasTimers(UidHealthStats.TIMERS_WAKELOCKS_FULL)) {
-                    Map<String, TimerStat> timers = healthStats.getTimers(UidHealthStats.TIMERS_WAKELOCKS_FULL);
                     long timeMs = 0;
-                    for (TimerStat item : timers.values()) {
-                        timeMs += item.getTime();
+                    Map<String, TimerStat> timers = healthStats.getTimers(UidHealthStats.TIMERS_WAKELOCKS_FULL);
+                    for (Map.Entry<String, TimerStat> item : timers.entrySet()) {
+                        String tag = item.getKey();
+                        long lockTime = item.getValue().getTime();
+                        if (snapshot.tagWakelocksFullMs.isEmpty()) {
+                            snapshot.tagWakelocksFullMs = new HashMap<>();
+                        }
+                        snapshot.tagWakelocksFullMs.put(tag, DigitEntry.of(lockTime));
+                        timeMs += lockTime;
                     }
                     snapshot.wakelocksFullMs = DigitEntry.of(timeMs);
                 }
@@ -344,10 +356,13 @@ public class HealthStatsFeature extends AbsMonitorFeature {
         public DigitEntry<Long> procBgMs = DigitEntry.of(0L);
         public DigitEntry<Long> procCacheMs = DigitEntry.of(0L);
 
-        // Process Stats
+        // Map
         public Map<String, DigitEntry<Long>> procStatsCpuUsrTimeMs = Collections.emptyMap();
         public Map<String, DigitEntry<Long>> procStatsCpuSysTimeMs = Collections.emptyMap();
         public Map<String, DigitEntry<Long>> procStatsCpuFgTimeMs = Collections.emptyMap();
+        public Map<String, DigitEntry<Long>> tagWakelocksPartialMs = Collections.emptyMap();
+        public Map<String, DigitEntry<Long>> tagWakelocksFullMs = Collections.emptyMap();
+
 
         public double getTotalPower() {
             return cpuPower.get()
@@ -510,6 +525,34 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                         }
                         delta.procStatsCpuFgTimeMs = map;
                     }
+                    {
+                        Map<String, DigitEntry<Long>> map = new HashMap<>();
+                        for (Map.Entry<String, DigitEntry<Long>> entry : end.tagWakelocksPartialMs.entrySet()) {
+                            String key = entry.getKey();
+                            DigitEntry<Long> endEntry = entry.getValue();
+                            long bgnValue = 0L;
+                            DigitEntry<Long> bgnEntry = bgn.tagWakelocksPartialMs.get(key);
+                            if (bgnEntry != null) {
+                                bgnValue = bgnEntry.get();
+                            }
+                            map.put(key, Differ.DigitDiffer.globalDiff(DigitEntry.of(bgnValue), endEntry));
+                        }
+                        delta.tagWakelocksPartialMs = map;
+                    }
+                    {
+                        Map<String, DigitEntry<Long>> map = new HashMap<>();
+                        for (Map.Entry<String, DigitEntry<Long>> entry : end.tagWakelocksFullMs.entrySet()) {
+                            String key = entry.getKey();
+                            DigitEntry<Long> endEntry = entry.getValue();
+                            long bgnValue = 0L;
+                            DigitEntry<Long> bgnEntry = bgn.tagWakelocksFullMs.get(key);
+                            if (bgnEntry != null) {
+                                bgnValue = bgnEntry.get();
+                            }
+                            map.put(key, Differ.DigitDiffer.globalDiff(DigitEntry.of(bgnValue), endEntry));
+                        }
+                        delta.tagWakelocksFullMs = map;
+                    }
                     return delta;
                 }
             };
@@ -522,6 +565,8 @@ public class HealthStatsFeature extends AbsMonitorFeature {
             delta.dlt.procStatsCpuUsrTimeMs = decrease(procStatsCpuUsrTimeMs);
             delta.dlt.procStatsCpuSysTimeMs = decrease(procStatsCpuSysTimeMs);
             delta.dlt.procStatsCpuFgTimeMs = decrease(procStatsCpuFgTimeMs);
+            delta.dlt.tagWakelocksPartialMs = decrease(tagWakelocksPartialMs);
+            delta.dlt.tagWakelocksFullMs = decrease(tagWakelocksFullMs);
             return delta;
         }
 
@@ -561,6 +606,8 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                 accDelta.procStatsCpuUsrTimeMs = new HashMap<>();
                 accDelta.procStatsCpuSysTimeMs = new HashMap<>();
                 accDelta.procStatsCpuFgTimeMs = new HashMap<>();
+                accDelta.tagWakelocksPartialMs = new HashMap<>();
+                accDelta.tagWakelocksFullMs = new HashMap<>();
             }
 
             @Nullable
@@ -658,6 +705,18 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                         DigitEntry<Long> val = entry.getValue();
                         DigitEntry<Long> acc = accDelta.procStatsCpuFgTimeMs.get(key);
                         accDelta.procStatsCpuFgTimeMs.put(key, DigitEntry.of(val.get() + (acc == null ? 0 : acc.get())));
+                    }
+                    for (Map.Entry<String, DigitEntry<Long>> entry : delta.dlt.tagWakelocksPartialMs.entrySet()) {
+                        String key = entry.getKey();
+                        DigitEntry<Long> val = entry.getValue();
+                        DigitEntry<Long> acc = accDelta.tagWakelocksPartialMs.get(key);
+                        accDelta.tagWakelocksPartialMs.put(key, DigitEntry.of(val.get() + (acc == null ? 0 : acc.get())));
+                    }
+                    for (Map.Entry<String, DigitEntry<Long>> entry : delta.dlt.tagWakelocksFullMs.entrySet()) {
+                        String key = entry.getKey();
+                        DigitEntry<Long> val = entry.getValue();
+                        DigitEntry<Long> acc = accDelta.tagWakelocksFullMs.get(key);
+                        accDelta.tagWakelocksFullMs.put(key, DigitEntry.of(val.get() + (acc == null ? 0 : acc.get())));
                     }
 
                     count++;

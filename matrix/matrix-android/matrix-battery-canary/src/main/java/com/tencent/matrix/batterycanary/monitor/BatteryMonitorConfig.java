@@ -60,6 +60,7 @@ public class BatteryMonitorConfig {
     public boolean isStatPidProc = BuildConfig.DEBUG;
     public boolean isInspectiffiesError = BuildConfig.DEBUG;
     public boolean isAmsHookEnabled = BuildConfig.DEBUG;
+    public boolean isSkipNewAddedPidTid = false;
     public int amsHookEnableFlag = 0;
     public boolean isAggressiveMode = BuildConfig.DEBUG;
     public boolean isUseThreadClock = BuildConfig.DEBUG;
@@ -82,32 +83,7 @@ public class BatteryMonitorConfig {
     @Override
     public String toString() {
         return "BatteryMonitorConfig{"
-                + "wakelockTimeout=" + wakelockTimeout
-                + ", wakelockWarnCount=" + wakelockWarnCount
-                + ", greyTime=" + greyTime
-                + ", foregroundLoopCheckTime=" + foregroundLoopCheckTime
-                + ", backgroundLoopCheckTime=" + backgroundLoopCheckTime
-                + ", overHeatCount=" + overHeatCount
-                + ", foregroundServiceLeakLimit=" + foregroundServiceLeakLimit
-                + ", fgThreadWatchingLimit=" + fgThreadWatchingLimit
-                + ", bgThreadWatchingLimit=" + bgThreadWatchingLimit
-                + ", isForegroundModeEnabled=" + isForegroundModeEnabled
-                + ", isBackgroundModeEnabled=" + isBackgroundModeEnabled
-                + ", isBuiltinForegroundNotifyEnabled=" + isBuiltinForegroundNotifyEnabled
-                + ", isStatAsSample=" + isStatAsSample
-                + ", isStatPidProc=" + isStatPidProc
-                + ", isInspectiffiesError=" + isInspectiffiesError
-                + ", isAmsHookEnabled=" + isAmsHookEnabled
-                + ", isAggressiveMode=" + isAggressiveMode
-                + ", isUseThreadClock=" + isUseThreadClock
-                + ", tagWhiteList=" + tagWhiteList
-                + ", tagBlackList=" + tagBlackList
-                + ", looperWatchList=" + looperWatchList
-                + ", threadWatchList=" + threadWatchList
-                + ", features=" + features
-                + ", batteryRecorder=" + batteryRecorder
-                + ", batteryStats=" + batteryStats
-                + ", callStackCollector=" + callStackCollector
+                + "features=" + features
                 + '}';
     }
 
@@ -307,6 +283,11 @@ public class BatteryMonitorConfig {
 
         public Builder enableTuningPowers(boolean enable) {
             config.isTuningPowers = enable;
+            return this;
+        }
+
+        public Builder skipNewAddedPidTid(boolean skip) {
+            config.isSkipNewAddedPidTid = skip;
             return this;
         }
 
