@@ -161,7 +161,7 @@ public class OpenGLInfo {
         OpenGLInfo that = (OpenGLInfo) o;
         return id == that.id &&
                 getEglContextNativeHandle() == that.getEglContextNativeHandle() &&
-                threadId.equals(that.threadId) &&
+                /*threadId.equals(that.threadId) &&*/
                 type == that.type;
     }
 
