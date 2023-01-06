@@ -167,7 +167,7 @@ public class OpenGLInfo {
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, getEglContextNativeHandle(), threadId, type);
+        return Objects.hash(id, getEglContextNativeHandle(), type);
     }
 
 }
