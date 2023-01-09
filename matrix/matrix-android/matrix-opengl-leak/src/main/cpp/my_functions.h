@@ -322,15 +322,15 @@ GL_APICALL void GL_APIENTRY my_glDeleteTextures(GLsizei n, GLuint *textures) {
         GLuint *copy_textures = new GLuint[n];
         memcpy(copy_textures, textures, n * sizeof(GLuint));
 
-        thread::id thread_id = this_thread::get_id();
+        pid_t tid = pthread_gettid_np(pthread_self());
 
         EGLContext egl_context = eglGetCurrentContext();
 
         messages_containers
                 ->enqueue_message((uintptr_t) egl_context,
-                                  [n, copy_textures, thread_id, egl_context] {
+                                  [n, copy_textures, tid, egl_context] {
 
-                                      delete_jni_callback(n, copy_textures, thread_id, egl_context,
+                                      delete_jni_callback(n, copy_textures, tid, egl_context,
                                                           method_onGlDeleteTextures);
 
                                   });
@@ -390,15 +390,15 @@ GL_APICALL void GL_APIENTRY my_glDeleteBuffers(GLsizei n, GLuint *buffers) {
         GLuint *copy_buffers = new GLuint[n];
         memcpy(copy_buffers, buffers, n * sizeof(GLuint));
 
-        thread::id thread_id = this_thread::get_id();
+        pid_t tid = pthread_gettid_np(pthread_self());
 
         EGLContext egl_context = eglGetCurrentContext();
 
         messages_containers
                 ->enqueue_message((uintptr_t) egl_context,
-                                  [n, copy_buffers, thread_id, egl_context]() {
+                                  [n, copy_buffers, tid, egl_context]() {
 
-                                      delete_jni_callback(n, copy_buffers, thread_id, egl_context,
+                                      delete_jni_callback(n, copy_buffers, tid, egl_context,
                                                           method_onGlDeleteBuffers);
 
                                   });
@@ -458,14 +458,14 @@ GL_APICALL void GL_APIENTRY my_glDeleteFramebuffers(GLsizei n, GLuint *buffers) 
         GLuint *copy_buffers = new GLuint[n];
         memcpy(copy_buffers, buffers, n * sizeof(GLuint));
 
-        thread::id thread_id = this_thread::get_id();
+        pid_t tid = pthread_gettid_np(pthread_self());
 
         EGLContext egl_context = eglGetCurrentContext();
 
         messages_containers
                 ->enqueue_message((uintptr_t) egl_context,
-                                  [n, copy_buffers, thread_id, egl_context]() {
-                                      delete_jni_callback(n, copy_buffers, thread_id, egl_context,
+                                  [n, copy_buffers, tid, egl_context]() {
+                                      delete_jni_callback(n, copy_buffers, tid, egl_context,
                                                           method_onGlDeleteFramebuffers);
                                   });
 
@@ -525,15 +525,15 @@ GL_APICALL void GL_APIENTRY my_glDeleteRenderbuffers(GLsizei n, GLuint *buffers)
         GLuint *copy_buffers = new GLuint[n];
         memcpy(copy_buffers, buffers, n * sizeof(GLuint));
 
-        thread::id thread_id = this_thread::get_id();
+        pid_t tid = pthread_gettid_np(pthread_self());
 
         EGLContext egl_context = eglGetCurrentContext();
 
         messages_containers
                 ->enqueue_message((uintptr_t) egl_context,
-                                  [n, copy_buffers, thread_id, egl_context]() {
+                                  [n, copy_buffers, tid, egl_context]() {
 
-                                      delete_jni_callback(n, copy_buffers, thread_id, egl_context,
+                                      delete_jni_callback(n, copy_buffers, tid, egl_context,
                                                           method_onGlDeleteRenderbuffers);
 
                                   });
