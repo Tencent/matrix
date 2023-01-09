@@ -161,13 +161,13 @@ public class OpenGLInfo {
         OpenGLInfo that = (OpenGLInfo) o;
         return id == that.id &&
                 getEglContextNativeHandle() == that.getEglContextNativeHandle() &&
-                threadId.equals(that.threadId) &&
+                /*threadId.equals(that.threadId) &&*/
                 type == that.type;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, getEglContextNativeHandle(), threadId, type);
+        return Objects.hash(id, getEglContextNativeHandle(), type);
     }
 
 }

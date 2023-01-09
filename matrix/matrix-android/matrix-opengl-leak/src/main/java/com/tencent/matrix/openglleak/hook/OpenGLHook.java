@@ -2,6 +2,8 @@ package com.tencent.matrix.openglleak.hook;
 
 import static android.opengl.GLES30.GL_PIXEL_UNPACK_BUFFER;
 
+import android.opengl.EGL14;
+
 import androidx.annotation.Keep;
 
 import com.tencent.matrix.openglleak.comm.FuncNameString;
@@ -278,12 +280,14 @@ public class OpenGLHook {
         }
     }
 
-    public static void onEglContextDestroyFailed(String threadId, long eglContext, int ret) {
-        MatrixLog.e(TAG, "eglContextDestroy failed: thread=%s, context=%s, ret=%s", threadId, eglContext, ret);
-    }
-
-    public static void onEglContextDestroy(String threadId, final long eglContext) {
+    public static void onEglContextDestroy(String threadId, final long eglContext, final int ret) {
         final OpenGLInfo openGLInfo = new OpenGLInfo(OpenGLInfo.TYPE.EGL_CONTEXT, -1, threadId, eglContext);
+
+        if (ret == EGL14.EGL_FALSE) {
+            MatrixLog.e(TAG, "eglContextDestroy failed: thread=%s, context=%s, ret=%s, errno=%s", threadId, eglContext, ret, EGL14.eglGetError());
+            return;
+        }
+
         ResRecordManager.getInstance().delete(openGLInfo);
         ResRecordManager.getInstance().destroyContext(eglContext);
 

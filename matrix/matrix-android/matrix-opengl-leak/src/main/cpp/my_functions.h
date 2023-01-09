@@ -1,6 +1,7 @@
 //
 // Created by 邓沛堆 on 2020-05-28.
 //
+// TODO: refactor
 
 #include "type.h"
 #include <GLES2/gl2.h>
@@ -88,7 +89,7 @@ void enable_javastack(bool enable) {
     is_javastack_enabled = enable;
 }
 
-void thread_id_to_string(int thread_id, char *&result) {
+void thread_id_to_string(pid_t thread_id, char *&result) {
     stringstream stream;
     stream << thread_id;
     result = new char[stream.str().size() + 1];
@@ -182,7 +183,7 @@ int get_java_throwable() {
 }
 
 void
-gen_jni_callback(int alloc_count, GLuint *copy_resource, int throwable, const thread::id thread_id,
+gen_jni_callback(int alloc_count, GLuint *copy_resource, int throwable, const pid_t tid,
                  wechat_backtrace::Backtrace *backtracePtr, EGLContext egl_context,
                  EGLSurface egl_draw_surface, EGLSurface egl_read_surface,
                  char *activity_info, jmethodID jmethodId) {
@@ -197,7 +198,7 @@ gen_jni_callback(int alloc_count, GLuint *copy_resource, int throwable, const th
     env->SetIntArrayRegion(newArr, 0, alloc_count, result);
 
     char *thread_id_c_str;
-    thread_id_to_string(pthread_gettid_np(pthread_self()), thread_id_c_str);
+    thread_id_to_string(tid, thread_id_c_str);
     jstring j_thread_id = env->NewStringUTF(thread_id_c_str);
 
     jstring j_activity_info = env->NewStringUTF(activity_info);
@@ -234,7 +235,7 @@ gen_jni_callback(int alloc_count, GLuint *copy_resource, int throwable, const th
     }
 }
 
-void delete_jni_callback(int delete_count, GLuint *copy_resource, const thread::id thread_id,
+void delete_jni_callback(int delete_count, GLuint *copy_resource, const pid_t tid,
                          EGLContext egl_context, jmethodID jmethodId) {
     JNIEnv *env = GET_ENV();
 
@@ -246,7 +247,7 @@ void delete_jni_callback(int delete_count, GLuint *copy_resource, const thread::
     env->SetIntArrayRegion(newArr, 0, delete_count, result);
 
     char *thread_id_c_str;
-    thread_id_to_string(pthread_gettid_np(pthread_self()), thread_id_c_str);
+    thread_id_to_string(tid, thread_id_c_str);
     jstring j_thread_id = env->NewStringUTF(thread_id_c_str);
 
     env->CallStaticVoidMethod(class_OpenGLHook,
@@ -283,7 +284,7 @@ GL_APICALL void GL_APIENTRY my_glGenTextures(GLsizei n, GLuint *textures) {
 
         int throwable = get_java_throwable();
 
-        thread::id thread_id = this_thread::get_id();
+        pid_t tid = pthread_gettid_np(pthread_self());
 
         EGLContext egl_context = eglGetCurrentContext();
 
@@ -299,9 +300,9 @@ GL_APICALL void GL_APIENTRY my_glGenTextures(GLsizei n, GLuint *textures) {
 
         messages_containers->
                 enqueue_message((uintptr_t) egl_context,
-                                [n, copy_textures, throwable, thread_id, backtracePrt, egl_context, egl_read_surface, egl_draw_surface, activity_info]() {
+                                [n, copy_textures, throwable, tid, backtracePrt, egl_context, egl_read_surface, egl_draw_surface, activity_info]() {
 
-                                    gen_jni_callback(n, copy_textures, throwable, thread_id,
+                                    gen_jni_callback(n, copy_textures, throwable, tid,
                                                      backtracePrt, egl_context, egl_draw_surface,
                                                      egl_read_surface,
                                                      activity_info, method_onGlGenTextures);
@@ -321,15 +322,15 @@ GL_APICALL void GL_APIENTRY my_glDeleteTextures(GLsizei n, GLuint *textures) {
         GLuint *copy_textures = new GLuint[n];
         memcpy(copy_textures, textures, n * sizeof(GLuint));
 
-        thread::id thread_id = this_thread::get_id();
+        pid_t tid = pthread_gettid_np(pthread_self());
 
         EGLContext egl_context = eglGetCurrentContext();
 
         messages_containers
                 ->enqueue_message((uintptr_t) egl_context,
-                                  [n, copy_textures, thread_id, egl_context] {
+                                  [n, copy_textures, tid, egl_context] {
 
-                                      delete_jni_callback(n, copy_textures, thread_id, egl_context,
+                                      delete_jni_callback(n, copy_textures, tid, egl_context,
                                                           method_onGlDeleteTextures);
 
                                   });
@@ -351,7 +352,7 @@ GL_APICALL void GL_APIENTRY my_glGenBuffers(GLsizei n, GLuint *buffers) {
 
         int throwable = get_java_throwable();
 
-        thread::id thread_id = this_thread::get_id();
+        pid_t tid = pthread_gettid_np(pthread_self());
 
         EGLContext egl_context = eglGetCurrentContext();
 
@@ -366,9 +367,9 @@ GL_APICALL void GL_APIENTRY my_glGenBuffers(GLsizei n, GLuint *buffers) {
         }
         messages_containers
                 ->enqueue_message((uintptr_t) egl_context,
-                                  [n, copy_buffers, throwable, thread_id, backtracePrt, egl_context, egl_draw_surface, egl_read_surface, activity_info]() {
+                                  [n, copy_buffers, throwable, tid, backtracePrt, egl_context, egl_draw_surface, egl_read_surface, activity_info]() {
 
-                                      gen_jni_callback(n, copy_buffers, throwable, thread_id,
+                                      gen_jni_callback(n, copy_buffers, throwable, tid,
                                                        backtracePrt, egl_context, egl_draw_surface,
                                                        egl_read_surface,
                                                        activity_info, method_onGlGenBuffers);
@@ -389,15 +390,15 @@ GL_APICALL void GL_APIENTRY my_glDeleteBuffers(GLsizei n, GLuint *buffers) {
         GLuint *copy_buffers = new GLuint[n];
         memcpy(copy_buffers, buffers, n * sizeof(GLuint));
 
-        thread::id thread_id = this_thread::get_id();
+        pid_t tid = pthread_gettid_np(pthread_self());
 
         EGLContext egl_context = eglGetCurrentContext();
 
         messages_containers
                 ->enqueue_message((uintptr_t) egl_context,
-                                  [n, copy_buffers, thread_id, egl_context]() {
+                                  [n, copy_buffers, tid, egl_context]() {
 
-                                      delete_jni_callback(n, copy_buffers, thread_id, egl_context,
+                                      delete_jni_callback(n, copy_buffers, tid, egl_context,
                                                           method_onGlDeleteBuffers);
 
                                   });
@@ -418,7 +419,7 @@ GL_APICALL void GL_APIENTRY my_glGenFramebuffers(GLsizei n, GLuint *buffers) {
 
         int throwable = get_java_throwable();
 
-        thread::id thread_id = this_thread::get_id();
+        pid_t tid = pthread_gettid_np(pthread_self());
 
         EGLContext egl_context = eglGetCurrentContext();
 
@@ -434,9 +435,9 @@ GL_APICALL void GL_APIENTRY my_glGenFramebuffers(GLsizei n, GLuint *buffers) {
 
         messages_containers
                 ->enqueue_message((uintptr_t) egl_context,
-                                  [n, copy_buffers, throwable, thread_id, backtracePrt, egl_context, egl_draw_surface, egl_read_surface, activity_info]() {
+                                  [n, copy_buffers, throwable, tid, backtracePrt, egl_context, egl_draw_surface, egl_read_surface, activity_info]() {
 
-                                      gen_jni_callback(n, copy_buffers, throwable, thread_id,
+                                      gen_jni_callback(n, copy_buffers, throwable, tid,
                                                        backtracePrt, egl_context, egl_draw_surface,
                                                        egl_read_surface,
                                                        activity_info, method_onGlGenFramebuffers);
@@ -457,14 +458,14 @@ GL_APICALL void GL_APIENTRY my_glDeleteFramebuffers(GLsizei n, GLuint *buffers) 
         GLuint *copy_buffers = new GLuint[n];
         memcpy(copy_buffers, buffers, n * sizeof(GLuint));
 
-        thread::id thread_id = this_thread::get_id();
+        pid_t tid = pthread_gettid_np(pthread_self());
 
         EGLContext egl_context = eglGetCurrentContext();
 
         messages_containers
                 ->enqueue_message((uintptr_t) egl_context,
-                                  [n, copy_buffers, thread_id, egl_context]() {
-                                      delete_jni_callback(n, copy_buffers, thread_id, egl_context,
+                                  [n, copy_buffers, tid, egl_context]() {
+                                      delete_jni_callback(n, copy_buffers, tid, egl_context,
                                                           method_onGlDeleteFramebuffers);
                                   });
 
@@ -486,7 +487,7 @@ GL_APICALL void GL_APIENTRY my_glGenRenderbuffers(GLsizei n, GLuint *buffers) {
 
         int throwable = get_java_throwable();
 
-        thread::id thread_id = this_thread::get_id();
+        pid_t tid = pthread_gettid_np(pthread_self());
 
         EGLContext egl_context = eglGetCurrentContext();
 
@@ -502,9 +503,9 @@ GL_APICALL void GL_APIENTRY my_glGenRenderbuffers(GLsizei n, GLuint *buffers) {
 
         messages_containers
                 ->enqueue_message((uintptr_t) egl_context,
-                                  [n, copy_buffers, throwable, thread_id, backtracePrt, egl_context, egl_draw_surface, egl_read_surface, activity_info]() {
+                                  [n, copy_buffers, throwable, tid, backtracePrt, egl_context, egl_draw_surface, egl_read_surface, activity_info]() {
 
-                                      gen_jni_callback(n, copy_buffers, throwable, thread_id,
+                                      gen_jni_callback(n, copy_buffers, throwable, tid,
                                                        backtracePrt, egl_context, egl_draw_surface,
                                                        egl_read_surface,
                                                        activity_info, method_onGlGenRenderbuffers);
@@ -524,15 +525,15 @@ GL_APICALL void GL_APIENTRY my_glDeleteRenderbuffers(GLsizei n, GLuint *buffers)
         GLuint *copy_buffers = new GLuint[n];
         memcpy(copy_buffers, buffers, n * sizeof(GLuint));
 
-        thread::id thread_id = this_thread::get_id();
+        pid_t tid = pthread_gettid_np(pthread_self());
 
         EGLContext egl_context = eglGetCurrentContext();
 
         messages_containers
                 ->enqueue_message((uintptr_t) egl_context,
-                                  [n, copy_buffers, thread_id, egl_context]() {
+                                  [n, copy_buffers, tid, egl_context]() {
 
-                                      delete_jni_callback(n, copy_buffers, thread_id, egl_context,
+                                      delete_jni_callback(n, copy_buffers, tid, egl_context,
                                                           method_onGlDeleteRenderbuffers);
 
                                   });
@@ -823,7 +824,6 @@ my_egl_context_create(EGLDisplay dpy, EGLConfig config, EGLContext share_context
 
         int throwable = get_java_throwable();
 
-        // fixme: leak!!!
         char *thread_id_c_str;
         thread_id_to_string(pthread_gettid_np(pthread_self()), thread_id_c_str);
 
@@ -861,13 +861,26 @@ my_egl_context_create(EGLDisplay dpy, EGLConfig config, EGLContext share_context
                                       if (activity_info != nullptr) {
                                           free(activity_info);
                                       }
+
+                                      if (thread_id_c_str) {
+                                          free(thread_id_c_str);
+                                      }
                                   });
     }
     return ret;
 }
 
+/**
+ * EGL_BAD_DISPLAY is generated if display is not an EGL display connection.
+ * EGL_NOT_INITIALIZED is generated if display has not been initialized.
+ * EGL_BAD_CONTEXT is generated if context is not an EGL rendering context.
+ *
+ * @param dpy
+ * @param ctx
+ * @return EGL_FALSE is returned if destruction of the context fails, EGL_TRUE otherwise.
+ */
 EGLAPI EGLBoolean EGLAPIENTRY my_egl_context_destroy(EGLDisplay dpy, EGLContext ctx) {
-    EGLBoolean ret;
+    EGLBoolean ret = EGL_FALSE;
     if (NULL != system_eglDestroyContext) {
         ret = system_eglDestroyContext(dpy, ctx);
 
@@ -880,7 +893,7 @@ EGLAPI EGLBoolean EGLAPIENTRY my_egl_context_destroy(EGLDisplay dpy, EGLContext 
 
         messages_containers
                 ->enqueue_message((uintptr_t) ctx,
-                                  [thread_id_c_str, ctx]() {
+                                  [thread_id_c_str, ctx, ret]() {
 
                                       JNIEnv *env = GET_ENV();
                                       jstring j_thread_id = env->NewStringUTF(thread_id_c_str);
@@ -888,9 +901,13 @@ EGLAPI EGLBoolean EGLAPIENTRY my_egl_context_destroy(EGLDisplay dpy, EGLContext 
                                       env->CallStaticVoidMethod(class_OpenGLHook,
                                                                 method_onEglContextDestroy,
                                                                 j_thread_id,
-                                                                (jlong) ctx);
+                                                                (jlong) ctx,
+                                                                ret);
 
                                       env->DeleteLocalRef(j_thread_id);
+                                      if (thread_id_c_str) {
+                                          free(thread_id_c_str);
+                                      }
                                   });
     }
     return ret;
