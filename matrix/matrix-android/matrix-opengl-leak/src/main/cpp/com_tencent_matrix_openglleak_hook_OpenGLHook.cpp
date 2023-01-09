@@ -68,7 +68,7 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_tencent_matrix_openglleak_hook_Op
         method_onEglContextCreate = env->GetStaticMethodID(class_OpenGLHook, "onEglContextCreate",
                                                            "(Ljava/lang/String;IJJJLjava/lang/String;)V");
         method_onEglContextDestroy = env->GetStaticMethodID(class_OpenGLHook, "onEglContextDestroy",
-                                                            "(Ljava/lang/String;J)V");
+                                                            "(Ljava/lang/String;JI)V");
 
         messages_containers = new BufferManagement();
         messages_containers->start_process();

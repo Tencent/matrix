@@ -866,8 +866,17 @@ my_egl_context_create(EGLDisplay dpy, EGLConfig config, EGLContext share_context
     return ret;
 }
 
+/**
+ * EGL_BAD_DISPLAY is generated if display is not an EGL display connection.
+ * EGL_NOT_INITIALIZED is generated if display has not been initialized.
+ * EGL_BAD_CONTEXT is generated if context is not an EGL rendering context.
+ *
+ * @param dpy
+ * @param ctx
+ * @return EGL_FALSE is returned if destruction of the context fails, EGL_TRUE otherwise.
+ */
 EGLAPI EGLBoolean EGLAPIENTRY my_egl_context_destroy(EGLDisplay dpy, EGLContext ctx) {
-    EGLBoolean ret;
+    EGLBoolean ret = EGL_FALSE;
     if (NULL != system_eglDestroyContext) {
         ret = system_eglDestroyContext(dpy, ctx);
 
@@ -880,7 +889,7 @@ EGLAPI EGLBoolean EGLAPIENTRY my_egl_context_destroy(EGLDisplay dpy, EGLContext 
 
         messages_containers
                 ->enqueue_message((uintptr_t) ctx,
-                                  [thread_id_c_str, ctx]() {
+                                  [thread_id_c_str, ctx, ret]() {
 
                                       JNIEnv *env = GET_ENV();
                                       jstring j_thread_id = env->NewStringUTF(thread_id_c_str);
@@ -888,7 +897,8 @@ EGLAPI EGLBoolean EGLAPIENTRY my_egl_context_destroy(EGLDisplay dpy, EGLContext 
                                       env->CallStaticVoidMethod(class_OpenGLHook,
                                                                 method_onEglContextDestroy,
                                                                 j_thread_id,
-                                                                (jlong) ctx);
+                                                                (jlong) ctx,
+                                                                ret);
 
                                       env->DeleteLocalRef(j_thread_id);
                                   });
