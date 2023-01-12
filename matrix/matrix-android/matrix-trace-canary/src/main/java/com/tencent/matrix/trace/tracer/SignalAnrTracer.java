@@ -26,6 +26,7 @@ import android.os.MessageQueue;
 import android.os.SystemClock;
 
 import androidx.annotation.Keep;
+import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 
 import com.tencent.matrix.AppActiveMatrixDelegate;
@@ -45,12 +46,19 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class SignalAnrTracer extends Tracer {
     private static final String TAG = "SignalAnrTracer";
@@ -81,6 +89,161 @@ public class SignalAnrTracer extends Tracer {
 
     static {
         System.loadLibrary("trace-canary");
+    }
+
+    private static class SimpleDeadLockDetector {
+        static class ThreadNode {
+            int threadId;
+            String info;
+            List<Integer> waitingList;
+            int visit;  // 0 not visited, 1 visiting, 2 visited
+
+            ThreadNode(int a, String b, List<Integer> c) {
+                threadId = a;
+                info = b;
+                waitingList = c;
+            }
+        }
+
+        private final Pattern threadPattern = Pattern.compile("^\"(.*?)\" .*? tid=(\\d+) \\w+$");
+        private final Pattern lockHeldPattern = Pattern.compile("^  - .*? held by thread (\\d+)$");
+        private int currentThreadId;
+        private final StringBuilder currentSb = new StringBuilder();
+        private final HashMap<Integer, ThreadNode> threadsWaitingForHeldLock = new HashMap<>();
+        private List<Integer> waitingList;
+        private String mainThreadInfo = "";
+        private boolean threadInfoBegin = false;
+
+        public void parseLine(String line) {
+
+            if (line.isEmpty()) {
+                // thread info end
+                threadInfoBegin = false;
+
+                if (currentSb.length() > 0 && waitingList != null && waitingList.size() > 0) {
+                    String threadInfo = currentSb.toString();
+                    if (currentThreadId == 1) {
+                        // "currentThreadId" is a thin lock thread id. This is a small integer used by the
+                        // thin lock implementation. This is not to be confused with the native thread's tid,
+                        // nor is it the value returned by java.lang.Thread.getId --- this is a distinct value,
+                        // used only for locking. usually, 0 is reserved to mean "invalid", 1 for main thread.
+                        mainThreadInfo = threadInfo;
+                    }
+
+                    threadsWaitingForHeldLock.put(currentThreadId, new ThreadNode(currentThreadId, threadInfo, waitingList));
+                    waitingList = null;
+                }
+
+            } else if (!threadInfoBegin) {
+                Matcher m = threadPattern.matcher(line);
+                if (m.find()) {
+                    // new thread info begin
+                    threadInfoBegin = true;
+
+                    currentSb.setLength(0);
+                    currentSb.append(line).append('\n');
+                    waitingList = waitingList == null ? new ArrayList<Integer>(4) : waitingList;
+                    try {
+                        currentThreadId = Integer.parseInt(m.group(2));
+                    } catch (Exception e) {
+                        MatrixLog.e(TAG, e.toString());
+                    }
+                }
+            } else {
+                Matcher m = lockHeldPattern.matcher(line);
+                if (m.find()) {
+                    try {
+                        int peerId = Integer.parseInt(m.group(1));
+                        waitingList.add(peerId);
+                    } catch (Exception e) {
+                        MatrixLog.e(TAG, e.toString());
+                    }
+                }
+                currentSb.append(line).append('\n');
+            }
+        }
+
+        public boolean hasDeadLock() {
+            parseLine("");  // ensure thread info parse complete
+            return checkDeadLock();
+        }
+
+        @NonNull
+        public String getMainThreadInfo() {
+            return mainThreadInfo;
+        }
+
+        @NonNull
+        public String getLockHeldThread1Info() {
+            if (waitingList == null || waitingList.size() == 0) {
+                return "";
+            }
+            int threadId = waitingList.get(0);
+            ThreadNode node = threadsWaitingForHeldLock.get(threadId);
+            return node == null ? "" : node.info;
+        }
+
+        @NonNull
+        public String getLockHeldThread2Info() {
+            if (waitingList == null || waitingList.size() == 0) {
+                return "";
+            }
+            int threadId = waitingList.get(waitingList.size() - 1);
+            ThreadNode node = threadsWaitingForHeldLock.get(threadId);
+            return node == null ? "" : node.info;
+        }
+
+        @NonNull
+        public List<Integer> getWaitingList() {
+            return waitingList == null ? new ArrayList<Integer>() : waitingList;
+        }
+
+        private boolean checkDeadLock() {
+            LinkedList<Integer> path = new LinkedList<>();
+            for (Map.Entry<Integer, ThreadNode> nodeEntry : threadsWaitingForHeldLock.entrySet()) {
+                if (nodeEntry.getValue().visit == 0) {
+                    int ret;
+                    if ((ret = dfsSearch(path, nodeEntry.getValue())) != -1) {
+                        // retrieve cycle from path and save it in waitingList
+                        while (path.size() > 0 && path.getFirst() != ret) {
+                            path.removeFirst();
+                        }
+                        waitingList = path;
+                        return true;
+                    }
+                }
+            }
+
+            // no cycle
+            if (waitingList != null) {
+                waitingList.clear();
+            }
+            return false;
+        }
+
+        // return the entry point if a cycle is found, else return -1.
+        private int dfsSearch(LinkedList<Integer> path, ThreadNode node) {
+            path.addLast(node.threadId);
+            node.visit = 1;
+
+            for (Integer peer : node.waitingList) {
+                ThreadNode peerNode = threadsWaitingForHeldLock.get(peer);
+                if (peerNode != null) {
+                    if (peerNode.visit == 1) {
+                        return peerNode.threadId;
+                    }
+
+                    int ret;
+                    if (peerNode.visit == 0 && (ret = dfsSearch(path, peerNode)) != -1) {
+                        return ret;
+                    }
+                }
+            }
+
+            node.visit = 2;
+            path.removeLast();
+            return -1;
+        }
     }
 
     @Override
@@ -185,7 +348,25 @@ public class SignalAnrTracer extends Tracer {
     @Keep
     private static void onANRDumpTrace() {
         try {
-            MatrixUtil.printFileByLine(TAG, sAnrTraceFilePath);
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(new File(sAnrTraceFilePath)), "UTF-8"))) {
+                String line;
+                SimpleDeadLockDetector detector = new SimpleDeadLockDetector();
+                while ((line = reader.readLine()) != null) {
+                    detector.parseLine(line);
+                    MatrixLog.i(TAG, line);
+                }
+                if (sSignalAnrDetectedListener != null) {
+                    if (detector.hasDeadLock()) {
+                        sSignalAnrDetectedListener.onDeadLockAnrDetected(
+                                detector.getMainThreadInfo(), detector.getLockHeldThread1Info(),
+                                detector.getLockHeldThread2Info(), detector.getWaitingList());
+                    } else if (detector.getMainThreadInfo().contains("android.os.MessageQueue.nativePollOnce")) {
+                        sSignalAnrDetectedListener.onMainThreadStuckAtNativePollOnce(detector.getMainThreadInfo());
+                    }
+                }
+            } catch (Throwable t) {
+                MatrixLog.e(TAG, "printFileByLine failed e : " + t.getMessage());
+            }
         } catch (Throwable t) {
             MatrixLog.e(TAG, "onANRDumpTrace error: %s", t.getMessage());
         }
@@ -368,6 +549,11 @@ public class SignalAnrTracer extends Tracer {
 
     public interface SignalAnrDetectedListener {
         void onAnrDetected(String stackTrace, String mMessageString, long mMessageWhen, boolean fromProcessErrorState, String cpuset);
+
         void onNativeBacktraceDetected(String backtrace, String mMessageString, long mMessageWhen, boolean fromProcessErrorState);
+
+        void onDeadLockAnrDetected(String mainThreadStackTrace, String lockHeldThread1, String lockHeldThread2, List<Integer> waitingList);
+
+        void onMainThreadStuckAtNativePollOnce(String mainThreadStackTrace);
     }
 }
