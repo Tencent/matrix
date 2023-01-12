@@ -19,7 +19,7 @@ package com.tencent.matrix.hook.memory;
 import android.text.TextUtils;
 
 import androidx.annotation.Keep;
-import androidx.annotation.Nullable;
+import androidx.annotation.NonNull;
 
 import com.tencent.matrix.hook.AbsHook;
 import com.tencent.matrix.hook.HookManager;
@@ -123,7 +123,7 @@ public class MemoryHook extends AbsHook {
                 .commitHooks();
     }
 
-    @Nullable
+    @NonNull
     @Override
     protected String getNativeLibraryName() {
         return "matrix-memoryhook";

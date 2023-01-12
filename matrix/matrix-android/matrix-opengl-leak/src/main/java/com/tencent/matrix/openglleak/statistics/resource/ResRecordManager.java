@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 
 import com.tencent.matrix.openglleak.hook.OpenGLHook;
 import com.tencent.matrix.openglleak.utils.AutoWrapBuilder;
+import com.tencent.matrix.util.MatrixLog;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -14,19 +15,25 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
+// TODO: 2022/12/22 should be deprecated and move to native
 public class ResRecordManager {
+    private static final String TAG = "Matrix.ResRecordManager";
 
     private static final ResRecordManager mInstance = new ResRecordManager();
 
     private final List<Callback> mCallbackList = new LinkedList<>();
     private final List<OpenGLInfo> mInfoList = new LinkedList<>();
-    private final List<Long> mReleaseContext = new LinkedList<>();
     private final List<Long> mReleaseSurface = new LinkedList<>();
+
+    private final Map<Long, Set<Long>> mContextGroup = new HashMap<>();
+    private final List<Long> mContextRecord = new ArrayList<>();
 
     private ResRecordManager() {
 
@@ -34,6 +41,38 @@ public class ResRecordManager {
 
     public static ResRecordManager getInstance() {
         return mInstance;
+    }
+
+    public void createContext(Long shareContext, Long newContext) {
+        synchronized (mContextRecord) {
+            mContextRecord.add(newContext);
+        }
+        if (shareContext != 0) {
+            synchronized (mContextGroup) {
+                Set<Long> group = mContextGroup.get(shareContext);
+                if (group == null) {
+                    group = new HashSet<>();
+                    mContextGroup.put(shareContext, group);
+                }
+                mContextGroup.put(newContext, group);
+                group.add(newContext);
+                group.add(shareContext);
+            }
+        }
+    }
+
+    public void destroyContext(Long context) {
+        synchronized (mContextRecord) {
+            mContextRecord.remove(context);
+        }
+        synchronized (mContextGroup) {
+            if (mContextGroup.containsKey(context)) {
+                Set<Long> group = mContextGroup.remove(context);
+                if (group != null) {
+                    group.remove(context);
+                }
+            }
+        }
     }
 
     public void gen(final OpenGLInfo gen) {
@@ -54,15 +93,36 @@ public class ResRecordManager {
         }
     }
 
-    public void delete(final OpenGLInfo del) {
+    public void delete(OpenGLInfo del) {
         if (del == null) {
             return;
+        }
+
+        OpenGLInfo infoDel;
+
+        Set<Long> ctxGroup;
+
+        synchronized (mContextGroup) {
+            ctxGroup = mContextGroup.get(del.getEglContextNativeHandle());
         }
 
         synchronized (mInfoList) {
             // 之前可能释放过
             int index = mInfoList.indexOf(del);
+
+            if (-1 == index && ctxGroup != null) { // is shared context
+                for (Long ctx : ctxGroup) {
+                    OpenGLInfo sharedInfo = new OpenGLInfo(del.getType(), del.getId(), del.getThreadId(), ctx);
+                    index = mInfoList.indexOf(sharedInfo);
+                    if (index != -1) {
+                        MatrixLog.d(TAG, "del info found with shared context: %d, %s", index, ctx);
+                        break;
+                    }
+                }
+            }
+
             if (-1 == index) {
+                MatrixLog.d(TAG, "del info not found");
                 return;
             }
 
@@ -70,6 +130,8 @@ public class ResRecordManager {
             if (null == info) {
                 return;
             }
+
+            infoDel = info;
 
             AtomicInteger counter = info.getCounter();
             counter.set(counter.get() - 1);
@@ -89,13 +151,13 @@ public class ResRecordManager {
                 }
             }
 
-            mInfoList.remove(del);
+            mInfoList.remove(info);
         }
 
         synchronized (mCallbackList) {
             for (Callback cb : mCallbackList) {
                 if (null != cb) {
-                    cb.delete(del);
+                    cb.delete(infoDel);
                 }
             }
         }
@@ -172,30 +234,30 @@ public class ResRecordManager {
         synchronized (mInfoList) {
             mInfoList.clear();
         }
-        synchronized (mReleaseContext) {
-            mReleaseContext.clear();
-        }
     }
 
     public boolean isEglContextReleased(OpenGLInfo info) {
-        synchronized (mReleaseContext) {
-            long eglContextNativeHandle = info.getEglContextNativeHandle();
-            if (0L == eglContextNativeHandle) {
-                return true;
-            }
-
-            for (long item : mReleaseContext) {
-                if (item == eglContextNativeHandle) {
-                    return true;
-                }
-            }
-
-            boolean alive = OpenGLHook.isEglContextAlive(info.getEglContextNativeHandle());
-            if (!alive) {
-                mReleaseContext.add(info.getEglContextNativeHandle());
-            }
-            return !alive;
+        synchronized (mContextRecord) {
+            return mContextRecord.contains(info.getEglContextNativeHandle());
         }
+//        synchronized (mReleaseContext) {
+//            long eglContextNativeHandle = info.getEglContextNativeHandle();
+//            if (0L == eglContextNativeHandle) {
+//                return true;
+//            }
+//
+//            for (long item : mReleaseContext) {
+//                if (item == eglContextNativeHandle) {
+//                    return true;
+//                }
+//            }
+//
+//            boolean alive = OpenGLHook.isEglContextAlive(info.getEglContextNativeHandle());
+//            if (!alive) {
+//                mReleaseContext.add(info.getEglContextNativeHandle());
+//            }
+//            return !alive;
+//        }
     }
 
     public boolean isEglSurfaceReleased(OpenGLInfo info) {
@@ -347,6 +409,7 @@ public class ResRecordManager {
         List<OpenGLDumpInfo> bufferList = new ArrayList<>();
         List<OpenGLDumpInfo> framebufferList = new ArrayList<>();
         List<OpenGLDumpInfo> renderbufferList = new ArrayList<>();
+        List<OpenGLDumpInfo> eglContextList = new ArrayList<>();
 
         for (OpenGLDumpInfo reportInfo : infoMap.values()) {
             if (reportInfo.innerInfo.getType() == OpenGLInfo.TYPE.TEXTURE) {
@@ -360,6 +423,9 @@ public class ResRecordManager {
             }
             if (reportInfo.innerInfo.getType() == OpenGLInfo.TYPE.RENDER_BUFFERS) {
                 renderbufferList.add(reportInfo);
+            }
+            if (reportInfo.innerInfo.getType() == OpenGLInfo.TYPE.EGL_CONTEXT) {
+                eglContextList.add(reportInfo);
             }
         }
 
@@ -380,6 +446,7 @@ public class ResRecordManager {
         Collections.sort(bufferList, comparator);
         Collections.sort(framebufferList, comparator);
         Collections.sort(renderbufferList, comparator);
+        Collections.sort(eglContextList, comparator);
 
         AutoWrapBuilder builder = new AutoWrapBuilder();
         builder.appendDotted()
@@ -387,6 +454,7 @@ public class ResRecordManager {
                 .appendWithSpace(String.format("buffer Count = %d", bufferList.size()), 3)
                 .appendWithSpace(String.format("framebuffer Count = %d", framebufferList.size()), 3)
                 .appendWithSpace(String.format("renderbuffer Count = %d", renderbufferList.size()), 3)
+                .appendWithSpace(String.format("egl context Count = %d", eglContextList.size()), 3)
                 .appendDotted()
                 .appendWave()
                 .appendWithSpace("texture part :", 3)
@@ -400,6 +468,10 @@ public class ResRecordManager {
                 .appendWithSpace("renderbuffer part :", 3)
                 .appendWave()
                 .append(getResListString(renderbufferList))
+                .appendWave()
+                .appendWithSpace("egl context part :", 3)
+                .appendWave()
+                .append(getResListString(eglContextList))
                 .wrap();
 
         return builder.toString();

@@ -76,6 +76,8 @@ target_link_libraries( # Specifies the target library.
         GLESv2
         GLESv3
         EGL
+        PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/libxhook.a
+        PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/libsemi_dlfcn.a
         PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/libwechatbacktrace.so
 )
 

@@ -24,7 +24,7 @@ public class OpenGLInfo {
     private AtomicInteger counter;
 
     public enum TYPE {
-        TEXTURE, BUFFER, FRAME_BUFFERS, RENDER_BUFFERS
+        TEXTURE, BUFFER, FRAME_BUFFERS, RENDER_BUFFERS, EGL_CONTEXT
     }
 
     public OpenGLInfo(OpenGLInfo clone) {
@@ -157,17 +157,17 @@ public class OpenGLInfo {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || !(o instanceof OpenGLInfo)) return false;
+        if (!(o instanceof OpenGLInfo)) return false;
         OpenGLInfo that = (OpenGLInfo) o;
         return id == that.id &&
                 getEglContextNativeHandle() == that.getEglContextNativeHandle() &&
-                threadId.equals(that.threadId) &&
+                /*threadId.equals(that.threadId) &&*/
                 type == that.type;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, getEglContextNativeHandle(), threadId, type);
+        return Objects.hash(id, getEglContextNativeHandle(), type);
     }
 
 }

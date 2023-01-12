@@ -25,6 +25,7 @@ import com.tencent.matrix.apk.model.result.TaskJsonResult;
 import com.tencent.matrix.apk.model.result.TaskResult;
 import com.tencent.matrix.apk.model.result.TaskResultFactory;
 import com.android.utils.Pair;
+import com.tencent.matrix.apk.model.task.util.ResguardUtil;
 import com.tencent.matrix.javalib.util.FileUtil;
 import com.tencent.matrix.javalib.util.Log;
 import com.tencent.matrix.javalib.util.Util;
@@ -123,59 +124,6 @@ public class UnzipTask extends ApkTask {
                             if (!Util.isNullOrNil(beforeClass) && !Util.isNullOrNil(afterClass)) {
                                 Log.d(TAG, "before:%s,after:%s", beforeClass, afterClass);
                                 proguardClassMap.put(afterClass, beforeClass);
-                            }
-                        }
-                    }
-                    line = bufferedReader.readLine();
-                }
-            } finally {
-                bufferedReader.close();
-            }
-        }
-    }
-
-    private String parseResourceNameFromResguard(String resName) {
-        if (!Util.isNullOrNil(resName)) {
-            int index = resName.indexOf('R');
-            if (index >= 0) {
-                return resName.substring(index);
-            }
-        }
-        return "";
-    }
-
-
-    private void readResMappingTxtFile() throws IOException {
-        if (resMappingTxt != null) {
-            BufferedReader bufferedReader = new BufferedReader(new FileReader(resMappingTxt));
-            try {
-                String line = bufferedReader.readLine();
-                boolean readResStart = false;
-                boolean readPathStart = false;
-                while (line != null) {
-                    if (line.trim().equals("res path mapping:")) {
-                      readPathStart = true;
-                    } else if (line.trim().equals("res id mapping:")) {
-                        readResStart = true;
-                        readPathStart = false;
-                    } else if (readPathStart) {
-                        String[] columns = line.split("->");
-                        if (columns.length == 2) {
-                            String before = columns[0].trim();
-                            String after = columns[1].trim();
-                            if (!Util.isNullOrNil(before) && !Util.isNullOrNil(after)) {
-                                Log.d(TAG, "%s->%s", before, after);
-                                resDirMap.put(after, before);
-                            }
-                        }
-                    } else if (readResStart) {
-                        String[] columns = line.split("->");
-                        if (columns.length == 2) {
-                            String before = parseResourceNameFromResguard(columns[0].trim());
-                            String after = parseResourceNameFromResguard(columns[1].trim());
-                            if (!Util.isNullOrNil(before) && !Util.isNullOrNil(after)) {
-                                Log.d(TAG, "%s->%s", before, after);
-                                resguardMap.put(after, before);
                             }
                         }
                     }
@@ -310,7 +258,7 @@ public class UnzipTask extends ApkTask {
 
             readMappingTxtFile();
             config.setProguardClassMap(proguardClassMap);
-            readResMappingTxtFile();
+            ResguardUtil.readResMappingTxtFile(resMappingTxt, resDirMap, resguardMap);
             config.setResguardMap(resguardMap);
 
             Enumeration entries = zipFile.entries();

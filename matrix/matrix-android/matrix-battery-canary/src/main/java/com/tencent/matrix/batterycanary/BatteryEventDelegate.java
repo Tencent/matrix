@@ -155,17 +155,6 @@ public final class BatteryEventDelegate {
                         // Received 'ACTION_BATTERY_CHANGED' frequently,
                         // should be frequency-controlled & handled with worker thread
                         if (mCore != null) {
-                            int status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
-                            if (status == BatteryManager.BATTERY_STATUS_FULL) {
-                                mCore.getHandler().post(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        onBatteryFullCharged();
-                                    }
-                                });
-                                return;
-                            }
-
                             boolean limited = false;
                             long currMs = System.currentTimeMillis();
                             if (mLastBatteryChangedHandleMs > 0 && currMs - mLastBatteryChangedHandleMs < ONE_MIN) {
@@ -176,6 +165,13 @@ public final class BatteryEventDelegate {
                                 mCore.getHandler().post(new Runnable() {
                                     @Override
                                     public void run() {
+                                        // Full charged
+                                        int status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
+                                        if (status == BatteryManager.BATTERY_STATUS_FULL) {
+                                            onBatteryFullCharged();
+                                            return;
+                                        }
+
                                         // Power percentage
                                         int currPct = BatteryCanaryUtil.getBatteryPercentage(mContext);
                                         if (currPct >= 0 && currPct <= 1000) {
@@ -190,6 +186,7 @@ public final class BatteryEventDelegate {
                                                 onBatteryPowerChanged(currPct);
                                             }
                                         }
+
                                         // Battery temperature
                                         try {
                                             int currTemp = intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1);

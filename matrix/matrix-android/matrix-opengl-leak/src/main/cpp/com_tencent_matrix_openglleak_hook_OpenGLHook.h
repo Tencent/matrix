@@ -159,6 +159,10 @@ extern "C"
 JNIEXPORT jint JNICALL
 Java_com_tencent_matrix_openglleak_hook_OpenGLHook_getResidualQueueSize(JNIEnv *env, jobject clazz);
 
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_com_tencent_matrix_openglleak_hook_OpenGLHook_hookEgl(JNIEnv *env, jclass clazz);
+
 #ifdef __cplusplus
 }
 #endif

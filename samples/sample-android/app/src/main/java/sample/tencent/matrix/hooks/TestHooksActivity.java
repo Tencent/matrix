@@ -25,6 +25,7 @@ import com.tencent.matrix.hook.HookManager;
 import com.tencent.matrix.hook.memory.MemoryHook;
 import com.tencent.matrix.hook.pthread.PthreadHook;
 import com.tencent.matrix.mallctl.MallCtl;
+import com.tencent.matrix.util.MatrixLog;
 
 import java.io.File;
 
@@ -197,20 +198,30 @@ public class TestHooksActivity extends Activity {
         try {
             Thread.sleep(500);
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            MatrixLog.printErrStackTrace(TAG, e, "");
         }
 
         // malloc
         Log.d(TAG, "mallocTest: native heap:" + Debug.getNativeHeapSize() + ", allocated:"
                 + Debug.getNativeHeapAllocatedSize() + ", free:" + Debug.getNativeHeapFreeSize());
-        JNIObj.mallocTest();
+//        JNIObj.mallocTest();
         Log.d(TAG,
                 "mallocTest after malloc: native heap:" + Debug.getNativeHeapSize() + ", allocated:"
                         + Debug.getNativeHeapAllocatedSize() + ", free:"
                         + Debug.getNativeHeapFreeSize());
 
-        String output = getExternalCacheDir() + "/memory_hook.log";
-        MemoryHook.INSTANCE.dump(output, output + ".json");
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Thread.sleep(1000); // wait for async record
+                } catch (InterruptedException e) {
+                    MatrixLog.printErrStackTrace(TAG, e, "");
+                }
+                String output = getExternalCacheDir() + "/memory_hook.log";
+                MemoryHook.INSTANCE.dump(output, output + ".json");
+            }
+        }).start();
     }
 
     public void threadTest(View view) {

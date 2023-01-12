@@ -20,8 +20,6 @@ import java.lang.reflect.InvocationHandler
 import java.lang.reflect.Method
 import java.lang.reflect.Proxy
 
-private const val SDK_GUARD = 32
-
 /**
  * Created by Yves on 2021/11/30
  */
@@ -48,10 +46,6 @@ object ForegroundServiceLifecycleOwner : StatefulOwner() {
         activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
         if (!enable) {
             MatrixLog.i(TAG, "disabled")
-            return
-        }
-        if (Build.VERSION.SDK_INT > SDK_GUARD) { // for safety
-            MatrixLog.e(TAG, "NOT support for api-level ${Build.VERSION.SDK_INT} yet!!!")
             return
         }
         inject()

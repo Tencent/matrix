@@ -1,6 +1,7 @@
 package com.tencent.matrix.batterycanary.monitor;
 
 import android.app.ActivityManager;
+import android.os.HandlerThread;
 
 import com.tencent.matrix.batterycanary.BuildConfig;
 import com.tencent.matrix.batterycanary.monitor.feature.CpuStatFeature.UidCpuStateSnapshot.IpcCpuStat.RemoteStat;
@@ -36,6 +37,8 @@ public class BatteryMonitorConfig {
 
     public static final int AMS_HOOK_FLAG_BT = 0b00000001;
 
+    @Nullable
+    public HandlerThread canaryThread = null;
     @NonNull
     public BatteryMonitorCallback callback = new BatteryMonitorCallback.BatteryPrinter();
     @Nullable
@@ -57,6 +60,7 @@ public class BatteryMonitorConfig {
     public boolean isStatPidProc = BuildConfig.DEBUG;
     public boolean isInspectiffiesError = BuildConfig.DEBUG;
     public boolean isAmsHookEnabled = BuildConfig.DEBUG;
+    public boolean isSkipNewAddedPidTid = false;
     public int amsHookEnableFlag = 0;
     public boolean isAggressiveMode = BuildConfig.DEBUG;
     public boolean isUseThreadClock = BuildConfig.DEBUG;
@@ -79,32 +83,7 @@ public class BatteryMonitorConfig {
     @Override
     public String toString() {
         return "BatteryMonitorConfig{"
-                + "wakelockTimeout=" + wakelockTimeout
-                + ", wakelockWarnCount=" + wakelockWarnCount
-                + ", greyTime=" + greyTime
-                + ", foregroundLoopCheckTime=" + foregroundLoopCheckTime
-                + ", backgroundLoopCheckTime=" + backgroundLoopCheckTime
-                + ", overHeatCount=" + overHeatCount
-                + ", foregroundServiceLeakLimit=" + foregroundServiceLeakLimit
-                + ", fgThreadWatchingLimit=" + fgThreadWatchingLimit
-                + ", bgThreadWatchingLimit=" + bgThreadWatchingLimit
-                + ", isForegroundModeEnabled=" + isForegroundModeEnabled
-                + ", isBackgroundModeEnabled=" + isBackgroundModeEnabled
-                + ", isBuiltinForegroundNotifyEnabled=" + isBuiltinForegroundNotifyEnabled
-                + ", isStatAsSample=" + isStatAsSample
-                + ", isStatPidProc=" + isStatPidProc
-                + ", isInspectiffiesError=" + isInspectiffiesError
-                + ", isAmsHookEnabled=" + isAmsHookEnabled
-                + ", isAggressiveMode=" + isAggressiveMode
-                + ", isUseThreadClock=" + isUseThreadClock
-                + ", tagWhiteList=" + tagWhiteList
-                + ", tagBlackList=" + tagBlackList
-                + ", looperWatchList=" + looperWatchList
-                + ", threadWatchList=" + threadWatchList
-                + ", features=" + features
-                + ", batteryRecorder=" + batteryRecorder
-                + ", batteryStats=" + batteryStats
-                + ", callStackCollector=" + callStackCollector
+                + "features=" + features
                 + '}';
     }
 
@@ -113,6 +92,11 @@ public class BatteryMonitorConfig {
      */
     public static class Builder {
         private final BatteryMonitorConfig config = new BatteryMonitorConfig();
+
+        public Builder setCanaryThread(HandlerThread thread) {
+            config.canaryThread = thread;
+            return this;
+        }
 
         public Builder setCallback(BatteryMonitorCallback callback) {
             config.callback = callback;
@@ -299,6 +283,11 @@ public class BatteryMonitorConfig {
 
         public Builder enableTuningPowers(boolean enable) {
             config.isTuningPowers = enable;
+            return this;
+        }
+
+        public Builder skipNewAddedPidTid(boolean skip) {
+            config.isSkipNewAddedPidTid = skip;
             return this;
         }
 

@@ -27,6 +27,7 @@ import com.tencent.matrix.javalib.util.Util
 import com.tencent.matrix.plugin.compat.AgpCompat
 import com.tencent.matrix.plugin.compat.CreationConfig
 import com.tencent.matrix.plugin.extension.MatrixRemoveUnusedResExtension
+import com.tencent.matrix.resguard.ResguardMapping
 import com.tencent.matrix.shrinker.ApkUtil
 import com.tencent.matrix.shrinker.ProguardStringBuilder
 import com.tencent.mm.arscutil.ArscUtil
@@ -69,6 +70,11 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
     private var is7zipEnabled: Boolean = false
     private var isResGuardEnabled: Boolean = false
 
+    private var obfuscatedResourcesDirectoryName: String? = null
+    private var overrideInputApkFiles: List<File> = emptyList()
+    private var resguardMappingFile: File? = null
+    private var resguardMapping: ResguardMapping? = null
+
     private lateinit var pathOfApkChecker: String
     private lateinit var pathOfApkSigner: String
     private lateinit var pathOfZipAlign: String
@@ -76,20 +82,33 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
 
     private lateinit var rulesOfIgnore: Set<String>
 
+    private var reportFile: File? = null
+
+    fun overrideInputApkFiles(inputApkFiles: List<String>) {
+        this.overrideInputApkFiles = inputApkFiles.map { File(it) }
+    }
+
+    fun withResguardMapping(path: String) {
+        resguardMappingFile = File(path)
+        resguardMapping = ResguardMapping(resguardMappingFile!!)
+    }
+
     @TaskAction
     fun removeResources() {
-
-        variant.outputs.forEach { output ->
-            val startTime = System.currentTimeMillis()
-            removeResourcesV2(
+        overrideInputApkFiles
+            .ifEmpty {
+                variant.outputs.map { it.outputFile }
+            }
+            .forEach { apk ->
+                val startTime = System.currentTimeMillis()
+                removeResourcesV2(
                     project = project,
-                    originalApkFile = output.outputFile,
+                    originalApkFile = apk,
                     signingConfig = AgpCompat.getSigningConfig(variant),
                     nameOfSymbolDirectory = AgpCompat.getIntermediatesSymbolDirName()
-            )
-            Log.i(TAG, "cost time %f s", (System.currentTimeMillis() - startTime) / 1000.0f)
-
-        }
+                )
+                Log.i(TAG, "cost time %f s", (System.currentTimeMillis() - startTime) / 1000.0f)
+            }
     }
 
     class CreationAction(
@@ -113,12 +132,23 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
                 task.is7zipEnabled = use7zip
                 task.isResGuardEnabled = embedResGuard
 
+                task.obfuscatedResourcesDirectoryName = obfuscatedResourcesDirectoryName?.let {
+                    if (it.endsWith("/")) it else "${it}/"
+                }
+
                 task.pathOfApkChecker = apkCheckerPath
                 task.pathOfApkSigner = apksignerPath
                 task.pathOfZipAlign = zipAlignPath
                 task.pathOfSevenZip = sevenZipPath
 
                 task.rulesOfIgnore = ignoreResources
+
+                task.reportFile = report?.let {
+                    File(it).apply {
+                        parentFile.mkdirs()
+                        if (exists()) delete()
+                    }
+                }
             }
 
             task.parametersInvalidation()
@@ -190,10 +220,10 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
                     val replaceIterator = mapOfDuplicatesReplacements.keys.iterator()
                     while (replaceIterator.hasNext()) {
                         val sourceFile = replaceIterator.next()
-                        val sourceRes = ApkUtil.entryToResourceName(sourceFile)
+                        val sourceRes = ApkUtil.entryToResourceName(sourceFile, resguardMapping)
                         val sourceId = mapOfResources[sourceRes]!!
                         val targetFile = mapOfDuplicatesReplacements[sourceFile]
-                        val targetRes = ApkUtil.entryToResourceName(targetFile)
+                        val targetRes = ApkUtil.entryToResourceName(targetFile, resguardMapping)
                         val targetId = mapOfResources[targetRes]!!
                         val success = ArscUtil.replaceFileResource(resTable, sourceId, sourceFile, targetId, targetFile)
                         if (!success) {
@@ -225,17 +255,18 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
                 val compressedEntry = HashSet<String>()
 
                 for (zipEntry in zipInputFile.entries()) {
+                    if (zipEntry.isDirectory) continue
 
                     var destFile = unzipDir.canonicalPath + File.separator + zipEntry.name.replace('/', File.separatorChar)
 
-                    if (zipEntry.name.startsWith("res/")) {
-                        val resourceName = ApkUtil.entryToResourceName(zipEntry.name)
+                    if (zipEntry.name.startsWith(obfuscatedResourcesDirectoryName ?: "res/")) {
+                        val resourceName = ApkUtil.entryToResourceName(zipEntry.name, resguardMapping)
                         if (!Util.isNullOrNil(resourceName)) {
                             if (mapOfResourcesGonnaRemoved.containsKey(resourceName)) {
-                                Log.i(TAG, "remove unused resource %s file %s", resourceName, zipEntry.name)
+                                Log.d(TAG, "remove unused resource %s file %s", resourceName, zipEntry.name)
                                 continue
                             } else if (mapOfDuplicatesReplacements.containsKey(zipEntry.name)) {
-                                Log.i(TAG, "remove duplicated resource file %s", zipEntry.name)
+                                Log.d(TAG, "remove duplicated resource file %s", zipEntry.name)
                                 continue
                             } else {
                                 if (arsc != null && isResGuardEnabled) {
@@ -247,7 +278,7 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
                                             val proguardDir = dirProguard.generateNextProguardFileName()
                                             resultOfObfuscatedDirs[dir] = "$RES_DIR_PROGUARD_NAME/$proguardDir"
                                             dirFileProguard[dir] = ProguardStringBuilder()
-                                            Log.i(TAG, "dir %s, proguard builder", dir)
+                                            Log.d(TAG, "dir %s, proguard builder", dir)
                                         }
                                         resultOfObfuscatedFiles[zipEntry.name] = resultOfObfuscatedDirs[dir] + "/" + dirFileProguard[dir]!!.generateNextProguardFileName() + suffix
                                         val success = ArscUtil.replaceResFileName(resTable, mapOfResources[resourceName]!!, zipEntry.name, resultOfObfuscatedFiles[zipEntry.name])
@@ -294,7 +325,7 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
                     ApkUtil.sevenZipFile(pathOfSevenZip, unzipDir.canonicalPath + "${File.separator}*", toShrunkApkFile.canonicalPath, false)
 
                     if (compressedEntry.isNotEmpty()) {
-                        Log.i(TAG, "7zip %d DEFLATED files to apk", compressedEntry.size)
+                        Log.d(TAG, "7zip %d DEFLATED files to apk", compressedEntry.size)
                         val deflateDir = File(fromOriginalApkFile.parentFile, fromOriginalApkFile.name.substring(0, fromOriginalApkFile.name.lastIndexOf(".")) + "_deflated")
                         FileUtils.deleteRecursivelyIfExists(deflateDir)
                         deflateDir.mkdir()
@@ -336,7 +367,7 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
         } else {
             val zipEntry = ZipEntry(file.canonicalPath.substring(rootDir.length + 1))
             val method = if (compressedEntry.contains(file.canonicalPath)) ZipEntry.DEFLATED else ZipEntry.STORED
-            Log.i(TAG, "zip file %s -> entry %s, DEFLATED %s", file.canonicalPath, zipEntry.name, method == ZipEntry.DEFLATED)
+            Log.d(TAG, "zip file %s -> entry %s, DEFLATED %s", file.canonicalPath, zipEntry.name, method == ZipEntry.DEFLATED)
             zipEntry.method = method
             ApkUtil.addZipEntry(zipOutputStream, zipEntry, file)
         }
@@ -352,6 +383,7 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
                 pathOfOriginalApk: String,
                 pathOfMapping: String,
                 pathOfRTxt: String,
+                resguardMappingFile: File?,
                 resultOfUnused: MutableSet<String>,
                 resultOfDuplicates: MutableMap<String, MutableSet<String>>
         ) {
@@ -372,6 +404,11 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
             if (File(pathOfMapping).exists()) {
                 parameters.add("--mappingTxt")
                 parameters.add(pathOfMapping)
+            }
+
+            if (resguardMappingFile?.exists() == true) {
+                parameters.add("--resMappingTxt")
+                parameters.add(resguardMappingFile.absolutePath)
             }
 
             parameters.add("--format")
@@ -483,7 +520,7 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
                     resultOfResourcesGonnaRemoved[resName] = resId
                 }
             } else {
-                Log.i(TAG, "ignore remove unused resources %s", resName)
+                Log.d(TAG, "ignore remove unused resources %s", resName)
             }
         }
 
@@ -495,17 +532,17 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
             val duplicatesNames = HashMap<String, String>()
             if (duplicatesEntries != null) {
                 for (entry in duplicatesEntries) {
-                    if (!entry.startsWith("res/")) {
+                    if (!entry.startsWith(obfuscatedResourcesDirectoryName ?: "res/")) {
                         Log.w(TAG, "   %s is not resource file!", entry)
                         continue
                     } else {
-                        duplicatesNames[entry] = ApkUtil.entryToResourceName(entry)
+                        duplicatesNames[entry] = ApkUtil.entryToResourceName(entry, resguardMapping)
                     }
                 }
             }
 
             if (duplicatesNames.size > 0) {
-                if (!ApkUtil.isSameResourceType(duplicatesNames.keys)) {
+                if (!ApkUtil.isSameResourceType(duplicatesNames.keys, obfuscatedResourcesDirectoryName)) {
                     Log.w(TAG, "the type of duplicated resources %s are not same!", duplicatesEntries)
                     continue
                 } else {
@@ -523,7 +560,7 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
                         val replace = it.next()
                         while (it.hasNext()) {
                             val dup = it.next()
-                            Log.i(TAG, "replace %s with %s", dup, replace)
+                            Log.d(TAG, "replace %s with %s", dup, replace)
                             resultOfDuplicatesReplacements[dup] = replace
                         }
                     }
@@ -551,7 +588,7 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
                     if (!checkIfIgnored(resName, regexpRules)) {
                         resultOfObfuscatedNames[resName] = "R." + resType + "." + resTypeBuilder.generateNextProguard()
                     } else {
-                        Log.i(TAG, "ignore proguard resource name %s", resName)
+                        Log.d(TAG, "ignore proguard resource name %s", resName)
                     }
                 }
             }
@@ -581,7 +618,7 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
                         }
                     }
                     if (attrs.isNotEmpty() && j == attrs.size) {
-                        Log.i(TAG, "removed styleable $styleable")
+                        Log.d(TAG, "removed styleable $styleable")
                         styleableIterator.remove()
                     }
                 }
@@ -645,9 +682,9 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
         var startTime = System.currentTimeMillis()
 
         val rTxtFile = File(project.buildDir, "intermediates")
-                .resolve(nameOfSymbolDirectory)
-                .resolve(variant.name)
-                .resolve("R.txt")
+            .resolve(nameOfSymbolDirectory)
+            .resolve(variant.name)
+            .resolve("R.txt")
 
         val mappingTxtFile = File(project.buildDir, "outputs")
                 .resolve("mapping")
@@ -666,6 +703,7 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
                 pathOfOriginalApk = originalApkPath,
                 pathOfMapping = mappingTxtFile.absolutePath,
                 pathOfRTxt = rTxtFile.absolutePath,
+                resguardMappingFile = resguardMappingFile,
 
                 // result
                 resultOfUnused = setOfUnusedResources,
@@ -675,7 +713,7 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
         Log.i(TAG, "find out %d unused resources:\n %s", setOfUnusedResources.size, setOfUnusedResources)
         Log.i(TAG, "find out %d duplicated resources:", mapOfDuplicatedResources.size)
         for (md5 in mapOfDuplicatedResources.keys) {
-            Log.i(TAG, "> md5:%s, files:%s", md5, mapOfDuplicatedResources[md5])
+            Log.d(TAG, "> md5:%s, files:%s", md5, mapOfDuplicatedResources[md5])
         }
         Log.i(TAG, "find unused resources cost time %fs ", (System.currentTimeMillis() - startTime) / 1000.0f)
 
@@ -734,7 +772,7 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
             // Zip align
             if (isZipAlignEnabled) {
                 val alignedApk = originalApkFile.parentFile.canonicalPath + File.separator + originalApkFile.name.substring(0, originalApkFile.name.indexOf(".")) + "_aligned.apk"
-                Log.i(TAG, "Zipalign apk...")
+                Log.d(TAG, "Zipalign apk...")
                 ApkUtil.zipAlignApk(shrunkApkPath, alignedApk, pathOfZipAlign)
                 shrunkApkFile.delete()
                 FileUtils.copyFile(File(alignedApk), shrunkApkFile)
@@ -743,8 +781,25 @@ abstract class RemoveUnusedResourcesTaskV2 : DefaultTask() {
 
             // Signing apk
             if (isSigningEnabled) {
-                Log.i(TAG, "Signing apk...")
+                Log.d(TAG, "Signing apk...")
                 ApkUtil.signApk(shrunkApkPath, pathOfApkSigner, signingConfig)
+            }
+
+            reportFile?.bufferedWriter()?.use { writer ->
+                writer.write("removed resources:")
+                writer.newLine()
+                mapOfResourcesGonnaRemoved.keys.forEach { name ->
+                    writer.write("  $name")
+                    writer.newLine()
+                }
+                writer.newLine()
+
+                writer.write("duplicated resources:")
+                writer.newLine()
+                mapOfDuplicatesReplacements.forEach { (origin, replacement) ->
+                    writer.write("  $origin -> $replacement")
+                    writer.newLine()
+                }
             }
 
             // Backup original apk and swap shrunk apk

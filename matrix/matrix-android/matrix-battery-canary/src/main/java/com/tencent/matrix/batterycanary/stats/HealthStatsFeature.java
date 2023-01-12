@@ -22,7 +22,6 @@ import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -123,18 +122,30 @@ public class HealthStatsFeature extends AbsMonitorFeature {
 
             {
                 if (healthStats.hasTimers(UidHealthStats.TIMERS_WAKELOCKS_PARTIAL)) {
-                    Map<String, TimerStat> timers = healthStats.getTimers(UidHealthStats.TIMERS_WAKELOCKS_PARTIAL);
                     long timeMs = 0;
-                    for (TimerStat item : timers.values()) {
-                        timeMs += item.getTime();
+                    Map<String, TimerStat> timers = healthStats.getTimers(UidHealthStats.TIMERS_WAKELOCKS_PARTIAL);
+                    for (Map.Entry<String, TimerStat> item : timers.entrySet()) {
+                        String tag = item.getKey();
+                        long lockTime = item.getValue().getTime();
+                        if (snapshot.tagWakelocksPartialMs.isEmpty()) {
+                            snapshot.tagWakelocksPartialMs = new HashMap<>();
+                        }
+                        snapshot.tagWakelocksPartialMs.put(tag, DigitEntry.of(lockTime));
+                        timeMs += lockTime;
                     }
                     snapshot.wakelocksPartialMs = DigitEntry.of(timeMs);
                 }
                 if (healthStats.hasTimers(UidHealthStats.TIMERS_WAKELOCKS_FULL)) {
-                    Map<String, TimerStat> timers = healthStats.getTimers(UidHealthStats.TIMERS_WAKELOCKS_FULL);
                     long timeMs = 0;
-                    for (TimerStat item : timers.values()) {
-                        timeMs += item.getTime();
+                    Map<String, TimerStat> timers = healthStats.getTimers(UidHealthStats.TIMERS_WAKELOCKS_FULL);
+                    for (Map.Entry<String, TimerStat> item : timers.entrySet()) {
+                        String tag = item.getKey();
+                        long lockTime = item.getValue().getTime();
+                        if (snapshot.tagWakelocksFullMs.isEmpty()) {
+                            snapshot.tagWakelocksFullMs = new HashMap<>();
+                        }
+                        snapshot.tagWakelocksFullMs.put(tag, DigitEntry.of(lockTime));
+                        timeMs += lockTime;
                     }
                     snapshot.wakelocksFullMs = DigitEntry.of(timeMs);
                 }
@@ -257,9 +268,13 @@ public class HealthStatsFeature extends AbsMonitorFeature {
     }
 
     public static class HealthStatsSnapshot extends Snapshot<HealthStatsSnapshot> {
+        @Nullable
+        public AccCollector accCollector;
+
         @VisibleForTesting
         @Nullable
         public HealthStats healthStats;
+        // For test & tunings values
         public Map<String, Object> extras = Collections.emptyMap();
 
         // Estimated Powers
@@ -341,10 +356,13 @@ public class HealthStatsFeature extends AbsMonitorFeature {
         public DigitEntry<Long> procBgMs = DigitEntry.of(0L);
         public DigitEntry<Long> procCacheMs = DigitEntry.of(0L);
 
-        // Process Stats
+        // Map
         public Map<String, DigitEntry<Long>> procStatsCpuUsrTimeMs = Collections.emptyMap();
         public Map<String, DigitEntry<Long>> procStatsCpuSysTimeMs = Collections.emptyMap();
         public Map<String, DigitEntry<Long>> procStatsCpuFgTimeMs = Collections.emptyMap();
+        public Map<String, DigitEntry<Long>> tagWakelocksPartialMs = Collections.emptyMap();
+        public Map<String, DigitEntry<Long>> tagWakelocksFullMs = Collections.emptyMap();
+
 
         public double getTotalPower() {
             return cpuPower.get()
@@ -363,14 +381,33 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                     + idlePower.get();
         }
 
-        @Override
-        public Delta<HealthStatsSnapshot> diff(HealthStatsSnapshot bgn) {
+        public AccCollector startAccCollecting() {
+            accCollector = new AccCollector(this);
+            return accCollector;
+        }
+
+        @Nullable
+        public Delta<HealthStatsSnapshot> accCollect(HealthStatsSnapshot curr) {
+            if (accCollector == null) {
+                throw new IllegalStateException("Call start collect first!");
+            }
+            return accCollector.collect(curr);
+        }
+
+        public Delta<HealthStatsSnapshot> diffByAccCollector(HealthStatsSnapshot bgn) {
+            if (bgn.accCollector == null) {
+                throw new IllegalStateException("Call start collect first!");
+            }
+            bgn.accCollect(this);
+            HealthStatsSnapshot delta = bgn.accCollector.accDelta;
+            return new Delta.SimpleDelta<>(bgn, this, delta);
+        }
+
+        Delta<HealthStatsSnapshot> diffInternal(HealthStatsSnapshot bgn) {
             return new Delta<HealthStatsSnapshot>(bgn, this) {
                 @Override
                 protected HealthStatsSnapshot computeDelta() {
                     HealthStatsSnapshot delta = new HealthStatsSnapshot();
-                    // For test & tunings
-                    delta.extras = new LinkedHashMap<>();
 
                     // UID
                     delta.cpuPower = Differ.DigitDiffer.globalDiff(bgn.cpuPower, end.cpuPower);
@@ -458,7 +495,7 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                             }
                             map.put(key, Differ.DigitDiffer.globalDiff(DigitEntry.of(bgnValue), endEntry));
                         }
-                        delta.procStatsCpuUsrTimeMs = decrease(map);
+                        delta.procStatsCpuUsrTimeMs = map;
                     }
                     {
                         Map<String, DigitEntry<Long>> map = new HashMap<>();
@@ -472,7 +509,7 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                             }
                             map.put(key, Differ.DigitDiffer.globalDiff(DigitEntry.of(bgnValue), endEntry));
                         }
-                        delta.procStatsCpuSysTimeMs = decrease(map);
+                        delta.procStatsCpuSysTimeMs = map;
                     }
                     {
                         Map<String, DigitEntry<Long>> map = new HashMap<>();
@@ -486,24 +523,64 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                             }
                             map.put(key, Differ.DigitDiffer.globalDiff(DigitEntry.of(bgnValue), endEntry));
                         }
-                        delta.procStatsCpuFgTimeMs = decrease(map);
+                        delta.procStatsCpuFgTimeMs = map;
+                    }
+                    {
+                        Map<String, DigitEntry<Long>> map = new HashMap<>();
+                        for (Map.Entry<String, DigitEntry<Long>> entry : end.tagWakelocksPartialMs.entrySet()) {
+                            String key = entry.getKey();
+                            DigitEntry<Long> endEntry = entry.getValue();
+                            long bgnValue = 0L;
+                            DigitEntry<Long> bgnEntry = bgn.tagWakelocksPartialMs.get(key);
+                            if (bgnEntry != null) {
+                                bgnValue = bgnEntry.get();
+                            }
+                            map.put(key, Differ.DigitDiffer.globalDiff(DigitEntry.of(bgnValue), endEntry));
+                        }
+                        delta.tagWakelocksPartialMs = map;
+                    }
+                    {
+                        Map<String, DigitEntry<Long>> map = new HashMap<>();
+                        for (Map.Entry<String, DigitEntry<Long>> entry : end.tagWakelocksFullMs.entrySet()) {
+                            String key = entry.getKey();
+                            DigitEntry<Long> endEntry = entry.getValue();
+                            long bgnValue = 0L;
+                            DigitEntry<Long> bgnEntry = bgn.tagWakelocksFullMs.get(key);
+                            if (bgnEntry != null) {
+                                bgnValue = bgnEntry.get();
+                            }
+                            map.put(key, Differ.DigitDiffer.globalDiff(DigitEntry.of(bgnValue), endEntry));
+                        }
+                        delta.tagWakelocksFullMs = map;
                     }
                     return delta;
                 }
-
-                private Map<String, DigitEntry<Long>> decrease(Map<String, DigitEntry<Long>> input) {
-                    return BatteryCanaryUtil.sortMapByValue(input, new Comparator<Map.Entry<String, DigitEntry<Long>>>() {
-                        @Override
-                        public int compare(Map.Entry<String, DigitEntry<Long>> o1, Map.Entry<String, DigitEntry<Long>> o2) {
-                            long sumLeft = o1.getValue().get(), sumRight = o2.getValue().get();
-                            long minus = sumLeft - sumRight;
-                            if (minus == 0) return 0;
-                            if (minus > 0) return -1;
-                            return 1;
-                        }
-                    });
-                }
             };
+        }
+
+        @Override
+        public Delta<HealthStatsSnapshot> diff(HealthStatsSnapshot bgn) {
+            Delta<HealthStatsSnapshot> delta = diffInternal(bgn);
+            // Sort
+            delta.dlt.procStatsCpuUsrTimeMs = decrease(procStatsCpuUsrTimeMs);
+            delta.dlt.procStatsCpuSysTimeMs = decrease(procStatsCpuSysTimeMs);
+            delta.dlt.procStatsCpuFgTimeMs = decrease(procStatsCpuFgTimeMs);
+            delta.dlt.tagWakelocksPartialMs = decrease(tagWakelocksPartialMs);
+            delta.dlt.tagWakelocksFullMs = decrease(tagWakelocksFullMs);
+            return delta;
+        }
+
+        private Map<String, DigitEntry<Long>> decrease(Map<String, DigitEntry<Long>> input) {
+            return BatteryCanaryUtil.sortMapByValue(input, new Comparator<Map.Entry<String, DigitEntry<Long>>>() {
+                @Override
+                public int compare(Map.Entry<String, DigitEntry<Long>> o1, Map.Entry<String, DigitEntry<Long>> o2) {
+                    long sumLeft = o1.getValue().get(), sumRight = o2.getValue().get();
+                    long minus = sumLeft - sumRight;
+                    if (minus == 0) return 0;
+                    if (minus > 0) return -1;
+                    return 1;
+                }
+            });
         }
 
         public static double getPower(@NonNull Map<String, ?> extra, String key) {
@@ -512,6 +589,208 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                 return (double) val;
             }
             return 0;
+        }
+
+
+        public static class AccCollector {
+            public int count;
+            public long beginMs;
+            public long duringMs;
+            public HealthStatsSnapshot last;
+            public HealthStatsSnapshot accDelta;
+
+            public AccCollector(HealthStatsSnapshot bgn) {
+                beginMs = bgn.time;
+                last = bgn;
+                accDelta = new HealthStatsSnapshot();
+                accDelta.procStatsCpuUsrTimeMs = new HashMap<>();
+                accDelta.procStatsCpuSysTimeMs = new HashMap<>();
+                accDelta.procStatsCpuFgTimeMs = new HashMap<>();
+                accDelta.tagWakelocksPartialMs = new HashMap<>();
+                accDelta.tagWakelocksFullMs = new HashMap<>();
+            }
+
+            @Nullable
+            public Delta<HealthStatsSnapshot> collect(HealthStatsSnapshot curr) {
+                Delta<HealthStatsSnapshot> delta = null;
+                if (isHealthStatsNotReset(last, curr)) {
+                    delta = curr.diffInternal(last);
+
+                    accDelta.cpuPower = DigitEntry.of(accDelta.cpuPower.get() + delta.dlt.cpuPower.get());
+                    accDelta.wakelocksPower = DigitEntry.of(accDelta.wakelocksPower.get() + delta.dlt.wakelocksPower.get());
+                    accDelta.mobilePower = DigitEntry.of(accDelta.mobilePower.get() + delta.dlt.mobilePower.get());
+                    accDelta.wifiPower = DigitEntry.of(accDelta.wifiPower.get() + delta.dlt.wifiPower.get());
+                    accDelta.blueToothPower = DigitEntry.of(accDelta.blueToothPower.get() + delta.dlt.blueToothPower.get());
+                    accDelta.gpsPower = DigitEntry.of(accDelta.gpsPower.get() + delta.dlt.gpsPower.get());
+                    accDelta.sensorsPower = DigitEntry.of(accDelta.sensorsPower.get() + delta.dlt.sensorsPower.get());
+                    accDelta.cameraPower = DigitEntry.of(accDelta.cameraPower.get() + delta.dlt.cameraPower.get());
+                    accDelta.flashLightPower = DigitEntry.of(accDelta.flashLightPower.get() + delta.dlt.flashLightPower.get());
+                    accDelta.audioPower = DigitEntry.of(accDelta.audioPower.get() + delta.dlt.audioPower.get());
+                    accDelta.videoPower = DigitEntry.of(accDelta.videoPower.get() + delta.dlt.videoPower.get());
+                    accDelta.screenPower = DigitEntry.of(accDelta.screenPower.get() + delta.dlt.screenPower.get());
+                    accDelta.systemServicePower = DigitEntry.of(accDelta.systemServicePower.get() + delta.dlt.systemServicePower.get());
+                    accDelta.idlePower = DigitEntry.of(accDelta.idlePower.get() + delta.dlt.idlePower.get());
+
+                    accDelta.cpuPowerMams = DigitEntry.of(accDelta.cpuPowerMams.get() + delta.dlt.cpuPowerMams.get());
+                    accDelta.cpuUsrTimeMs = DigitEntry.of(accDelta.cpuUsrTimeMs.get() + delta.dlt.cpuUsrTimeMs.get());
+                    accDelta.cpuSysTimeMs = DigitEntry.of(accDelta.cpuSysTimeMs.get() + delta.dlt.cpuSysTimeMs.get());
+                    accDelta.realTimeMs = DigitEntry.of(accDelta.realTimeMs.get() + delta.dlt.realTimeMs.get());
+                    accDelta.upTimeMs = DigitEntry.of(accDelta.upTimeMs.get() + delta.dlt.upTimeMs.get());
+
+                    accDelta.mobilePowerMams = DigitEntry.of(accDelta.mobilePowerMams.get() + delta.dlt.mobilePowerMams.get());
+                    accDelta.mobileRadioActiveMs = DigitEntry.of(accDelta.mobileRadioActiveMs.get() + delta.dlt.mobileRadioActiveMs.get());
+                    accDelta.mobileIdleMs = DigitEntry.of(accDelta.mobileIdleMs.get() + delta.dlt.mobileIdleMs.get());
+                    accDelta.mobileRxMs = DigitEntry.of(accDelta.mobileRxMs.get() + delta.dlt.mobileRxMs.get());
+                    accDelta.mobileTxMs = DigitEntry.of(accDelta.mobileTxMs.get() + delta.dlt.mobileTxMs.get());
+                    accDelta.mobileRxBytes = DigitEntry.of(accDelta.mobileRxBytes.get() + delta.dlt.mobileRxBytes.get());
+                    accDelta.mobileTxBytes = DigitEntry.of(accDelta.mobileTxBytes.get() + delta.dlt.mobileTxBytes.get());
+                    accDelta.mobileRxPackets = DigitEntry.of(accDelta.mobileRxPackets.get() + delta.dlt.mobileRxPackets.get());
+                    accDelta.mobileTxPackets = DigitEntry.of(accDelta.mobileTxPackets.get() + delta.dlt.mobileTxPackets.get());
+
+
+                    accDelta.wifiPowerMams = DigitEntry.of(accDelta.wifiPowerMams.get() + delta.dlt.wifiPowerMams.get());
+                    accDelta.wifiIdleMs = DigitEntry.of(accDelta.wifiIdleMs.get() + delta.dlt.wifiIdleMs.get());
+                    accDelta.wifiRxMs = DigitEntry.of(accDelta.wifiRxMs.get() + delta.dlt.wifiRxMs.get());
+                    accDelta.wifiTxMs = DigitEntry.of(accDelta.wifiTxMs.get() + delta.dlt.wifiTxMs.get());
+                    accDelta.wifiRunningMs = DigitEntry.of(accDelta.wifiRunningMs.get() + delta.dlt.wifiRunningMs.get());
+                    accDelta.wifiLockMs = DigitEntry.of(accDelta.wifiLockMs.get() + delta.dlt.wifiLockMs.get());
+                    accDelta.wifiScanMs = DigitEntry.of(accDelta.wifiScanMs.get() + delta.dlt.wifiScanMs.get());
+                    accDelta.wifiMulticastMs = DigitEntry.of(accDelta.wifiMulticastMs.get() + delta.dlt.wifiMulticastMs.get());
+                    accDelta.wifiRxBytes = DigitEntry.of(accDelta.wifiRxBytes.get() + delta.dlt.wifiRxBytes.get());
+                    accDelta.wifiTxBytes = DigitEntry.of(accDelta.wifiTxBytes.get() + delta.dlt.wifiTxBytes.get());
+                    accDelta.wifiRxPackets = DigitEntry.of(accDelta.wifiRxPackets.get() + delta.dlt.wifiRxPackets.get());
+                    accDelta.wifiTxPackets = DigitEntry.of(accDelta.wifiTxPackets.get() + delta.dlt.wifiTxPackets.get());
+
+                    accDelta.blueToothPowerMams = DigitEntry.of(accDelta.blueToothPowerMams.get() + delta.dlt.blueToothPowerMams.get());
+                    accDelta.blueToothIdleMs = DigitEntry.of(accDelta.blueToothIdleMs.get() + delta.dlt.blueToothIdleMs.get());
+                    accDelta.blueToothRxMs = DigitEntry.of(accDelta.blueToothRxMs.get() + delta.dlt.blueToothRxMs.get());
+                    accDelta.blueToothTxMs = DigitEntry.of(accDelta.blueToothTxMs.get() + delta.dlt.blueToothTxMs.get());
+
+                    accDelta.wakelocksPartialMs = DigitEntry.of(accDelta.wakelocksPartialMs.get() + delta.dlt.wakelocksPartialMs.get());
+                    accDelta.wakelocksFullMs = DigitEntry.of(accDelta.wakelocksFullMs.get() + delta.dlt.wakelocksFullMs.get());
+                    accDelta.wakelocksWindowMs = DigitEntry.of(accDelta.wakelocksWindowMs.get() + delta.dlt.wakelocksWindowMs.get());
+                    accDelta.wakelocksDrawMs = DigitEntry.of(accDelta.wakelocksDrawMs.get() + delta.dlt.wakelocksDrawMs.get());
+                    accDelta.wakelocksPidSum = DigitEntry.of(accDelta.wakelocksPidSum.get() + delta.dlt.wakelocksPidSum.get());
+                    accDelta.gpsMs = DigitEntry.of(accDelta.gpsMs.get() + delta.dlt.gpsMs.get());
+                    accDelta.sensorsPowerMams = DigitEntry.of(accDelta.sensorsPowerMams.get() + delta.dlt.sensorsPowerMams.get());
+                    accDelta.cameraMs = DigitEntry.of(accDelta.cameraMs.get() + delta.dlt.cameraMs.get());
+                    accDelta.flashLightMs = DigitEntry.of(accDelta.flashLightMs.get() + delta.dlt.flashLightMs.get());
+                    accDelta.audioMs = DigitEntry.of(accDelta.audioMs.get() + delta.dlt.audioMs.get());
+                    accDelta.videoMs = DigitEntry.of(accDelta.videoMs.get() + delta.dlt.videoMs.get());
+                    accDelta.jobsMs = DigitEntry.of(accDelta.jobsMs.get() + delta.dlt.jobsMs.get());
+                    accDelta.syncMs = DigitEntry.of(accDelta.syncMs.get() + delta.dlt.syncMs.get());
+
+                    accDelta.fgActMs = DigitEntry.of(accDelta.fgActMs.get() + delta.dlt.fgActMs.get());
+                    accDelta.procTopAppMs = DigitEntry.of(accDelta.procTopAppMs.get() + delta.dlt.procTopAppMs.get());
+                    accDelta.procTopSleepMs = DigitEntry.of(accDelta.procTopSleepMs.get() + delta.dlt.procTopSleepMs.get());
+                    accDelta.procFgMs = DigitEntry.of(accDelta.procFgMs.get() + delta.dlt.procFgMs.get());
+                    accDelta.procFgSrvMs = DigitEntry.of(accDelta.procFgSrvMs.get() + delta.dlt.procFgSrvMs.get());
+                    accDelta.procBgMs = DigitEntry.of(accDelta.procBgMs.get() + delta.dlt.procBgMs.get());
+                    accDelta.procCacheMs = DigitEntry.of(accDelta.procCacheMs.get() + delta.dlt.procCacheMs.get());
+
+                    for (Map.Entry<String, DigitEntry<Long>> entry : delta.dlt.procStatsCpuUsrTimeMs.entrySet()) {
+                        String key = entry.getKey();
+                        DigitEntry<Long> val = entry.getValue();
+                        DigitEntry<Long> acc = accDelta.procStatsCpuUsrTimeMs.get(key);
+                        accDelta.procStatsCpuUsrTimeMs.put(key, DigitEntry.of(val.get() + (acc == null ? 0 : acc.get())));
+                    }
+                    for (Map.Entry<String, DigitEntry<Long>> entry : delta.dlt.procStatsCpuSysTimeMs.entrySet()) {
+                        String key = entry.getKey();
+                        DigitEntry<Long> val = entry.getValue();
+                        DigitEntry<Long> acc = accDelta.procStatsCpuSysTimeMs.get(key);
+                        accDelta.procStatsCpuSysTimeMs.put(key, DigitEntry.of(val.get() + (acc == null ? 0 : acc.get())));
+                    }
+                    for (Map.Entry<String, DigitEntry<Long>> entry : delta.dlt.procStatsCpuFgTimeMs.entrySet()) {
+                        String key = entry.getKey();
+                        DigitEntry<Long> val = entry.getValue();
+                        DigitEntry<Long> acc = accDelta.procStatsCpuFgTimeMs.get(key);
+                        accDelta.procStatsCpuFgTimeMs.put(key, DigitEntry.of(val.get() + (acc == null ? 0 : acc.get())));
+                    }
+                    for (Map.Entry<String, DigitEntry<Long>> entry : delta.dlt.tagWakelocksPartialMs.entrySet()) {
+                        String key = entry.getKey();
+                        DigitEntry<Long> val = entry.getValue();
+                        DigitEntry<Long> acc = accDelta.tagWakelocksPartialMs.get(key);
+                        accDelta.tagWakelocksPartialMs.put(key, DigitEntry.of(val.get() + (acc == null ? 0 : acc.get())));
+                    }
+                    for (Map.Entry<String, DigitEntry<Long>> entry : delta.dlt.tagWakelocksFullMs.entrySet()) {
+                        String key = entry.getKey();
+                        DigitEntry<Long> val = entry.getValue();
+                        DigitEntry<Long> acc = accDelta.tagWakelocksFullMs.get(key);
+                        accDelta.tagWakelocksFullMs.put(key, DigitEntry.of(val.get() + (acc == null ? 0 : acc.get())));
+                    }
+
+                    count++;
+                    duringMs += delta.during;
+
+                }
+                last = curr;
+                return delta;
+            }
+
+            public static boolean isHealthStatsNotReset(HealthStatsSnapshot bgn, HealthStatsSnapshot end) {
+                try {
+                    assertNotNegative("cpuPowerMams", bgn.cpuPowerMams.get(), end.cpuPowerMams.get());
+                    assertNotNegative("cpuUsrTimeMs", bgn.cpuUsrTimeMs.get(), end.cpuUsrTimeMs.get());
+                    assertNotNegative("cpuSysTimeMs", bgn.cpuSysTimeMs.get(), end.cpuSysTimeMs.get());
+                    assertNotNegative("realTimeMs", bgn.realTimeMs.get(), end.realTimeMs.get());
+                    assertNotNegative("upTimeMs", bgn.upTimeMs.get(), end.upTimeMs.get());
+                    assertNotNegative("offRealTimeMs", bgn.offRealTimeMs.get(), end.offRealTimeMs.get());
+                    assertNotNegative("offUpTimeMs", bgn.offUpTimeMs.get(), end.offUpTimeMs.get());
+
+                    assertNotNegative("mobilePowerMams", bgn.mobilePowerMams.get(), end.mobilePowerMams.get());
+                    assertNotNegative("mobileRadioActiveMs", bgn.mobileRadioActiveMs.get(), end.mobileRadioActiveMs.get());
+                    assertNotNegative("mobileIdleMs", bgn.mobileIdleMs.get(), end.mobileIdleMs.get());
+                    assertNotNegative("mobileRxMs", bgn.mobileRxMs.get(), end.mobileRxMs.get());
+                    assertNotNegative("mobileTxMs", bgn.mobileTxMs.get(), end.mobileTxMs.get());
+                    assertNotNegative("mobileRxBytes", bgn.mobileRxBytes.get(), end.mobileRxBytes.get());
+                    assertNotNegative("mobileTxBytes", bgn.mobileTxBytes.get(), end.mobileTxBytes.get());
+                    assertNotNegative("mobileRxPackets", bgn.mobileRxPackets.get(), end.mobileRxPackets.get());
+                    assertNotNegative("mobileTxPackets", bgn.mobileTxPackets.get(), end.mobileTxPackets.get());
+
+                    assertNotNegative("wifiPowerMams", bgn.wifiPowerMams.get(), end.wifiPowerMams.get());
+                    assertNotNegative("wifiIdleMs", bgn.wifiIdleMs.get(), end.wifiIdleMs.get());
+                    assertNotNegative("wifiRxMs", bgn.wifiRxMs.get(), end.wifiRxMs.get());
+                    assertNotNegative("wifiTxMs", bgn.wifiTxMs.get(), end.wifiTxMs.get());
+                    assertNotNegative("wifiRunningMs", bgn.wifiRunningMs.get(), end.wifiRunningMs.get());
+                    assertNotNegative("wifiLockMs", bgn.wifiLockMs.get(), end.wifiLockMs.get());
+                    assertNotNegative("wifiScanMs", bgn.wifiScanMs.get(), end.wifiScanMs.get());
+                    assertNotNegative("wifiMulticastMs", bgn.wifiMulticastMs.get(), end.wifiMulticastMs.get());
+                    assertNotNegative("wifiRxBytes", bgn.wifiRxBytes.get(), end.wifiRxBytes.get());
+                    assertNotNegative("wifiTxBytes", bgn.wifiTxBytes.get(), end.wifiTxBytes.get());
+                    assertNotNegative("wifiRxPackets", bgn.wifiRxPackets.get(), end.wifiRxPackets.get());
+                    assertNotNegative("wifiTxPackets", bgn.wifiTxPackets.get(), end.wifiTxPackets.get());
+
+                    assertNotNegative("blueToothPowerMams", bgn.blueToothPowerMams.get(), end.blueToothPowerMams.get());
+                    assertNotNegative("blueToothIdleMs", bgn.blueToothIdleMs.get(), end.blueToothIdleMs.get());
+                    assertNotNegative("blueToothRxMs", bgn.blueToothRxMs.get(), end.blueToothRxMs.get());
+                    assertNotNegative("blueToothTxMs", bgn.blueToothTxMs.get(), end.blueToothTxMs.get());
+
+                    assertNotNegative("wakelocksPartialMs", bgn.wakelocksPartialMs.get(), end.wakelocksPartialMs.get());
+                    assertNotNegative("wakelocksFullMs", bgn.wakelocksFullMs.get(), end.wakelocksFullMs.get());
+                    assertNotNegative("wakelocksWindowMs", bgn.wakelocksWindowMs.get(), end.wakelocksWindowMs.get());
+                    assertNotNegative("wakelocksDrawMs", bgn.wakelocksDrawMs.get(), end.wakelocksDrawMs.get());
+                    assertNotNegative("wakelocksPidSum", bgn.wakelocksPidSum.get(), end.wakelocksPidSum.get());
+                    assertNotNegative("gpsMs", bgn.gpsMs.get(), end.gpsMs.get());
+                    assertNotNegative("sensorsPowerMams", bgn.sensorsPowerMams.get(), end.sensorsPowerMams.get());
+                    assertNotNegative("cameraMs", bgn.cameraMs.get(), end.cameraMs.get());
+                    assertNotNegative("flashLightMs", bgn.flashLightMs.get(), end.flashLightMs.get());
+                    assertNotNegative("audioMs", bgn.audioMs.get(), end.audioMs.get());
+                    assertNotNegative("videoMs", bgn.videoMs.get(), end.videoMs.get());
+                    assertNotNegative("jobsMs", bgn.jobsMs.get(), end.jobsMs.get());
+                    assertNotNegative("syncMs", bgn.syncMs.get(), end.syncMs.get());
+
+                    return true;
+                } catch (Exception e) {
+                    MatrixLog.w(TAG, "skip, " + e.getMessage());
+                    return false;
+                }
+            }
+
+            static void assertNotNegative(String key, long bgn, long end) {
+                if (bgn > end) {
+                    throw new IllegalStateException("negative stats: " + key);
+                }
+            }
         }
     }
 }

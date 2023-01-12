@@ -12,6 +12,9 @@
 #include "get_tls.h"
 #include "type.h"
 #include "my_functions.h"
+#include <xhook_ext.h>
+
+#define HOOK_REQUEST_GROUPID_EGL_HOOK 0x07
 
 extern "C" JNIEXPORT jboolean JNICALL Java_com_tencent_matrix_openglleak_hook_OpenGLHook_init
         (JNIEnv *env, jobject thiz) {
@@ -62,6 +65,11 @@ extern "C" JNIEXPORT jboolean JNICALL Java_com_tencent_matrix_openglleak_hook_Op
 
         method_getThrowable = env->GetStaticMethodID(class_OpenGLHook, "getThrowable", "()I");
 
+        method_onEglContextCreate = env->GetStaticMethodID(class_OpenGLHook, "onEglContextCreate",
+                                                           "(Ljava/lang/String;IJJJLjava/lang/String;)V");
+        method_onEglContextDestroy = env->GetStaticMethodID(class_OpenGLHook, "onEglContextDestroy",
+                                                            "(Ljava/lang/String;JI)V");
+
         messages_containers = new BufferManagement();
         messages_containers->start_process();
         pthread_key_create(&g_thread_name_key, [](void *thread_name) {
@@ -93,6 +101,27 @@ JNIEXPORT jint JNI_OnLoad(JavaVM *vm, void *reserved) {
     return JNI_VERSION_1_6;
 }
 
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_com_tencent_matrix_openglleak_hook_OpenGLHook_hookEgl(JNIEnv *env, jclass clazz) {
+    system_eglCreateContext = eglCreateContext;
+    system_eglDestroyContext = eglDestroyContext;
+    // TODO hook eglCreateXxxSurface() / eglDestroySurface()
+
+    int ret = xhook_grouped_register(HOOK_REQUEST_GROUPID_EGL_HOOK, ".*\\.so$", "eglCreateContext",
+                                  (void *) my_egl_context_create, nullptr);
+
+    ret =  xhook_grouped_register(HOOK_REQUEST_GROUPID_EGL_HOOK, ".*\\.so$", "eglDestroyContext",
+                                       (void *) my_egl_context_destroy,
+                                       nullptr);
+
+    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_EGL_HOOK, ".*libmatrix-opengl-leak.\\so$", nullptr);
+
+    xhook_refresh(false);
+    xhook_export_symtable_hook("libEGL.so", "eglCreateContext", (void *) my_egl_context_create, nullptr);
+    xhook_export_symtable_hook("libEGL.so", "eglDestroyContext", (void *) my_egl_context_destroy, nullptr);
+    return ret == 0;
+}
 
 /*
  * Class:     com_tencent_matrix_openglleak_hook_OpenGLHook
@@ -450,8 +479,7 @@ void get_native_stack(wechat_backtrace::Backtrace *backtrace, char *&stack) {
         int status = 0;
         demangled_name = abi::__cxa_demangle(it.function_name, nullptr, 0, &status);
 
-        full_stack_builder << "      | "
-                           << "#pc " << std::hex << it.rel_pc << " "
+        full_stack_builder << "#pc " << std::hex << it.rel_pc << " "
                            << (demangled_name ? demangled_name : "(null)")
                            << " ("
                            << it.map_name
@@ -571,7 +599,8 @@ Java_com_tencent_matrix_openglleak_hook_OpenGLHook_isEglContextAlive(
 
 extern "C"
 JNIEXPORT jint JNICALL
-Java_com_tencent_matrix_openglleak_hook_OpenGLHook_getResidualQueueSize(JNIEnv *env, jobject clazz) {
+Java_com_tencent_matrix_openglleak_hook_OpenGLHook_getResidualQueueSize(JNIEnv *env,
+                                                                        jobject clazz) {
     return messages_containers->get_queue_size();
 }
 
