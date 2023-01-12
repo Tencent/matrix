@@ -24,8 +24,6 @@ import com.tencent.matrix.util.MatrixUtil;
 
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
@@ -43,8 +41,6 @@ public class ManualDumpProcessor extends BaseLeakProcessor {
 
     private final NotificationManager mNotificationManager;
 
-    private final List<DestroyedActivityInfo> mLeakedActivities = new ArrayList<>();
-
     private boolean isMuted;
 
     public ManualDumpProcessor(ActivityRefWatcher watcher, String targetActivity) {
@@ -61,8 +57,6 @@ public class ManualDumpProcessor extends BaseLeakProcessor {
             MatrixLog.v(TAG, "activity with key [%s] was already recycled.", destroyedActivityInfo.mKey);
             return true;
         }
-
-        mLeakedActivities.add(destroyedActivityInfo);
 
         MatrixLog.i(TAG, "show notification for activity leak. %s", destroyedActivityInfo.mActivityName);
 
@@ -86,6 +80,11 @@ public class ManualDumpProcessor extends BaseLeakProcessor {
     }
 
     private void sendResultNotification(DestroyedActivityInfo activityInfo, String hprofPath, String refChain) {
+        if (!getWatcher().getResourcePlugin().getConfig().isManualDumpNotificationEnabled()) {
+            MatrixLog.i(TAG, "Manual dump notification is disabled");
+            return;
+        }
+
         final Context context = getWatcher().getContext();
 
         Intent targetIntent = new Intent();
