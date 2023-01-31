@@ -24,6 +24,7 @@ import android.os.Looper;
 import android.os.Message;
 import android.os.MessageQueue;
 import android.os.SystemClock;
+import android.util.Pair;
 
 import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
@@ -55,6 +56,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -95,24 +97,19 @@ public class SignalAnrTracer extends Tracer {
         static class ThreadNode {
             int threadId;
             String info;
-            List<Integer> waitingList;
-            int visit;  // 0 not visited, 1 visiting, 2 visited
-
-            ThreadNode(int a, String b, List<Integer> c) {
-                threadId = a;
-                info = b;
-                waitingList = c;
-            }
+            String lockObjCls;
+            int peerId = -1;
+            int visit = 0;  // 0 not visited, 1 visiting, 2 visited
         }
 
         private final Pattern threadPattern = Pattern.compile("^\"(.*?)\" .*? tid=(\\d+) \\w+$");
-        private final Pattern lockHeldPattern = Pattern.compile("^  - .*? held by thread (\\d+)$");
-        private int currentThreadId;
+        private final Pattern lockHeldPattern = Pattern.compile("^  - .*?\\(a (.*?)\\) held by thread (\\d+)$");
         private final StringBuilder currentSb = new StringBuilder();
         private final HashMap<Integer, ThreadNode> threadsWaitingForHeldLock = new HashMap<>();
-        private List<Integer> waitingList;
+        private LinkedList<ThreadNode> waitingList = new LinkedList<>();
         private String mainThreadInfo = "";
         private boolean threadInfoBegin = false;
+        private ThreadNode currentThreadInfo = new ThreadNode();
 
         public void parseLine(String line) {
 
@@ -120,9 +117,9 @@ public class SignalAnrTracer extends Tracer {
                 // thread info end
                 threadInfoBegin = false;
 
-                if (currentSb.length() > 0 && waitingList != null && waitingList.size() > 0) {
+                if (currentSb.length() > 0 && currentThreadInfo.peerId >= 0) {
                     String threadInfo = currentSb.toString();
-                    if (currentThreadId == 1) {
+                    if (currentThreadInfo.threadId == 1) {
                         // "currentThreadId" is a thin lock thread id. This is a small integer used by the
                         // thin lock implementation. This is not to be confused with the native thread's tid,
                         // nor is it the value returned by java.lang.Thread.getId --- this is a distinct value,
@@ -130,8 +127,9 @@ public class SignalAnrTracer extends Tracer {
                         mainThreadInfo = threadInfo;
                     }
 
-                    threadsWaitingForHeldLock.put(currentThreadId, new ThreadNode(currentThreadId, threadInfo, waitingList));
-                    waitingList = null;
+                    currentThreadInfo.info = threadInfo;
+                    threadsWaitingForHeldLock.put(currentThreadInfo.threadId, currentThreadInfo);
+                    currentThreadInfo = new ThreadNode();
                 }
 
             } else if (!threadInfoBegin) {
@@ -142,9 +140,8 @@ public class SignalAnrTracer extends Tracer {
 
                     currentSb.setLength(0);
                     currentSb.append(line).append('\n');
-                    waitingList = waitingList == null ? new ArrayList<Integer>(4) : waitingList;
                     try {
-                        currentThreadId = Integer.parseInt(m.group(2));
+                        currentThreadInfo.threadId = Integer.parseInt(Objects.requireNonNull(m.group(2)));
                     } catch (Exception e) {
                         MatrixLog.e(TAG, e.toString());
                     }
@@ -153,8 +150,8 @@ public class SignalAnrTracer extends Tracer {
                 Matcher m = lockHeldPattern.matcher(line);
                 if (m.find()) {
                     try {
-                        int peerId = Integer.parseInt(m.group(1));
-                        waitingList.add(peerId);
+                        currentThreadInfo.lockObjCls = m.group(1);
+                        currentThreadInfo.peerId = Integer.parseInt(Objects.requireNonNull(m.group(2)));
                     } catch (Exception e) {
                         MatrixLog.e(TAG, e.toString());
                     }
@@ -178,7 +175,7 @@ public class SignalAnrTracer extends Tracer {
             if (waitingList == null || waitingList.size() == 0) {
                 return "";
             }
-            int threadId = waitingList.get(0);
+            int threadId = waitingList.get(0).threadId;
             ThreadNode node = threadsWaitingForHeldLock.get(threadId);
             return node == null ? "" : node.info;
         }
@@ -188,61 +185,57 @@ public class SignalAnrTracer extends Tracer {
             if (waitingList == null || waitingList.size() == 0) {
                 return "";
             }
-            int threadId = waitingList.get(waitingList.size() - 1);
+            int threadId = waitingList.get(waitingList.size() - 1).threadId;
             ThreadNode node = threadsWaitingForHeldLock.get(threadId);
             return node == null ? "" : node.info;
         }
 
         @NonNull
-        public List<Integer> getWaitingList() {
-            return waitingList == null ? new ArrayList<Integer>() : waitingList;
+        public List<Pair<Integer, String>> getWaitingList() {
+            List<Pair<Integer, String>> list = new ArrayList<>();
+            for (ThreadNode threadNode : waitingList) {
+                list.add(new Pair<>(threadNode.threadId, threadNode.lockObjCls));
+            }
+            return list;
         }
 
         private boolean checkDeadLock() {
-            LinkedList<Integer> path = new LinkedList<>();
+            waitingList.clear();
             for (Map.Entry<Integer, ThreadNode> nodeEntry : threadsWaitingForHeldLock.entrySet()) {
-                if (nodeEntry.getValue().visit == 0) {
-                    int ret;
-                    if ((ret = dfsSearch(path, nodeEntry.getValue())) != -1) {
+                ThreadNode node = nodeEntry.getValue();
+                if (node.visit == 0) {
+                    if (dfsSearch(node) != null) {
                         // retrieve cycle from path and save it in waitingList
-                        while (path.size() > 0 && path.getFirst() != ret) {
-                            path.removeFirst();
+                        while (waitingList.size() > 0 && waitingList.getFirst() != node) {
+                            waitingList.removeFirst();
                         }
-                        waitingList = path;
                         return true;
                     }
                 }
             }
-
-            // no cycle
-            if (waitingList != null) {
-                waitingList.clear();
-            }
             return false;
         }
 
-        // return the entry point if a cycle is found, else return -1.
-        private int dfsSearch(LinkedList<Integer> path, ThreadNode node) {
-            path.addLast(node.threadId);
+        // Return the entry point if a cycle is found, else return null.
+        private ThreadNode dfsSearch(ThreadNode node) {
+            waitingList.addLast(node);
             node.visit = 1;
 
-            for (Integer peer : node.waitingList) {
-                ThreadNode peerNode = threadsWaitingForHeldLock.get(peer);
-                if (peerNode != null) {
-                    if (peerNode.visit == 1) {
-                        return peerNode.threadId;
-                    }
+            ThreadNode peerNode = threadsWaitingForHeldLock.get(node.peerId);
+            if (peerNode != null) {
+                if (peerNode.visit == 1) {
+                    return peerNode;
+                }
 
-                    int ret;
-                    if (peerNode.visit == 0 && (ret = dfsSearch(path, peerNode)) != -1) {
-                        return ret;
-                    }
+                ThreadNode ret;
+                if (peerNode.visit == 0 && (ret = dfsSearch(peerNode)) != null) {
+                    return ret;
                 }
             }
 
             node.visit = 2;
-            path.removeLast();
-            return -1;
+            waitingList.removeLast();
+            return null;
         }
     }
 
@@ -552,7 +545,7 @@ public class SignalAnrTracer extends Tracer {
 
         void onNativeBacktraceDetected(String backtrace, String mMessageString, long mMessageWhen, boolean fromProcessErrorState);
 
-        void onDeadLockAnrDetected(String mainThreadStackTrace, String lockHeldThread1, String lockHeldThread2, List<Integer> waitingList);
+        void onDeadLockAnrDetected(String mainThreadStackTrace, String lockHeldThread1, String lockHeldThread2, List<Pair<Integer, String>> waitingList);
 
         void onMainThreadStuckAtNativePollOnce(String mainThreadStackTrace);
     }
