@@ -18,6 +18,7 @@ package com.tencent.matrix.trace.listeners;
 
 import androidx.annotation.CallSuper;
 
+@Deprecated
 public abstract class LooperObserver {
 
     private boolean isDispatchBegin = false;

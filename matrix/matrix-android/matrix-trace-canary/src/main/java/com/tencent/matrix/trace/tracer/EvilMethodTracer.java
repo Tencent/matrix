@@ -26,8 +26,9 @@ import com.tencent.matrix.trace.config.SharePluginInfo;
 import com.tencent.matrix.trace.config.TraceConfig;
 import com.tencent.matrix.trace.constants.Constants;
 import com.tencent.matrix.trace.core.AppMethodBeat;
-import com.tencent.matrix.trace.core.UIThreadMonitor;
+import com.tencent.matrix.trace.core.LooperMonitor;
 import com.tencent.matrix.trace.items.MethodItem;
+import com.tencent.matrix.trace.listeners.IDispatchListener;
 import com.tencent.matrix.trace.util.TraceDataUtils;
 import com.tencent.matrix.trace.util.Utils;
 import com.tencent.matrix.util.DeviceUtil;
@@ -41,14 +42,13 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
-public class EvilMethodTracer extends Tracer {
+public class EvilMethodTracer extends Tracer implements IDispatchListener {
 
     private static final String TAG = "Matrix.EvilMethodTracer";
     private final TraceConfig config;
     private AppMethodBeat.IndexRecord indexRecord;
-    private long[] queueTypeCosts = new long[3];
     private long evilThresholdMs;
-    private boolean isEvilMethodTraceEnable;
+    private final boolean isEvilMethodTraceEnable;
 
     public EvilMethodTracer(TraceConfig config) {
         this.config = config;
@@ -60,7 +60,7 @@ public class EvilMethodTracer extends Tracer {
     public void onAlive() {
         super.onAlive();
         if (isEvilMethodTraceEnable) {
-            UIThreadMonitor.getMonitor().addObserver(this);
+            LooperMonitor.register(this);
         }
 
     }
@@ -69,45 +69,31 @@ public class EvilMethodTracer extends Tracer {
     public void onDead() {
         super.onDead();
         if (isEvilMethodTraceEnable) {
-            UIThreadMonitor.getMonitor().removeObserver(this);
+            LooperMonitor.unregister(this);
         }
     }
 
+    @Override
+    public boolean isValid() {
+        return true;
+    }
 
     @Override
-    public void dispatchBegin(long beginNs, long cpuBeginMs, long token) {
-        super.dispatchBegin(beginNs, cpuBeginMs, token);
+    public void onDispatchBegin(String log) {
         indexRecord = AppMethodBeat.getInstance().maskIndex("EvilMethodTracer#dispatchBegin");
     }
 
-
     @Override
-    public void doFrame(String focusedActivity, long startNs, long endNs, boolean isVsyncFrame, long intendedFrameTimeNs, long inputCostNs, long animationCostNs, long traversalCostNs) {
-        queueTypeCosts[0] = inputCostNs;
-        queueTypeCosts[1] = animationCostNs;
-        queueTypeCosts[2] = traversalCostNs;
-    }
-
-    @Override
-    public void dispatchEnd(long beginNs, long cpuBeginMs, long endNs, long cpuEndMs, long token, boolean isVsyncFrame) {
-        super.dispatchEnd(beginNs, cpuBeginMs, endNs, cpuEndMs, token, isVsyncFrame);
-        long start = config.isDevEnv() ? System.currentTimeMillis() : 0;
-        long dispatchCost = (endNs - beginNs) / Constants.TIME_MILLIS_TO_NANO;
+    public void onDispatchEnd(String log, long beginNs, long endNs) {
+        long dispatchCost = endNs - beginNs;
         try {
             if (dispatchCost >= evilThresholdMs) {
                 long[] data = AppMethodBeat.getInstance().copyData(indexRecord);
-                long[] queueCosts = new long[3];
-                System.arraycopy(queueTypeCosts, 0, queueCosts, 0, 3);
                 String scene = AppActiveMatrixDelegate.INSTANCE.getVisibleScene();
-                MatrixHandlerThread.getDefaultHandler().post(new AnalyseTask(isForeground(), scene, data, queueCosts, cpuEndMs - cpuBeginMs, dispatchCost, endNs / Constants.TIME_MILLIS_TO_NANO));
+                MatrixHandlerThread.getDefaultHandler().post(new AnalyseTask(isForeground(), scene, data, dispatchCost, endNs));
             }
         } finally {
             indexRecord.release();
-            if (config.isDevEnv()) {
-                String usage = Utils.calculateCpuUsage(cpuEndMs - cpuBeginMs, dispatchCost);
-                MatrixLog.v(TAG, "[dispatchEnd] token:%s cost:%sms cpu:%sms usage:%s innerCost:%s",
-                        token, dispatchCost, cpuEndMs - cpuBeginMs, usage, System.currentTimeMillis() - start);
-            }
         }
     }
 
@@ -115,22 +101,18 @@ public class EvilMethodTracer extends Tracer {
         this.evilThresholdMs = evilThresholdMs;
     }
 
-    private class AnalyseTask implements Runnable {
-        long[] queueCost;
+    private static class AnalyseTask implements Runnable {
         long[] data;
-        long cpuCost;
         long cost;
         long endMs;
         String scene;
         boolean isForeground;
 
-        AnalyseTask(boolean isForeground, String scene, long[] data, long[] queueCost, long cpuCost, long cost, long endMs) {
+        AnalyseTask(boolean isForeground, String scene, long[] data, long cost, long endMs) {
             this.isForeground = isForeground;
             this.scene = scene;
             this.cost = cost;
-            this.cpuCost = cpuCost;
             this.data = data;
-            this.queueCost = queueCost;
             this.endMs = endMs;
         }
 
@@ -138,14 +120,13 @@ public class EvilMethodTracer extends Tracer {
 
             // process
             int[] processStat = Utils.getProcessPriority(Process.myPid());
-            String usage = Utils.calculateCpuUsage(cpuCost, cost);
-            LinkedList<MethodItem> stack = new LinkedList();
+            LinkedList<MethodItem> stack = new LinkedList<>();
             if (data.length > 0) {
                 TraceDataUtils.structuredDataToStack(data, stack, true, endMs);
                 TraceDataUtils.trimStack(stack, Constants.TARGET_EVIL_METHOD_STACK, new TraceDataUtils.IStructuredDataFilter() {
                     @Override
                     public boolean isFilter(long during, int filterCount) {
-                        return during < filterCount * Constants.TIME_UPDATE_CYCLE_MS;
+                        return during < (long) filterCount * Constants.TIME_UPDATE_CYCLE_MS;
                     }
 
                     @Override
@@ -156,7 +137,7 @@ public class EvilMethodTracer extends Tracer {
                     @Override
                     public void fallback(List<MethodItem> stack, int size) {
                         MatrixLog.w(TAG, "[fallback] size:%s targetSize:%s stack:%s", size, Constants.TARGET_EVIL_METHOD_STACK, stack);
-                        Iterator iterator = stack.listIterator(Math.min(size, Constants.TARGET_EVIL_METHOD_STACK));
+                        Iterator<MethodItem> iterator = stack.listIterator(Math.min(size, Constants.TARGET_EVIL_METHOD_STACK));
                         while (iterator.hasNext()) {
                             iterator.next();
                             iterator.remove();
@@ -171,7 +152,7 @@ public class EvilMethodTracer extends Tracer {
             long stackCost = Math.max(cost, TraceDataUtils.stackToString(stack, reportBuilder, logcatBuilder));
             String stackKey = TraceDataUtils.getTreeKey(stack, stackCost);
 
-            MatrixLog.w(TAG, "%s", printEvil(scene, processStat, isForeground, logcatBuilder, stack.size(), stackKey, usage, queueCost[0], queueCost[1], queueCost[2], cost)); // for logcat
+            MatrixLog.w(TAG, "%s", printEvil(scene, processStat, isForeground, logcatBuilder, stack.size(), stackKey, cost)); // for logcat
 
             // report
             try {
@@ -180,11 +161,10 @@ public class EvilMethodTracer extends Tracer {
                     return;
                 }
                 JSONObject jsonObject = new JSONObject();
-                jsonObject = DeviceUtil.getDeviceInfo(jsonObject, Matrix.with().getApplication());
+                DeviceUtil.getDeviceInfo(jsonObject, Matrix.with().getApplication());
 
                 jsonObject.put(SharePluginInfo.ISSUE_STACK_TYPE, Constants.Type.NORMAL);
                 jsonObject.put(SharePluginInfo.ISSUE_COST, stackCost);
-                jsonObject.put(SharePluginInfo.ISSUE_CPU_USAGE, usage);
                 jsonObject.put(SharePluginInfo.ISSUE_SCENE, scene);
                 jsonObject.put(SharePluginInfo.ISSUE_TRACE_STACK, reportBuilder.toString());
                 jsonObject.put(SharePluginInfo.ISSUE_STACK_KEY, stackKey);
@@ -205,8 +185,7 @@ public class EvilMethodTracer extends Tracer {
             analyse();
         }
 
-        private String printEvil(String scene, int[] processStat, boolean isForeground, StringBuilder stack, long stackSize, String stackKey, String usage, long inputCost,
-                                 long animationCost, long traversalCost, long allCost) {
+        private String printEvil(String scene, int[] processStat, boolean isForeground, StringBuilder stack, long stackSize, String stackKey, long allCost) {
             StringBuilder print = new StringBuilder();
             print.append(String.format("-\n>>>>>>>>>>>>>>>>>>>>> maybe happens Jankiness!(%sms) <<<<<<<<<<<<<<<<<<<<<\n", allCost));
             print.append("|* [Status]").append("\n");
@@ -214,10 +193,6 @@ public class EvilMethodTracer extends Tracer {
             print.append("|*\t\tForeground: ").append(isForeground).append("\n");
             print.append("|*\t\tPriority: ").append(processStat[0]).append("\tNice: ").append(processStat[1]).append("\n");
             print.append("|*\t\tis64BitRuntime: ").append(DeviceUtil.is64BitRuntime()).append("\n");
-            print.append("|*\t\tCPU: ").append(usage).append("\n");
-            print.append("|* [doFrame]").append("\n");
-            print.append("|*\t\tinputCost:animationCost:traversalCost").append("\n");
-            print.append("|*\t\t").append(inputCost).append(":").append(animationCost).append(":").append(traversalCost).append("\n");
             if (stackSize > 0) {
                 print.append("|*\t\tStackKey: ").append(stackKey).append("\n");
                 print.append(stack.toString());

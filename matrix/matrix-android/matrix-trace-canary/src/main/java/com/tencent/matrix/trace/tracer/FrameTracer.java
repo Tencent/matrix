@@ -25,16 +25,20 @@ import android.os.SystemClock;
 import android.view.FrameMetrics;
 import android.view.Window;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
+
 import com.tencent.matrix.Matrix;
-import com.tencent.matrix.lifecycle.owners.ProcessUILifecycleOwner;
 import com.tencent.matrix.report.Issue;
 import com.tencent.matrix.trace.TracePlugin;
 import com.tencent.matrix.trace.config.SharePluginInfo;
 import com.tencent.matrix.trace.config.TraceConfig;
 import com.tencent.matrix.trace.constants.Constants;
 import com.tencent.matrix.trace.core.UIThreadMonitor;
+import com.tencent.matrix.trace.listeners.IActivityFrameListener;
 import com.tencent.matrix.trace.listeners.IDoFrameListener;
-import com.tencent.matrix.trace.util.Utils;
+import com.tencent.matrix.trace.listeners.IFrameListener;
+import com.tencent.matrix.trace.listeners.LooperObserver;
 import com.tencent.matrix.util.DeviceUtil;
 import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
@@ -43,331 +47,348 @@ import com.tencent.matrix.util.MatrixUtil;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executor;
-
-import androidx.annotation.RequiresApi;
 
 public class FrameTracer extends Tracer implements Application.ActivityLifecycleCallbacks {
+    public final static int sdkInt = Build.VERSION.SDK_INT;
+    public static float defaultRefreshRate = 60;
 
     private static final String TAG = "Matrix.FrameTracer";
-    private static boolean useFrameMetrics;
-    private final HashSet<IDoFrameListener> listeners = new HashSet<>();
+    @Deprecated
+    private final HashSet<IDoFrameListener> oldListeners = new HashSet<>();
+    @Deprecated
+    private long frameIntervalNs;
+    @Deprecated
+    private int droppedSum = 0;
+    @Deprecated
+    private long durationSum = 0;
+    @Deprecated
+    private LooperObserver looperObserver = new LooperObserver() {
+        @Override
+        public void doFrame(String focusedActivity, long startNs, long endNs, boolean isVsyncFrame, long intendedFrameTimeNs, long inputCostNs, long animationCostNs, long traversalCostNs) {
+            if (isForeground()) {
+                notifyListener(focusedActivity, startNs, endNs, isVsyncFrame, intendedFrameTimeNs, inputCostNs, animationCostNs, traversalCostNs);
+            }
+        }
+
+        @Deprecated
+        private void notifyListener(final String focusedActivity, final long startNs, final long endNs, final boolean isVsyncFrame,
+                                    final long intendedFrameTimeNs, final long inputCostNs, final long animationCostNs, final long traversalCostNs) {
+            long traceBegin = System.currentTimeMillis();
+            try {
+                final long jitter = endNs - intendedFrameTimeNs;
+                final int dropFrame = (int) (jitter / frameIntervalNs);
+                if (dropFrameListener != null && dropFrame > dropFrameListenerThreshold) {
+                    try {
+                        if (MatrixUtil.getTopActivityName() != null) {
+                            dropFrameListener.dropFrame(dropFrame, jitter, MatrixUtil.getTopActivityName());
+                        }
+                    } catch (Exception e) {
+                        MatrixLog.e(TAG, "dropFrameListener error e:" + e.getMessage());
+                    }
+                }
+
+                droppedSum += dropFrame;
+                durationSum += Math.max(jitter, frameIntervalNs);
+
+                synchronized (oldListeners) {
+                    for (final IDoFrameListener listener : oldListeners) {
+                        if (config.isDevEnv()) {
+                            listener.time = SystemClock.uptimeMillis();
+                        }
+                        if (null != listener.getExecutor()) {
+                            if (listener.getIntervalFrameReplay() > 0) {
+                                listener.collect(focusedActivity, startNs, endNs, dropFrame, isVsyncFrame,
+                                        intendedFrameTimeNs, inputCostNs, animationCostNs, traversalCostNs);
+                            } else {
+                                listener.getExecutor().execute(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        listener.doFrameAsync(focusedActivity, startNs, endNs, dropFrame, isVsyncFrame,
+                                                intendedFrameTimeNs, inputCostNs, animationCostNs, traversalCostNs);
+                                    }
+                                });
+                            }
+                        } else {
+                            listener.doFrameSync(focusedActivity, startNs, endNs, dropFrame, isVsyncFrame,
+                                    intendedFrameTimeNs, inputCostNs, animationCostNs, traversalCostNs);
+                        }
+
+                        if (config.isDevEnv()) {
+                            listener.time = SystemClock.uptimeMillis() - listener.time;
+                            MatrixLog.d(TAG, "[notifyListener] cost:%sms listener:%s", listener.time, listener);
+                        }
+                    }
+                }
+            } finally {
+                long cost = System.currentTimeMillis() - traceBegin;
+                if (config.isDebug() && cost > frameIntervalNs) {
+                    MatrixLog.w(TAG, "[notifyListener] warm! maybe do heavy work in doFrameSync! size:%s cost:%sms", oldListeners.size(), cost);
+                }
+            }
+        }
+    };
+
     private DropFrameListener dropFrameListener;
     private int dropFrameListenerThreshold = 0;
-    private long frameIntervalNs;
-    private int refreshRate;
-    private final TraceConfig config;
-    private final long timeSliceMs;
-    private boolean isFPSEnable;
-    private long frozenThreshold;
-    private long highThreshold;
-    private long middleThreshold;
-    private long normalThreshold;
-    private int droppedSum = 0;
-    private long durationSum = 0;
-    private Map<String, Long> lastResumeTimeMap = new HashMap<>();
-    private Map<Integer, Window.OnFrameMetricsAvailableListener> frameListenerMap = new ConcurrentHashMap<>();
 
-    public FrameTracer(TraceConfig config, boolean supportFrameMetrics) {
-        useFrameMetrics = supportFrameMetrics;
+    private final TraceConfig config;
+    private final HashSet<IFrameListener> listeners = new HashSet<>();
+    private final long frozenThreshold;
+    private final long highThreshold;
+    private final long middleThreshold;
+    private final long normalThreshold;
+    FPSCollector fpsCollector;
+    private final Map<Integer, Window.OnFrameMetricsAvailableListener> frameListenerMap = new ConcurrentHashMap<>();
+
+    public FrameTracer(TraceConfig config) {
         this.config = config;
         this.frameIntervalNs = UIThreadMonitor.getMonitor().getFrameIntervalNanos();
-        this.timeSliceMs = config.getTimeSliceMs();
-        this.isFPSEnable = config.isFPSEnable();
         this.frozenThreshold = config.getFrozenThreshold();
         this.highThreshold = config.getHighThreshold();
         this.normalThreshold = config.getNormalThreshold();
         this.middleThreshold = config.getMiddleThreshold();
 
-        MatrixLog.i(TAG, "[init] frameIntervalMs:%s isFPSEnable:%s", frameIntervalNs, isFPSEnable);
-        if (isFPSEnable) {
-            addListener(new FPSCollector());
+        MatrixLog.i(TAG, "[init] frameIntervalMs:%s isFPSEnable:%s", frameIntervalNs, config.isFPSEnable());
+    }
+
+    @Deprecated
+    public void addListener(IDoFrameListener listener) {
+        synchronized (oldListeners) {
+            oldListeners.add(listener);
         }
     }
 
-    public void addListener(IDoFrameListener listener) {
+    @Deprecated
+    public void removeListener(IDoFrameListener listener) {
+        synchronized (oldListeners) {
+            oldListeners.remove(listener);
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.N)
+    public void addListener(IFrameListener listener) {
         synchronized (listeners) {
             listeners.add(listener);
         }
     }
 
-    public void removeListener(IDoFrameListener listener) {
+    @RequiresApi(Build.VERSION_CODES.N)
+    public void removeListener(IFrameListener listener) {
         synchronized (listeners) {
             listeners.remove(listener);
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.N)
+    public void register(IActivityFrameListener listener) {
+        if (fpsCollector != null) {
+            fpsCollector.register(listener);
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.N)
+    public void unregister(IActivityFrameListener listener) {
+        if (fpsCollector != null) {
+            fpsCollector.unregister(listener);
         }
     }
 
     @Override
     public void onAlive() {
         super.onAlive();
-        if (isFPSEnable) {
-            if (!useFrameMetrics) {
-                UIThreadMonitor.getMonitor().addObserver(this);
-            }
-            Matrix.with().getApplication().registerActivityLifecycleCallbacks(this);
+        if (config.isFPSEnable()) {
+            forceEnable();
         }
     }
 
     public void forceEnable() {
         MatrixLog.i(TAG, "forceEnable");
-        if (!useFrameMetrics) {
-            UIThreadMonitor.getMonitor().addObserver(this);
+        if (sdkInt >= Build.VERSION_CODES.N) {
+            Matrix.with().getApplication().registerActivityLifecycleCallbacks(this);
+            fpsCollector = new FPSCollector();
+            addListener(fpsCollector);
+            register(new AllActivityFrameListener());
+        } else {
+            UIThreadMonitor.getMonitor().addObserver(looperObserver);
         }
-        Matrix.with().getApplication().registerActivityLifecycleCallbacks(this);
     }
 
     public void forceDisable() {
         MatrixLog.i(TAG, "forceDisable");
         removeDropFrameListener();
-        UIThreadMonitor.getMonitor().removeObserver(this);
-        Matrix.with().getApplication().unregisterActivityLifecycleCallbacks(this);
-        frameListenerMap.clear();
+        if (sdkInt >= Build.VERSION_CODES.N) {
+            Matrix.with().getApplication().unregisterActivityLifecycleCallbacks(this);
+            listeners.clear();
+            frameListenerMap.clear();
+        } else {
+            UIThreadMonitor.getMonitor().removeObserver(looperObserver);
+            oldListeners.clear();
+        }
     }
 
     @Override
     public void onDead() {
         super.onDead();
-        removeDropFrameListener();
-        if (isFPSEnable) {
-            UIThreadMonitor.getMonitor().removeObserver(this);
-            Matrix.with().getApplication().unregisterActivityLifecycleCallbacks(this);
+        if (config.isFPSEnable()) {
+            forceDisable();
         }
     }
 
-    @Override
-    public void doFrame(String focusedActivity, long startNs, long endNs, boolean isVsyncFrame, long intendedFrameTimeNs, long inputCostNs, long animationCostNs, long traversalCostNs) {
-        if (isForeground()) {
-            notifyListener(focusedActivity, startNs, endNs, isVsyncFrame, intendedFrameTimeNs, inputCostNs, animationCostNs, traversalCostNs);
-        }
-    }
-
+    @Deprecated
     public int getDroppedSum() {
         return droppedSum;
     }
 
+    @Deprecated
     public long getDurationSum() {
         return durationSum;
     }
 
-    private void notifyListener(final String focusedActivity, final long startNs, final long endNs, final boolean isVsyncFrame,
-                                final long intendedFrameTimeNs, final long inputCostNs, final long animationCostNs, final long traversalCostNs) {
-        long traceBegin = System.currentTimeMillis();
-        try {
-            final long jitter = endNs - intendedFrameTimeNs;
-            final int dropFrame = (int) (jitter / frameIntervalNs);
-            if (dropFrameListener != null) {
-                if (dropFrame > dropFrameListenerThreshold) {
-                    try {
-                        if (MatrixUtil.getTopActivityName() != null) {
-                            long lastResumeTime = lastResumeTimeMap.get(MatrixUtil.getTopActivityName());
-                            dropFrameListener.dropFrame(dropFrame, jitter, MatrixUtil.getTopActivityName(), lastResumeTime);
-                        }
-                    } catch (Exception e) {
-                        MatrixLog.e(TAG, "dropFrameListener error e:" + e.getMessage());
-                    }
-                }
+    @RequiresApi(Build.VERSION_CODES.N)
+    private class FPSCollector implements IFrameListener {
+
+        private final Handler frameHandler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper());
+        private final HashMap<String, ActivityFrameCollectItem> map = new HashMap<>();
+        private final ArrayList<ActivityFrameCollectItem> list = new ArrayList<>();
+
+        public synchronized void register(IActivityFrameListener listener) {
+            if (listener.getSize() < 0 || listener.getSize() > 1_000_000) {
+                MatrixLog.e(TAG, "Size %d return by %s is no in range [0, 1000000]", listener.getSize(), listener.getClass().getName());
+                return;
             }
-
-            droppedSum += dropFrame;
-            durationSum += Math.max(jitter, frameIntervalNs);
-
-            synchronized (listeners) {
-                for (final IDoFrameListener listener : listeners) {
-                    if (config.isDevEnv()) {
-                        listener.time = SystemClock.uptimeMillis();
-                    }
-                    if (null != listener.getExecutor()) {
-                        if (listener.getIntervalFrameReplay() > 0) {
-                            listener.collect(focusedActivity, startNs, endNs, dropFrame, isVsyncFrame,
-                                    intendedFrameTimeNs, inputCostNs, animationCostNs, traversalCostNs);
-                        } else {
-                            listener.getExecutor().execute(new Runnable() {
-                                @Override
-                                public void run() {
-                                    listener.doFrameAsync(focusedActivity, startNs, endNs, dropFrame, isVsyncFrame,
-                                            intendedFrameTimeNs, inputCostNs, animationCostNs, traversalCostNs);
-                                }
-                            });
-                        }
-                    } else {
-                        listener.doFrameSync(focusedActivity, startNs, endNs, dropFrame, isVsyncFrame,
-                                intendedFrameTimeNs, inputCostNs, animationCostNs, traversalCostNs);
-                    }
-
-                    if (config.isDevEnv()) {
-                        listener.time = SystemClock.uptimeMillis() - listener.time;
-                        MatrixLog.d(TAG, "[notifyListener] cost:%sms listener:%s", listener.time, listener);
-                    }
-                }
-            }
-        } finally {
-            long cost = System.currentTimeMillis() - traceBegin;
-            if (config.isDebug() && cost > frameIntervalNs) {
-                MatrixLog.w(TAG, "[notifyListener] warm! maybe do heavy work in doFrameSync! size:%s cost:%sms", listeners.size(), cost);
-            }
-        }
-    }
-
-
-    private class FPSCollector extends IDoFrameListener {
-
-        private Handler frameHandler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper());
-
-        Executor executor = new Executor() {
-            @Override
-            public void execute(Runnable command) {
-                frameHandler.post(command);
-            }
-        };
-
-        private HashMap<String, FrameCollectItem> map = new HashMap<>();
-
-        @Override
-        public Executor getExecutor() {
-            return executor;
-        }
-
-        @Override
-        public int getIntervalFrameReplay() {
-            return 300;
-        }
-
-        @Override
-        public void doReplay(List<FrameReplay> list) {
-            super.doReplay(list);
-            for (FrameReplay replay : list) {
-                doReplayInner(replay.focusedActivity, replay.startNs, replay.endNs, replay.dropFrame, replay.isVsyncFrame,
-                        replay.intendedFrameTimeNs, replay.inputCostNs, replay.animationCostNs, replay.traversalCostNs);
-            }
-        }
-
-        public void doReplayInner(String visibleScene, long startNs, long endNs, int droppedFrames,
-                                  boolean isVsyncFrame, long intendedFrameTimeNs, long inputCostNs,
-                                  long animationCostNs, long traversalCostNs) {
-
-            if (Utils.isEmpty(visibleScene)) return;
-            if (!isVsyncFrame) return;
-
-            FrameCollectItem item = map.get(visibleScene);
-            if (null == item) {
-                item = new FrameCollectItem(visibleScene);
-                map.put(visibleScene, item);
-            }
-
-            item.collect(droppedFrames);
-            if (item.sumFrameCost >= timeSliceMs) { // report
-                map.remove(visibleScene);
-                item.report();
-            }
-        }
-    }
-
-    private class FrameCollectItem {
-        String visibleScene;
-        long sumFrameCost;
-        int sumFrame = 0;
-        int sumDroppedFrames;
-        // record the level of frames dropped each time
-        int[] dropLevel = new int[DropStatus.values().length];
-        int[] dropSum = new int[DropStatus.values().length];
-
-        FrameCollectItem(String visibleScene) {
-            this.visibleScene = visibleScene;
-        }
-
-        void collect(int droppedFrames) {
-            float frameIntervalCost = 1f * FrameTracer.this.frameIntervalNs
-                    / Constants.TIME_MILLIS_TO_NANO;
-            sumFrameCost += (droppedFrames + 1) * frameIntervalCost;
-            sumDroppedFrames += droppedFrames;
-            sumFrame++;
-            if (droppedFrames >= frozenThreshold) {
-                dropLevel[DropStatus.DROPPED_FROZEN.index]++;
-                dropSum[DropStatus.DROPPED_FROZEN.index] += droppedFrames;
-            } else if (droppedFrames >= highThreshold) {
-                dropLevel[DropStatus.DROPPED_HIGH.index]++;
-                dropSum[DropStatus.DROPPED_HIGH.index] += droppedFrames;
-            } else if (droppedFrames >= middleThreshold) {
-                dropLevel[DropStatus.DROPPED_MIDDLE.index]++;
-                dropSum[DropStatus.DROPPED_MIDDLE.index] += droppedFrames;
-            } else if (droppedFrames >= normalThreshold) {
-                dropLevel[DropStatus.DROPPED_NORMAL.index]++;
-                dropSum[DropStatus.DROPPED_NORMAL.index] += droppedFrames;
+            String scene = listener.getName();
+            ActivityFrameCollectItem collectItem = new ActivityFrameCollectItem(listener);
+            if (scene == null || scene.isEmpty()) {
+                list.add(collectItem);
             } else {
-                dropLevel[DropStatus.DROPPED_BEST.index]++;
-                dropSum[DropStatus.DROPPED_BEST.index] += Math.max(droppedFrames, 0);
+                map.put(scene, collectItem);
             }
         }
 
-        void report() {
-            float fps = Math.min(refreshRate, 1000.f * sumFrame / sumFrameCost);
-            MatrixLog.i(TAG, "[report] FPS:%s %s", fps, toString());
-            try {
-                TracePlugin plugin = Matrix.with().getPluginByClass(TracePlugin.class);
-                if (null == plugin) {
-                    return;
+        public synchronized void unregister(@NonNull IActivityFrameListener listener) {
+            String scene = listener.getName();
+            if (scene == null || scene.isEmpty()) {
+                for (int i = 0; i < list.size(); i++) {
+                    if (list.get(i).listener == listener) {
+                        list.remove(i);
+                        break;
+                    }
                 }
-                JSONObject dropLevelObject = new JSONObject();
-                dropLevelObject.put(DropStatus.DROPPED_FROZEN.name(), dropLevel[DropStatus.DROPPED_FROZEN.index]);
-                dropLevelObject.put(DropStatus.DROPPED_HIGH.name(), dropLevel[DropStatus.DROPPED_HIGH.index]);
-                dropLevelObject.put(DropStatus.DROPPED_MIDDLE.name(), dropLevel[DropStatus.DROPPED_MIDDLE.index]);
-                dropLevelObject.put(DropStatus.DROPPED_NORMAL.name(), dropLevel[DropStatus.DROPPED_NORMAL.index]);
-                dropLevelObject.put(DropStatus.DROPPED_BEST.name(), dropLevel[DropStatus.DROPPED_BEST.index]);
-
-                JSONObject dropSumObject = new JSONObject();
-                dropSumObject.put(DropStatus.DROPPED_FROZEN.name(), dropSum[DropStatus.DROPPED_FROZEN.index]);
-                dropSumObject.put(DropStatus.DROPPED_HIGH.name(), dropSum[DropStatus.DROPPED_HIGH.index]);
-                dropSumObject.put(DropStatus.DROPPED_MIDDLE.name(), dropSum[DropStatus.DROPPED_MIDDLE.index]);
-                dropSumObject.put(DropStatus.DROPPED_NORMAL.name(), dropSum[DropStatus.DROPPED_NORMAL.index]);
-                dropSumObject.put(DropStatus.DROPPED_BEST.name(), dropSum[DropStatus.DROPPED_BEST.index]);
-
-                JSONObject resultObject = new JSONObject();
-                resultObject = DeviceUtil.getDeviceInfo(resultObject, plugin.getApplication());
-
-                resultObject.put(SharePluginInfo.ISSUE_SCENE, visibleScene);
-                resultObject.put(SharePluginInfo.ISSUE_DROP_LEVEL, dropLevelObject);
-                resultObject.put(SharePluginInfo.ISSUE_DROP_SUM, dropSumObject);
-                resultObject.put(SharePluginInfo.ISSUE_FPS, fps);
-
-                Issue issue = new Issue();
-                issue.setTag(SharePluginInfo.TAG_PLUGIN_FPS);
-                issue.setContent(resultObject);
-                plugin.onDetectIssue(issue);
-
-            } catch (JSONException e) {
-                MatrixLog.e(TAG, "json error", e);
-            } finally {
-                sumFrame = 0;
-                sumDroppedFrames = 0;
-                sumFrameCost = 0;
+            } else {
+                map.remove(scene);
             }
         }
 
 
         @Override
-        public String toString() {
-            return "visibleScene=" + visibleScene
-                    + ", sumFrame=" + sumFrame
-                    + ", sumDroppedFrames=" + sumDroppedFrames
-                    + ", sumFrameCost=" + sumFrameCost
-                    + ", dropLevel=" + Arrays.toString(dropLevel);
+        public void onFrameMetricsAvailable(final Activity activity, final FrameMetrics frameMetrics, final int droppedFrames, final float refreshRate) {
+            frameHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (FPSCollector.this) {
+                        String scene = activity.getClass().getName();
+                        ActivityFrameCollectItem collectItem = map.get(scene);
+                        if (collectItem != null) {
+                            collectItem.append(activity, frameMetrics, droppedFrames, refreshRate);
+                        }
+                        for (ActivityFrameCollectItem frameCollectItem : list) {
+                            frameCollectItem.append(activity, frameMetrics, droppedFrames, refreshRate);
+                        }
+                    }
+                }
+            });
         }
     }
 
     public enum DropStatus {
-        DROPPED_FROZEN(4), DROPPED_HIGH(3), DROPPED_MIDDLE(2), DROPPED_NORMAL(1), DROPPED_BEST(0);
-        public int index;
+        DROPPED_BEST, DROPPED_NORMAL, DROPPED_MIDDLE, DROPPED_HIGH, DROPPED_FROZEN;
+    }
 
-        DropStatus(int index) {
-            this.index = index;
+    public enum FrameDuration {
+        UNKNOWN_DELAY_DURATION, INPUT_HANDLING_DURATION, ANIMATION_DURATION,
+        LAYOUT_MEASURE_DURATION, DRAW_DURATION, SYNC_DURATION, COMMAND_ISSUE_DURATION,
+        SWAP_BUFFERS_DURATION, TOTAL_DURATION, FIRST_DRAW_FRAME, INTENDED_VSYNC_TIMESTAMP,
+        VSYNC_TIMESTAMP, GPU_DURATION, DEADLINE,
+    }
+
+
+    @RequiresApi(Build.VERSION_CODES.N)
+    private class ActivityFrameCollectItem {
+        private final long[] durations = new long[FrameDuration.DEADLINE.ordinal()];
+        private final int[] dropLevel = new int[DropStatus.values().length];
+        private final int[] dropSum = new int[DropStatus.values().length];
+        private long dropCount;
+        private double refreshRate;
+
+        public IActivityFrameListener listener;
+        private int count = 0;
+
+
+        ActivityFrameCollectItem(IActivityFrameListener listener) {
+            this.listener = listener;
         }
 
+        public void append(Activity activity, FrameMetrics frameMetrics, int droppedFrames, float refreshRate) {
+            if (listener.skipFirstFrame() && frameMetrics.getMetric(FrameMetrics.FIRST_DRAW_FRAME) == 1) {
+                return;
+            }
+            for (int i = FrameDuration.UNKNOWN_DELAY_DURATION.ordinal(); i <= FrameDuration.TOTAL_DURATION.ordinal(); i++) {
+                durations[i] += frameMetrics.getMetric(i);
+            }
+            if (sdkInt >= Build.VERSION_CODES.S) {
+                durations[FrameDuration.GPU_DURATION.ordinal()] += frameMetrics.getMetric(FrameMetrics.GPU_DURATION);
+            }
+
+            dropCount += droppedFrames;
+            collect(droppedFrames);
+            this.refreshRate += refreshRate;
+
+            if (++count >= listener.getSize()) {
+                dropCount /= count;
+                this.refreshRate /= count;
+                for (int i = 0; i < durations.length; i++) {
+                    durations[i] /= count;
+                }
+                listener.onFrameMetricsAvailable(activity.getClass().getName(), durations, dropLevel, dropSum, (int) dropCount, (float) this.refreshRate);
+
+                reset();
+            }
+        }
+
+        void collect(int droppedFrames) {
+            if (droppedFrames >= frozenThreshold) {
+                dropLevel[DropStatus.DROPPED_FROZEN.ordinal()]++;
+                dropSum[DropStatus.DROPPED_FROZEN.ordinal()] += droppedFrames;
+            } else if (droppedFrames >= highThreshold) {
+                dropLevel[DropStatus.DROPPED_HIGH.ordinal()]++;
+                dropSum[DropStatus.DROPPED_HIGH.ordinal()] += droppedFrames;
+            } else if (droppedFrames >= middleThreshold) {
+                dropLevel[DropStatus.DROPPED_MIDDLE.ordinal()]++;
+                dropSum[DropStatus.DROPPED_MIDDLE.ordinal()] += droppedFrames;
+            } else if (droppedFrames >= normalThreshold) {
+                dropLevel[DropStatus.DROPPED_NORMAL.ordinal()]++;
+                dropSum[DropStatus.DROPPED_NORMAL.ordinal()] += droppedFrames;
+            } else {
+                dropLevel[DropStatus.DROPPED_BEST.ordinal()]++;
+                dropSum[DropStatus.DROPPED_BEST.ordinal()] += Math.max(droppedFrames, 0);
+            }
+        }
+
+        private void reset() {
+            dropCount = 0;
+            refreshRate = 0;
+            count = 0;
+
+            Arrays.fill(durations, 0);
+            Arrays.fill(dropLevel, 0);
+            Arrays.fill(dropSum, 0);
+        }
     }
 
     public void addDropFrameListener(int dropFrameListenerThreshold, DropFrameListener dropFrameListener) {
@@ -380,7 +401,7 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
     }
 
     public interface DropFrameListener {
-        void dropFrame(int droppedFrame, long jitter, String scene, long lastResumeTime);
+        void dropFrame(int droppedFrame, long jitter, String scene);
     }
 
 
@@ -394,32 +415,48 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
 
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.N)
-    @Override
-    public void onActivityResumed(Activity activity) {
-        lastResumeTimeMap.put(activity.getClass().getName(), System.currentTimeMillis());
-
-        if (useFrameMetrics) {
-            if (frameListenerMap.containsKey(activity.hashCode())) {
-                return;
-            }
-            this.refreshRate = (int) activity.getWindowManager().getDefaultDisplay().getRefreshRate();
-            this.frameIntervalNs = Constants.TIME_SECOND_TO_NANO / (long) refreshRate;
-            Window.OnFrameMetricsAvailableListener onFrameMetricsAvailableListener = new Window.OnFrameMetricsAvailableListener() {
-                @RequiresApi(api = Build.VERSION_CODES.O)
-                @Override
-                public void onFrameMetricsAvailable(Window window, FrameMetrics frameMetrics, int dropCountSinceLastInvocation) {
-                    FrameMetrics frameMetricsCopy = new FrameMetrics(frameMetrics);
-                    long vsynTime = frameMetricsCopy.getMetric(FrameMetrics.VSYNC_TIMESTAMP);
-                    long intendedVsyncTime = frameMetricsCopy.getMetric(FrameMetrics.INTENDED_VSYNC_TIMESTAMP);
-                    frameMetricsCopy.getMetric(FrameMetrics.DRAW_DURATION);
-                    notifyListener(ProcessUILifecycleOwner.INSTANCE.getVisibleScene(), intendedVsyncTime, vsynTime, true, intendedVsyncTime, 0, 0, 0);
-                }
-            };
-            this.frameListenerMap.put(activity.hashCode(), onFrameMetricsAvailableListener);
-            activity.getWindow().addOnFrameMetricsAvailableListener(onFrameMetricsAvailableListener, new Handler());
-            MatrixLog.i(TAG, "onActivityResumed addOnFrameMetricsAvailableListener");
+    private float getRefreshRate(Activity activity) {
+        if (sdkInt >= Build.VERSION_CODES.R) {
+            return activity.getDisplay().getRefreshRate();
         }
+        return activity.getWindowManager().getDefaultDisplay().getRefreshRate();
+    }
+
+    @RequiresApi(Build.VERSION_CODES.N)
+    @Override
+    public void onActivityResumed(final Activity activity) {
+        if (frameListenerMap.containsKey(activity.hashCode())) {
+            return;
+        }
+
+        defaultRefreshRate = getRefreshRate(activity);
+        Window.OnFrameMetricsAvailableListener onFrameMetricsAvailableListener = new Window.OnFrameMetricsAvailableListener() {
+            @RequiresApi(api = Build.VERSION_CODES.O)
+            @Override
+            public void onFrameMetricsAvailable(Window window, FrameMetrics frameMetrics, int dropCountSinceLastInvocation) {
+                if (isForeground()) {
+                    FrameMetrics frameMetricsCopy = new FrameMetrics(frameMetrics);
+                    float refreshRate = getRefreshRate(activity);
+                    long totalDuration = frameMetricsCopy.getMetric(FrameMetrics.TOTAL_DURATION);
+                    float frameIntervalNanos = Constants.TIME_SECOND_TO_NANO / refreshRate;
+                    long jitter = (long) (totalDuration - frameIntervalNanos);
+                    int droppedFrames = Math.max(0, (int) Math.ceil(jitter / frameIntervalNanos));
+
+                    if (dropFrameListener != null && droppedFrames >= dropFrameListenerThreshold) {
+                        dropFrameListener.dropFrame(droppedFrames, jitter, activity.getClass().getName());
+                    }
+                    synchronized (listeners) {
+                        for (IFrameListener observer : listeners) {
+                            observer.onFrameMetricsAvailable(activity, frameMetricsCopy, droppedFrames, refreshRate);
+                        }
+                    }
+                }
+            }
+        };
+
+        this.frameListenerMap.put(activity.hashCode(), onFrameMetricsAvailableListener);
+        activity.getWindow().addOnFrameMetricsAvailableListener(onFrameMetricsAvailableListener, MatrixHandlerThread.getDefaultHandler());
+        MatrixLog.i(TAG, "onActivityResumed addOnFrameMetricsAvailableListener");
     }
 
     @Override
@@ -437,14 +474,78 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
 
     }
 
-    @RequiresApi(api = Build.VERSION_CODES.N)
+    @RequiresApi(Build.VERSION_CODES.N)
     @Override
     public void onActivityDestroyed(Activity activity) {
-        if (useFrameMetrics) {
+        try {
+            activity.getWindow().removeOnFrameMetricsAvailableListener(frameListenerMap.remove(activity.hashCode()));
+        } catch (Throwable t) {
+            MatrixLog.e(TAG, "removeOnFrameMetricsAvailableListener error : " + t.getMessage());
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.N)
+    class AllActivityFrameListener implements IActivityFrameListener {
+        private static final String TAG = "AllActivityFrameListener";
+
+        @Override
+        public int getSize() {
+            return 20000;
+        }
+
+        @Override
+        public String getName() {
+            return null;
+        }
+
+        @Override
+        public boolean skipFirstFrame() {
+            return false;
+        }
+
+        @Override
+        public void onFrameMetricsAvailable(String scene, long[] durations, int[] dropLevel, int[] dropSum, int avgDroppedFrame, float avgRefreshRate) {
+            double fps = Math.min(avgRefreshRate, (double) Constants.TIME_SECOND_TO_NANO / durations[FrameTracer.FrameDuration.TOTAL_DURATION.ordinal()]);
+            MatrixLog.i(TAG, "[report] FPS:%s %s", fps, toString());
             try {
-                activity.getWindow().removeOnFrameMetricsAvailableListener(frameListenerMap.remove(activity.hashCode()));
-            } catch (Throwable t) {
-                MatrixLog.e(TAG, "removeOnFrameMetricsAvailableListener error : " + t.getMessage());
+                TracePlugin plugin = Matrix.with().getPluginByClass(TracePlugin.class);
+                if (null == plugin) {
+                    return;
+                }
+                JSONObject dropLevelObject = new JSONObject();
+                JSONObject dropSumObject = new JSONObject();
+                for (DropStatus dropStatus : DropStatus.values()) {
+                    dropLevelObject.put(dropStatus.name() + "_LEVEL", dropLevel[dropStatus.ordinal()]);
+                    dropSumObject.put(dropStatus.name() + "_SUM", dropSum[dropStatus.ordinal()]);
+                }
+
+                JSONObject resultObject = new JSONObject();
+                DeviceUtil.getDeviceInfo(resultObject, plugin.getApplication());
+
+                resultObject.put(SharePluginInfo.ISSUE_SCENE, scene);
+                resultObject.put(SharePluginInfo.ISSUE_DROP_LEVEL, dropLevelObject);
+                resultObject.put(SharePluginInfo.ISSUE_DROP_SUM, dropSumObject);
+                resultObject.put(SharePluginInfo.ISSUE_FPS, fps);
+
+                for (FrameDuration frameDuration : FrameDuration.values()) {
+                    resultObject.put(frameDuration.name(), durations[frameDuration.ordinal()]);
+                    if (frameDuration.equals(FrameDuration.TOTAL_DURATION)) {
+                        break;
+                    }
+                }
+                if (sdkInt >= Build.VERSION_CODES.S) {
+                    resultObject.put("GPU_DURATION", durations[FrameDuration.GPU_DURATION.ordinal()]);
+                }
+                resultObject.put("DROP_COUNT", avgDroppedFrame);
+                resultObject.put("REFRESH_RATE", (int) (avgRefreshRate));
+
+                Issue issue = new Issue();
+                issue.setTag(SharePluginInfo.TAG_PLUGIN_FPS);
+                issue.setContent(resultObject);
+                plugin.onDetectIssue(issue);
+
+            } catch (JSONException e) {
+                MatrixLog.e(TAG, "json error", e);
             }
         }
     }

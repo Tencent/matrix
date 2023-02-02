@@ -50,7 +50,7 @@ public class TracePlugin extends Plugin {
     private SignalAnrTracer signalAnrTracer;
     private IdleHandlerLagTracer idleHandlerLagTracer;
     private TouchEventLagTracer touchEventLagTracer;
-    private static boolean supportFrameMetrics;
+    private final int sdkInt = Build.VERSION.SDK_INT;
 
     public TracePlugin(TraceConfig config) {
         this.traceConfig = config;
@@ -60,18 +60,15 @@ public class TracePlugin extends Plugin {
     public void init(Application app, PluginListener listener) {
         super.init(app, listener);
         MatrixLog.i(TAG, "trace plugin init, trace config: %s", traceConfig.toString());
-        int sdkInt = Build.VERSION.SDK_INT;
         if (sdkInt < Build.VERSION_CODES.JELLY_BEAN) {
             MatrixLog.e(TAG, "[FrameBeat] API is low Build.VERSION_CODES.JELLY_BEAN(16), TracePlugin is not supported");
             unSupportPlugin();
             return;
-        } else if (sdkInt >= Build.VERSION_CODES.O) {
-            supportFrameMetrics = true;
         }
 
         looperAnrTracer = new LooperAnrTracer(traceConfig);
 
-        frameTracer = new FrameTracer(traceConfig, supportFrameMetrics);
+        frameTracer = new FrameTracer(traceConfig);
 
         evilMethodTracer = new EvilMethodTracer(traceConfig);
 
@@ -90,10 +87,10 @@ public class TracePlugin extends Plugin {
             @Override
             public void run() {
 
-                if (willUiThreadMonitorRunning(traceConfig)) {
+                if (sdkInt < Build.VERSION_CODES.N && willUiThreadMonitorRunning(traceConfig)) {
                     if (!UIThreadMonitor.getMonitor().isInit()) {
                         try {
-                            UIThreadMonitor.getMonitor().init(traceConfig, supportFrameMetrics);
+                            UIThreadMonitor.getMonitor().init(traceConfig);
                         } catch (java.lang.RuntimeException e) {
                             MatrixLog.e(TAG, "[start] RuntimeException:%s", e);
                             return;
