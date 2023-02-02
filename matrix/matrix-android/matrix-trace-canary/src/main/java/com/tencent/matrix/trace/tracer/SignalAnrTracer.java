@@ -51,7 +51,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.Field;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -190,13 +189,51 @@ public class SignalAnrTracer extends Tracer {
             return node == null ? "" : node.info;
         }
 
-        @NonNull
-        public List<Pair<Integer, String>> getWaitingList() {
-            List<Pair<Integer, String>> list = new ArrayList<>();
-            for (ThreadNode threadNode : waitingList) {
-                list.add(new Pair<>(threadNode.threadId, threadNode.lockObjCls));
+        private static class Pair<F, S> implements Map.Entry<F, S> {
+            F f;
+            S s;
+
+            Pair(F f, S s) {
+                this.f = f;
+                this.s = s;
             }
-            return list;
+
+            @Override
+            public F getKey() {
+                return f;
+            }
+
+            @Override
+            public S getValue() {
+                return s;
+            }
+
+            @Override
+            public S setValue(S value) {
+                return s = value;
+            }
+
+            @Override
+            public String toString() {
+                return "Pair{" + "f=" + f + ", s=" + s + '}';
+            }
+        }
+
+        @NonNull
+        public Map.Entry<int[], String[]> getWaitingThreadsInfo() {
+            if (waitingList.size() == 0) {
+                return new Pair<>(null, null);
+            } else {
+                int[] threadsId = new int[waitingList.size()];
+                String[] locksType = new String[waitingList.size()];
+                int idx = 0;
+                for (ThreadNode threadNode : waitingList) {
+                    threadsId[idx] = threadNode.threadId;
+                    locksType[idx] = threadNode.lockObjCls;
+                    ++idx;
+                }
+                return new Pair<>(threadsId, locksType);
+            }
         }
 
         private boolean checkDeadLock() {
@@ -204,9 +241,10 @@ public class SignalAnrTracer extends Tracer {
             for (Map.Entry<Integer, ThreadNode> nodeEntry : threadsWaitingForHeldLock.entrySet()) {
                 ThreadNode node = nodeEntry.getValue();
                 if (node.visit == 0) {
-                    if (dfsSearch(node) != null) {
+                    ThreadNode ret;
+                    if ((ret = dfsSearch(node)) != null) {
                         // retrieve cycle from path and save it in waitingList
-                        while (waitingList.size() > 0 && waitingList.getFirst() != node) {
+                        while (waitingList.size() > 0 && waitingList.getFirst() != ret) {
                             waitingList.removeFirst();
                         }
                         return true;
@@ -352,7 +390,7 @@ public class SignalAnrTracer extends Tracer {
                     if (detector.hasDeadLock()) {
                         sSignalAnrDetectedListener.onDeadLockAnrDetected(
                                 detector.getMainThreadInfo(), detector.getLockHeldThread1Info(),
-                                detector.getLockHeldThread2Info(), detector.getWaitingList());
+                                detector.getLockHeldThread2Info(), detector.getWaitingThreadsInfo());
                     } else if (detector.getMainThreadInfo().contains("android.os.MessageQueue.nativePollOnce")) {
                         sSignalAnrDetectedListener.onMainThreadStuckAtNativePollOnce(detector.getMainThreadInfo());
                     }
@@ -545,7 +583,7 @@ public class SignalAnrTracer extends Tracer {
 
         void onNativeBacktraceDetected(String backtrace, String mMessageString, long mMessageWhen, boolean fromProcessErrorState);
 
-        void onDeadLockAnrDetected(String mainThreadStackTrace, String lockHeldThread1, String lockHeldThread2, List<Pair<Integer, String>> waitingList);
+        void onDeadLockAnrDetected(String mainThreadStackTrace, String lockHeldThread1, String lockHeldThread2, Map.Entry<int[], String[]> waitingList);
 
         void onMainThreadStuckAtNativePollOnce(String mainThreadStackTrace);
     }
