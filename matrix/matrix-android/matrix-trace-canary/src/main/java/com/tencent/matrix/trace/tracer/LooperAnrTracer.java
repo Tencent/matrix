@@ -31,7 +31,7 @@ import com.tencent.matrix.trace.constants.Constants;
 import com.tencent.matrix.trace.core.AppMethodBeat;
 import com.tencent.matrix.trace.core.LooperMonitor;
 import com.tencent.matrix.trace.items.MethodItem;
-import com.tencent.matrix.trace.listeners.IDispatchListener;
+import com.tencent.matrix.trace.listeners.ILooperListener;
 import com.tencent.matrix.trace.util.TraceDataUtils;
 import com.tencent.matrix.trace.util.Utils;
 import com.tencent.matrix.util.DeviceUtil;
@@ -45,7 +45,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
-public class LooperAnrTracer extends Tracer implements IDispatchListener {
+public class LooperAnrTracer extends Tracer implements ILooperListener {
 
     private static final String TAG = "Matrix.AnrTracer";
     private Handler anrHandler;

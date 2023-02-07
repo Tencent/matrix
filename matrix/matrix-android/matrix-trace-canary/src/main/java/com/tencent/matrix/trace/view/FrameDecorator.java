@@ -33,6 +33,7 @@ import android.view.WindowManager;
 import android.view.animation.AccelerateInterpolator;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 
 import com.tencent.matrix.Matrix;
@@ -319,8 +320,8 @@ public class FrameDecorator implements IActivityFrameListener {
     }
 
     @Override
-    public int getSize() {
-        return 3;
+    public int getIntervalMs() {
+        return 200;
     }
 
     @Override
@@ -333,28 +334,32 @@ public class FrameDecorator implements IActivityFrameListener {
         return false;
     }
 
+    @Override
+    public int getThreshold() {
+        return 0;
+    }
+
     @SuppressLint("DefaultLocale")
     @Override
-    public void onFrameMetricsAvailable(String scene, long[] durations, int[] dropLevel, int[] dropSum, int avgDroppedFrame, float avgRefreshRate) {
-        final String unknownDelay = String.format("unknown delay: %.1fms", (double) durations[FrameTracer.FrameDuration.UNKNOWN_DELAY_DURATION.ordinal()] / Constants.TIME_MILLIS_TO_NANO);
-        final String inputHandling = String.format("input handling: %.1fms", (double) durations[FrameTracer.FrameDuration.INPUT_HANDLING_DURATION.ordinal()] / Constants.TIME_MILLIS_TO_NANO);
-        final String animation = String.format("animation: %.1fms", (double) durations[FrameTracer.FrameDuration.ANIMATION_DURATION.ordinal()] / Constants.TIME_MILLIS_TO_NANO);
-        final String layoutMeasure = String.format("layout measure: %.1fms", (double) durations[FrameTracer.FrameDuration.LAYOUT_MEASURE_DURATION.ordinal()] / Constants.TIME_MILLIS_TO_NANO);
-        final String draw = String.format("draw: %.1fms", (double) durations[FrameTracer.FrameDuration.DRAW_DURATION.ordinal()] / Constants.TIME_MILLIS_TO_NANO);
-        final String sync = String.format("sync: %.1fms", (double) durations[FrameTracer.FrameDuration.SYNC_DURATION.ordinal()] / Constants.TIME_MILLIS_TO_NANO);
-        final String commandIssue = String.format("command issue: %.1fms", (double) durations[FrameTracer.FrameDuration.COMMAND_ISSUE_DURATION.ordinal()] / Constants.TIME_MILLIS_TO_NANO);
-        final String swapBuffers = String.format("swap buffers: %.1fms", (double) durations[FrameTracer.FrameDuration.SWAP_BUFFERS_DURATION.ordinal()] / Constants.TIME_MILLIS_TO_NANO);
-        final String gpu = String.format("gpu: %.1fms", (double) durations[FrameTracer.FrameDuration.GPU_DURATION.ordinal()] / Constants.TIME_MILLIS_TO_NANO);
-        final String total = String.format("total: %.1fms", (double) durations[FrameTracer.FrameDuration.TOTAL_DURATION.ordinal()] / Constants.TIME_MILLIS_TO_NANO);
-        final float fps = Math.min(avgRefreshRate, Constants.TIME_SECOND_TO_NANO / durations[FrameTracer.FrameDuration.TOTAL_DURATION.ordinal()]);
+    public void onFrameMetricsAvailable(@NonNull String scene, long[] avgDurations, int[] dropLevel, int[] dropSum, float avgDroppedFrame, float avgRefreshRate, final float fps) {
+        final String unknownDelay = String.format("unknown delay: %.1fms", (double) avgDurations[FrameTracer.FrameDuration.UNKNOWN_DELAY_DURATION.ordinal()] / Constants.TIME_MILLIS_TO_NANO);
+        final String inputHandling = String.format("input handling: %.1fms", (double) avgDurations[FrameTracer.FrameDuration.INPUT_HANDLING_DURATION.ordinal()] / Constants.TIME_MILLIS_TO_NANO);
+        final String animation = String.format("animation: %.1fms", (double) avgDurations[FrameTracer.FrameDuration.ANIMATION_DURATION.ordinal()] / Constants.TIME_MILLIS_TO_NANO);
+        final String layoutMeasure = String.format("layout measure: %.1fms", (double) avgDurations[FrameTracer.FrameDuration.LAYOUT_MEASURE_DURATION.ordinal()] / Constants.TIME_MILLIS_TO_NANO);
+        final String draw = String.format("draw: %.1fms", (double) avgDurations[FrameTracer.FrameDuration.DRAW_DURATION.ordinal()] / Constants.TIME_MILLIS_TO_NANO);
+        final String sync = String.format("sync: %.1fms", (double) avgDurations[FrameTracer.FrameDuration.SYNC_DURATION.ordinal()] / Constants.TIME_MILLIS_TO_NANO);
+        final String commandIssue = String.format("command issue: %.1fms", (double) avgDurations[FrameTracer.FrameDuration.COMMAND_ISSUE_DURATION.ordinal()] / Constants.TIME_MILLIS_TO_NANO);
+        final String swapBuffers = String.format("swap buffers: %.1fms", (double) avgDurations[FrameTracer.FrameDuration.SWAP_BUFFERS_DURATION.ordinal()] / Constants.TIME_MILLIS_TO_NANO);
+        final String gpu = String.format("gpu: %.1fms", (double) avgDurations[FrameTracer.FrameDuration.GPU_DURATION.ordinal()] / Constants.TIME_MILLIS_TO_NANO);
+        final String total = String.format("total: %.1fms", (double) avgDurations[FrameTracer.FrameDuration.TOTAL_DURATION.ordinal()] / Constants.TIME_MILLIS_TO_NANO);
 
-        if (avgDroppedFrame >= Constants.DEFAULT_DROPPED_FROZEN) {
+        if (fps <= avgRefreshRate - Constants.DEFAULT_DROPPED_FROZEN) {
             belongColor = frozenColor;
-        } else if (avgDroppedFrame >= Constants.DEFAULT_DROPPED_HIGH) {
+        } else if (fps <= avgRefreshRate - Constants.DEFAULT_DROPPED_HIGH) {
             belongColor = highColor;
-        } else if (avgDroppedFrame >= Constants.DEFAULT_DROPPED_MIDDLE) {
+        } else if (fps <= avgRefreshRate - Constants.DEFAULT_DROPPED_MIDDLE) {
             belongColor = middleColor;
-        } else if (avgDroppedFrame >= Constants.DEFAULT_DROPPED_NORMAL) {
+        } else if (fps <= avgRefreshRate - Constants.DEFAULT_DROPPED_NORMAL) {
             belongColor = normalColor;
         } else {
             belongColor = bestColor;

@@ -35,7 +35,7 @@ import com.tencent.matrix.batterycanary.monitor.feature.AbsTaskMonitorFeature.Ta
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
 import com.tencent.matrix.batterycanary.utils.TimeBreaker;
 import com.tencent.matrix.trace.core.LooperMonitor;
-import com.tencent.matrix.trace.listeners.IDispatchListener;
+import com.tencent.matrix.trace.listeners.ILooperListener;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -48,7 +48,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 
@@ -78,7 +77,7 @@ public class MonitorFeatureLooperTest {
         HandlerThread handlerThread = new HandlerThread("looper-test");
         handlerThread.start();
         LooperMonitor looperMonitor = LooperMonitor.of(handlerThread.getLooper());
-        looperMonitor.addListener(new IDispatchListener() {
+        looperMonitor.addListener(new ILooperListener() {
             @Override
             public boolean isValid() {
                 return true;
@@ -136,7 +135,7 @@ public class MonitorFeatureLooperTest {
         HandlerThread handlerThread = new HandlerThread("looper-test");
         handlerThread.start();
         LooperMonitor looperMonitor = LooperMonitor.of(handlerThread.getLooper());
-        looperMonitor.addListener(new IDispatchListener() {
+        looperMonitor.addListener(new ILooperListener() {
             @Override
             public boolean isValid() {
                 return true;

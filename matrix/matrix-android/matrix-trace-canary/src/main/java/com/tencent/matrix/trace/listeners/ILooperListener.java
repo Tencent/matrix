@@ -16,7 +16,7 @@
 
 package com.tencent.matrix.trace.listeners;
 
-public interface IDispatchListener {
+public interface ILooperListener {
     boolean isValid();
     void onDispatchBegin(String log);
     void onDispatchEnd(String log, long beginNs, long endNs);

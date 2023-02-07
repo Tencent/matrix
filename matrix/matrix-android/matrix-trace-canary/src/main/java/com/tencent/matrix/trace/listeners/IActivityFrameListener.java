@@ -19,19 +19,21 @@ package com.tencent.matrix.trace.listeners;
 import android.os.Build;
 
 import androidx.annotation.IntRange;
+import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 
 @RequiresApi(Build.VERSION_CODES.N)
 public interface IActivityFrameListener {
 
     /**
-     * The size returned indicates how many frame metrics will be used to
-     * calculate the average frame metrics info.
+     * The interval returned indicates how long to call back {@code onFrameMetricsAvailable}.
+     * Usually, this value should not less than 17. Because for those display with a 60Hz
+     * refresh rate, it takes at least 16.6ms to generate a frame.
      *
-     * @return The size of frame count.
+     * @return The interval, measured in milliseconds.
      */
-    @IntRange(from = 1, to = 1_000_000)
-    int getSize();
+    @IntRange(from = 1)
+    int getIntervalMs();
 
     /**
      * The name returned will be used to match the specified activity.
@@ -48,13 +50,31 @@ public interface IActivityFrameListener {
      */
     boolean skipFirstFrame();
 
+    /**
+     * Frame metrics whose dropped frames less than threshold will be skipped.
+     * We always assume the refresh rate of display is 60Hz, and the threshold
+     * will be converted to corresponding value while the real refresh rate
+     * is not 60Hz.
+     * <br/>
+     * For example, if the threshold is 10 and refresh rate is 90Hz, all frame
+     * metrics whose dropped frames less than 15 will be skipped.
+     *
+     * @return integer value of threshold, zero indicates all frame metrics will be
+     * added to calculation.
+     */
+    @IntRange(from = 0)
+    int getThreshold();
+
 
     /**
      * This method will be called when average frame metrics available.
-     * @param scene last scene
-     * @param durations average durations, include draw duration, animation duration, etc.
-     * @param dropLevel drop level distribution, sum of this array equals value returned by <code>getSize()</code>
-     * @param dropSum dropped frame distribution.
+     *
+     * @param activityName    name of activity.
+     * @param avgDurations    average avgDurations, include draw duration, animation duration, etc.
+     *                        See {@link com.tencent.matrix.trace.tracer.FrameTracer.FrameDuration}.
+     * @param dropLevel       drop level distribution, sum of this array equals value returned by <code>getSize()</code>.
+     *                        See {@link com.tencent.matrix.trace.tracer.FrameTracer.DropStatus}.
+     * @param dropSum         dropped frame distribution.
      */
-    void onFrameMetricsAvailable(String scene, long[] durations, int[] dropLevel, int[] dropSum, int avgDroppedFrame, float avgRefreshRate);
+    void onFrameMetricsAvailable(@NonNull String activityName, long[] avgDurations, int[] dropLevel, int[] dropSum, float avgDroppedFrame, float avgRefreshRate, float avgFps);
 }

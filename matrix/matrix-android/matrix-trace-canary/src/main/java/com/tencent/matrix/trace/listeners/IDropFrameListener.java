@@ -16,17 +16,10 @@
 
 package com.tencent.matrix.trace.listeners;
 
-import android.app.Activity;
 import android.os.Build;
-import android.view.FrameMetrics;
 
 import androidx.annotation.RequiresApi;
 
-/**
- * Use {@link IActivityFrameListener} to analyze frame metrics of specified activity, or use
- * {@link IDropFrameListener} to only analyze dropped frame.
- */
-@RequiresApi(Build.VERSION_CODES.N)
-public interface IFrameListener {
-    void onFrameMetricsAvailable(Activity activity, FrameMetrics frameMetrics, float droppedFrames, float refreshRate);
+@RequiresApi(api = Build.VERSION_CODES.N)
+public interface IDropFrameListener extends IFrameListener {
 }

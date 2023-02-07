@@ -22,14 +22,13 @@ import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.MessageQueue;
 import android.os.SystemClock;
+import android.util.Log;
+import android.util.Printer;
 
 import androidx.annotation.CallSuper;
 import androidx.annotation.NonNull;
 
-import android.util.Log;
-import android.util.Printer;
-
-import com.tencent.matrix.trace.listeners.IDispatchListener;
+import com.tencent.matrix.trace.listeners.ILooperListener;
 import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 import com.tencent.matrix.util.ReflectUtils;
@@ -89,14 +88,18 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
 
         @CallSuper
         public void onDispatchStart(String x) {
-            this.isHasDispatchStart = true;
-            dispatchStart();
+            if (!isHasDispatchStart) {
+                isHasDispatchStart = true;
+                dispatchStart();
+            }
         }
 
         @CallSuper
         public void onDispatchEnd(String x) {
-            this.isHasDispatchStart = false;
-            dispatchEnd();
+            if (isHasDispatchStart) {
+                isHasDispatchStart = false;
+                dispatchEnd();
+            }
         }
 
 
@@ -107,9 +110,9 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
     private final static class DispatchListenerWrapper {
         private boolean isHasDispatchStart = false;
         private long beginNs;
-        private final IDispatchListener dispatchListener;
+        private final ILooperListener dispatchListener;
 
-        DispatchListenerWrapper(IDispatchListener dispatchListener) {
+        DispatchListenerWrapper(ILooperListener dispatchListener) {
             this.dispatchListener = dispatchListener;
         }
 
@@ -118,15 +121,23 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
         }
 
         public void onDispatchBegin(String x) {
-            this.isHasDispatchStart = true;
-            beginNs = System.nanoTime();
-            dispatchListener.onDispatchBegin(x);
+            if (!isHasDispatchStart) {
+                isHasDispatchStart = true;
+                beginNs = System.nanoTime();
+                dispatchListener.onDispatchBegin(x);
+            }
         }
 
         public void onDispatchEnd(String x) {
-            this.isHasDispatchStart = false;
-            dispatchListener.onDispatchEnd(x, beginNs, System.nanoTime());
+            if (isHasDispatchStart) {
+                isHasDispatchStart = false;
+                dispatchListener.onDispatchEnd(x, beginNs, System.nanoTime());
+            }
         }
+    }
+
+    public static LooperMonitor getMainMonitor() {
+        return sMainMonitor;
     }
 
     public static LooperMonitor of(@NonNull Looper looper) {
@@ -148,17 +159,17 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
         sMainMonitor.removeListener(listener);
     }
 
-    public static void register(IDispatchListener listener) {
+    public static void register(ILooperListener listener) {
         sMainMonitor.addListener(listener);
     }
 
-    public static void unregister(IDispatchListener listener) {
+    public static void unregister(ILooperListener listener) {
         sMainMonitor.removeListener(listener);
     }
 
     @Deprecated
-    private final HashSet<LooperDispatchListener> listeners = new HashSet<>();
-    private final Map<IDispatchListener, DispatchListenerWrapper> listenersMap = new HashMap<>();
+    private final HashSet<LooperDispatchListener> oldListeners = new HashSet<>();
+    private final Map<ILooperListener, DispatchListenerWrapper> listeners = new HashMap<>();
     private LooperPrinter printer;
     private Looper looper;
     private static final long CHECK_TIME = 60 * 1000L;
@@ -168,34 +179,34 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
      * It will be thread-unsafe if you get the listeners and literate.
      */
     @Deprecated
-    public HashSet<LooperDispatchListener> getListeners() {
-        return listeners;
+    public HashSet<LooperDispatchListener> getOldListeners() {
+        return oldListeners;
     }
 
     @Deprecated
     public void addListener(LooperDispatchListener listener) {
-        synchronized (listeners) {
-            listeners.add(listener);
+        synchronized (oldListeners) {
+            oldListeners.add(listener);
         }
     }
 
     @Deprecated
     public void removeListener(LooperDispatchListener listener) {
+        synchronized (oldListeners) {
+            oldListeners.remove(listener);
+        }
+    }
+
+    public void addListener(ILooperListener listener) {
+        synchronized (listeners) {
+            DispatchListenerWrapper wrapper = new DispatchListenerWrapper(listener);
+            listeners.put(listener, wrapper);
+        }
+    }
+
+    public void removeListener(ILooperListener listener) {
         synchronized (listeners) {
             listeners.remove(listener);
-        }
-    }
-
-    public void addListener(IDispatchListener listener) {
-        synchronized (listenersMap) {
-            DispatchListenerWrapper wrapper = new DispatchListenerWrapper(listener);
-            listenersMap.put(listener, wrapper);
-        }
-    }
-
-    public void removeListener(IDispatchListener listener) {
-        synchronized (listenersMap) {
-            listenersMap.remove(listener);
         }
     }
 
@@ -221,6 +232,9 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
 
     public synchronized void onRelease() {
         if (printer != null) {
+            synchronized (oldListeners) {
+                oldListeners.clear();
+            }
             synchronized (listeners) {
                 listeners.clear();
             }
@@ -392,14 +406,16 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
                 latestMsgLog = log;
                 recentMCount++;
             }
-            synchronized (listeners) {
-                for (LooperDispatchListener listener : listeners) {
-                    listener.onDispatchStart(log);
+            synchronized (oldListeners) {
+                for (LooperDispatchListener listener : oldListeners) {
+                    if (listener.isValid()) {
+                        listener.onDispatchStart(log);
+                    }
                 }
             }
-            synchronized (listenersMap) {
-                for (DispatchListenerWrapper listener : listenersMap.values()) {
-                    if (listener.isValid() && !listener.isHasDispatchStart) {
+            synchronized (listeners) {
+                for (DispatchListenerWrapper listener : listeners.values()) {
+                    if (listener.isValid()) {
                         listener.onDispatchBegin(log);
                     }
                 }
@@ -408,14 +424,16 @@ public class LooperMonitor implements MessageQueue.IdleHandler {
             if (historyMsgRecorder) {
                 recordMsg(log, System.currentTimeMillis() - messageStartTime);
             }
-            synchronized (listeners) {
-                for (LooperDispatchListener listener : listeners) {
-                    listener.onDispatchEnd(log);
+            synchronized (oldListeners) {
+                for (LooperDispatchListener listener : oldListeners) {
+                    if (listener.isValid()) {
+                        listener.onDispatchEnd(log);
+                    }
                 }
             }
-            synchronized (listenersMap) {
-                for (DispatchListenerWrapper listener : listenersMap.values()) {
-                    if (listener.isValid() || listener.isHasDispatchStart) {
+            synchronized (listeners) {
+                for (DispatchListenerWrapper listener : listeners.values()) {
+                    if (listener.isValid()) {
                         listener.onDispatchEnd(log);
                     }
                 }
