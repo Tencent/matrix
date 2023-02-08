@@ -16,6 +16,7 @@
 
 package com.tencent.matrix.trace.tracer;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Application;
 import android.os.Build;
@@ -24,6 +25,7 @@ import android.os.Handler;
 import android.os.SystemClock;
 import android.view.FrameMetrics;
 import android.view.Window;
+import android.view.WindowManager;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
@@ -312,25 +314,58 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
 
     public enum DropStatus {
         DROPPED_BEST, DROPPED_NORMAL, DROPPED_MIDDLE, DROPPED_HIGH, DROPPED_FROZEN;
+
+        public static String stringify(int[] level, int[] sum) {
+            StringBuilder sb = new StringBuilder();
+            sb.append('{');
+
+            for (DropStatus item : values()) {
+                sb.append('(').append(item.name()).append("_LEVEL=").append(level[item.ordinal()]).append(" ");
+                sb.append(item.name()).append("_SUM=").append(sum[item.ordinal()]).append("); ");
+            }
+            sb.setLength(sb.length() - 2);    // remove the last "; "
+            sb.append("}");
+
+            return sb.toString();
+        }
     }
 
     public enum FrameDuration {
-        UNKNOWN_DELAY_DURATION, INPUT_HANDLING_DURATION, ANIMATION_DURATION, LAYOUT_MEASURE_DURATION,
-        DRAW_DURATION, SYNC_DURATION, COMMAND_ISSUE_DURATION, SWAP_BUFFERS_DURATION, TOTAL_DURATION,
-        FIRST_DRAW_FRAME, INTENDED_VSYNC_TIMESTAMP, VSYNC_TIMESTAMP, // not supported
-        GPU_DURATION,
-        DEADLINE, // not supported
-    }
+        UNKNOWN_DELAY_DURATION, INPUT_HANDLING_DURATION, ANIMATION_DURATION, LAYOUT_MEASURE_DURATION, DRAW_DURATION,
+        SYNC_DURATION, COMMAND_ISSUE_DURATION, SWAP_BUFFERS_DURATION, TOTAL_DURATION, GPU_DURATION;
 
+        @SuppressLint("InlinedApi")
+        static int[] indices = {FrameMetrics.UNKNOWN_DELAY_DURATION, FrameMetrics.INPUT_HANDLING_DURATION,
+                FrameMetrics.ANIMATION_DURATION, FrameMetrics.LAYOUT_MEASURE_DURATION, FrameMetrics.DRAW_DURATION,
+                FrameMetrics.SYNC_DURATION, FrameMetrics.COMMAND_ISSUE_DURATION, FrameMetrics.SWAP_BUFFERS_DURATION,
+                FrameMetrics.TOTAL_DURATION, FrameMetrics.GPU_DURATION};
+
+        public static String stringify(long[] durations) {
+            StringBuilder sb = new StringBuilder();
+            sb.append('{');
+
+            for (FrameDuration item : values()) {
+                sb.append(item.name()).append('=').append(durations[item.ordinal()]).append("; ");
+            }
+
+            if (FrameTracer.sdkInt >= Build.VERSION_CODES.S) {
+                sb.append("gpu_duration=").append(durations[GPU_DURATION.ordinal()]).append("; ");
+            }
+            sb.setLength(sb.length() - 2);    // remove the last "; "
+            sb.append("}");
+
+            return sb.toString();
+        }
+    }
 
     @RequiresApi(Build.VERSION_CODES.N)
     private class ActivityFrameCollectItem {
-        private final long[] durations = new long[FrameDuration.DEADLINE.ordinal()];
+        private final long[] durations = new long[FrameDuration.values().length];
         private final int[] dropLevel = new int[DropStatus.values().length];
         private final int[] dropSum = new int[DropStatus.values().length];
         private float dropCount;
         private float refreshRate;
-        private float fps;
+        private float alignTotalDuration;
         private long beginMs;
 
         public IActivityFrameListener listener;
@@ -349,26 +384,28 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
                 beginMs = SystemClock.uptimeMillis();
             }
             for (int i = FrameDuration.UNKNOWN_DELAY_DURATION.ordinal(); i <= FrameDuration.TOTAL_DURATION.ordinal(); i++) {
-                durations[i] += frameMetrics.getMetric(i);
+                durations[i] += frameMetrics.getMetric(FrameDuration.indices[i]);
             }
             if (sdkInt >= Build.VERSION_CODES.S) {
                 durations[FrameDuration.GPU_DURATION.ordinal()] += frameMetrics.getMetric(FrameMetrics.GPU_DURATION);
             }
 
             dropCount += droppedFrames;
-            collect((int) droppedFrames);
+            collect(Math.round(droppedFrames));
             this.refreshRate += refreshRate;
-            this.fps += Math.min(refreshRate, 1f * Constants.TIME_SECOND_TO_NANO / frameMetrics.getMetric(FrameMetrics.TOTAL_DURATION));
+            float frameIntervalNanos = Constants.TIME_SECOND_TO_NANO / refreshRate;
+            alignTotalDuration += Math.ceil(1f * frameMetrics.getMetric(FrameMetrics.TOTAL_DURATION) / frameIntervalNanos) * frameIntervalNanos;
             ++count;
 
             if (SystemClock.uptimeMillis() - beginMs >= listener.getIntervalMs()) {
                 dropCount /= count;
                 this.refreshRate /= count;
-                this.fps /= count;
+                alignTotalDuration /= count;
                 for (int i = 0; i < durations.length; i++) {
                     durations[i] /= count;
                 }
-                listener.onFrameMetricsAvailable(activity.getClass().getName(), durations, dropLevel, dropSum, dropCount, this.refreshRate, this.fps);
+                listener.onFrameMetricsAvailable(activity.getClass().getName(), durations, dropLevel, dropSum,
+                        dropCount, this.refreshRate, Constants.TIME_SECOND_TO_NANO / alignTotalDuration);
 
                 reset();
             }
@@ -396,7 +433,7 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
         private void reset() {
             dropCount = 0;
             refreshRate = 0;
-            fps = 0;
+            alignTotalDuration = 0;
             count = 0;
 
             Arrays.fill(durations, 0);
@@ -435,17 +472,17 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
         StringBuilder sb = new StringBuilder();
 
         sb.append("{unknown_delay_duration=").append(frameMetrics.getMetric(FrameMetrics.UNKNOWN_DELAY_DURATION));
-        sb.append(", input_handling_duration=").append(frameMetrics.getMetric(FrameMetrics.INPUT_HANDLING_DURATION));
-        sb.append(", animation_duration=").append(frameMetrics.getMetric(FrameMetrics.ANIMATION_DURATION));
-        sb.append(", layout_measure_duration=").append(frameMetrics.getMetric(FrameMetrics.LAYOUT_MEASURE_DURATION));
-        sb.append(", draw_duration=").append(frameMetrics.getMetric(FrameMetrics.DRAW_DURATION));
-        sb.append(", sync_duration=").append(frameMetrics.getMetric(FrameMetrics.SYNC_DURATION));
-        sb.append(", command_issue_duration=").append(frameMetrics.getMetric(FrameMetrics.COMMAND_ISSUE_DURATION));
-        sb.append(", swap_buffers_duration=").append(frameMetrics.getMetric(FrameMetrics.SWAP_BUFFERS_DURATION));
-        sb.append(", total_duration=").append(frameMetrics.getMetric(FrameMetrics.TOTAL_DURATION));
-        sb.append(", first_draw_frame=").append(frameMetrics.getMetric(FrameMetrics.FIRST_DRAW_FRAME));
+        sb.append("; input_handling_duration=").append(frameMetrics.getMetric(FrameMetrics.INPUT_HANDLING_DURATION));
+        sb.append("; animation_duration=").append(frameMetrics.getMetric(FrameMetrics.ANIMATION_DURATION));
+        sb.append("; layout_measure_duration=").append(frameMetrics.getMetric(FrameMetrics.LAYOUT_MEASURE_DURATION));
+        sb.append("; draw_duration=").append(frameMetrics.getMetric(FrameMetrics.DRAW_DURATION));
+        sb.append("; sync_duration=").append(frameMetrics.getMetric(FrameMetrics.SYNC_DURATION));
+        sb.append("; command_issue_duration=").append(frameMetrics.getMetric(FrameMetrics.COMMAND_ISSUE_DURATION));
+        sb.append("; swap_buffers_duration=").append(frameMetrics.getMetric(FrameMetrics.SWAP_BUFFERS_DURATION));
+        sb.append("; total_duration=").append(frameMetrics.getMetric(FrameMetrics.TOTAL_DURATION));
+        sb.append("; first_draw_frame=").append(frameMetrics.getMetric(FrameMetrics.FIRST_DRAW_FRAME));
         if (FrameTracer.sdkInt >= Build.VERSION_CODES.S) {
-            sb.append(", gpu_duration=").append(frameMetrics.getMetric(FrameMetrics.GPU_DURATION));
+            sb.append("; gpu_duration=").append(frameMetrics.getMetric(FrameMetrics.GPU_DURATION));
         }
         sb.append("}");
 
@@ -478,26 +515,44 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
 
         defaultRefreshRate = getRefreshRate(activity);
         MatrixLog.i(TAG, "default refresh rate is %dHz", (int) defaultRefreshRate);
+
         Window.OnFrameMetricsAvailableListener onFrameMetricsAvailableListener = new Window.OnFrameMetricsAvailableListener() {
+            private float cachedRefreshRate = defaultRefreshRate;
+            private int lastModeId = -1;
+            private WindowManager.LayoutParams attributes = null;
+
+            private void updateRefreshRate() {
+                if (attributes == null) {
+                    attributes = activity.getWindow().getAttributes();
+                    lastModeId = attributes.preferredDisplayModeId;
+                    cachedRefreshRate = getRefreshRate(activity);
+                }
+                if (attributes.preferredDisplayModeId != lastModeId) {
+                    cachedRefreshRate = getRefreshRate(activity);
+                }
+            }
+
             @RequiresApi(api = Build.VERSION_CODES.O)
             @Override
             public void onFrameMetricsAvailable(Window window, FrameMetrics frameMetrics, int dropCountSinceLastInvocation) {
                 if (isForeground()) {
                     FrameMetrics frameMetricsCopy = new FrameMetrics(frameMetrics);
-                    float refreshRate = getRefreshRate(activity);
+
+                    updateRefreshRate();
+
                     long totalDuration = frameMetricsCopy.getMetric(FrameMetrics.TOTAL_DURATION);
-                    float frameIntervalNanos = Constants.TIME_SECOND_TO_NANO / refreshRate;
+                    float frameIntervalNanos = Constants.TIME_SECOND_TO_NANO / cachedRefreshRate;
                     long jitter = (long) (totalDuration - frameIntervalNanos);
                     int droppedFrames = Math.max(0, (int) Math.ceil(jitter / frameIntervalNanos));
 
                     droppedSum += droppedFrames;
 
                     if (dropFrameListener != null && droppedFrames >= dropFrameListenerThreshold) {
-                        dropFrameListener.onFrameMetricsAvailable(activity, frameMetricsCopy, droppedFrames, refreshRate);
+                        dropFrameListener.onFrameMetricsAvailable(activity, frameMetricsCopy, droppedFrames, cachedRefreshRate);
                     }
                     synchronized (listeners) {
                         for (IFrameListener observer : listeners) {
-                            observer.onFrameMetricsAvailable(activity, frameMetricsCopy, droppedFrames, refreshRate);
+                            observer.onFrameMetricsAvailable(activity, frameMetricsCopy, droppedFrames, cachedRefreshRate);
                         }
                     }
                 }
@@ -559,8 +614,8 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
         }
 
         @Override
-        public void onFrameMetricsAvailable(@NonNull String scene, long[] avgDurations, int[] dropLevel, int[] dropSum, float avgDroppedFrame, float avgRefreshRate, float fps) {
-            MatrixLog.i(TAG, "[report] FPS:%s %s", fps, toString());
+        public void onFrameMetricsAvailable(@NonNull String scene, long[] avgDurations, int[] dropLevel, int[] dropSum, float avgDroppedFrame, float avgRefreshRate, float avgFps) {
+            MatrixLog.i(TAG, "[report] FPS:%s %s", avgFps, toString());
             try {
                 TracePlugin plugin = Matrix.with().getPluginByClass(TracePlugin.class);
                 if (null == plugin) {
@@ -579,7 +634,7 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
                 resultObject.put(SharePluginInfo.ISSUE_SCENE, scene);
                 resultObject.put(SharePluginInfo.ISSUE_DROP_LEVEL, dropLevelObject);
                 resultObject.put(SharePluginInfo.ISSUE_DROP_SUM, dropSumObject);
-                resultObject.put(SharePluginInfo.ISSUE_FPS, fps);
+                resultObject.put(SharePluginInfo.ISSUE_FPS, avgFps);
 
                 for (FrameDuration frameDuration : FrameDuration.values()) {
                     resultObject.put(frameDuration.name(), avgDurations[frameDuration.ordinal()]);
