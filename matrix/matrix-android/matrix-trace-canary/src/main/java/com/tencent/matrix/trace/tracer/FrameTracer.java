@@ -60,10 +60,11 @@ import java.util.concurrent.ConcurrentHashMap;
 public class FrameTracer extends Tracer implements Application.ActivityLifecycleCallbacks {
     private static final String TAG = "Matrix.FrameTracer";
 
+    private static final long HALF_MAX = (Long.MAX_VALUE >>> 1);
     public final static int sdkInt = Build.VERSION.SDK_INT;
     public static float defaultRefreshRate = 60;
 
-    private int droppedSum = 0;
+    private double droppedSum = 0;
 
     @Deprecated
     private long durationSum = 0;
@@ -247,7 +248,7 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
     }
 
     public int getDroppedSum() {
-        return droppedSum;
+        return (int) droppedSum;
     }
 
     @Deprecated
@@ -365,7 +366,7 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
         private final int[] dropSum = new int[DropStatus.values().length];
         private float dropCount;
         private float refreshRate;
-        private float alignTotalDuration;
+        private float totalDuration;
         private long beginMs;
 
         public IActivityFrameListener listener;
@@ -394,18 +395,18 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
             collect(Math.round(droppedFrames));
             this.refreshRate += refreshRate;
             float frameIntervalNanos = Constants.TIME_SECOND_TO_NANO / refreshRate;
-            alignTotalDuration += Math.ceil(1f * frameMetrics.getMetric(FrameMetrics.TOTAL_DURATION) / frameIntervalNanos) * frameIntervalNanos;
+            totalDuration += Math.max(frameMetrics.getMetric(FrameMetrics.TOTAL_DURATION), frameIntervalNanos);
             ++count;
 
             if (SystemClock.uptimeMillis() - beginMs >= listener.getIntervalMs()) {
                 dropCount /= count;
                 this.refreshRate /= count;
-                alignTotalDuration /= count;
+                totalDuration /= count;
                 for (int i = 0; i < durations.length; i++) {
                     durations[i] /= count;
                 }
                 listener.onFrameMetricsAvailable(activity.getClass().getName(), durations, dropLevel, dropSum,
-                        dropCount, this.refreshRate, Constants.TIME_SECOND_TO_NANO / alignTotalDuration);
+                        dropCount, this.refreshRate, Constants.TIME_SECOND_TO_NANO / totalDuration);
 
                 reset();
             }
@@ -433,7 +434,7 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
         private void reset() {
             dropCount = 0;
             refreshRate = 0;
-            alignTotalDuration = 0;
+            totalDuration = 0;
             count = 0;
 
             Arrays.fill(durations, 0);
@@ -518,17 +519,20 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
 
         Window.OnFrameMetricsAvailableListener onFrameMetricsAvailableListener = new Window.OnFrameMetricsAvailableListener() {
             private float cachedRefreshRate = defaultRefreshRate;
+            private float cachedThreshold = dropFrameListenerThreshold / 60f * cachedRefreshRate;
             private int lastModeId = -1;
+            private int lastThreshold = -1;
             private WindowManager.LayoutParams attributes = null;
 
             private void updateRefreshRate() {
                 if (attributes == null) {
                     attributes = activity.getWindow().getAttributes();
-                    lastModeId = attributes.preferredDisplayModeId;
-                    cachedRefreshRate = getRefreshRate(activity);
                 }
-                if (attributes.preferredDisplayModeId != lastModeId) {
+                if (attributes.preferredDisplayModeId != lastModeId || lastThreshold != dropFrameListenerThreshold) {
+                    lastModeId = attributes.preferredDisplayModeId;
+                    lastThreshold = dropFrameListenerThreshold;
                     cachedRefreshRate = getRefreshRate(activity);
+                    cachedThreshold = dropFrameListenerThreshold / 60f * cachedRefreshRate;
                 }
             }
 
@@ -536,18 +540,26 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
             @Override
             public void onFrameMetricsAvailable(Window window, FrameMetrics frameMetrics, int dropCountSinceLastInvocation) {
                 if (isForeground()) {
+                    // skip not available metrics.
+                    for (int i = FrameDuration.UNKNOWN_DELAY_DURATION.ordinal(); i < FrameDuration.TOTAL_DURATION.ordinal(); i++) {
+                        long v = frameMetrics.getMetric(FrameDuration.indices[i]);
+                        if (v < 0 || v >= HALF_MAX) {
+                            // some devices will produce outliers, especially the Honor series, eg: NTH-AN00, ANY-AN00, etc.
+                            return;
+                        }
+                    }
+
                     FrameMetrics frameMetricsCopy = new FrameMetrics(frameMetrics);
 
                     updateRefreshRate();
 
                     long totalDuration = frameMetricsCopy.getMetric(FrameMetrics.TOTAL_DURATION);
                     float frameIntervalNanos = Constants.TIME_SECOND_TO_NANO / cachedRefreshRate;
-                    long jitter = (long) (totalDuration - frameIntervalNanos);
-                    int droppedFrames = Math.max(0, (int) Math.ceil(jitter / frameIntervalNanos));
+                    float droppedFrames = Math.max(0f, (totalDuration - frameIntervalNanos) / frameIntervalNanos);
 
                     droppedSum += droppedFrames;
 
-                    if (dropFrameListener != null && droppedFrames >= dropFrameListenerThreshold) {
+                    if (dropFrameListener != null && droppedFrames >= cachedThreshold) {
                         dropFrameListener.onFrameMetricsAvailable(activity, frameMetricsCopy, droppedFrames, cachedRefreshRate);
                     }
                     synchronized (listeners) {
