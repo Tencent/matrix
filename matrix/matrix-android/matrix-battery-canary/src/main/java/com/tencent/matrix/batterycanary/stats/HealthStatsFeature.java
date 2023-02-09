@@ -259,6 +259,11 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                                 snapshot.procStatsCpuFgTimeMs = new HashMap<>();
                             }
                             snapshot.procStatsCpuFgTimeMs.put(pkg, DigitEntry.of(HealthStatsHelper.getMeasure(procStats, ProcessHealthStats.MEASUREMENT_FOREGROUND_MS)));
+
+                            if (snapshot.procStatsStartCount.isEmpty()) {
+                                snapshot.procStatsStartCount = new HashMap<>();
+                            }
+                            snapshot.procStatsStartCount.put(pkg, DigitEntry.of(HealthStatsHelper.getMeasure(procStats, ProcessHealthStats.MEASUREMENT_STARTS_COUNT)));
                         }
                     }
                 }
@@ -356,10 +361,13 @@ public class HealthStatsFeature extends AbsMonitorFeature {
         public DigitEntry<Long> procBgMs = DigitEntry.of(0L);
         public DigitEntry<Long> procCacheMs = DigitEntry.of(0L);
 
-        // Map
+        // Map: Nested data in collections
+        //      Process
         public Map<String, DigitEntry<Long>> procStatsCpuUsrTimeMs = Collections.emptyMap();
         public Map<String, DigitEntry<Long>> procStatsCpuSysTimeMs = Collections.emptyMap();
         public Map<String, DigitEntry<Long>> procStatsCpuFgTimeMs = Collections.emptyMap();
+        public Map<String, DigitEntry<Long>> procStatsStartCount = Collections.emptyMap();
+        //     Wakelocks
         public Map<String, DigitEntry<Long>> tagWakelocksPartialMs = Collections.emptyMap();
         public Map<String, DigitEntry<Long>> tagWakelocksFullMs = Collections.emptyMap();
 
@@ -527,6 +535,20 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                     }
                     {
                         Map<String, DigitEntry<Long>> map = new HashMap<>();
+                        for (Map.Entry<String, DigitEntry<Long>> entry : end.procStatsStartCount.entrySet()) {
+                            String key = entry.getKey();
+                            DigitEntry<Long> endEntry = entry.getValue();
+                            long bgnValue = 0L;
+                            DigitEntry<Long> bgnEntry = bgn.procStatsStartCount.get(key);
+                            if (bgnEntry != null) {
+                                bgnValue = bgnEntry.get();
+                            }
+                            map.put(key, Differ.DigitDiffer.globalDiff(DigitEntry.of(bgnValue), endEntry));
+                        }
+                        delta.procStatsStartCount = map;
+                    }
+                    {
+                        Map<String, DigitEntry<Long>> map = new HashMap<>();
                         for (Map.Entry<String, DigitEntry<Long>> entry : end.tagWakelocksPartialMs.entrySet()) {
                             String key = entry.getKey();
                             DigitEntry<Long> endEntry = entry.getValue();
@@ -565,6 +587,7 @@ public class HealthStatsFeature extends AbsMonitorFeature {
             delta.dlt.procStatsCpuUsrTimeMs = decrease(procStatsCpuUsrTimeMs);
             delta.dlt.procStatsCpuSysTimeMs = decrease(procStatsCpuSysTimeMs);
             delta.dlt.procStatsCpuFgTimeMs = decrease(procStatsCpuFgTimeMs);
+            delta.dlt.procStatsStartCount = decrease(procStatsStartCount);
             delta.dlt.tagWakelocksPartialMs = decrease(tagWakelocksPartialMs);
             delta.dlt.tagWakelocksFullMs = decrease(tagWakelocksFullMs);
             return delta;
@@ -606,6 +629,7 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                 accDelta.procStatsCpuUsrTimeMs = new HashMap<>();
                 accDelta.procStatsCpuSysTimeMs = new HashMap<>();
                 accDelta.procStatsCpuFgTimeMs = new HashMap<>();
+                accDelta.procStatsStartCount = new HashMap<>();
                 accDelta.tagWakelocksPartialMs = new HashMap<>();
                 accDelta.tagWakelocksFullMs = new HashMap<>();
             }
@@ -705,6 +729,12 @@ public class HealthStatsFeature extends AbsMonitorFeature {
                         DigitEntry<Long> val = entry.getValue();
                         DigitEntry<Long> acc = accDelta.procStatsCpuFgTimeMs.get(key);
                         accDelta.procStatsCpuFgTimeMs.put(key, DigitEntry.of(val.get() + (acc == null ? 0 : acc.get())));
+                    }
+                    for (Map.Entry<String, DigitEntry<Long>> entry : delta.dlt.procStatsStartCount.entrySet()) {
+                        String key = entry.getKey();
+                        DigitEntry<Long> val = entry.getValue();
+                        DigitEntry<Long> acc = accDelta.procStatsStartCount.get(key);
+                        accDelta.procStatsStartCount.put(key, DigitEntry.of(val.get() + (acc == null ? 0 : acc.get())));
                     }
                     for (Map.Entry<String, DigitEntry<Long>> entry : delta.dlt.tagWakelocksPartialMs.entrySet()) {
                         String key = entry.getKey();

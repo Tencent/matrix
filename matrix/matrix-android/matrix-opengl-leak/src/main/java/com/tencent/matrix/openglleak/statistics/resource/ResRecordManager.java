@@ -238,7 +238,7 @@ public class ResRecordManager {
 
     public boolean isEglContextReleased(OpenGLInfo info) {
         synchronized (mContextRecord) {
-            return mContextRecord.contains(info.getEglContextNativeHandle());
+            return !mContextRecord.contains(info.getEglContextNativeHandle());
         }
 //        synchronized (mReleaseContext) {
 //            long eglContextNativeHandle = info.getEglContextNativeHandle();
