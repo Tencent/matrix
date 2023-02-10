@@ -348,10 +348,6 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
             for (FrameDuration item : values()) {
                 sb.append(item.name()).append('=').append(durations[item.ordinal()]).append("; ");
             }
-
-            if (FrameTracer.sdkInt >= Build.VERSION_CODES.S) {
-                sb.append("gpu_duration=").append(durations[GPU_DURATION.ordinal()]).append("; ");
-            }
             sb.setLength(sb.length() - 2);    // remove the last "; "
             sb.append("}");
 
@@ -541,7 +537,7 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
             public void onFrameMetricsAvailable(Window window, FrameMetrics frameMetrics, int dropCountSinceLastInvocation) {
                 if (isForeground()) {
                     // skip not available metrics.
-                    for (int i = FrameDuration.UNKNOWN_DELAY_DURATION.ordinal(); i < FrameDuration.TOTAL_DURATION.ordinal(); i++) {
+                    for (int i = FrameDuration.UNKNOWN_DELAY_DURATION.ordinal(); i <= FrameDuration.TOTAL_DURATION.ordinal(); i++) {
                         long v = frameMetrics.getMetric(FrameDuration.indices[i]);
                         if (v < 0 || v >= HALF_MAX) {
                             // some devices will produce outliers, especially the Honor series, eg: NTH-AN00, ANY-AN00, etc.
