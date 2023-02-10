@@ -95,18 +95,6 @@ public class Utils {
         return stackTrace.toString();
     }
 
-    public static String calculateCpuUsage(long threadMs, long ms) {
-        if (threadMs <= 0) {
-            return ms > 1000 ? "0%" : "100%";
-        }
-
-        if (threadMs >= ms) {
-            return "100%";
-        }
-
-        return String.format("%.2f", 1.f * threadMs / ms * 100) + "%";
-    }
-
     public static boolean isEmpty(String str) {
         return null == str || str.equals("");
     }

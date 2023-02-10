@@ -35,6 +35,7 @@ import com.tencent.matrix.batterycanary.monitor.feature.AbsTaskMonitorFeature.Ta
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
 import com.tencent.matrix.batterycanary.utils.TimeBreaker;
 import com.tencent.matrix.trace.core.LooperMonitor;
+import com.tencent.matrix.trace.listeners.ILooperListener;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -47,7 +48,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 
@@ -77,24 +77,23 @@ public class MonitorFeatureLooperTest {
         HandlerThread handlerThread = new HandlerThread("looper-test");
         handlerThread.start();
         LooperMonitor looperMonitor = LooperMonitor.of(handlerThread.getLooper());
-        looperMonitor.addListener(new LooperMonitor.LooperDispatchListener() {
+        looperMonitor.addListener(new ILooperListener() {
             @Override
             public boolean isValid() {
                 return true;
             }
 
             @Override
-            public void dispatchStart() {
+            public void onDispatchBegin(String log) {
                 Assert.assertEquals("looper-test", Thread.currentThread().getName());
                 if (!hasStart.get()) {
                     Assert.assertFalse(hasFinish.get());
                 }
                 hasStart.set(true);
-
             }
 
             @Override
-            public void dispatchEnd() {
+            public void onDispatchEnd(String log, long beginNs, long endNs) {
                 Assert.assertEquals("looper-test", Thread.currentThread().getName());
                 hasFinish.set(true);
                 Assert.assertTrue(hasStart.get());
@@ -136,7 +135,7 @@ public class MonitorFeatureLooperTest {
         HandlerThread handlerThread = new HandlerThread("looper-test");
         handlerThread.start();
         LooperMonitor looperMonitor = LooperMonitor.of(handlerThread.getLooper());
-        looperMonitor.addListener(new LooperMonitor.LooperDispatchListener() {
+        looperMonitor.addListener(new ILooperListener() {
             @Override
             public boolean isValid() {
                 return true;
@@ -146,8 +145,7 @@ public class MonitorFeatureLooperTest {
              * >>>>> Dispatching to Handler (android.os.Handler) {b54e421} com.tencent.matrix.batterycanary.utils.LooperMonitorTest$TestTask@32d6046: 0
              */
             @Override
-            public void onDispatchStart(String x) {
-                super.onDispatchStart(x);
+            public void onDispatchBegin(String x) {
                 if (!hasStart.get()) {
                     Assert.assertFalse(hasFinish.get());
                 }
@@ -188,8 +186,7 @@ public class MonitorFeatureLooperTest {
              * <<<<< Finished to Handler (android.os.Handler) {b54e421} com.tencent.matrix.batterycanary.utils.LooperMonitorTest$TestTask@32d6046
              */
             @Override
-            public void onDispatchEnd(String x) {
-                super.onDispatchEnd(x);
+            public void onDispatchEnd(String x, long beginNs, long endNs) {
                 hasFinish.set(true);
                 Assert.assertTrue(hasStart.get());
 

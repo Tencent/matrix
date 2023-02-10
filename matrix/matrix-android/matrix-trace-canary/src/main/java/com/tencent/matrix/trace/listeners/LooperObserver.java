@@ -18,6 +18,10 @@ package com.tencent.matrix.trace.listeners;
 
 import androidx.annotation.CallSuper;
 
+/**
+ * Use {@link ILooperListener} or {@link IFrameListener} instead.
+ */
+@Deprecated
 public abstract class LooperObserver {
 
     private boolean isDispatchBegin = false;

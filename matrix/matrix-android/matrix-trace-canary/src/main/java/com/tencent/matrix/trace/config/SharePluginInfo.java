@@ -32,7 +32,6 @@ public class SharePluginInfo {
     public static final String ISSUE_DROP_LEVEL = "dropLevel";
     public static final String ISSUE_DROP_SUM = "dropSum";
     public static final String ISSUE_FPS = "fps";
-    public static final String ISSUE_SUM_TASK_FRAME = "dropTaskFrameSum";
     public static final String ISSUE_TRACE_STACK = "stack";
     public static final String ISSUE_THREAD_STACK = "threadStack";
     public static final String ISSUE_PROCESS_PRIORITY = "processPriority";
@@ -45,7 +44,6 @@ public class SharePluginInfo {
     public static final String ISSUE_MEMORY_DALVIK = "dalvik_heap";
     public static final String ISSUE_MEMORY_VM_SIZE = "vm_size";
     public static final String ISSUE_COST = "cost";
-    public static final String ISSUE_CPU_USAGE = "usage";
     public static final String ISSUE_STACK_TYPE = "detail";
     public static final String ISSUE_IS_WARM_START_UP = "is_warm_start_up";
     public static final String ISSUE_SUB_TYPE = "subType";

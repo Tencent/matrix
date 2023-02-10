@@ -9,6 +9,7 @@ import android.text.TextUtils;
 import com.tencent.matrix.batterycanary.BuildConfig;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
 import com.tencent.matrix.trace.core.LooperMonitor;
+import com.tencent.matrix.trace.listeners.ILooperListener;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.ArrayList;
@@ -38,7 +39,7 @@ public final class LooperTaskMonitorFeature extends AbsTaskMonitorFeature {
     final Map<Looper, LooperMonitor> mLooperMonitorTrace = new HashMap<>();
 
     @Nullable
-    LooperMonitor.LooperDispatchListener mLooperTaskListener;
+    ILooperListener mLooperTaskListener;
     @Nullable
     Runnable mDelayWatchingTask;
 
@@ -54,15 +55,14 @@ public final class LooperTaskMonitorFeature extends AbsTaskMonitorFeature {
     @Override
     public void onTurnOn() {
         super.onTurnOn();
-        mLooperTaskListener = new LooperMonitor.LooperDispatchListener() {
+        mLooperTaskListener = new ILooperListener() {
             @Override
             public boolean isValid() {
                 return mCore.isTurnOn();
             }
 
             @Override
-            public void onDispatchStart(String x) {
-                super.onDispatchStart(x);
+            public void onDispatchBegin(String x) {
                 if (mCore.getConfig().isAggressiveMode) {
                     MatrixLog.i(TAG, "[" + Thread.currentThread().getName() + "]" + x);
                 }
@@ -76,8 +76,7 @@ public final class LooperTaskMonitorFeature extends AbsTaskMonitorFeature {
             }
 
             @Override
-            public void onDispatchEnd(String x) {
-                super.onDispatchEnd(x);
+            public void onDispatchEnd(String x, long beginNs, long endNs) {
                 if (mCore.getConfig().isAggressiveMode) {
                     MatrixLog.i(TAG, "[" + Thread.currentThread().getName() + "]" + x);
                 }

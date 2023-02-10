@@ -22,6 +22,7 @@ import android.graphics.Canvas;
 import android.graphics.DashPathEffect;
 import android.graphics.Paint;
 import android.graphics.Path;
+import android.os.Build;
 import android.text.TextPaint;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
@@ -30,27 +31,40 @@ import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import androidx.annotation.RequiresApi;
+
 import com.tencent.matrix.trace.R;
 import com.tencent.matrix.trace.constants.Constants;
 
 import java.util.LinkedList;
 
+@RequiresApi(Build.VERSION_CODES.N)
 public class FloatFrameView extends LinearLayout {
 
     public TextView fpsView;
-    public LineChartView chartView;
-    public TextView levelFrozenView;
-    public TextView levelHighView;
-    public TextView levelMiddleView;
-    public TextView levelNormalView;
-    public TextView sumLevelFrozenView;
-    public TextView sumLevelHighView;
-    public TextView sumLevelMiddleView;
-    public TextView sumLevelNormalView;
-    public TextView extraInfoView;
     public TextView sceneView;
-    public TextView qiWangView;
-    public TextView sumQiWangView;
+    public LineChartView chartView;
+
+    public TextView extraInfoView;
+    public TextView unknownDelayDurationView;
+    public TextView inputHandlingDurationView;
+    public TextView animationDurationView;
+    public TextView layoutMeasureDurationView;
+    public TextView drawDurationView;
+    public TextView syncDurationView;
+    public TextView commandIssueDurationView;
+    public TextView swapBuffersDurationView;
+    public TextView gpuDurationView;
+    public TextView totalDurationView;
+
+    public TextView sumNormalView;
+    public TextView sumMiddleView;
+    public TextView sumHighView;
+    public TextView sumFrozenView;
+    public TextView levelNormalView;
+    public TextView levelMiddleView;
+    public TextView levelHighView;
+    public TextView levelFrozenView;
 
     public FloatFrameView(Context context) {
         super(context);
@@ -71,17 +85,26 @@ public class FloatFrameView extends LinearLayout {
         sceneView = findViewById(R.id.scene_view);
         extraInfoView.setText("{other info}");
 
-        qiWangView = findViewById(R.id.qi_wang_tv);
-        levelFrozenView = findViewById(R.id.level_frozen);
-        levelHighView = findViewById(R.id.level_high);
-        levelMiddleView = findViewById(R.id.level_middle);
-        levelNormalView = findViewById(R.id.level_normal);
+        unknownDelayDurationView = findViewById(R.id.unknown_delay_duration_tv);
+        inputHandlingDurationView = findViewById(R.id.input_handling_duration_tv);
+        animationDurationView = findViewById(R.id.animation_duration_tv);
+        layoutMeasureDurationView = findViewById(R.id.layout_measure_duration_tv);
+        drawDurationView = findViewById(R.id.draw_duration_tv);
+        syncDurationView = findViewById(R.id.sync_duration_tv);
+        commandIssueDurationView = findViewById(R.id.command_issue_duration_tv);
+        swapBuffersDurationView = findViewById(R.id.swap_buffers_duration_tv);
+        gpuDurationView = findViewById(R.id.gpu_duration_tv);
+        totalDurationView = findViewById(R.id.total_duration_tv);
 
-        sumQiWangView = findViewById(R.id.sum_qi_wang_tv);
-        sumLevelFrozenView = findViewById(R.id.sum_level_frozen);
-        sumLevelHighView = findViewById(R.id.sum_level_high);
-        sumLevelMiddleView = findViewById(R.id.sum_level_middle);
-        sumLevelNormalView = findViewById(R.id.sum_level_normal);
+        sumNormalView = findViewById(R.id.sum_normal);
+        sumMiddleView = findViewById(R.id.sum_middle);
+        sumHighView = findViewById(R.id.sum_high);
+        sumFrozenView = findViewById(R.id.sum_frozen);
+        levelNormalView = findViewById(R.id.level_normal);
+        levelMiddleView = findViewById(R.id.level_middle);
+        levelHighView = findViewById(R.id.level_high);
+        levelFrozenView = findViewById(R.id.level_frozen);
+
         chartView = findViewById(R.id.chart);
     }
 

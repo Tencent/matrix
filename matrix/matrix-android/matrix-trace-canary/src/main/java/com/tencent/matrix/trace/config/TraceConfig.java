@@ -239,7 +239,7 @@ public class TraceConfig implements IDefaultConfig {
 
 
     public static class Builder {
-        private TraceConfig config = new TraceConfig();
+        private final TraceConfig config = new TraceConfig();
 
         public Builder dynamicConfig(IDynamicConfig dynamicConfig) {
             config.dynamicConfig = dynamicConfig;
