@@ -176,13 +176,14 @@ public class LooperAnrTracer extends Tracer implements ILooperListener {
 
             // Thread state
             Thread.State status = Looper.getMainLooper().getThread().getState();
-            StackTraceElement[] stackTrace = Looper.getMainLooper().getThread().getStackTrace();
-            String dumpStack;
-            if (traceConfig.getLooperPrinterStackStyle() == TraceConfig.STACK_STYLE_WHOLE) {
-                dumpStack = Utils.getWholeStack(stackTrace, "|*\t\t");
-            } else {
-                dumpStack = Utils.getStack(stackTrace, "|*\t\t", 12);
-            }
+            // StackTraceElement[] stackTrace = Looper.getMainLooper().getThread().getStackTrace();
+            // String dumpStack;
+            // if (traceConfig.getLooperPrinterStackStyle() == TraceConfig.STACK_STYLE_WHOLE) {
+            //     dumpStack = Utils.getWholeStack(stackTrace, "|*\t\t");
+            // } else {
+            //     dumpStack = Utils.getStack(stackTrace, "|*\t\t", 12);
+            // }
+            String dumpStack = Utils.getMainThreadJavaStackTrace();
 
             // trace
             LinkedList<MethodItem> stack = new LinkedList<>();
@@ -240,11 +241,12 @@ public class LooperAnrTracer extends Tracer implements ILooperListener {
                 jsonObject.put(SharePluginInfo.ISSUE_STACK_KEY, stackKey);
                 jsonObject.put(SharePluginInfo.ISSUE_SCENE, scene);
                 jsonObject.put(SharePluginInfo.ISSUE_TRACE_STACK, reportBuilder.toString());
-                if (traceConfig.getLooperPrinterStackStyle() == TraceConfig.STACK_STYLE_WHOLE) {
-                    jsonObject.put(SharePluginInfo.ISSUE_THREAD_STACK, Utils.getWholeStack(stackTrace));
-                } else {
-                    jsonObject.put(SharePluginInfo.ISSUE_THREAD_STACK, Utils.getStack(stackTrace));
-                }
+                // if (traceConfig.getLooperPrinterStackStyle() == TraceConfig.STACK_STYLE_WHOLE) {
+                //     jsonObject.put(SharePluginInfo.ISSUE_THREAD_STACK, Utils.getWholeStack(stackTrace));
+                // } else {
+                //     jsonObject.put(SharePluginInfo.ISSUE_THREAD_STACK, Utils.getStack(stackTrace));
+                // }
+                jsonObject.put(SharePluginInfo.ISSUE_THREAD_STACK, dumpStack);
                 jsonObject.put(SharePluginInfo.ISSUE_PROCESS_PRIORITY, processStat[0]);
                 jsonObject.put(SharePluginInfo.ISSUE_PROCESS_NICE, processStat[1]);
                 jsonObject.put(SharePluginInfo.ISSUE_PROCESS_FOREGROUND, isForeground);
