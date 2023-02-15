@@ -23,7 +23,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 
 @RequiresApi(Build.VERSION_CODES.N)
-public interface IActivityFrameListener {
+public interface ISceneFrameListener {
 
     /**
      * The interval returned indicates how long to call back {@code onFrameMetricsAvailable}.
@@ -36,10 +36,9 @@ public interface IActivityFrameListener {
     int getIntervalMs();
 
     /**
-     * The name returned will be used to match the specified activity.
-     * see <code>Activity.getClass().getName()</code>
+     * The name returned will be used to match the specified scene.
      *
-     * @return Name of the specified activity, null or empty string will match all activity.
+     * @return Name of the specified scene, null or empty string will match all scene.
      */
     String getName();
 
@@ -69,12 +68,12 @@ public interface IActivityFrameListener {
     /**
      * This method will be called when average frame metrics available.
      *
-     * @param activityName    name of activity.
-     * @param avgDurations    average avgDurations, include draw duration, animation duration, etc.
-     *                        See {@link com.tencent.matrix.trace.tracer.FrameTracer.FrameDuration}.
-     * @param dropLevel       drop level distribution, sum of this array equals value returned by <code>getSize()</code>.
-     *                        See {@link com.tencent.matrix.trace.tracer.FrameTracer.DropStatus}.
-     * @param dropSum         dropped frame distribution.
+     * @param sceneName    name of scene.
+     * @param avgDurations average avgDurations, include draw duration, animation duration, etc.
+     *                     See {@link com.tencent.matrix.trace.tracer.FrameTracer.FrameDuration}.
+     * @param dropLevel    drop level distribution, sum of this array equals value returned by <code>getSize()</code>.
+     *                     See {@link com.tencent.matrix.trace.tracer.FrameTracer.DropStatus}.
+     * @param dropSum      dropped frame distribution.
      */
-    void onFrameMetricsAvailable(@NonNull String activityName, long[] avgDurations, int[] dropLevel, int[] dropSum, float avgDroppedFrame, float avgRefreshRate, float avgFps);
+    void onFrameMetricsAvailable(@NonNull String sceneName, long[] avgDurations, int[] dropLevel, int[] dropSum, float avgDroppedFrame, float avgRefreshRate, float avgFps);
 }
