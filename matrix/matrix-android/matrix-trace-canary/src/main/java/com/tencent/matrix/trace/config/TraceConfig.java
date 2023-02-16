@@ -35,6 +35,7 @@ public class TraceConfig implements IDefaultConfig {
     private static final String TAG = "Matrix.TraceConfig";
     public static final int STACK_STYLE_SIMPLE = 0;
     public static final int STACK_STYLE_WHOLE = 1;
+    public static final int STACK_STYLE_RAW = 2;
     public IDynamicConfig dynamicConfig;
     public boolean defaultFpsEnable;
     public boolean defaultMethodTraceEnable;

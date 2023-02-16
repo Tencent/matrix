@@ -27,7 +27,7 @@ import java.util.concurrent.Executor;
 /**
  * Created by caichongyang on 2017/5/26.
  * <br/>
- * Use {@link IFrameListener} or {@link IActivityFrameListener} instead.
+ * Use {@link IFrameListener} or {@link ISceneFrameListener} instead.
  **/
 @Deprecated
 public class IDoFrameListener {

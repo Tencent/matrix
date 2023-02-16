@@ -42,14 +42,14 @@ import com.tencent.matrix.lifecycle.owners.ProcessUIResumedStateOwner;
 import com.tencent.matrix.trace.R;
 import com.tencent.matrix.trace.TracePlugin;
 import com.tencent.matrix.trace.constants.Constants;
-import com.tencent.matrix.trace.listeners.IActivityFrameListener;
+import com.tencent.matrix.trace.listeners.ISceneFrameListener;
 import com.tencent.matrix.trace.tracer.FrameTracer;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.Arrays;
 
 @RequiresApi(Build.VERSION_CODES.N)
-public class FrameDecorator implements IActivityFrameListener {
+public class FrameDecorator implements ISceneFrameListener {
     private static final String TAG = "Matrix.FrameDecorator";
     private WindowManager windowManager;
     private WindowManager.LayoutParams layoutParam;
@@ -341,7 +341,7 @@ public class FrameDecorator implements IActivityFrameListener {
 
     @SuppressLint("DefaultLocale")
     @Override
-    public void onFrameMetricsAvailable(@NonNull String scene, long[] avgDurations, int[] dropLevel, int[] dropSum, float avgDroppedFrame, float avgRefreshRate, final float fps) {
+    public void onFrameMetricsAvailable(@NonNull String sceneName, long[] avgDurations, int[] dropLevel, int[] dropSum, float avgDroppedFrame, float avgRefreshRate, final float fps) {
         final String unknownDelay = String.format("unknown delay: %.1fms", (double) avgDurations[FrameTracer.FrameDuration.UNKNOWN_DELAY_DURATION.ordinal()] / Constants.TIME_MILLIS_TO_NANO);
         final String inputHandling = String.format("input handling: %.1fms", (double) avgDurations[FrameTracer.FrameDuration.INPUT_HANDLING_DURATION.ordinal()] / Constants.TIME_MILLIS_TO_NANO);
         final String animation = String.format("animation: %.1fms", (double) avgDurations[FrameTracer.FrameDuration.ANIMATION_DURATION.ordinal()] / Constants.TIME_MILLIS_TO_NANO);

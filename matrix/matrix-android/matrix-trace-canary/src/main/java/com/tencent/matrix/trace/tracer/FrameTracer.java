@@ -31,13 +31,14 @@ import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 
 import com.tencent.matrix.Matrix;
+import com.tencent.matrix.lifecycle.owners.ProcessUILifecycleOwner;
 import com.tencent.matrix.report.Issue;
 import com.tencent.matrix.trace.TracePlugin;
 import com.tencent.matrix.trace.config.SharePluginInfo;
 import com.tencent.matrix.trace.config.TraceConfig;
 import com.tencent.matrix.trace.constants.Constants;
 import com.tencent.matrix.trace.core.UIThreadMonitor;
-import com.tencent.matrix.trace.listeners.IActivityFrameListener;
+import com.tencent.matrix.trace.listeners.ISceneFrameListener;
 import com.tencent.matrix.trace.listeners.IDoFrameListener;
 import com.tencent.matrix.trace.listeners.IDropFrameListener;
 import com.tencent.matrix.trace.listeners.IFrameListener;
@@ -150,7 +151,7 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
     private final long highThreshold;
     private final long middleThreshold;
     private final long normalThreshold;
-    ActivityFrameCollector activityFrameCollector;
+    SceneFrameCollector sceneFrameCollector;
     private final Map<Integer, Window.OnFrameMetricsAvailableListener> frameListenerMap = new ConcurrentHashMap<>();
 
     public FrameTracer(TraceConfig config) {
@@ -193,16 +194,16 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
     }
 
     @RequiresApi(Build.VERSION_CODES.N)
-    public void register(IActivityFrameListener listener) {
-        if (activityFrameCollector != null) {
-            activityFrameCollector.register(listener);
+    public void register(ISceneFrameListener listener) {
+        if (sceneFrameCollector != null) {
+            sceneFrameCollector.register(listener);
         }
     }
 
     @RequiresApi(Build.VERSION_CODES.N)
-    public void unregister(IActivityFrameListener listener) {
-        if (activityFrameCollector != null) {
-            activityFrameCollector.unregister(listener);
+    public void unregister(ISceneFrameListener listener) {
+        if (sceneFrameCollector != null) {
+            sceneFrameCollector.unregister(listener);
         }
     }
 
@@ -218,9 +219,9 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
         MatrixLog.i(TAG, "forceEnable");
         if (sdkInt >= Build.VERSION_CODES.N) {
             Matrix.with().getApplication().registerActivityLifecycleCallbacks(this);
-            activityFrameCollector = new ActivityFrameCollector();
-            addListener(activityFrameCollector);
-            register(new AllActivityFrameListener());
+            sceneFrameCollector = new SceneFrameCollector();
+            addListener(sceneFrameCollector);
+            register(new AllSceneFrameListener());
         } else {
             UIThreadMonitor.getMonitor().addObserver(looperObserver);
         }
@@ -257,20 +258,20 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
     }
 
     @RequiresApi(Build.VERSION_CODES.N)
-    private class ActivityFrameCollector implements IFrameListener {
+    private class SceneFrameCollector implements IFrameListener {
 
         private final Handler frameHandler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper());
-        private final HashMap<String, ActivityFrameCollectItem> map = new HashMap<>();
-        private final ArrayList<ActivityFrameCollectItem> list = new ArrayList<>();
+        private final HashMap<String, SceneFrameCollectItem> map = new HashMap<>();
+        private final ArrayList<SceneFrameCollectItem> list = new ArrayList<>();
 
-        public synchronized void register(IActivityFrameListener listener) {
+        public synchronized void register(ISceneFrameListener listener) {
             if (listener.getIntervalMs() < 1 || listener.getThreshold() < 0) {
                 MatrixLog.e(TAG, "Illegal value, intervalMs=%d, threshold=%d, activity=%s",
                         listener.getIntervalMs(), listener.getThreshold(), listener.getClass().getName());
                 return;
             }
             String scene = listener.getName();
-            ActivityFrameCollectItem collectItem = new ActivityFrameCollectItem(listener);
+            SceneFrameCollectItem collectItem = new SceneFrameCollectItem(listener);
             if (scene == null || scene.isEmpty()) {
                 list.add(collectItem);
             } else {
@@ -278,7 +279,7 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
             }
         }
 
-        public synchronized void unregister(@NonNull IActivityFrameListener listener) {
+        public synchronized void unregister(@NonNull ISceneFrameListener listener) {
             String scene = listener.getName();
             if (scene == null || scene.isEmpty()) {
                 for (int i = 0; i < list.size(); i++) {
@@ -294,18 +295,18 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
 
 
         @Override
-        public void onFrameMetricsAvailable(final Activity activity, final FrameMetrics frameMetrics, final float droppedFrames, final float refreshRate) {
+        public void onFrameMetricsAvailable(final String sceneName, final FrameMetrics frameMetrics, final float droppedFrames, final float refreshRate) {
             frameHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    synchronized (ActivityFrameCollector.this) {
-                        String scene = activity.getClass().getName();
-                        ActivityFrameCollectItem collectItem = map.get(scene);
+                    synchronized (SceneFrameCollector.this) {
+                        String scene = sceneName.getClass().getName();
+                        SceneFrameCollectItem collectItem = map.get(scene);
                         if (collectItem != null) {
-                            collectItem.append(activity, frameMetrics, droppedFrames, refreshRate);
+                            collectItem.append(sceneName, frameMetrics, droppedFrames, refreshRate);
                         }
-                        for (ActivityFrameCollectItem frameCollectItem : list) {
-                            frameCollectItem.append(activity, frameMetrics, droppedFrames, refreshRate);
+                        for (SceneFrameCollectItem frameCollectItem : list) {
+                            frameCollectItem.append(sceneName, frameMetrics, droppedFrames, refreshRate);
                         }
                     }
                 }
@@ -356,7 +357,7 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
     }
 
     @RequiresApi(Build.VERSION_CODES.N)
-    private class ActivityFrameCollectItem {
+    private class SceneFrameCollectItem {
         private final long[] durations = new long[FrameDuration.values().length];
         private final int[] dropLevel = new int[DropStatus.values().length];
         private final int[] dropSum = new int[DropStatus.values().length];
@@ -365,14 +366,14 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
         private float totalDuration;
         private long beginMs;
 
-        public IActivityFrameListener listener;
+        public ISceneFrameListener listener;
         private int count = 0;
 
-        ActivityFrameCollectItem(IActivityFrameListener listener) {
+        SceneFrameCollectItem(ISceneFrameListener listener) {
             this.listener = listener;
         }
 
-        public void append(Activity activity, FrameMetrics frameMetrics, float droppedFrames, float refreshRate) {
+        public void append(String scene, FrameMetrics frameMetrics, float droppedFrames, float refreshRate) {
             if ((listener.skipFirstFrame() && frameMetrics.getMetric(FrameMetrics.FIRST_DRAW_FRAME) == 1)
                     || droppedFrames < (refreshRate / 60) * listener.getThreshold()) {
                 return;
@@ -401,7 +402,7 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
                 for (int i = 0; i < durations.length; i++) {
                     durations[i] /= count;
                 }
-                listener.onFrameMetricsAvailable(activity.getClass().getName(), durations, dropLevel, dropSum,
+                listener.onFrameMetricsAvailable(scene, durations, dropLevel, dropSum,
                         dropCount, this.refreshRate, Constants.TIME_SECOND_TO_NANO / totalDuration);
 
                 reset();
@@ -496,21 +497,21 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
 
     }
 
-    private float getRefreshRate(Activity activity) {
+    private float getRefreshRate(Window window) {
         if (sdkInt >= Build.VERSION_CODES.R) {
-            return activity.getDisplay().getRefreshRate();
+            return window.getContext().getDisplay().getRefreshRate();
         }
-        return activity.getWindowManager().getDefaultDisplay().getRefreshRate();
+        return window.getWindowManager().getDefaultDisplay().getRefreshRate();
     }
 
     @RequiresApi(Build.VERSION_CODES.N)
     @Override
-    public void onActivityResumed(final Activity activity) {
+    public void onActivityResumed(Activity activity) {
         if (frameListenerMap.containsKey(activity.hashCode())) {
             return;
         }
 
-        defaultRefreshRate = getRefreshRate(activity);
+        defaultRefreshRate = getRefreshRate(activity.getWindow());
         MatrixLog.i(TAG, "default refresh rate is %dHz", (int) defaultRefreshRate);
 
         Window.OnFrameMetricsAvailableListener onFrameMetricsAvailableListener = new Window.OnFrameMetricsAvailableListener() {
@@ -520,14 +521,14 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
             private int lastThreshold = -1;
             private WindowManager.LayoutParams attributes = null;
 
-            private void updateRefreshRate() {
+            private void updateRefreshRate(Window window) {
                 if (attributes == null) {
-                    attributes = activity.getWindow().getAttributes();
+                    attributes = window.getAttributes();
                 }
                 if (attributes.preferredDisplayModeId != lastModeId || lastThreshold != dropFrameListenerThreshold) {
                     lastModeId = attributes.preferredDisplayModeId;
                     lastThreshold = dropFrameListenerThreshold;
-                    cachedRefreshRate = getRefreshRate(activity);
+                    cachedRefreshRate = getRefreshRate(window);
                     cachedThreshold = dropFrameListenerThreshold / 60f * cachedRefreshRate;
                 }
             }
@@ -544,10 +545,9 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
                             return;
                         }
                     }
-
                     FrameMetrics frameMetricsCopy = new FrameMetrics(frameMetrics);
 
-                    updateRefreshRate();
+                    updateRefreshRate(window);
 
                     long totalDuration = frameMetricsCopy.getMetric(FrameMetrics.TOTAL_DURATION);
                     float frameIntervalNanos = Constants.TIME_SECOND_TO_NANO / cachedRefreshRate;
@@ -556,11 +556,11 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
                     droppedSum += droppedFrames;
 
                     if (dropFrameListener != null && droppedFrames >= cachedThreshold) {
-                        dropFrameListener.onFrameMetricsAvailable(activity, frameMetricsCopy, droppedFrames, cachedRefreshRate);
+                        dropFrameListener.onFrameMetricsAvailable(ProcessUILifecycleOwner.INSTANCE.getVisibleScene(), frameMetricsCopy, droppedFrames, cachedRefreshRate);
                     }
                     synchronized (listeners) {
                         for (IFrameListener observer : listeners) {
-                            observer.onFrameMetricsAvailable(activity, frameMetricsCopy, droppedFrames, cachedRefreshRate);
+                            observer.onFrameMetricsAvailable(ProcessUILifecycleOwner.INSTANCE.getVisibleScene(), frameMetricsCopy, droppedFrames, cachedRefreshRate);
                         }
                     }
                 }
@@ -598,8 +598,8 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
     }
 
     @RequiresApi(Build.VERSION_CODES.N)
-    static class AllActivityFrameListener implements IActivityFrameListener {
-        private static final String TAG = "AllActivityFrameListener";
+    static class AllSceneFrameListener implements ISceneFrameListener {
+        private static final String TAG = "AllSceneFrameListener";
 
         @Override
         public int getIntervalMs() {
@@ -622,7 +622,7 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
         }
 
         @Override
-        public void onFrameMetricsAvailable(@NonNull String scene, long[] avgDurations, int[] dropLevel, int[] dropSum, float avgDroppedFrame, float avgRefreshRate, float avgFps) {
+        public void onFrameMetricsAvailable(@NonNull String sceneName, long[] avgDurations, int[] dropLevel, int[] dropSum, float avgDroppedFrame, float avgRefreshRate, float avgFps) {
             MatrixLog.i(TAG, "[report] FPS:%s %s", avgFps, toString());
             try {
                 TracePlugin plugin = Matrix.with().getPluginByClass(TracePlugin.class);
@@ -639,7 +639,7 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
                 JSONObject resultObject = new JSONObject();
                 DeviceUtil.getDeviceInfo(resultObject, plugin.getApplication());
 
-                resultObject.put(SharePluginInfo.ISSUE_SCENE, scene);
+                resultObject.put(SharePluginInfo.ISSUE_SCENE, sceneName);
                 resultObject.put(SharePluginInfo.ISSUE_DROP_LEVEL, dropLevelObject);
                 resultObject.put(SharePluginInfo.ISSUE_DROP_SUM, dropSumObject);
                 resultObject.put(SharePluginInfo.ISSUE_FPS, avgFps);
