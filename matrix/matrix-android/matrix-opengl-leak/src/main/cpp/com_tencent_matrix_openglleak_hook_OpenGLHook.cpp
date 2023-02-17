@@ -115,7 +115,7 @@ Java_com_tencent_matrix_openglleak_hook_OpenGLHook_hookEgl(JNIEnv *env, jclass c
                                        (void *) my_egl_context_destroy,
                                        nullptr);
 
-    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_EGL_HOOK, ".*libmatrix-opengl-leak.\\so$", nullptr);
+    xhook_grouped_ignore(HOOK_REQUEST_GROUPID_EGL_HOOK, ".*libmatrix-opengl-leak\\.so$", nullptr);
 
     xhook_refresh(false);
     xhook_export_symtable_hook("libEGL.so", "eglCreateContext", (void *) my_egl_context_create, nullptr);
