@@ -41,23 +41,17 @@ object TrimMemoryNotifier {
     private val appTrimCallbacks = ArrayList<TrimCallback>()
 
     private fun ArrayList<TrimCallback>.backgroundTrim() {
-        synchronized(this) {
-            forEach {
-                safeApply(TAG) {
-                    it.backgroundTrim()
-                }
-            }
+        val copy = synchronized(this) { ArrayList<TrimCallback>(this) }
+        copy.forEach {
+            it.safeApply(TAG) { backgroundTrim() }
         }
         Runtime.getRuntime().gc()
     }
 
     private fun ArrayList<TrimCallback>.systemTrim(level: Int) {
-        synchronized(this) {
-            forEach {
-                safeApply(TAG) {
-                    it.systemTrim(level)
-                }
-            }
+        val copy = synchronized(this) { ArrayList<TrimCallback>(this) }
+        copy.forEach {
+            it.safeApply(TAG) { systemTrim(level) }
         }
         Runtime.getRuntime().gc()
     }
