@@ -9,6 +9,7 @@ import java.util.concurrent.*
 private const val TAG = "Matrix.Lifecycle.Thread"
 
 data class LifecycleThreadConfig(
+    val externalExecutor: Executor? = null,
     val maxPoolSize: Int = 5,
     val keepAliveSeconds: Long = 30L,
     val onHeavyTaskDetected: (task: String, cost: Long) -> Unit = { task, cost ->
@@ -45,6 +46,11 @@ internal object MatrixLifecycleThread {
     }
 
     val executor by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+
+        if (config.externalExecutor != null) {
+            return@lazy config.externalExecutor!!
+        }
+
         val idleSynchronousQueue = IdleSynchronousQueue()
 
         object : ThreadPoolExecutor(
