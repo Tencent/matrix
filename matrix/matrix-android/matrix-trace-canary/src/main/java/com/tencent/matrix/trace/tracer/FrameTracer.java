@@ -38,10 +38,10 @@ import com.tencent.matrix.trace.config.SharePluginInfo;
 import com.tencent.matrix.trace.config.TraceConfig;
 import com.tencent.matrix.trace.constants.Constants;
 import com.tencent.matrix.trace.core.UIThreadMonitor;
-import com.tencent.matrix.trace.listeners.ISceneFrameListener;
 import com.tencent.matrix.trace.listeners.IDoFrameListener;
 import com.tencent.matrix.trace.listeners.IDropFrameListener;
 import com.tencent.matrix.trace.listeners.IFrameListener;
+import com.tencent.matrix.trace.listeners.ISceneFrameListener;
 import com.tencent.matrix.trace.listeners.LooperObserver;
 import com.tencent.matrix.util.DeviceUtil;
 import com.tencent.matrix.util.MatrixHandlerThread;
@@ -395,15 +395,17 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
             totalDuration += Math.max(frameMetrics.getMetric(FrameMetrics.TOTAL_DURATION), frameIntervalNanos);
             ++count;
 
-            if (SystemClock.uptimeMillis() - beginMs >= listener.getIntervalMs()) {
-                dropCount /= count;
-                this.refreshRate /= count;
-                totalDuration /= count;
-                for (int i = 0; i < durations.length; i++) {
-                    durations[i] /= count;
+            if (!listener.continuable() || SystemClock.uptimeMillis() - beginMs >= listener.getIntervalMs()) {
+                if (count > 0) {
+                    dropCount /= count;
+                    this.refreshRate /= count;
+                    totalDuration /= count;
+                    for (int i = 0; i < durations.length; i++) {
+                        durations[i] /= count;
+                    }
+                    listener.onFrameMetricsAvailable(scene, durations, dropLevel, dropSum,
+                            dropCount, this.refreshRate, Constants.TIME_SECOND_TO_NANO / totalDuration);
                 }
-                listener.onFrameMetricsAvailable(scene, durations, dropLevel, dropSum,
-                        dropCount, this.refreshRate, Constants.TIME_SECOND_TO_NANO / totalDuration);
 
                 reset();
             }
@@ -619,6 +621,11 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
         @Override
         public int getThreshold() {
             return 0;
+        }
+
+        @Override
+        public boolean continuable() {
+            return true;
         }
 
         @Override

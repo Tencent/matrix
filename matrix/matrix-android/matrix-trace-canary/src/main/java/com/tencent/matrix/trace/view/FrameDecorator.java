@@ -339,6 +339,11 @@ public class FrameDecorator implements ISceneFrameListener {
         return 0;
     }
 
+    @Override
+    public boolean continuable() {
+        return true;
+    }
+
     @SuppressLint("DefaultLocale")
     @Override
     public void onFrameMetricsAvailable(@NonNull String sceneName, long[] avgDurations, int[] dropLevel, int[] dropSum, float avgDroppedFrame, float avgRefreshRate, final float fps) {

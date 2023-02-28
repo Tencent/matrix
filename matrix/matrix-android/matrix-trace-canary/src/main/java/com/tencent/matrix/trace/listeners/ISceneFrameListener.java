@@ -64,6 +64,12 @@ public interface ISceneFrameListener {
     @IntRange(from = 0)
     int getThreshold();
 
+    /**
+     * @return <code>true</code> for continue collecting, <code>false</code>
+     * will call {@code onFrameMetricsAvailable} before time out.
+     */
+    boolean continuable();
+
 
     /**
      * This method will be called when average frame metrics available.
