@@ -200,10 +200,15 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
     }
 
     @RequiresApi(Build.VERSION_CODES.N)
-    public void unregister(ISceneFrameListener listener) {
+    public void unregister(ISceneFrameListener listener, boolean isCallbackRestAfterUnregister) {
         if (sceneFrameCollector != null) {
-            sceneFrameCollector.unregister(listener);
+            sceneFrameCollector.unregister(listener, isCallbackRestAfterUnregister);
         }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.N)
+    public void unregister(ISceneFrameListener listener) {
+            unregister(listener, false);
     }
 
     @Override
@@ -278,13 +283,13 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
             }
         }
 
-        public synchronized void unregister(@NonNull ISceneFrameListener listener) {
+        public synchronized void unregister(@NonNull ISceneFrameListener listener, boolean isCallbackRestAfterUnregister) {
             final String scene = listener.getName();
             final SceneFrameCollectItem target = scene == null || scene.isEmpty()
                     ? unspecifiedSceneMap.remove(listener)
                     : specifiedSceneMap.remove(scene);
 
-            if (target != null && target.listener.isCallbackRestAfterUnregister()) {
+            if (target != null && isCallbackRestAfterUnregister) {
                 frameHandler.post(new Runnable() {
                     @Override
                     public void run() {
@@ -367,9 +372,9 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
         private float totalDuration;
         private long beginMs;
         private String lastScene;
-
-        public ISceneFrameListener listener;
         private int count = 0;
+
+        ISceneFrameListener listener;
 
         SceneFrameCollectItem(ISceneFrameListener listener) {
             this.listener = listener;
@@ -628,11 +633,6 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
         @Override
         public int getThreshold() {
             return 0;
-        }
-
-        @Override
-        public boolean isCallbackRestAfterUnregister() {
-            return true;
         }
 
         @Override

@@ -16,13 +16,10 @@
 
 package com.tencent.matrix.trace.listeners;
 
-import android.os.Build;
 
 import androidx.annotation.IntRange;
 import androidx.annotation.NonNull;
-import androidx.annotation.RequiresApi;
 
-@RequiresApi(Build.VERSION_CODES.N)
 public interface ISceneFrameListener {
 
     /**
@@ -63,13 +60,6 @@ public interface ISceneFrameListener {
      */
     @IntRange(from = 0)
     int getThreshold();
-
-    /**
-     * Whether need to call back <code>onFrameMetricsAvailable</code> after
-     * this listener to be unregistered
-     */
-    boolean isCallbackRestAfterUnregister();
-
 
     /**
      * This method will be called when average frame metrics available.
