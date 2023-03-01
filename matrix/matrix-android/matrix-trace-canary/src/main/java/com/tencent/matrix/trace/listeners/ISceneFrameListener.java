@@ -65,10 +65,10 @@ public interface ISceneFrameListener {
     int getThreshold();
 
     /**
-     * @return <code>true</code> for continue collecting, <code>false</code>
-     * will call {@code onFrameMetricsAvailable} before time out.
+     * Whether need to call back <code>onFrameMetricsAvailable</code> after
+     * this listener to be unregistered
      */
-    boolean continuable();
+    boolean isCallbackRestAfterUnregister();
 
 
     /**

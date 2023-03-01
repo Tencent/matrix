@@ -340,7 +340,7 @@ public class FrameDecorator implements ISceneFrameListener {
     }
 
     @Override
-    public boolean continuable() {
+    public boolean isCallbackRestAfterUnregister() {
         return true;
     }
 

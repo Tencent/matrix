@@ -51,7 +51,6 @@ import com.tencent.matrix.util.MatrixUtil;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -261,10 +260,10 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
     private class SceneFrameCollector implements IFrameListener {
 
         private final Handler frameHandler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper());
-        private final HashMap<String, SceneFrameCollectItem> map = new HashMap<>();
-        private final ArrayList<SceneFrameCollectItem> list = new ArrayList<>();
+        private final HashMap<String, SceneFrameCollectItem> specifiedSceneMap = new HashMap<>();
+        private final HashMap<ISceneFrameListener, SceneFrameCollectItem> unspecifiedSceneMap = new HashMap<>();
 
-        public synchronized void register(ISceneFrameListener listener) {
+        public synchronized void register(@NonNull ISceneFrameListener listener) {
             if (listener.getIntervalMs() < 1 || listener.getThreshold() < 0) {
                 MatrixLog.e(TAG, "Illegal value, intervalMs=%d, threshold=%d, activity=%s",
                         listener.getIntervalMs(), listener.getThreshold(), listener.getClass().getName());
@@ -273,23 +272,25 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
             String scene = listener.getName();
             SceneFrameCollectItem collectItem = new SceneFrameCollectItem(listener);
             if (scene == null || scene.isEmpty()) {
-                list.add(collectItem);
+                unspecifiedSceneMap.put(listener, collectItem);
             } else {
-                map.put(scene, collectItem);
+                specifiedSceneMap.put(scene, collectItem);
             }
         }
 
         public synchronized void unregister(@NonNull ISceneFrameListener listener) {
-            String scene = listener.getName();
-            if (scene == null || scene.isEmpty()) {
-                for (int i = 0; i < list.size(); i++) {
-                    if (list.get(i).listener == listener) {
-                        list.remove(i);
-                        break;
+            final String scene = listener.getName();
+            final SceneFrameCollectItem target = scene == null || scene.isEmpty()
+                    ? unspecifiedSceneMap.remove(listener)
+                    : specifiedSceneMap.remove(scene);
+
+            if (target != null && target.listener.isCallbackRestAfterUnregister()) {
+                frameHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        target.tryCallBack();
                     }
-                }
-            } else {
-                map.remove(scene);
+                });
             }
         }
 
@@ -299,13 +300,13 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
             frameHandler.post(new Runnable() {
                 @Override
                 public void run() {
+                    String scene = sceneName.getClass().getName();
                     synchronized (SceneFrameCollector.this) {
-                        String scene = sceneName.getClass().getName();
-                        SceneFrameCollectItem collectItem = map.get(scene);
+                        SceneFrameCollectItem collectItem = specifiedSceneMap.get(scene);
                         if (collectItem != null) {
                             collectItem.append(sceneName, frameMetrics, droppedFrames, refreshRate);
                         }
-                        for (SceneFrameCollectItem frameCollectItem : list) {
+                        for (SceneFrameCollectItem frameCollectItem : unspecifiedSceneMap.values()) {
                             frameCollectItem.append(sceneName, frameMetrics, droppedFrames, refreshRate);
                         }
                     }
@@ -337,7 +338,7 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
         SYNC_DURATION, COMMAND_ISSUE_DURATION, SWAP_BUFFERS_DURATION, TOTAL_DURATION, GPU_DURATION;
 
         @SuppressLint("InlinedApi")
-        static int[] indices = {FrameMetrics.UNKNOWN_DELAY_DURATION, FrameMetrics.INPUT_HANDLING_DURATION,
+        static final int[] indices = {FrameMetrics.UNKNOWN_DELAY_DURATION, FrameMetrics.INPUT_HANDLING_DURATION,
                 FrameMetrics.ANIMATION_DURATION, FrameMetrics.LAYOUT_MEASURE_DURATION, FrameMetrics.DRAW_DURATION,
                 FrameMetrics.SYNC_DURATION, FrameMetrics.COMMAND_ISSUE_DURATION, FrameMetrics.SWAP_BUFFERS_DURATION,
                 FrameMetrics.TOTAL_DURATION, FrameMetrics.GPU_DURATION};
@@ -365,6 +366,7 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
         private float refreshRate;
         private float totalDuration;
         private long beginMs;
+        private String lastScene;
 
         public ISceneFrameListener listener;
         private int count = 0;
@@ -395,23 +397,28 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
             totalDuration += Math.max(frameMetrics.getMetric(FrameMetrics.TOTAL_DURATION), frameIntervalNanos);
             ++count;
 
-            if (!listener.continuable() || SystemClock.uptimeMillis() - beginMs >= listener.getIntervalMs()) {
-                if (count > 0) {
-                    dropCount /= count;
-                    this.refreshRate /= count;
-                    totalDuration /= count;
-                    for (int i = 0; i < durations.length; i++) {
-                        durations[i] /= count;
-                    }
-                    listener.onFrameMetricsAvailable(scene, durations, dropLevel, dropSum,
-                            dropCount, this.refreshRate, Constants.TIME_SECOND_TO_NANO / totalDuration);
+            lastScene = scene;
+            if (SystemClock.uptimeMillis() - beginMs >= listener.getIntervalMs()) {
+                tryCallBack();
+            }
+        }
+
+        void tryCallBack() {
+            if (count > 0) {
+                dropCount /= count;
+                this.refreshRate /= count;
+                totalDuration /= count;
+                for (int i = 0; i < durations.length; i++) {
+                    durations[i] /= count;
                 }
+                listener.onFrameMetricsAvailable(lastScene, durations, dropLevel, dropSum,
+                        dropCount, this.refreshRate, Constants.TIME_SECOND_TO_NANO / totalDuration);
 
                 reset();
             }
         }
 
-        void collect(int droppedFrames) {
+        private void collect(int droppedFrames) {
             if (droppedFrames >= frozenThreshold) {
                 dropLevel[DropStatus.DROPPED_FROZEN.ordinal()]++;
                 dropSum[DropStatus.DROPPED_FROZEN.ordinal()] += droppedFrames;
@@ -624,7 +631,7 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
         }
 
         @Override
-        public boolean continuable() {
+        public boolean isCallbackRestAfterUnregister() {
             return true;
         }
 
