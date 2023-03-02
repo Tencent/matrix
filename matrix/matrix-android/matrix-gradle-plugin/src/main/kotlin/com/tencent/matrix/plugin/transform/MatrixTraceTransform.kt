@@ -151,7 +151,7 @@ class MatrixTraceTransform(
     }
 
     private fun toOutputFile(outputDir: File, inputDir: File, inputFile: File): File {
-        return File(outputDir, FileUtils.relativePossiblyNonExistingPath(inputFile, inputDir))
+        return File(outputDir, inputFile.toRelativeString(inputDir))
     }
 
     private fun configure(transformInvocation: TransformInvocation): Configuration {
