@@ -26,6 +26,9 @@ JNIEXPORT void JNICALL Java_com_tencent_matrix_openglleak_hook_OpenGLHook_releas
 JNIEXPORT jstring JNICALL Java_com_tencent_matrix_openglleak_hook_OpenGLHook_dumpNativeStack
         (JNIEnv *, jclass thiz, jlong);
 
+JNIEXPORT jstring JNICALL Java_com_tencent_matrix_openglleak_hook_OpenGLHook_dumpBriefNativeStack
+        (JNIEnv *, jclass thiz, jlong);
+
 /*
 * Class:     com_tencent_matrix_openglleak_hook_OpenGLHook
 * Method:    init

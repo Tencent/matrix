@@ -466,8 +466,7 @@ Java_com_tencent_matrix_openglleak_hook_OpenGLHook_hookGlRenderbufferStorage(JNI
     return true;
 }
 
-void get_native_stack(wechat_backtrace::Backtrace *backtrace, char *&stack) {
-    std::string caller_so_name;
+void get_native_stack(wechat_backtrace::Backtrace *backtrace, char *&stack, bool brief = false) {
     std::stringstream full_stack_builder;
     std::stringstream brief_stack_builder;
     std::string last_so_name;
@@ -496,22 +495,20 @@ void get_native_stack(wechat_backtrace::Backtrace *backtrace, char *&stack) {
         if (demangled_name) {
             free(demangled_name);
         }
-
-        if (caller_so_name.empty()) { // fallback
-            if (/*so_name.find("com.tencent.mm") == std::string::npos ||*/
-                    so_name.find("libwechatbacktrace.so") != std::string::npos ||
-                    so_name.find("libmatrix-hooks.so") != std::string::npos) {
-                return;
-            }
-            caller_so_name = so_name;
-        }
     };
 
     wechat_backtrace::restore_frame_detail(backtrace->frames.get(), backtrace->frame_size,
                                            _callback);
 
-    stack = new char[full_stack_builder.str().size() + 1];
-    strcpy(stack, full_stack_builder.str().c_str());
+    if (brief) {
+        auto brief_stack = brief_stack_builder.str();
+        stack = new char[brief_stack.size() + 1];
+        strcpy(stack, brief_stack.c_str());
+    } else {
+        auto full_stack = full_stack_builder.str();
+        stack = new char[full_stack.size() + 1];
+        strcpy(stack, full_stack.c_str());
+    }
 }
 
 extern "C"
@@ -519,14 +516,32 @@ JNIEXPORT jstring JNICALL
 Java_com_tencent_matrix_openglleak_hook_OpenGLHook_dumpNativeStack(JNIEnv *env, jclass clazz,
                                                                    jlong native_stack_ptr) {
     int64_t addr = native_stack_ptr;
-    wechat_backtrace::Backtrace *ptr = (wechat_backtrace::Backtrace *) addr;
+    auto *ptr = (wechat_backtrace::Backtrace *) addr;
 
     char *native_stack = nullptr;
     get_native_stack(ptr, native_stack);
 
     jstring ret = env->NewStringUTF(native_stack);
     if (native_stack != nullptr) {
-        free(native_stack);
+        delete[] native_stack;
+    }
+    return ret;
+}
+
+extern "C"
+JNIEXPORT jstring JNICALL
+Java_com_tencent_matrix_openglleak_hook_OpenGLHook_dumpBriefNativeStack(JNIEnv *env, jclass clazz,
+                                                                   jlong native_stack_ptr) {
+    int64_t addr = native_stack_ptr;
+    auto *ptr = (wechat_backtrace::Backtrace *) addr;
+
+    char *native_stack = nullptr;
+    get_native_stack(ptr, native_stack, true);
+
+    jstring ret = env->NewStringUTF(native_stack);
+
+    if (native_stack != nullptr) {
+        delete[] native_stack;
     }
     return ret;
 }
