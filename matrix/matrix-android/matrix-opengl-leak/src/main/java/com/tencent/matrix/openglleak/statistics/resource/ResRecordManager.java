@@ -201,6 +201,29 @@ public class ResRecordManager {
         }
     }
 
+    public String getBriefNativeStack(OpenGLInfo item) {
+        synchronized (mInfoList) {
+            // 之前可能释放过
+            int index = mInfoList.indexOf(item);
+            if (-1 == index) {
+                return "res already released, can not get native stack";
+            }
+
+            String ret = "";
+
+            OpenGLInfo info = mInfoList.get(index);
+            if (info == null) {
+                return ret;
+            }
+            long nativeStackPtr = info.getNativeStackPtr();
+            if (nativeStackPtr != 0L) {
+                ret = OpenGLHook.dumpBriefNativeStack(nativeStackPtr);
+            }
+
+            return ret;
+        }
+    }
+
     protected void registerCallback(Callback callback) {
         if (null == callback) {
             return;
