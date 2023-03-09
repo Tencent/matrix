@@ -208,7 +208,19 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
 
     @RequiresApi(Build.VERSION_CODES.N)
     public void unregister(ISceneFrameListener listener) {
-            unregister(listener, false);
+        unregister(listener, false);
+    }
+
+    @RequiresApi(Build.VERSION_CODES.N)
+    public void reset(ISceneFrameListener listener, boolean isCallbackRestBeforeReset) {
+        if (sceneFrameCollector != null) {
+            sceneFrameCollector.reset(listener, isCallbackRestBeforeReset);
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.N)
+    public void reset(ISceneFrameListener listener) {
+        unregister(listener, false);
     }
 
     @Override
@@ -293,12 +305,30 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
                 frameHandler.post(new Runnable() {
                     @Override
                     public void run() {
-                        target.tryCallBack();
+                        target.tryCallBackAndReset();
                     }
                 });
             }
         }
 
+        public synchronized void reset(ISceneFrameListener listener, boolean isCallbackRestBeforeReset) {
+            final String scene = listener.getName();
+            final SceneFrameCollectItem target = scene == null || scene.isEmpty()
+                    ? unspecifiedSceneMap.get(listener)
+                    : specifiedSceneMap.get(scene);
+            if (target != null && isCallbackRestBeforeReset) {
+                target.tryCallBackAndReset();
+            }
+        }
+
+        public synchronized void resetAllAndCallBack() {
+            for (SceneFrameCollectItem value : unspecifiedSceneMap.values()) {
+                value.tryCallBackAndReset();
+            }
+            for (SceneFrameCollectItem value : specifiedSceneMap.values()) {
+                value.tryCallBackAndReset();
+            }
+        }
 
         @Override
         public void onFrameMetricsAvailable(final String sceneName, final FrameMetrics frameMetrics, final float droppedFrames, final float refreshRate) {
@@ -404,12 +434,12 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
 
             lastScene = scene;
             if (SystemClock.uptimeMillis() - beginMs >= listener.getIntervalMs()) {
-                tryCallBack();
+                tryCallBackAndReset();
             }
         }
 
-        void tryCallBack() {
-            if (count > 0) {
+        void tryCallBackAndReset() {
+            if (count > 20) {
                 dropCount /= count;
                 this.refreshRate /= count;
                 totalDuration /= count;
@@ -418,9 +448,8 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
                 }
                 listener.onFrameMetricsAvailable(lastScene, durations, dropLevel, dropSum,
                         dropCount, this.refreshRate, Constants.TIME_SECOND_TO_NANO / totalDuration);
-
-                reset();
             }
+            reset();
         }
 
         private void collect(int droppedFrames) {
@@ -586,9 +615,10 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
         MatrixLog.i(TAG, "onActivityResumed addOnFrameMetricsAvailableListener");
     }
 
+    @RequiresApi(Build.VERSION_CODES.N)
     @Override
     public void onActivityPaused(Activity activity) {
-
+        sceneFrameCollector.resetAllAndCallBack();
     }
 
     @Override
