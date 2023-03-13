@@ -140,6 +140,8 @@ public class OpenGLHook {
 
     public static native String dumpNativeStack(long nativeStackPtr);
 
+    public static native String dumpBriefNativeStack(long nativeStackPtr);
+
     public static native void releaseNative(long nativeStackPtr);
 
     public static native boolean isEglContextAlive(long eglContext);

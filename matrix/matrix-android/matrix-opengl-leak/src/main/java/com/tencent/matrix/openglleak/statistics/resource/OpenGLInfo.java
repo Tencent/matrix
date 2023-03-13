@@ -101,6 +101,10 @@ public class OpenGLInfo {
         return ResRecordManager.getInstance().getNativeStack(this);
     }
 
+    public String getBriefNativeStack() {
+        return ResRecordManager.getInstance().getBriefNativeStack(this);
+    }
+
     public AtomicInteger getCounter() {
         return counter;
     }
