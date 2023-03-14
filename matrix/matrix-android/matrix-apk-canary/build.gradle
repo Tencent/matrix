@@ -10,7 +10,7 @@ group rootProject.ext.GROUP
 
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
-    implementation 'com.google.code.gson:gson:2.7'
+    implementation 'com.google.code.gson:gson:2.8.9'
     implementation project(':matrix-commons')
     implementation 'com.android.tools:common:25.1.0'
 }
