@@ -270,7 +270,7 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
 
     private class FrameCollectItem {
         String visibleScene;
-        long sumFrameCost;
+        float sumFrameCost;
         int sumFrame = 0;
         int sumDroppedFrames;
         // record the level of frames dropped each time
@@ -306,7 +306,7 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
         }
 
         void report() {
-            float fps = Math.min(refreshRate, 1000.f * sumFrame / sumFrameCost);
+            float fps = 1000.f * sumFrame / sumFrameCost;
             MatrixLog.i(TAG, "[report] FPS:%s %s", fps, toString());
             try {
                 TracePlugin plugin = Matrix.with().getPluginByClass(TracePlugin.class);
@@ -398,12 +398,11 @@ public class FrameTracer extends Tracer implements Application.ActivityLifecycle
     @Override
     public void onActivityResumed(Activity activity) {
         lastResumeTimeMap.put(activity.getClass().getName(), System.currentTimeMillis());
-
+        this.refreshRate = (int) activity.getWindowManager().getDefaultDisplay().getRefreshRate();
         if (useFrameMetrics) {
             if (frameListenerMap.containsKey(activity.hashCode())) {
                 return;
             }
-            this.refreshRate = (int) activity.getWindowManager().getDefaultDisplay().getRefreshRate();
             this.frameIntervalNs = Constants.TIME_SECOND_TO_NANO / (long) refreshRate;
             Window.OnFrameMetricsAvailableListener onFrameMetricsAvailableListener = new Window.OnFrameMetricsAvailableListener() {
                 @RequiresApi(api = Build.VERSION_CODES.O)
