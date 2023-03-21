@@ -1,6 +1,7 @@
 package com.tencent.matrix.batterycanary.utils;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.usage.NetworkStats;
 import android.app.usage.NetworkStatsManager;
 import android.content.Context;
@@ -113,6 +114,7 @@ public final class RadioStatUtil {
         }
     }
 
+    @SuppressLint("MissingPermission")
     @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
     private static Pair<Long, Long> getCurrentBps(Context context, String typeName) {
         long rxBwBps = 0, txBwBps = 0;

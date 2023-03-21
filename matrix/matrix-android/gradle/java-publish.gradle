@@ -141,7 +141,7 @@ task buildAndPublishToLocalMaven(type: Copy, dependsOn: ['build', 'publishToMave
     }
 }
 
-task buildAndPublishRepo(type: Copy, dependsOn: ['build', 'publish']) {
+task buildAndPublishRepo(type: Copy, dependsOn: ['publish']) {
     group = "publishing"
 
     // save artifacts files to artifacts folder

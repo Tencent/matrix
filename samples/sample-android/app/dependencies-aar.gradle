@@ -45,4 +45,5 @@ dependencies {
             type = 'exe'
         }
     }
+    implementation 'com.tencent:mmkv:1.2.11'
 }
