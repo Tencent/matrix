@@ -838,3 +838,7 @@ Options:
 # License
 
 Matrix is under the BSD license. See the [LICENSE](https://github.com/Tencent/Matrix/blob/master/LICENSE) file for details
+
+# 个人信息保护规则
+
+[Matrix SDK个人信息保护规则](https://support.weixin.qq.com/cgi-bin/mmsupportacctnodeweb-bin/pages/yTezupX6yF028Mpf)
