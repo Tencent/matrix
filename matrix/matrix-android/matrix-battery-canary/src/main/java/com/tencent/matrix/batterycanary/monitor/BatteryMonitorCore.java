@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.content.ComponentName;
 import android.content.Context;
 import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.Message;
 
 import com.tencent.matrix.Matrix;
@@ -93,9 +94,9 @@ public class BatteryMonitorCore implements
 
     private final BatteryMonitorConfig mConfig;
     @NonNull private final Handler mHandler;
+    @NonNull private final Handler mCanaryHandler;
     @Nullable private ForegroundLoopCheckTask mFgLooperTask;
     @Nullable private BackgroundLoopCheckTask mBgLooperTask;
-    @Nullable private TaskJiffiesSnapshot mLastInternalSnapshot;
 
     @NonNull
     Callable<String> mSupplier = new Callable<String>() {
@@ -121,7 +122,16 @@ public class BatteryMonitorCore implements
             mSupplier = config.onSceneSupplier;
         }
 
-        mHandler = new Handler(MatrixHandlerThread.getDefaultHandlerThread().getLooper(), this);
+        if (config.canaryThread != null) {
+            HandlerThread thread = config.canaryThread;
+            mHandler = new Handler(thread.getLooper(), this);       // For BatteryMonitorCore only
+            mCanaryHandler = new Handler(thread.getLooper(), this); // For BatteryCanary
+        } else {
+            HandlerThread thread = MatrixHandlerThread.getDefaultHandlerThread();
+            mHandler = new Handler(thread.getLooper(), this);       // For BatteryMonitorCore only
+            mCanaryHandler = mHandler;                                      // For BatteryCanary as legacy logic
+        }
+
         enableForegroundLoopCheck(config.isForegroundModeEnabled);
         enableBackgroundLoopCheck(config.isBackgroundModeEnabled);
         mMonitorDelayMillis = config.greyTime;
@@ -265,7 +275,7 @@ public class BatteryMonitorCore implements
 
     @NonNull
     public Handler getHandler() {
-        return mHandler;
+        return mCanaryHandler;
     }
 
     public Context getContext() {
@@ -292,7 +302,7 @@ public class BatteryMonitorCore implements
             return tmp;
         } catch (Throwable e) {
             MatrixLog.printErrStackTrace(TAG, e, "#currentBatteryTemperature error");
-            return 0;
+            return -1;
         }
     }
 

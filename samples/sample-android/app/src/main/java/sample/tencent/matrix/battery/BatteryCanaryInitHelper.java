@@ -43,6 +43,7 @@ import com.tencent.matrix.batterycanary.shell.TopThreadFeature;
 import com.tencent.matrix.batterycanary.stats.BatteryRecorder;
 import com.tencent.matrix.batterycanary.stats.BatteryStats;
 import com.tencent.matrix.batterycanary.stats.BatteryStatsFeature;
+import com.tencent.matrix.batterycanary.stats.HealthStatsFeature;
 import com.tencent.matrix.batterycanary.utils.Consumer;
 import com.tencent.matrix.util.MatrixLog;
 import com.tencent.mmkv.MMKV;
@@ -117,6 +118,7 @@ public final class BatteryCanaryInitHelper {
                 .enable(BatteryStatsFeature.class)
                 .setRecorder(new BatteryRecorder.MMKVRecorder(mmkv))
                 .setStats(new BatteryStats.BatteryStatsImpl())
+                .enable(HealthStatsFeature.class)
 
                 // Lab Feature:
                 // network monitor

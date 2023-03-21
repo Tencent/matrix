@@ -9,15 +9,18 @@ import android.util.SparseArray;
 
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCallback.BatteryPrinter.Printer;
 import com.tencent.matrix.batterycanary.monitor.feature.AbsMonitorFeature;
+import com.tencent.matrix.batterycanary.monitor.feature.CompositeMonitors;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature.JiffiesSnapshot;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Delta;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 import androidx.annotation.Nullable;
 import androidx.core.util.Pair;
+import androidx.core.util.Supplier;
 
 /**
  * Something like 'adb shell top -Hb -u <uid>'
@@ -29,8 +32,8 @@ public class TopThreadFeature extends AbsMonitorFeature {
     private static final String TAG = "Matrix.battery.TopThread";
     private boolean sStopShell;
 
-    public interface ContinuousCallback<T extends Snapshot<T>> {
-        boolean onGetDeltas(List<Delta<T>> deltas, long windowMillis);
+    public interface ContinuousCallback {
+        boolean onGetDeltas(CompositeMonitors monitors, long windowMillis);
     }
 
     @Nullable private Runnable mTopTask;
@@ -48,10 +51,18 @@ public class TopThreadFeature extends AbsMonitorFeature {
 
     public void topShell(final int seconds) {
         sStopShell = false;
-        top(seconds, new ContinuousCallback<JiffiesSnapshot>() {
+        top(seconds, new Supplier<CompositeMonitors>() {
             @Override
-            public boolean onGetDeltas(List<Delta<JiffiesSnapshot>> deltaList, long windowMillis) {
+            public CompositeMonitors get() {
+                CompositeMonitors monitors = new CompositeMonitors(mCore, CompositeMonitors.SCOPE_TOP_SHELL);
+                monitors.metric(JiffiesMonitorFeature.UidJiffiesSnapshot.class);
+                return monitors;
+            }
+        }, new ContinuousCallback() {
+            @Override
+            public boolean onGetDeltas(CompositeMonitors monitors, long windowMillis) {
                 // Proc Load
+                List<Delta<JiffiesSnapshot>> deltaList = monitors.getAllPidDeltaList();
                 long allProcJiffies = 0;
                 for (Delta<JiffiesSnapshot> delta : deltaList) {
                     allProcJiffies += delta.dlt.totalJiffies.get();
@@ -103,38 +114,42 @@ public class TopThreadFeature extends AbsMonitorFeature {
     }
 
 
-    public void top(final int seconds, final ContinuousCallback<JiffiesSnapshot> callback) {
+    public void top(final int seconds, final Supplier<CompositeMonitors> supplier, final ContinuousCallback callback) {
         final JiffiesMonitorFeature jiffiesFeat = mCore.getMonitorFeature(JiffiesMonitorFeature.class);
         if (jiffiesFeat == null) {
             return;
         }
         final long windowMillis = seconds * 1000L;
-        final SparseArray<JiffiesSnapshot> lastHolder = new SparseArray<>();
+        final AtomicReference<CompositeMonitors> lastMonitors = new AtomicReference<>(null);
         HandlerThread thread = new HandlerThread("matrix_top");
         thread.start();
         final Handler handler = new Handler(thread.getLooper());
         final Runnable action = new Runnable() {
             @Override
             public void run() {
-                List<Delta<JiffiesSnapshot>> deltaList = new ArrayList<>();
-                List<Integer> pidList = getAllPidList(mCore.getContext());
-                for (Integer pid : pidList) {
-                    JiffiesSnapshot curr = jiffiesFeat.currentJiffiesSnapshot(pid);
-                    JiffiesSnapshot last = lastHolder.get(pid);
-                    if (last != null) {
-                        Delta<JiffiesSnapshot> delta = curr.diff(last);
-                        if (delta.isValid()) {
-                            deltaList.add(delta);
-                        }
-                    }
-                    lastHolder.put(pid, curr);
-                }
-                boolean stop = callback.onGetDeltas(deltaList, windowMillis);
-                if (stop) {
-                    handler.getLooper().quit();
+                CompositeMonitors monitors = lastMonitors.get();
+                if (monitors == null) {
+                    // Fist time
+                    scheduleNext();
+
                 } else {
-                    handler.postDelayed(this, windowMillis);
+                    lastMonitors.set(null);
+                    monitors.finish();
+                    boolean stop = callback.onGetDeltas(monitors, windowMillis);
+                    if (stop) {
+                        handler.getLooper().quit();
+                    } else {
+                        // Next
+                        scheduleNext();
+                    }
                 }
+            }
+
+            private void scheduleNext() {
+                CompositeMonitors monitors = supplier.get();
+                monitors.start();
+                lastMonitors.set(monitors);
+                handler.postDelayed(this, windowMillis);
             }
         };
         handler.postDelayed(action, windowMillis);
@@ -157,9 +172,11 @@ public class TopThreadFeature extends AbsMonitorFeature {
         ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
         if (am != null) {
             List<ActivityManager.RunningAppProcessInfo> processes = am.getRunningAppProcesses();
-            for (ActivityManager.RunningAppProcessInfo item : processes) {
-                if (item.processName.contains(context.getPackageName())) {
-                    list.add(new Pair<>(item.pid, item.processName));
+            if (processes != null) {
+                for (ActivityManager.RunningAppProcessInfo item : processes) {
+                    if (item.processName.contains(context.getPackageName())) {
+                        list.add(new Pair<>(item.pid, item.processName));
+                    }
                 }
             }
         }

@@ -3,16 +3,29 @@ package com.tencent.matrix.batterycanary.utils;
 import android.content.Context;
 import android.content.res.Resources;
 import android.content.res.XmlResourceParser;
+import android.os.Build;
+import android.system.Os;
+
+import com.tencent.matrix.util.MatrixLog;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
+import org.xmlpull.v1.XmlPullParserFactory;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.concurrent.Callable;
 
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
+import androidx.annotation.StringDef;
+import androidx.annotation.VisibleForTesting;
 
 /**
  * @see com.android.internal.os.PowerProfile
@@ -20,6 +33,17 @@ import androidx.annotation.RestrictTo;
 @RestrictTo(RestrictTo.Scope.LIBRARY)
 @SuppressWarnings({"JavadocReference", "ConstantConditions", "TryFinallyCanBeTryWithResources"})
 public class PowerProfile {
+    @StringDef(value = {
+            "unknown",
+            "framework",
+            "custom",
+            "test"
+    })
+    @Retention(RetentionPolicy.SOURCE)
+    @interface ResType {
+    }
+
+    private static final String TAG = "PowerProfile";
     private static PowerProfile sInstance = null;
 
     @Nullable
@@ -30,15 +54,17 @@ public class PowerProfile {
     public static PowerProfile init(Context context) throws IOException {
         synchronized (sLock) {
             try {
-                sInstance = new PowerProfile(context).smoke();
+                if (sInstance == null) {
+                    sInstance = new PowerProfile(context).smoke();
+                }
                 return sInstance;
             } catch (Throwable e) {
-                throw new IOException(e);
+                throw new IOException("Compat err: " + e.getMessage(), e);
             }
         }
     }
 
-    public PowerProfile smoke() throws IOException {
+    PowerProfile smoke() throws IOException {
         if (getNumCpuClusters() <= 0) {
             throw new IOException("Invalid cpu clusters: " + getNumCpuClusters());
         }
@@ -63,6 +89,21 @@ public class PowerProfile {
             return true;
         } catch (IOException ignored) {
             return false;
+        }
+    }
+
+    public double getAveragePowerUni(String type) {
+        int num = getNumElements(type);
+        if (num > 0) {
+            // Array
+            double sum = 0;
+            for (int i = 0; i < num; i++) {
+                sum += getAveragePower(type, i);
+            }
+            return sum / num;
+        } else {
+            // Item
+            return getAveragePower(type);
         }
     }
 
@@ -203,12 +244,14 @@ public class PowerProfile {
      * to the CPU power, probably due to a DSP and / or amplifier.
      */
     public static final String POWER_AUDIO = "audio";
+    public static final String POWER_AUDIO_DSP = "dsp.audio";
 
     /**
      * Power consumed by any media hardware when playing back video content. This is in addition
      * to the CPU power, probably due to a DSP.
      */
     public static final String POWER_VIDEO = "video";
+    public static final String POWER_VIDEO_DSP = "dsp.video";
 
     /**
      * Average power consumption when camera flashlight is on.
@@ -257,22 +300,154 @@ public class PowerProfile {
 
     private static final Object sLock = new Object();
 
-
     PowerProfile(Context context) {
         // Read the XML file for the given profile (normally only one per device)
         synchronized (sLock) {
             if (sPowerItemMap.size() == 0 && sPowerArrayMap.size() == 0) {
-                readPowerValuesFromXml(context);
+                try {
+                    readPowerValuesCompat(context);
+                } catch (IOException e) {
+                    MatrixLog.w(TAG, "Failed to read power values: " + e);
+                }
             }
             initCpuClusters();
         }
     }
 
+    @VisibleForTesting
+    public static HashMap<String, Double> getPowerItemMap() {
+        return sPowerItemMap;
+    }
+
+    @VisibleForTesting
+    public static HashMap<String, Double[]> getPowerArrayMap() {
+        return sPowerArrayMap;
+    }
+
+    private static String mResType = "unknown";
+
+    @ResType
+    public static String getResType() {
+        return mResType;
+    }
+
+    private void readPowerValuesCompat(Context context) throws IOException {
+        Exception exception = null;
+        try {
+            readPowerValuesFromRes(context, "power_profile");
+            initCpuClusters();
+            smoke();
+            mResType = "framework";
+        } catch (Exception e) {
+            MatrixLog.w(TAG, "read from framework failed: " + e);
+            clear();
+            exception = e;
+        }
+
+        if (exception != null) {
+            Callable<File> findBlock = new Callable<File>() {
+                @SuppressWarnings("checkstyle:RegexpSingleline")
+                @Override
+                public File call() throws FileNotFoundException {
+                    String targetFileName = "/xml/power_profile.xml";
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                        String customDirs = Os.getenv("CUST_POLICY_DIRS");
+                        for (String dir : customDirs.split(":")) {
+                            // example: /hw_product/etc/xml/power_profile.xml
+                            File file = new File(dir, targetFileName);
+                            if (file.exists() && file.canRead()) {
+                                MatrixLog.i(TAG, "find profile xml: " + file);
+                                return file;
+                            }
+                        }
+                    }
+                    throw new FileNotFoundException(targetFileName);
+                }
+            };
+            try {
+                exception = null;
+                readPowerValuesFromFilePath(context, findBlock.call());
+                initCpuClusters();
+                smoke();
+                mResType = "custom";
+            } catch (Exception e) {
+                MatrixLog.w(TAG, "read from custom failed: " + e);
+                clear();
+                exception = e;
+            }
+        }
+
+        if (exception != null) {
+            try {
+                exception = null;
+                readPowerValuesFromRes(context, "power_profile_test");
+                initCpuClusters();
+                smoke();
+                mResType = "test";
+            } catch (Exception e) {
+                MatrixLog.w(TAG, "read from test failed: " + e);
+                clear();
+                exception = e;
+            }
+        }
+
+        if (exception != null) {
+            throw new IOException("readPowerValuesCompat failed", exception);
+        }
+    }
+
+    @VisibleForTesting
+    public void readPowerValuesFromRes(Context context, String fileName) {
+        XmlResourceParser parser = null;
+        try {
+            final int id = context.getResources().getIdentifier(fileName, "xml", "android");
+            final Resources resources = context.getResources();
+            parser = resources.getXml(id);
+            readPowerValuesFromXml(context, parser);
+        } catch (Exception e) {
+            throw new RuntimeException("Error reading res " + fileName + ": " + e.getMessage(), e);
+        } finally {
+            if (parser != null) {
+                try {
+                    parser.close();
+                } catch (Exception e) {
+                    // ignore
+                }
+            }
+        }
+    }
+
+    @VisibleForTesting
+    public void readPowerValuesFromFilePath(Context context, File xmlFile) {
+        FileInputStream is = null;
+        try {
+            XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
+            factory.setNamespaceAware(true);
+            XmlPullParser parser = factory.newPullParser();
+            is = new FileInputStream(xmlFile);
+            parser.setInput(is, null);
+            readPowerValuesFromXml(context, parser);
+        } catch (Exception e) {
+            throw new RuntimeException("Error reading file " + xmlFile + ": " + e.getMessage(), e);
+        } finally {
+            if (is != null) {
+                try {
+                    is.close();
+                } catch (IOException e) {
+                    // ignore
+                }
+            }
+        }
+    }
+
+    @VisibleForTesting
+    public void clear() {
+        sPowerItemMap.clear();
+        sPowerArrayMap.clear();
+    }
+
     @SuppressWarnings({"ToArrayCallWithZeroLengthArrayArgument", "UnnecessaryBoxing", "CatchMayIgnoreException", "TryWithIdenticalCatches"})
-    private void readPowerValuesFromXml(Context context) {
-        final int id = context.getResources().getIdentifier("power_profile", "xml", "android");
-        final Resources resources = context.getResources();
-        XmlResourceParser parser = resources.getXml(id);
+    private void readPowerValuesFromXml(Context context, XmlPullParser parser) {
         boolean parsingArray = false;
         ArrayList<Double> array = new ArrayList<>();
         String arrayName = null;
@@ -320,8 +495,6 @@ public class PowerProfile {
             throw new RuntimeException(e);
         } catch (IOException e) {
             throw new RuntimeException(e);
-        } finally {
-            parser.close();
         }
 
         // Now collect other config variables.
@@ -346,7 +519,7 @@ public class PowerProfile {
             if ((sPowerItemMap.containsKey(key) && sPowerItemMap.get(key) > 0)) {
                 continue;
             }
-            int value = resources.getInteger(configResIds[i]);
+            int value = context.getResources().getInteger(configResIds[i]);
             if (value > 0) {
                 sPowerItemMap.put(key, (double) value);
             }
@@ -360,7 +533,7 @@ public class PowerProfile {
     private static final String CPU_CORE_SPEED_PREFIX = "cpu.core_speeds.cluster";
     private static final String CPU_CORE_POWER_PREFIX = "cpu.core_power.cluster";
 
-    private void initCpuClusters() {
+    void initCpuClusters() {
         if (sPowerArrayMap.containsKey(CPU_PER_CLUSTER_CORE_COUNT)) {
             final Double[] data = sPowerArrayMap.get(CPU_PER_CLUSTER_CORE_COUNT);
             mCpuClusters = new CpuClusterKey[data.length];

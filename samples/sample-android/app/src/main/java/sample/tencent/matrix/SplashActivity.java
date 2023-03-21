@@ -24,7 +24,7 @@ import android.os.Looper;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.tencent.matrix.memory.canary.MemInfo;
+import com.tencent.matrix.util.MemInfo;
 import com.tencent.matrix.util.MatrixLog;
 
 import sample.tencent.matrix.lifecycle.LifecycleTest;

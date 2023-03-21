@@ -37,6 +37,7 @@ class SupervisorService : Service() {
             }
             val intent = Intent(context, SupervisorService::class.java)
             context.startService(intent)
+            MatrixLog.i(TAG, "start service")
         }
 
         @Volatile
@@ -236,7 +237,7 @@ class SupervisorService : Service() {
     override fun onCreate() {
         super.onCreate()
 
-        MatrixLog.d(TAG, "onCreate")
+        MatrixLog.i(TAG, "onCreate")
         isSupervisor = true
         instance = this
 
@@ -265,6 +266,12 @@ class SupervisorService : Service() {
     override fun onBind(intent: Intent?): IBinder {
         MatrixLog.d(TAG, "onBind")
         return binder
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        MatrixLog.e(TAG, "SupervisorService destroyed!!!")
+        instance = null
     }
 
     internal fun backgroundLruKill(

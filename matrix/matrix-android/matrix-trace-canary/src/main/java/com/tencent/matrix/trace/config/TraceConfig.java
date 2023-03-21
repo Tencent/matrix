@@ -35,6 +35,7 @@ public class TraceConfig implements IDefaultConfig {
     private static final String TAG = "Matrix.TraceConfig";
     public static final int STACK_STYLE_SIMPLE = 0;
     public static final int STACK_STYLE_WHOLE = 1;
+    public static final int STACK_STYLE_RAW = 2;
     public IDynamicConfig dynamicConfig;
     public boolean defaultFpsEnable;
     public boolean defaultMethodTraceEnable;
@@ -49,7 +50,6 @@ public class TraceConfig implements IDefaultConfig {
     public boolean isDevEnv;
     public boolean defaultSignalAnrEnable;
     public int stackStyle = STACK_STYLE_SIMPLE;
-    public boolean defaultMainThreadPriorityTraceEnable;
     public String splashActivities;
     public Set<String> splashActivitiesSet;
     public String anrTraceFilePath = "";
@@ -135,11 +135,6 @@ public class TraceConfig implements IDefaultConfig {
     @Override
     public boolean isSignalAnrTraceEnable() {
         return defaultSignalAnrEnable;
-    }
-
-    @Override
-    public boolean isMainThreadPriorityTraceEnable() {
-        return defaultMainThreadPriorityTraceEnable;
     }
 
     @Override
@@ -245,7 +240,7 @@ public class TraceConfig implements IDefaultConfig {
 
 
     public static class Builder {
-        private TraceConfig config = new TraceConfig();
+        private final TraceConfig config = new TraceConfig();
 
         public Builder dynamicConfig(IDynamicConfig dynamicConfig) {
             config.dynamicConfig = dynamicConfig;
@@ -334,11 +329,6 @@ public class TraceConfig implements IDefaultConfig {
 
         public Builder setTouchEventThreshold(int threshold) {
             config.touchEventLagThreshold = threshold;
-            return this;
-        }
-
-        public Builder enableMainThreadPriorityTrace(boolean enable) {
-            config.defaultMainThreadPriorityTraceEnable = enable;
             return this;
         }
 

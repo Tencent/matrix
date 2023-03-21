@@ -22,6 +22,7 @@ import android.content.Context;
 import java.io.BufferedInputStream;
 import java.io.FileInputStream;
 import java.io.InputStream;
+import java.util.List;
 
 public class ProcessUtil {
 
@@ -41,9 +42,12 @@ public class ProcessUtil {
         }
         try {
             final ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
-            for (final ActivityManager.RunningAppProcessInfo i : am.getRunningAppProcesses()) {
-                if (i.pid == pid && i.processName != null && !i.processName.equals("")) {
-                    return i.processName;
+            List<ActivityManager.RunningAppProcessInfo> processes = am.getRunningAppProcesses();
+            if (processes != null) {
+                for (final ActivityManager.RunningAppProcessInfo i : processes) {
+                    if (i.pid == pid && i.processName != null && !i.processName.equals("")) {
+                        return i.processName;
+                    }
                 }
             }
         } catch (Exception ignore) {

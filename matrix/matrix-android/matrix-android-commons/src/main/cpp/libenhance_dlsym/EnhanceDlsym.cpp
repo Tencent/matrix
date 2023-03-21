@@ -32,9 +32,14 @@
 #include <dlfcn.h>
 #include <set>
 #include "EnhanceDlsym.h"
-#include "../../../../../matrix-jectl/src/main/cpp/jectl/JeLog.h"
 
 #define TAG "Matrix.EnhanceDl"
+
+#include <android/log.h>
+
+#define LOGD(TAG, FMT, args...) //__android_log_print(ANDROID_LOG_DEBUG, TAG, FMT, ##args)
+#define LOGI(TAG, FMT, args...) //__android_log_print(ANDROID_LOG_INFO, TAG, FMT, ##args)
+#define LOGE(TAG, FMT, args...) //__android_log_print(ANDROID_LOG_ERROR, TAG, FMT, ##args)
 
 namespace enhance {
 

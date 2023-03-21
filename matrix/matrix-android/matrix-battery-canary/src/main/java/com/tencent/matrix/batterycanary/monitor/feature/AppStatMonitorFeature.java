@@ -13,6 +13,7 @@ import com.tencent.matrix.batterycanary.stats.BatteryStatsFeature;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.TimeBreaker;
 import com.tencent.matrix.lifecycle.IStateObserver;
+import com.tencent.matrix.lifecycle.owners.ForegroundServiceLifecycleOwner;
 import com.tencent.matrix.lifecycle.owners.OverlayWindowLifecycleOwner;
 import com.tencent.matrix.util.MatrixLog;
 
@@ -71,22 +72,58 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
         }
     };
 
+    private final IStateObserver mFgSrvObserver = new IStateObserver() {
+        @Override
+        public void on() {
+            MatrixLog.i(TAG, "fgSrv >> on");
+            boolean foreground = mCore.isForeground();
+            int appStat = BatteryCanaryUtil.getAppStatImmediately(mCore.getContext(), foreground);
+            if (appStat != APP_STAT_FOREGROUND) {
+                MatrixLog.i(TAG, "statAppStat: " + APP_STAT_FOREGROUND_SERVICE);
+                onStatAppStat(APP_STAT_FOREGROUND_SERVICE);
+            } else {
+                MatrixLog.i(TAG, "skip statAppStat, fg = " + foreground + ", currAppStat = " + appStat);
+            }
+        }
+
+        @Override
+        public void off() {
+            MatrixLog.i(TAG, "fgSrv >> off");
+            boolean foreground = mCore.isForeground();
+            int appStat = BatteryCanaryUtil.getAppStatImmediately(mCore.getContext(), foreground);
+            if (appStat != APP_STAT_FOREGROUND && appStat != APP_STAT_FOREGROUND_SERVICE && appStat != APP_STAT_FLOAT_WINDOW) {
+                MatrixLog.i(TAG, "statAppStat: " + APP_STAT_BACKGROUND);
+                onStatAppStat(APP_STAT_BACKGROUND);
+            } else {
+                MatrixLog.i(TAG, "skip statAppStat, fg = " + foreground + ", currAppStat = " + appStat);
+            }
+        }
+    };
+
     private final IStateObserver mFloatViewObserver = new IStateObserver() {
         @Override
         public void on() {
             MatrixLog.i(TAG, "floatView >> on");
-            int appStat = BatteryCanaryUtil.getAppStatImmediately(mCore.getContext(), mCore.isForeground());
+            boolean foreground = mCore.isForeground();
+            int appStat = BatteryCanaryUtil.getAppStatImmediately(mCore.getContext(), foreground);
             if (appStat != APP_STAT_FOREGROUND && appStat != APP_STAT_FOREGROUND_SERVICE) {
+                MatrixLog.i(TAG, "statAppStat: " + APP_STAT_FLOAT_WINDOW);
                 onStatAppStat(APP_STAT_FLOAT_WINDOW);
+            } else {
+                MatrixLog.i(TAG, "skip statAppStat, fg = " + foreground + ", currAppStat = " + appStat);
             }
         }
 
         @Override
         public void off() {
             MatrixLog.i(TAG, "floatView >> off");
-            int appStat = BatteryCanaryUtil.getAppStatImmediately(mCore.getContext(), mCore.isForeground());
-            if (appStat != APP_STAT_FOREGROUND && appStat != APP_STAT_FOREGROUND_SERVICE) {
+            boolean foreground = mCore.isForeground();
+            int appStat = BatteryCanaryUtil.getAppStatImmediately(mCore.getContext(), foreground);
+            if (appStat != APP_STAT_FOREGROUND && appStat != APP_STAT_FOREGROUND_SERVICE && appStat != APP_STAT_FLOAT_WINDOW) {
+                MatrixLog.i(TAG, "statAppStat: " + APP_STAT_BACKGROUND);
                 onStatAppStat(APP_STAT_BACKGROUND);
+            } else {
+                MatrixLog.i(TAG, "skip statAppStat, fg = " + foreground + ", currAppStat = " + appStat);
             }
         }
     };
@@ -114,12 +151,14 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
             mSceneStampList.add(0, firstSceneStamp);
         }
 
+        ForegroundServiceLifecycleOwner.INSTANCE.observeForever(mFgSrvObserver);
         OverlayWindowLifecycleOwner.INSTANCE.observeForever(mFloatViewObserver);
     }
 
     @Override
     public void onTurnOff() {
         super.onTurnOff();
+        ForegroundServiceLifecycleOwner.INSTANCE.removeObserver(mFgSrvObserver);
         OverlayWindowLifecycleOwner.INSTANCE.removeObserver(mFloatViewObserver);
         synchronized (TAG) {
             mStampList.clear();

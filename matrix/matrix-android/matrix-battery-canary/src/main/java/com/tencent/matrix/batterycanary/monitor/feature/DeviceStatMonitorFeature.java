@@ -117,13 +117,18 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
     }
 
     public CpuFreqSnapshot currentCpuFreq() {
-        CpuFreqSnapshot snapshot = new CpuFreqSnapshot();
         try {
-            snapshot.cpuFreqs = Snapshot.Entry.ListEntry.ofDigits(BatteryCanaryUtil.getCpuCurrentFreq());
+            int[] cpuFreqs = BatteryCanaryUtil.getCpuCurrentFreq();
+            return currentCpuFreq(cpuFreqs);
         } catch (Throwable e) {
             MatrixLog.printErrStackTrace(TAG, e, "#currentCpuFreq error");
-            snapshot.cpuFreqs = Snapshot.Entry.ListEntry.ofDigits(new int[]{});
+            return currentCpuFreq(new int[]{});
         }
+    }
+
+    public CpuFreqSnapshot currentCpuFreq(int[] cpuFreqs) {
+        CpuFreqSnapshot snapshot = new CpuFreqSnapshot();
+        snapshot.cpuFreqs = Snapshot.Entry.ListEntry.ofDigits(cpuFreqs);
         return snapshot;
     }
 
@@ -186,6 +191,12 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
         return snapshot;
     }
 
+    public BatteryCurrentSnapshot currentBatteryCurrency(Context context) {
+        BatteryCurrentSnapshot snapshot = new BatteryCurrentSnapshot();
+        snapshot.stat = Snapshot.Entry.DigitEntry.of(BatteryCanaryUtil.getBatteryCurrencyImmediately(context));
+        return snapshot;
+    }
+
 
     static final class DevStatListener {
         Consumer<Integer> mListener = new Consumer<Integer>() {
@@ -228,7 +239,7 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
                                 break;
                             case Intent.ACTION_SCREEN_ON:
                                 if (!mIsCharging) {
-                                    mListener.accept(AppStats.DEV_STAT_CHARGING);
+                                    mListener.accept(AppStats.DEV_STAT_SCREEN_ON);
                                 }
                                 break;
                             case Intent.ACTION_SCREEN_OFF:
@@ -341,6 +352,23 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
                 @Override
                 protected ChargeWattageSnapshot computeDelta() {
                     ChargeWattageSnapshot delta = new ChargeWattageSnapshot();
+                    delta.stat = DigitDiffer.globalDiff(bgn.stat, end.stat);
+                    return delta;
+                }
+            };
+        }
+
+    }
+
+    public static class BatteryCurrentSnapshot extends Snapshot<BatteryCurrentSnapshot> {
+        public Entry.DigitEntry<Long> stat;
+
+        @Override
+        public Delta<BatteryCurrentSnapshot> diff(BatteryCurrentSnapshot bgn) {
+            return new Delta<BatteryCurrentSnapshot>(bgn, this) {
+                @Override
+                protected BatteryCurrentSnapshot computeDelta() {
+                    BatteryCurrentSnapshot delta = new BatteryCurrentSnapshot();
                     delta.stat = DigitDiffer.globalDiff(bgn.stat, end.stat);
                     return delta;
                 }

@@ -3,6 +3,7 @@ package com.tencent.matrix.openglleak.utils;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+// todo: deprecated and move to native
 public class JavaStacktrace {
 
     private static final Map<Integer, Throwable> sThrowableMap = new ConcurrentHashMap<>();
@@ -29,7 +30,7 @@ public class JavaStacktrace {
         if (throwable == null) {
             return new Trace();
         }
-        String traceKey = stackTraceToString(throwable.getStackTrace());
+        String traceKey = android.util.Log.getStackTraceString(throwable); //stackTraceToString(throwable.getStackTrace());
         Trace mapTrace = sString2Trace.get(traceKey);
         if (mapTrace == null) {
             Trace resultTrace = new Trace(traceKey);

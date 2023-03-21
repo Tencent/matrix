@@ -1,28 +1,18 @@
-package com.tencent.matrix.memory.canary
+package com.tencent.matrix.util
 
 import android.app.ActivityManager
 import android.app.Application
 import android.content.Context
-import android.os.Build
-import android.os.Debug
-import android.os.Process
+import android.os.*
 import android.text.TextUtils
 import com.tencent.matrix.Matrix
 import com.tencent.matrix.lifecycle.owners.ProcessUILifecycleOwner
 import com.tencent.matrix.lifecycle.owners.ProcessUIStartedStateOwner
 import com.tencent.matrix.lifecycle.supervisor.ProcessSupervisor
-import com.tencent.matrix.util.MatrixLog
-import com.tencent.matrix.util.MatrixUtil
-import com.tencent.matrix.util.safeApply
-import com.tencent.matrix.util.safeLet
-
 import org.json.JSONObject
 import java.io.File
-import java.lang.StringBuilder
-import java.util.*
 import java.util.regex.Matcher
 import java.util.regex.Pattern
-import kotlin.collections.ArrayList
 
 private const val TAG = "Matrix.MemoryInfoFactory"
 
@@ -63,14 +53,23 @@ data class ProcessInfo(
     val activity: String = ProcessUILifecycleOwner.recentScene.substringAfterLast('.'),
     val isProcessFg: Boolean = ProcessUIStartedStateOwner.active(),
     val isAppFg: Boolean = ProcessSupervisor.isAppUIForeground
-) {
+) : Parcelable {
+    constructor(parcel: Parcel) : this(
+        parcel.readInt(),
+        parcel.readString() ?: "default",
+        parcel.readString() ?: "default",
+        parcel.readByte() != 0.toByte(),
+        parcel.readByte() != 0.toByte()
+    )
+
     override fun toString(): String {
         return String.format(
-            "%-21s\t%-21s %-21s %-21s",
+            "%-21s\t%-21s %-21s %-21s %-21s",
             name,
             "Activity=$activity",
             "AppForeground=$isAppFg",
-            "ProcessForeground=$isProcessFg"
+            "ProcessForeground=$isProcessFg",
+            "Pid=$pid"
         )
     }
 
@@ -81,6 +80,28 @@ data class ProcessInfo(
             put("activity", activity)
             put("isProcessFg", isProcessFg)
             put("isAppFg", isAppFg)
+        }
+    }
+
+    override fun writeToParcel(parcel: Parcel, flags: Int) {
+        parcel.writeInt(pid)
+        parcel.writeString(name)
+        parcel.writeString(activity)
+        parcel.writeByte(if (isProcessFg) 1 else 0)
+        parcel.writeByte(if (isAppFg) 1 else 0)
+    }
+
+    override fun describeContents(): Int {
+        return 0
+    }
+
+    companion object CREATOR : Parcelable.Creator<ProcessInfo> {
+        override fun createFromParcel(parcel: Parcel): ProcessInfo {
+            return ProcessInfo(parcel)
+        }
+
+        override fun newArray(size: Int): Array<ProcessInfo?> {
+            return arrayOfNulls(size)
         }
     }
 }
@@ -95,7 +116,19 @@ data class PssInfo(
     var pssCodeK: Int = -1,
     var pssStackK: Int = -1,
     var pssPrivateOtherK: Int = -1
-) {
+) : Parcelable {
+    constructor(parcel: Parcel) : this(
+        parcel.readInt(),
+        parcel.readInt(),
+        parcel.readInt(),
+        parcel.readInt(),
+        parcel.readInt(),
+        parcel.readInt(),
+        parcel.readInt(),
+        parcel.readInt(),
+        parcel.readInt()
+    )
+
     override fun toString(): String {
         return String.format(
             "%-21s %-21s %-21s %-21s %-21s %-21s %-21s %-21s %-21s",
@@ -173,19 +206,57 @@ data class PssInfo(
                 }
             }
         }
+
+        @JvmField
+        val CREATOR = object : Parcelable.Creator<PssInfo> {
+            override fun createFromParcel(parcel: Parcel): PssInfo {
+                return PssInfo(parcel)
+            }
+
+            override fun newArray(size: Int): Array<PssInfo?> {
+                return arrayOfNulls(size)
+            }
+        }
+    }
+
+    override fun writeToParcel(parcel: Parcel, flags: Int) {
+        parcel.writeInt(totalPssK)
+        parcel.writeInt(pssJavaK)
+        parcel.writeInt(pssNativeK)
+        parcel.writeInt(pssGraphicK)
+        parcel.writeInt(pssSystemK)
+        parcel.writeInt(pssSwapK)
+        parcel.writeInt(pssCodeK)
+        parcel.writeInt(pssStackK)
+        parcel.writeInt(pssPrivateOtherK)
+    }
+
+    override fun describeContents(): Int {
+        return 0
     }
 }
 
 data class StatusInfo(
     val state: String = "default",
-    val fdSize: Int = -1,
-    val vmSizeK: Int = -1,
-    val vmRssK: Int = -1,
-    val vmSwapK: Int = -1,
-    val threads: Int = -1,
+    val fdSize: Long = -1,
+    val vmSizeK: Long = -1,
+    val vmRssK: Long = -1,
+    val vmSwapK: Long = -1,
+    val threads: Long = -1,
     val oomAdj: Int = -1,
     val oomScoreAdj: Int = -1
-) {
+) : Parcelable {
+    constructor(parcel: Parcel) : this(
+        parcel.readString() ?: "default",
+        parcel.readLong(),
+        parcel.readLong(),
+        parcel.readLong(),
+        parcel.readLong(),
+        parcel.readLong(),
+        parcel.readInt(),
+        parcel.readInt()
+    )
+
     override fun toString(): String {
         return String.format(
             "%-21s %-21s %-21s %-21s %-21s %-21s %-21s %-21s",
@@ -216,39 +287,39 @@ data class StatusInfo(
     companion object {
         @JvmStatic
         fun get(pid: Int = Process.myPid()): StatusInfo {
-            return convertProcStatus(pid).run {
+            return convertProcStatus(pid).safeLet(TAG, defVal = StatusInfo()) {
                 fun Map<String, String>.getString(key: String) = get(key) ?: "unknown"
 
-                fun Map<String, String>.getInt(key: String): Int {
+                fun Map<String, String>.getInt(key: String): Long {
                     getString(key).let {
                         val matcher = Pattern.compile("\\d+").matcher(it)
                         while (matcher.find()) {
-                            return matcher.group().toInt()
+                            return matcher.group().toLong()
                         }
                     }
                     return -2
                 }
 
                 StatusInfo(
-                    state = getString("State").trimIndent(),
-                    fdSize = getInt("FDSize"),
-                    vmSizeK = getInt("VmSize"),
-                    vmRssK = getInt("VmRSS"),
-                    vmSwapK = getInt("VmSwap"),
-                    threads = getInt("Threads"),
+                    state = it.getString("State").trimIndent(),
+                    fdSize = it.getInt("FDSize"),
+                    vmSizeK = it.getInt("VmSize"),
+                    vmRssK = it.getInt("VmRSS"),
+                    vmSwapK = it.getInt("VmSwap"),
+                    threads = it.getInt("Threads"),
                     oomAdj = getOomAdj(pid),
                     oomScoreAdj = getOomScoreAdj(pid)
                 )
             }
         }
 
-        private fun getOomAdj(pid: Int): Int = safeLet(TAG, defVal = Int.MAX_VALUE) {
+        private fun getOomAdj(pid: Int): Int = safeLet(TAG, defVal = Int.MAX_VALUE, log = false) {
             File("/proc/$pid/oom_adj").useLines {
                 it.first().toInt()
             }
         }
 
-        private fun getOomScoreAdj(pid: Int): Int = safeLet(TAG, defVal = Int.MAX_VALUE) {
+        private fun getOomScoreAdj(pid: Int): Int = safeLet(TAG, defVal = Int.MAX_VALUE, log = false) {
             File("/proc/$pid/oom_score_adj").useLines {
                 it.first().toInt()
             }
@@ -271,6 +342,32 @@ data class StatusInfo(
 
             return emptyMap()
         }
+
+        @JvmField
+        val CREATOR = object : Parcelable.Creator<StatusInfo> {
+            override fun createFromParcel(parcel: Parcel): StatusInfo {
+                return StatusInfo(parcel)
+            }
+
+            override fun newArray(size: Int): Array<StatusInfo?> {
+                return arrayOfNulls(size)
+            }
+        }
+    }
+
+    override fun writeToParcel(parcel: Parcel, flags: Int) {
+        parcel.writeString(state)
+        parcel.writeLong(fdSize)
+        parcel.writeLong(vmSizeK)
+        parcel.writeLong(vmRssK)
+        parcel.writeLong(vmSwapK)
+        parcel.writeLong(threads)
+        parcel.writeInt(oomAdj)
+        parcel.writeInt(oomScoreAdj)
+    }
+
+    override fun describeContents(): Int {
+        return 0
     }
 }
 
@@ -281,7 +378,16 @@ data class JavaMemInfo(
     val maxByte: Long = Runtime.getRuntime().maxMemory(),
     val memClass: Int = MemInfoFactory.memClass,
     val largeMemClass: Int = MemInfoFactory.largeMemClass
-) {
+) : Parcelable {
+    constructor(parcel: Parcel) : this(
+        parcel.readLong(),
+        parcel.readLong(),
+        parcel.readLong(),
+        parcel.readLong(),
+        parcel.readInt(),
+        parcel.readInt()
+    )
+
     override fun toString(): String {
         return String.format(
             "%-21s %-21s %-21s %-21s %-21s %-21s",
@@ -304,13 +410,42 @@ data class JavaMemInfo(
             put("largeMemClass", largeMemClass)
         }
     }
+
+    override fun writeToParcel(parcel: Parcel, flags: Int) {
+        parcel.writeLong(heapSizeByte)
+        parcel.writeLong(recycledByte)
+        parcel.writeLong(usedByte)
+        parcel.writeLong(maxByte)
+        parcel.writeInt(memClass)
+        parcel.writeInt(largeMemClass)
+    }
+
+    override fun describeContents(): Int {
+        return 0
+    }
+
+    companion object CREATOR : Parcelable.Creator<JavaMemInfo> {
+        override fun createFromParcel(parcel: Parcel): JavaMemInfo {
+            return JavaMemInfo(parcel)
+        }
+
+        override fun newArray(size: Int): Array<JavaMemInfo?> {
+            return arrayOfNulls(size)
+        }
+    }
 }
 
 data class NativeMemInfo(
     val heapSizeByte: Long = Debug.getNativeHeapSize(),
     val recycledByte: Long = Debug.getNativeHeapFreeSize(),
     val usedByte: Long = Debug.getNativeHeapAllocatedSize()
-) {
+) : Parcelable {
+    constructor(parcel: Parcel) : this(
+        parcel.readLong(),
+        parcel.readLong(),
+        parcel.readLong()
+    )
+
     override fun toString(): String {
         return String.format(
             "%-21s %-21s %-21s",
@@ -327,6 +462,26 @@ data class NativeMemInfo(
             put("heapSize", heapSizeByte)
         }
     }
+
+    override fun writeToParcel(parcel: Parcel, flags: Int) {
+        parcel.writeLong(heapSizeByte)
+        parcel.writeLong(recycledByte)
+        parcel.writeLong(usedByte)
+    }
+
+    override fun describeContents(): Int {
+        return 0
+    }
+
+    companion object CREATOR : Parcelable.Creator<NativeMemInfo> {
+        override fun createFromParcel(parcel: Parcel): NativeMemInfo {
+            return NativeMemInfo(parcel)
+        }
+
+        override fun newArray(size: Int): Array<NativeMemInfo?> {
+            return arrayOfNulls(size)
+        }
+    }
 }
 
 data class SystemInfo(
@@ -334,7 +489,7 @@ data class SystemInfo(
     val availMemByte: Long = -1,
     val lowMemory: Boolean = false,
     val thresholdByte: Long = -1
-) {
+) : Parcelable {
     companion object {
         fun get(): SystemInfo {
             val info = ActivityManager.MemoryInfo()
@@ -346,7 +501,25 @@ data class SystemInfo(
                 thresholdByte = info.threshold
             )
         }
+
+        @JvmField
+        val CREATOR = object : Parcelable.Creator<SystemInfo> {
+            override fun createFromParcel(parcel: Parcel): SystemInfo {
+                return SystemInfo(parcel)
+            }
+
+            override fun newArray(size: Int): Array<SystemInfo?> {
+                return arrayOfNulls(size)
+            }
+        }
     }
+
+    constructor(parcel: Parcel) : this(
+        parcel.readLong(),
+        parcel.readLong(),
+        parcel.readByte() != 0.toByte(),
+        parcel.readLong()
+    )
 
     override fun toString(): String {
         return String.format(
@@ -366,6 +539,17 @@ data class SystemInfo(
             put("threshold", thresholdByte)
         }
     }
+
+    override fun writeToParcel(parcel: Parcel, flags: Int) {
+        parcel.writeLong(totalMemByte)
+        parcel.writeLong(availMemByte)
+        parcel.writeByte(if (lowMemory) 1 else 0)
+        parcel.writeLong(thresholdByte)
+    }
+
+    override fun describeContents(): Int {
+        return 0
+    }
 }
 
 data class FgServiceInfo(val fgServices: List<String> = getRunningForegroundServices()) {
@@ -374,7 +558,14 @@ data class FgServiceInfo(val fgServices: List<String> = getRunningForegroundServ
     }
 
     companion object {
-        private fun getRunningForegroundServices(): List<String> {
+
+        @JvmStatic
+        fun getCurrentProcessFgServices() = FgServiceInfo(getRunningForegroundServices(false))
+
+        @JvmStatic
+        fun getAllProcessFgServices() = FgServiceInfo(getRunningForegroundServices(true))
+
+        private fun getRunningForegroundServices(allProcess: Boolean = false): List<String> {
             val fgServices = ArrayList<String>()
             val runningServiceInfoList: List<ActivityManager.RunningServiceInfo> =
                 safeLet(TAG, true, defVal = emptyList()) {
@@ -384,7 +575,7 @@ data class FgServiceInfo(val fgServices: List<String> = getRunningForegroundServ
                 if (serviceInfo.uid != Process.myUid()) {
                     continue
                 }
-                if (serviceInfo.pid != Process.myPid()) {
+                if (!allProcess && serviceInfo.pid != Process.myPid()) {
                     continue
                 }
                 if (serviceInfo.foreground) {
@@ -405,8 +596,22 @@ data class MemInfo(
     var amsPssInfo: PssInfo? = null,
     var debugPssInfo: PssInfo? = null,
     var fgServiceInfo: FgServiceInfo? = FgServiceInfo()
-) {
+) : Parcelable {
     var cost = 0L
+
+    constructor(parcel: Parcel) : this(
+        parcel.readParcelable(ProcessInfo::class.java.classLoader),
+        parcel.readParcelable(StatusInfo::class.java.classLoader),
+        parcel.readParcelable(JavaMemInfo::class.java.classLoader),
+        parcel.readParcelable(NativeMemInfo::class.java.classLoader),
+        parcel.readParcelable(SystemInfo::class.java.classLoader),
+        parcel.readParcelable(PssInfo::class.java.classLoader),
+        parcel.readParcelable(PssInfo::class.java.classLoader),
+        null
+    ) {
+        cost = parcel.readLong()
+    }
+
     override fun toString(): String {
         return "\n" + """
                 |>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> MemInfo <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
@@ -530,11 +735,39 @@ data class MemInfo(
                         javaMemInfo = null,
                         nativeMemInfo = null,
                         systemInfo = systemInfo,
+                        debugPssInfo = PssInfo(),
+                        amsPssInfo = PssInfo()
                     )
                 )
             }
             return memoryInfoList.toTypedArray()
         }
+
+        @JvmField
+        val CREATOR = object : Parcelable.Creator<MemInfo> {
+            override fun createFromParcel(parcel: Parcel): MemInfo {
+                return MemInfo(parcel)
+            }
+
+            override fun newArray(size: Int): Array<MemInfo?> {
+                return arrayOfNulls(size)
+            }
+        }
+    }
+
+    override fun writeToParcel(parcel: Parcel, flags: Int) {
+        parcel.writeParcelable(processInfo, flags)
+        parcel.writeParcelable(statusInfo, flags)
+        parcel.writeParcelable(javaMemInfo, flags)
+        parcel.writeParcelable(nativeMemInfo, flags)
+        parcel.writeParcelable(systemInfo, flags)
+        parcel.writeParcelable(amsPssInfo, flags)
+        parcel.writeParcelable(debugPssInfo, flags)
+        parcel.writeLong(cost)
+    }
+
+    override fun describeContents(): Int {
+        return 0
     }
 }
 
@@ -555,6 +788,83 @@ data class SmapsItem(
 data class MergedSmapsInfo(
     val list: List<SmapsItem>? = null
 ) {
+    fun toBriefString(): String {
+        val sb = StringBuilder()
+        sb.append("\n")
+        sb.append(
+            String.format(
+                FORMAT,
+                "PSS",
+                "RSS",
+                "SIZE",
+                "SWAP_PSS",
+                "SH_C",
+                "SH_D",
+                "PRI_C",
+                "PRI_D",
+                "COUNT",
+                "PERM",
+                "NAME"
+            )
+        ).append("\n")
+        sb.append(
+            String.format(
+                FORMAT,
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----"
+            )
+        ).append("\n")
+        for ((name, permission, count, vmSize, rss, pss, sharedClean, sharedDirty, privateClean, privateDirty, swapPss) in list!!) {
+            if (pss < 1024 /* K */) {
+                break
+            }
+            sb.append(
+                String.format(
+                    FORMAT,
+                    pss,
+                    rss,
+                    vmSize,
+                    swapPss,
+                    sharedClean,
+                    sharedDirty,
+                    privateClean,
+                    privateDirty,
+                    count,
+                    permission,
+                    name
+                )
+            ).append("\n")
+        }
+        sb.append(
+            String.format(
+                FORMAT,
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----",
+                "----"
+            )
+        )
+        sb.append("\n")
+
+        return sb.toString()
+    }
+
     override fun toString(): String {
         val sb = StringBuilder()
         sb.append("\n")
@@ -641,7 +951,7 @@ data class MergedSmapsInfo(
 
         private fun mergeSmaps(pid: Int): ArrayList<SmapsItem> {
             val pattern =
-                Pattern.compile("^[0-9a-f]+-[0-9a-f]+\\s+([rwxps-]{4})\\s+\\d+\\s+\\d+:\\d+\\s+\\d+\\s+(.*)$")
+                Pattern.compile("^[0-9a-f]+-[0-9a-f]+\\s+([rwxps-]{4})\\s+[0-9a-f]+\\s+[0-9a-f]+:[0-9a-f]+\\s+\\d+\\s*(.*)$")
 
             val merged: HashMap<String, SmapsItem> = HashMap<String, SmapsItem>()
             var currentInfo: SmapsItem? = null
@@ -707,7 +1017,10 @@ data class MergedSmapsInfo(
                     val matcher: Matcher = pattern.matcher(line)
                     if (matcher.find()) {
                         val permission = matcher.group(1)
-                        val name = matcher.group(2)
+                        var name = matcher.group(2)
+                        if (name.isNullOrBlank()) {
+                            name = "[no-name]"
+                        }
                         currentInfo = merged["$permission|$name"]
                         if (currentInfo == null) {
                             currentInfo = SmapsItem()

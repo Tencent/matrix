@@ -40,8 +40,11 @@ import java.io.RandomAccessFile;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 import androidx.annotation.IntRange;
@@ -78,6 +81,7 @@ public final class BatteryCanaryUtil {
     public static final int JIFFY_MILLIS = 1000 / JIFFY_HZ;
 
     public interface Proxy {
+
         String getProcessName();
         String getPackageName();
         int getBatteryTemperature(Context context);
@@ -87,13 +91,15 @@ public final class BatteryCanaryUtil {
         void updateDevStat(int value);
         int getBatteryPercentage(Context context);
         int getBatteryCapacity(Context context);
+        long getBatteryCurrency(Context context);
+        int getCpuCoreNum();
 
-        final class ExpireRef {
-            final int value;
+        final class ExpireRef<T extends Number> {
+            final T value;
             final long aliveMillis;
             final long lastMillis;
 
-            ExpireRef(int value, long aliveMillis) {
+            ExpireRef(T value, long aliveMillis) {
                 this.value = value;
                 this.aliveMillis = aliveMillis;
                 this.lastMillis = SystemClock.uptimeMillis();
@@ -109,11 +115,13 @@ public final class BatteryCanaryUtil {
     static Proxy sCacheStub = new Proxy() {
         private String mProcessName;
         private String mPackageName;
-        private ExpireRef mBatteryTemp;
-        private ExpireRef mLastAppStat;
-        private ExpireRef mLastDevStat;
-        private ExpireRef mLastBattPct;
-        private ExpireRef mLastBattCap;
+        private ExpireRef<Integer> mBatteryTemp;
+        private ExpireRef<Integer> mLastAppStat;
+        private ExpireRef<Integer> mLastDevStat;
+        private ExpireRef<Integer> mLastBattPct;
+        private ExpireRef<Integer> mLastBattCap;
+        private ExpireRef<Long>    mLastBattCur;
+        private ExpireRef<Integer> mLastCpuCoreNum;
 
         @Override
         public String getProcessName() {
@@ -147,7 +155,7 @@ public final class BatteryCanaryUtil {
                 return mBatteryTemp.value;
             }
             int tmp = getBatteryTemperatureImmediately(context);
-            mBatteryTemp = new ExpireRef(tmp, DEFAULT_AMS_CACHE_MILLIS);
+            mBatteryTemp = new ExpireRef<>(tmp, DEFAULT_AMS_CACHE_MILLIS);
             return mBatteryTemp.value;
         }
 
@@ -158,7 +166,7 @@ public final class BatteryCanaryUtil {
                 return mLastAppStat.value;
             }
             int value = getAppStatImmediately(context, false);
-            mLastAppStat = new ExpireRef(value, DEFAULT_AMS_CACHE_MILLIS);
+            mLastAppStat = new ExpireRef<>(value, DEFAULT_AMS_CACHE_MILLIS);
             return mLastAppStat.value;
         }
 
@@ -168,21 +176,21 @@ public final class BatteryCanaryUtil {
                 return mLastDevStat.value;
             }
             int value = getDeviceStatImmediately(context);
-            mLastDevStat = new ExpireRef(value, DEFAULT_AMS_CACHE_MILLIS);
+            mLastDevStat = new ExpireRef<>(value, DEFAULT_AMS_CACHE_MILLIS);
             return mLastDevStat.value;
         }
 
         @Override
         public void updateAppStat(int value) {
             synchronized (this) {
-                mLastAppStat = new ExpireRef(value, DEFAULT_AMS_CACHE_MILLIS);
+                mLastAppStat = new ExpireRef<>(value, DEFAULT_AMS_CACHE_MILLIS);
             }
         }
 
         @Override
         public void updateDevStat(int value) {
             synchronized (this) {
-                mLastDevStat = new ExpireRef(value, DEFAULT_AMS_CACHE_MILLIS);
+                mLastDevStat = new ExpireRef<>(value, DEFAULT_AMS_CACHE_MILLIS);
             }
         }
 
@@ -192,7 +200,7 @@ public final class BatteryCanaryUtil {
                 return mLastBattPct.value;
             }
             int val = getBatteryPercentageImmediately(context);
-            mLastBattPct = new ExpireRef(val, ONE_MIN);
+            mLastBattPct = new ExpireRef<>(val, ONE_MIN);
             return mLastBattPct.value;
         }
 
@@ -202,8 +210,31 @@ public final class BatteryCanaryUtil {
                 return mLastBattCap.value;
             }
             int val = getBatteryCapacityImmediately(context);
-            mLastBattCap = new ExpireRef(val, ONE_MIN);
+            mLastBattCap = new ExpireRef<>(val, ONE_MIN);
             return mLastBattCap.value;
+        }
+
+        @Override
+        public long getBatteryCurrency(Context context) {
+            if (mLastBattCur != null && !mLastBattCur.isExpired()) {
+                return mLastBattCur.value;
+            }
+            long val = getBatteryCurrencyImmediately(context);
+            mLastBattCur = new ExpireRef<>(val, ONE_MIN);
+            return mLastBattCur.value;
+        }
+
+        @Override
+        public int getCpuCoreNum() {
+            if (mLastCpuCoreNum != null && !mLastCpuCoreNum.isExpired()) {
+                return mLastCpuCoreNum.value;
+            }
+            int val = getCpuCoreNumImmediately();
+            if (val <= 1) {
+                return val;
+            }
+            mLastCpuCoreNum = new ExpireRef<>(val, ONE_HOR);
+            return mLastCpuCoreNum.value;
         }
     };
 
@@ -307,8 +338,9 @@ public final class BatteryCanaryUtil {
     }
 
     public static int[] getCpuCurrentFreq() {
-        int[] output = new int[getCpuCoreNum()];
-        for (int i = 0; i < getCpuCoreNum(); i++) {
+        int cpuCoreNum = getCpuCoreNum();
+        int[] output = new int[cpuCoreNum];
+        for (int i = 0; i < cpuCoreNum; i++) {
             output[i] = 0;
             String path = "/sys/devices/system/cpu/cpu" + i + "/cpufreq/scaling_cur_freq";
             String cat = cat(path);
@@ -323,7 +355,35 @@ public final class BatteryCanaryUtil {
         return output;
     }
 
+    public static List<int[]> getCpuFreqSteps() {
+        int cpuCoreNum = getCpuCoreNum();
+        List<int[]> output = new ArrayList<>(cpuCoreNum);
+        for (int i = 0; i < cpuCoreNum; i++) {
+            String path = "/sys/devices/system/cpu/cpu" + i + "/cpufreq/scaling_available_frequencies";
+            String cat = cat(path);
+            if (!TextUtils.isEmpty(cat)) {
+                //noinspection ConstantConditions
+                String[] split = cat.split(" ");
+                int[] steps = new int[split.length];
+                for (int j = 0, splitLength = split.length; j < splitLength; j++) {
+                    try {
+                        String item = split[j];
+                        steps[j] = Integer.parseInt(item) / 1000;
+                    } catch (Exception ignored) {
+                        steps[j] = 0;
+                    }
+                }
+                output.add(steps);
+            }
+        }
+        return output;
+    }
+
     public static int getCpuCoreNum() {
+        return sCacheStub.getCpuCoreNum();
+    }
+
+    public static int getCpuCoreNumImmediately() {
         try {
             // Get directory containing CPU info
             File dir = new File("/sys/devices/system/cpu/");
@@ -335,11 +395,17 @@ public final class BatteryCanaryUtil {
                 }
             });
             // Return the number of cores (virtual CPU devices)
+            // noinspection ConstantConditions
             return files.length;
         } catch (Exception ignored) {
             // Default to return 1 core
-            return 1;
+            return getCpuCoreNumFromRuntime();
         }
+    }
+
+    public static int getCpuCoreNumFromRuntime() {
+        // fastest
+        return Runtime.getRuntime().availableProcessors();
     }
 
     @Nullable
@@ -381,7 +447,7 @@ public final class BatteryCanaryUtil {
                 MatrixLog.w(TAG, "getCurrentThermalStatus failed: " + e.getMessage());
             }
         }
-        return 0;
+        return -1;
     }
 
     public static float getThermalHeadroom(Context context, @IntRange(from = 0, to = 60) int forecastSeconds) {
@@ -397,7 +463,7 @@ public final class BatteryCanaryUtil {
                 MatrixLog.w(TAG, "getThermalHeadroom failed: " + e.getMessage());
             }
         }
-        return 0f;
+        return -1f;
     }
 
     public static int getChargingWatt(Context context) {
@@ -416,7 +482,7 @@ public final class BatteryCanaryUtil {
                 return (maxCurrent / 1000) * (maxVoltage / 1000) / 1000000;
             }
         }
-        return 0;
+        return -1;
     }
 
     @AppStats.AppStatusDef
@@ -602,22 +668,19 @@ public final class BatteryCanaryUtil {
 
     public static int getBatteryCapacity(Context context) {
         return sCacheStub.getBatteryCapacity(context);
-    };
+    }
 
     @SuppressWarnings("ConstantConditions")
     @SuppressLint("PrivateApi")
     public static int getBatteryCapacityImmediately(Context context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            BatteryManager mBatteryManager = (BatteryManager) context.getSystemService(Context.BATTERY_SERVICE);
-            int chargeCounter = mBatteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER);
-            int capacity = mBatteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
-            if (chargeCounter > 0 && capacity > 0) {
-                return (int) (((chargeCounter / (float) capacity) * 100) / 1000);
+        /*
+         * Matrix PowerProfile (static) >> OS PowerProfile (static) >> BatteryManager (dynamic)
+         */
+        try {
+            if (PowerProfile.getResType().equals("framework") || PowerProfile.getResType().equals("custom")) {
+                return (int) PowerProfile.init(context).getBatteryCapacity();
             }
-        }
-
-        if (PowerProfile.getInstance() != null) {
-            return (int) PowerProfile.getInstance().getBatteryCapacity();
+        } catch (Throwable ignored) {
         }
 
         try {
@@ -626,14 +689,35 @@ public final class BatteryCanaryUtil {
             Method method;
             try {
                 method = profileClass.getMethod("getAveragePower", String.class);
-                return (int) method.invoke(profileObject, "battery.capacity");
+                double capacity = (double) method.invoke(profileObject, PowerProfile.POWER_BATTERY_CAPACITY);
+                return (int) capacity;
             } catch (Throwable e) {
                 MatrixLog.w(TAG, "get PowerProfile failed: " + e.getMessage());
             }
             method = profileClass.getMethod("getBatteryCapacity");
             return (int) method.invoke(profileObject);
-        } catch (Throwable e) {
-            MatrixLog.w(TAG, "get PowerProfile failed: " + e.getMessage());
+        } catch (Throwable ignored) {
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            BatteryManager mBatteryManager = (BatteryManager) context.getSystemService(Context.BATTERY_SERVICE);
+            int chargeCounter = mBatteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER);
+            int capacity = mBatteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
+            if (chargeCounter > 0 && capacity > 0) {
+                return (int) (((chargeCounter / (float) capacity) * 100) / 1000);
+            }
+        }
+        return -1;
+    }
+
+    public static long getBatteryCurrency(Context context) {
+        return sCacheStub.getBatteryCurrency(context);
+    }
+
+    public static long getBatteryCurrencyImmediately(Context context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            BatteryManager mBatteryManager = (BatteryManager) context.getSystemService(Context.BATTERY_SERVICE);
+            return mBatteryManager.getLongProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW);
         }
         return -1;
     }
@@ -709,5 +793,16 @@ public final class BatteryCanaryUtil {
         } else {
             return input / Math.max(1, (millis) / ONE_MIN);
         }
+    }
+
+    public static <K, V> Map<K, V> sortMapByValue(Map<K, V> map, Comparator<? super Map.Entry<K, V>> comparator) {
+        List<Map.Entry<K, V>> list = new ArrayList<>(map.entrySet());
+        Collections.sort(list, comparator);
+
+        Map<K, V> result = new LinkedHashMap<>();
+        for (Map.Entry<K, V> entry : list) {
+            result.put(entry.getKey(), entry.getValue());
+        }
+        return result;
     }
 }

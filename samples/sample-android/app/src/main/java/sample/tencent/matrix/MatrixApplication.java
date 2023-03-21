@@ -49,6 +49,7 @@ import com.tencent.sqlitelint.config.SQLiteLintConfig;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Map;
 
 import sample.tencent.matrix.battery.BatteryCanaryInitHelper;
 import sample.tencent.matrix.battery.BatteryCanarySimpleInitHelper;
@@ -78,6 +79,8 @@ public class MatrixApplication extends Application {
     @Override
     public void onCreate() {
         super.onCreate();
+
+        System.loadLibrary("c++_shared");
 
         if (!is64BitRuntime()) {
             try {
@@ -116,8 +119,8 @@ public class MatrixApplication extends Application {
         builder.plugin(memoryCanaryPlugin);
 
         // Configure trace canary.
-        TracePlugin tracePlugin = configureTracePlugin(dynamicConfig);
-        builder.plugin(tracePlugin);
+//        TracePlugin tracePlugin = configureTracePlugin(dynamicConfig);
+//        builder.plugin(tracePlugin);
 
         // Configure resource canary.
         ResourcePlugin resourcePlugin = configureResourcePlugin(dynamicConfig);
@@ -182,7 +185,6 @@ public class MatrixApplication extends Application {
                 .enableAnrTrace(traceEnable)
                 .enableStartup(traceEnable)
                 .enableIdleHandlerTrace(traceEnable)                    // Introduced in Matrix 2.0
-                .enableMainThreadPriorityTrace(true)                    // Introduced in Matrix 2.0
                 .enableSignalAnrTrace(signalAnrTraceEnable)             // Introduced in Matrix 2.0
                 .anrTracePath(anrTraceFile.getAbsolutePath())
                 .printTracePath(printTraceFile.getAbsolutePath())
@@ -209,6 +211,17 @@ public class MatrixApplication extends Application {
             public void onNativeBacktraceDetected(String backtrace, String mMessageString, long mMessageWhen, boolean fromProcessErrorState) {
 
             }
+
+            @Override
+            public void onDeadLockAnrDetected(String mainThreadStackTrace, String lockHeldThread1, String lockHeldThread2, Map.Entry<int[], String[]> waitingList) {
+
+            }
+
+            @Override
+            public void onMainThreadStuckAtNativePollOnce(String mainThreadStackTrace) {
+
+            }
+
         });
         signalAnrTracer.onStartTrace();
     }
@@ -261,7 +274,7 @@ public class MatrixApplication extends Application {
     }
 
     private MatrixLifecycleConfig configureMatrixLifecycle() {
-        return new MatrixLifecycleConfig(new SupervisorConfig(true, true, new ArrayList<String>()), true, true, new LifecycleThreadConfig());
+        return new MatrixLifecycleConfig(new SupervisorConfig(true, true, new ArrayList<String>()), true, true, new LifecycleThreadConfig(), true);
     }
 
     public static Context getContext() {

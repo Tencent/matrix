@@ -55,6 +55,7 @@ public class SilenceAnalyseProcessor extends BaseLeakProcessor {
 
     @Override
     public boolean process(DestroyedActivityInfo destroyedActivityInfo) {
+        publishIssue(SharePluginInfo.IssueType.LEAK_FOUND, ResourceConfig.DumpMode.NO_DUMP, destroyedActivityInfo.mActivityName, destroyedActivityInfo.mKey, "no dump", "0");
         return onLeak(destroyedActivityInfo.mActivityName, destroyedActivityInfo.mKey);
     }
 

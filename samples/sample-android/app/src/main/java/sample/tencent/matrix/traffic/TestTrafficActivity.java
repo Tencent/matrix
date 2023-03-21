@@ -31,6 +31,8 @@ public class TestTrafficActivity extends Activity {
     TrafficPlugin trafficPlugin;
     boolean downloading = false;
     long totalTraffic = 0;
+    private String stackTrace;
+    private boolean dumpedStackTrace;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,28 +59,31 @@ public class TestTrafficActivity extends Activity {
     }
 
     void startTrafficCollector() {
+
         new Thread(new Runnable() {
             @Override
             public void run() {
                 while (downloading) {
                     HashMap<String, String> trafficInfo = trafficPlugin.getTrafficInfoMap(TrafficPlugin.TYPE_GET_TRAFFIC_RX);
-                    Map<String, String> stackTraceMap = trafficPlugin.getStackTraceMap();
                     for (Map.Entry<String, String> entry : trafficInfo.entrySet()) {
-                        final String threadName = entry.getKey();
+                        final String key = entry.getKey();
                         long traffic = Long.parseLong(entry.getValue());
-                        final String stack = stackTraceMap.get(threadName);
+                        if (!dumpedStackTrace) {
+                            stackTrace = trafficPlugin.getNativeBackTraceByKey(key) + trafficPlugin.getJavaStackTraceByKey(key);
+                            dumpedStackTrace = true;
+                        }
                         totalTraffic += traffic;
 
                         runOnUiThread(new Runnable() {
                             @Override
                             public void run() {
                                 threadTextView.setText("Total Traffic : " + totalTraffic + " Bytes");
-                                totalTrafficTextView.setText("Thread Name : " + threadName);
-                                stackTextView.setText("Stack Trace: " + stack);
+                                totalTrafficTextView.setText("key Name : " + key);
+                                stackTextView.setText("Stack Trace: " + stackTrace);
                             }
                         });
-                        trafficPlugin.clearTrafficInfo();
                     }
+                    trafficPlugin.clearTrafficInfo();
 
                     try {
                         Thread.sleep(1000);
@@ -92,7 +97,7 @@ public class TestTrafficActivity extends Activity {
 
     void initTraffic() {
 
-        TrafficConfig trafficConfig = new TrafficConfig(true, true, true);
+        TrafficConfig trafficConfig = new TrafficConfig(true, true, true, true);
         //trafficConfig.addIgnoreSoFile("libmmkv.so");// whitelist
         trafficPlugin = new TrafficPlugin(trafficConfig);
         trafficPlugin.init(getApplication(), new PluginListener() {

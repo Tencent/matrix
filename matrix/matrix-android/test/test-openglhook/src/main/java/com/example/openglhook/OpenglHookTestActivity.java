@@ -9,6 +9,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import android.app.Application;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.opengl.EGLContext;
 import android.opengl.GLES20;
 import android.opengl.GLUtils;
 import android.os.Bundle;
@@ -26,9 +27,13 @@ import com.tencent.matrix.openglleak.statistics.LeakMonitorForBackstage;
 import com.tencent.matrix.openglleak.statistics.resource.OpenGLInfo;
 import com.tencent.matrix.openglleak.statistics.resource.ResRecordManager;
 import com.tencent.matrix.openglleak.utils.EGLHelper;
+import com.tencent.matrix.util.MatrixLog;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 
@@ -332,6 +337,91 @@ public class OpenglHookTestActivity extends AppCompatActivity {
 //                Log.e(TAG, "onGlBindFramebuffer, target = " + target + ", eglContextId = " + eglContextId + ", id = " + id);
 //            }
 //        });
+    }
+
+    EGLContext initContext = null;
+
+    public void testGLSharedContext(View view) {
+
+        HandlerThread thread1 = new HandlerThread("thread1");
+        thread1.start();
+        Handler handler1 = new Handler(thread1.getLooper());
+
+        HandlerThread thread2 = new HandlerThread("thread2");
+        thread2.start();
+        final Handler handler2 = new Handler(thread2.getLooper());
+
+
+        final int totalCount = 1;
+        final int[] textures = new int[totalCount];
+        final int[] buffers = new int[totalCount];
+        final int[] renderBuffers = new int[totalCount];
+        final int[] frameBuffers = new int[totalCount];
+
+        handler1.post(new Runnable() {
+            @Override
+            public void run() {
+                initContext = EGLHelper.initOpenGL();
+                MatrixLog.i(TAG, "init Context = %s", initContext.getNativeHandle());
+                for (int i = 0; i < totalCount; i++) {
+                    GLES20.glGenRenderbuffers(1, renderBuffers, i);
+                    GLES20.glGenTextures(1, textures, i);
+                    GLES20.glGenBuffers(1, buffers, i);
+                    GLES20.glGenFramebuffers(1, frameBuffers, i);
+                }
+
+                handler2.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        EGLContext sharedContext = EGLHelper.initOpenGLSharedContext(initContext);
+                        MatrixLog.i(TAG, "shared Context = %s", sharedContext.getNativeHandle());
+                        for (int i = 0; i < totalCount; i++) {
+                            GLES20.glDeleteRenderbuffers(1, renderBuffers, i);
+                            GLES20.glDeleteTextures(1, textures, i);
+                            GLES20.glDeleteBuffers(1, buffers, i);
+                            GLES20.glDeleteFramebuffers(1, frameBuffers, i);
+                        }
+                    }
+                });
+            }
+        });
+
+        handler1.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                MatrixLog.i(TAG, "dump...");
+                dump();
+            }
+        }, 5000);
+    }
+
+    private void dump() {
+        final String dirPath = getApplication().getExternalCacheDir() + "/OpenGLHook";
+        final String filePath = dirPath + "/" + Process.myPid() + "_opengl_dump.txt";
+        File dirFile = new File(dirPath);
+        if (!dirFile.exists()) {
+            dirFile.mkdirs();
+        }
+        File dumpFile = new File(filePath);
+        if (dumpFile.exists()) {
+            dumpFile.delete();
+        }
+        try {
+            dumpFile.createNewFile();
+        } catch (IOException e) {
+            MatrixLog.printErrStackTrace(TAG, e, "");
+        }
+
+        ResRecordManager.getInstance().dumpGLToFile(filePath);
+
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(filePath)))){
+            String line;
+            while ((line = br.readLine()) != null) {
+                MatrixLog.i(TAG, line);
+            }
+        } catch (IOException e) {
+            MatrixLog.printErrStackTrace(TAG, e, "");
+        }
     }
 
 }

@@ -29,6 +29,7 @@ import com.tencent.matrix.apk.model.result.TaskResult;
 import com.tencent.matrix.apk.model.result.TaskResultFactory;
 import com.tencent.matrix.apk.model.task.util.ApkResourceDecoder;
 import com.tencent.matrix.apk.model.task.util.ApkUtil;
+import com.tencent.matrix.apk.model.task.util.ResguardUtil;
 import com.tencent.matrix.javalib.util.FileUtil;
 import com.tencent.matrix.javalib.util.Log;
 import com.tencent.matrix.javalib.util.Util;
@@ -51,6 +52,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import brut.androlib.AndrolibException;
 
@@ -69,6 +72,7 @@ public class UnusedResourcesTask extends ApkTask {
     private File resMappingTxt;
     private final List<String> dexFileNameList;
     private final Map<String, String> rclassProguardMap;
+    private final Map<String, String> resguardMap;
     private final Map<String, String> resourceDefMap;
     private final Map<String, Set<String>> styleableMap;
     private final Set<String> resourceRefSet;
@@ -83,6 +87,7 @@ public class UnusedResourcesTask extends ApkTask {
         dexFileNameList = new ArrayList<>();
         ignoreSet = new HashSet<>();
         rclassProguardMap = new HashMap<>();
+        resguardMap = new HashMap<>();
         resourceDefMap = new HashMap<>();
         styleableMap = new HashMap<>();
         resourceRefSet = new HashSet<>();
@@ -157,6 +162,8 @@ public class UnusedResourcesTask extends ApkTask {
         return "";
     }
 
+    private static final Pattern sRClassPattern = Pattern.compile("(([a-zA-Z0-9_]*\\.)*)R\\$([a-z]+)");
+
     private String parseResourceNameFromProguard(String entry) {
         if (!Util.isNullOrNil(entry)) {
             String[] columns = entry.split("->");
@@ -170,7 +177,17 @@ public class UnusedResourcesTask extends ApkTask {
                         if (rclassProguardMap.containsKey(resource)) {
                             return rclassProguardMap.get(resource);
                         } else {
-                            return "";
+                            final Matcher matcher = sRClassPattern.matcher(className);
+                            if (matcher.find()) {
+                                final StringBuilder resultBuilder = new StringBuilder();
+                                resultBuilder.append("R.");
+                                resultBuilder.append(matcher.group(3));
+                                resultBuilder.append(".");
+                                resultBuilder.append(fieldName);
+                                return resultBuilder.toString();
+                            } else {
+                                return "";
+                            }
                         }
                     } else {
                         if (ApkUtil.isRClassName(ApkUtil.getPureClassName(className))) {
@@ -363,6 +380,13 @@ public class UnusedResourcesTask extends ApkTask {
                                 resourceRefSet.add(resourceDefMap.get(resId));
                             }
                         }
+                        if (line.trim().startsWith("0x")) {
+                            final String resId = parseResourceId(line.trim());
+                            if (!Util.isNullOrNil(resId) && resourceDefMap.containsKey(resId)) {
+                                Log.d(TAG, "array field resource, %s", resId);
+                                resourceRefSet.add(resourceDefMap.get(resId));
+                            }
+                        }
                     }
                 }
             }
@@ -382,8 +406,6 @@ public class UnusedResourcesTask extends ApkTask {
         Set<String> valuesReferences = new HashSet<>();
 
         ApkResourceDecoder.decodeResourcesRef(manifestFile, arscFile, resDir, fileResMap, valuesReferences);
-
-        Map<String, String> resguardMap = config.getResguardMap();
 
         for (String resource : fileResMap.keySet()) {
             Set<String> result = new HashSet<>();
@@ -454,6 +476,7 @@ public class UnusedResourcesTask extends ApkTask {
             long startTime = System.currentTimeMillis();
             readMappingTxtFile();
             readResourceTxtFile();
+            ResguardUtil.readResMappingTxtFile(resMappingTxt, null, resguardMap);
             unusedResSet.addAll(resourceDefMap.values());
             Log.i(TAG, "find resource declarations %d items.", unusedResSet.size());
             decodeCode();

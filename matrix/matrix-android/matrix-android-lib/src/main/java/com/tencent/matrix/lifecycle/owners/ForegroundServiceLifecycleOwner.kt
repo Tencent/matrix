@@ -10,6 +10,7 @@ import android.os.Handler
 import android.os.Message
 import android.os.Process
 import android.util.ArrayMap
+import com.tencent.matrix.lifecycle.MatrixLifecycleThread
 import com.tencent.matrix.lifecycle.StatefulOwner
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.safeApply
@@ -18,8 +19,6 @@ import com.tencent.matrix.util.safeLetOrNull
 import java.lang.reflect.InvocationHandler
 import java.lang.reflect.Method
 import java.lang.reflect.Proxy
-
-private const val SDK_GUARD = 32
 
 /**
  * Created by Yves on 2021/11/30
@@ -47,10 +46,6 @@ object ForegroundServiceLifecycleOwner : StatefulOwner() {
         activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
         if (!enable) {
             MatrixLog.i(TAG, "disabled")
-            return
-        }
-        if (Build.VERSION.SDK_INT > SDK_GUARD) { // for safety
-            MatrixLog.e(TAG, "NOT support for api-level ${Build.VERSION.SDK_INT} yet!!!")
             return
         }
         inject()
@@ -127,8 +122,10 @@ object ForegroundServiceLifecycleOwner : StatefulOwner() {
                 }
                 STOP_SERVICE -> {
                     ActivityThreadmH?.post {
-                        safeApply(TAG) {
-                            hasForegroundService()
+                        MatrixLifecycleThread.handler.post {
+                            safeApply(TAG) {
+                                hasForegroundService()
+                            }
                         }
                     }
                 }
@@ -159,15 +156,17 @@ object ForegroundServiceLifecycleOwner : StatefulOwner() {
         }
 
         private fun checkIfAlreadyForegrounded(componentName: ComponentName) {
-            safeApply(TAG) {
-                activityManager?.getRunningServices(Int.MAX_VALUE)?.filter {
-                    it.pid == Process.myPid()
-                            && it.uid == Process.myUid()
-                            && it.service == componentName
-                            && it.foreground
-                }?.forEach {
-                    MatrixLog.i(TAG, "service turned fg when create: ${it.service}")
-                    fgServiceHandler?.onStartForeground(it.service)
+            MatrixLifecycleThread.handler.post {
+                safeApply(TAG) {
+                    activityManager?.getRunningServices(Int.MAX_VALUE)?.filter {
+                        it.pid == Process.myPid()
+                                && it.uid == Process.myUid()
+                                && it.service == componentName
+                                && it.foreground
+                    }?.forEach {
+                        MatrixLog.i(TAG, "service turned fg when create: ${it.service}")
+                        fgServiceHandler?.onStartForeground(it.service)
+                    }
                 }
             }
         }

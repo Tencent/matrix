@@ -8,12 +8,14 @@ import com.tencent.matrix.resource.MemoryUtil
 import com.tencent.matrix.resource.analyzer.model.DestroyedActivityInfo
 import com.tencent.matrix.resource.config.ResourceConfig
 import com.tencent.matrix.resource.config.SharePluginInfo
+import com.tencent.matrix.resource.dumper.HprofFileManager
 import com.tencent.matrix.resource.watcher.ActivityRefWatcher
 import com.tencent.matrix.util.MatrixLog
 import com.tencent.matrix.util.MatrixUtil
+import com.tencent.matrix.util.safeLet
+import com.tencent.matrix.util.safeLetOrNull
 import java.io.File
 import java.util.*
-import java.util.concurrent.Executors
 
 private fun File.deleteIfExist() {
     if (exists()) delete()
@@ -72,7 +74,7 @@ private class RetryRepository(private val dir: File) {
         }
     }
 
-    fun process(action: (File, String, String, String) -> Unit) {
+    fun process(action: (File, File, String, String, String) -> Unit) {
         val hprofs = synchronized(accessLock) {
             hprofDir.listFiles() ?: emptyArray<File>()
         }
@@ -83,7 +85,7 @@ private class RetryRepository(private val dir: File) {
                     val (activity, key, failure) = keyFile.bufferedReader().use {
                         Triple(it.readLine(), it.readLine(), it.readLine())
                     }
-                    action.invoke(hprofFile, activity, key, failure)
+                    action.invoke(hprofFile, keyFile, activity, key, failure)
                 }
             } catch (throwable: Throwable) {
                 MatrixLog.printErrStackTrace(
@@ -101,16 +103,7 @@ private class RetryRepository(private val dir: File) {
 class NativeForkAnalyzeProcessor(watcher: ActivityRefWatcher) : BaseLeakProcessor(watcher) {
 
     companion object {
-
-        private const val RETRY_THREAD_NAME = "matrix_res_native_analyze_retry"
-
         private const val RETRY_REPO_NAME = "matrix_res_process_retry"
-
-        private val retryExecutor by lazy {
-            Executors.newSingleThreadExecutor {
-                Thread(it, RETRY_THREAD_NAME)
-            }
-        }
     }
 
     private val retryRepo: RetryRepository? by lazy {
@@ -134,8 +127,11 @@ class NativeForkAnalyzeProcessor(watcher: ActivityRefWatcher) : BaseLeakProcesso
     private val screenStateReceiver by lazy {
         return@lazy object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
-                retryExecutor.execute {
-                    retryRepo?.process { hprof, activity, key, failure ->
+                // run in detector thread to prevent parallel analyzing
+                watcher.detectHandler.post {
+                    // fixme : should separate native analyse and java analyse into smaller parts.
+                    //  It is possible to unlock screen and turn foreground when analyzing
+                    retryRepo?.process { hprof, keyFile, activity, key, failure ->
                         MatrixLog.i(TAG, "Found record ${activity}(${hprof.name}).")
                         val historyFailure = mutableListOf<String>().apply {
                             add(failure)
@@ -144,8 +140,17 @@ class NativeForkAnalyzeProcessor(watcher: ActivityRefWatcher) : BaseLeakProcesso
                         var result = MemoryUtil.analyze(hprof.absolutePath, key, timeout = 1200)
                         if (result.mFailure != null) {
                             historyFailure.add(result.mFailure.toString())
-                            retryCount++
-                            result = analyze(hprof, key)
+//                            retryCount++
+//                            safeLetOrNull(TAG) {
+//                                HprofFileManager.prepareHprofFile("RETRY", false) // prevent duplicated analyse after OOM
+//                            }?.let { cpy ->
+//                                hprof.copyTo(cpy, true)
+//                                hprof.deleteIfExist()
+//                                keyFile.deleteIfExist()
+//                                safeLet({
+//                                    result = analyze(cpy, key) // if crashed, the copied file could be auto-cleared by HprofFileManager later (lru or expired)
+//                                }, success = { cpy.deleteIfExist() }, failed = { cpy.deleteIfExist() })
+//                            }
                         }
                         if (result.mLeakFound) {
                             watcher.markPublished(activity, false)
@@ -191,12 +196,13 @@ class NativeForkAnalyzeProcessor(watcher: ActivityRefWatcher) : BaseLeakProcesso
     }
 
     override fun process(destroyedActivityInfo: DestroyedActivityInfo): Boolean {
+        publishIssue(SharePluginInfo.IssueType.LEAK_FOUND, ResourceConfig.DumpMode.NO_DUMP, destroyedActivityInfo.mActivityName, destroyedActivityInfo.mKey, "no dump", "0")
 
-        val hprof = dumpStorageManager.newHprofFile() ?: run {
+        val hprof = safeLetOrNull { HprofFileManager.prepareHprofFile("NFAP", true) } ?: run {
             publishIssue(
                 SharePluginInfo.IssueType.LEAK_FOUND,
                 ResourceConfig.DumpMode.FORK_ANALYSE,
-                "[unknown]", "[unknown]", "Failed to create hprof file.", "0"
+                destroyedActivityInfo.mActivityName, "[unknown]", "Failed to create hprof file.", "0"
             )
             return true
         }
@@ -206,7 +212,9 @@ class NativeForkAnalyzeProcessor(watcher: ActivityRefWatcher) : BaseLeakProcesso
 
         watcher.triggerGc()
 
+        MatrixLog.i(TAG, "fork dump and analyse")
         val result = MemoryUtil.dumpAndAnalyze(hprof.absolutePath, key, timeout = 600)
+        MatrixLog.i(TAG, "fork dump and analyse done")
         if (result.mFailure != null) {
             // Copies file to retry repository and analyzes it again when the screen is locked.
             MatrixLog.i(TAG, "Process failed, move into retry repository.")

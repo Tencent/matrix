@@ -49,13 +49,15 @@ public final class ResourceConfig {
     private final boolean mDetectDebugger;
     private final String mTargetActivity;
     private final String mManufacture;
+    private final boolean enableManualDumpNotification;
 
-    private ResourceConfig(IDynamicConfig dynamicConfig, DumpMode dumpHprofMode, boolean detectDebuger, String targetActivity, String manufacture) {
+    private ResourceConfig(IDynamicConfig dynamicConfig, DumpMode dumpHprofMode, boolean detectDebuger, String targetActivity, String manufacture, boolean enableManualDumpNotification) {
         this.mDynamicConfig = dynamicConfig;
         this.mDumpHprofMode = dumpHprofMode;
         this.mDetectDebugger = detectDebuger;
         this.mTargetActivity = targetActivity;
         this.mManufacture = manufacture;
+        this.enableManualDumpNotification = enableManualDumpNotification;
     }
 
     public long getScanIntervalMillis() {
@@ -86,11 +88,16 @@ public final class ResourceConfig {
         return mManufacture;
     }
 
+    public boolean isManualDumpNotificationEnabled() {
+        return enableManualDumpNotification;
+    }
+
     public static final class Builder {
 
         private DumpMode mDefaultDumpHprofMode = DEFAULT_DUMP_HPROF_MODE;
         private IDynamicConfig dynamicConfig;
         private String mTargetActivity;
+        private boolean enableManualDumpNotification = true;
         private boolean mDetectDebugger = false;
         private String mManufacture;
 
@@ -109,6 +116,11 @@ public final class ResourceConfig {
             return this;
         }
 
+        public Builder enableManualDumpNotification(boolean enable) {
+            enableManualDumpNotification = enable;
+            return this;
+        }
+
         public Builder setManualDumpTargetActivity(String targetActivity) {
             mTargetActivity = targetActivity;
             return this;
@@ -120,7 +132,7 @@ public final class ResourceConfig {
         }
 
         public ResourceConfig build() {
-            return new ResourceConfig(dynamicConfig, mDefaultDumpHprofMode, mDetectDebugger, mTargetActivity, mManufacture);
+            return new ResourceConfig(dynamicConfig, mDefaultDumpHprofMode, mDetectDebugger, mTargetActivity, mManufacture, enableManualDumpNotification);
         }
     }
 }

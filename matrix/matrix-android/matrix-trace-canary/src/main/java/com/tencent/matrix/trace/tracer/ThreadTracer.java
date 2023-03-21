@@ -29,10 +29,13 @@ import com.tencent.matrix.util.MatrixLog;
 
 import org.json.JSONObject;
 
-public class ThreadPriorityTracer extends Tracer {
+public class ThreadTracer extends Tracer {
 
     private static final String TAG = "ThreadPriorityTracer";
     private static MainThreadPriorityModifiedListener sMainThreadPriorityModifiedListener;
+    private static PthreadKeyCallback sPthreadKeyCallback;
+    private static boolean enableThreadPriorityTracer = false;
+    private static boolean enablePthreadKeyTracer = false;
 
     static {
         System.loadLibrary("trace-canary");
@@ -41,7 +44,9 @@ public class ThreadPriorityTracer extends Tracer {
     @Override
     protected void onAlive() {
         super.onAlive();
-        nativeInitMainThreadPriorityDetective();
+        if (enableThreadPriorityTracer || enablePthreadKeyTracer) {
+            nativeInitThreadHook(enableThreadPriorityTracer ? 1 : 0, enablePthreadKeyTracer ? 1 : 0);
+        }
     }
 
     @Override
@@ -50,10 +55,21 @@ public class ThreadPriorityTracer extends Tracer {
     }
 
     public void setMainThreadPriorityModifiedListener(MainThreadPriorityModifiedListener mainThreadPriorityModifiedListener) {
-        this.sMainThreadPriorityModifiedListener = mainThreadPriorityModifiedListener;
+        enableThreadPriorityTracer = true;
+        sMainThreadPriorityModifiedListener = mainThreadPriorityModifiedListener;
     }
 
-    private static native void nativeInitMainThreadPriorityDetective();
+    public void setPthreadKeyCallback(PthreadKeyCallback callback) {
+        enablePthreadKeyTracer = true;
+        sPthreadKeyCallback = callback;
+    }
+
+    public static int getPthreadKeySeq() {
+        return nativeGetPthreadKeySeq();
+    }
+
+    private static native void nativeInitThreadHook(int priority, int phreadKey);
+    private static native int nativeGetPthreadKeySeq();
 
     @Keep
     private static void onMainThreadPriorityModified(int priorityBefore, int priorityAfter) {
@@ -115,12 +131,27 @@ public class ThreadPriorityTracer extends Tracer {
         } catch (Throwable t) {
             MatrixLog.e(TAG, "onMainThreadPriorityModified error: %s", t.getMessage());
         }
+    }
 
+    @Keep
+    private static void pthreadKeyCallback(int type, int ret, int keySeq, String soPath, String backtrace) {
+        if (sPthreadKeyCallback != null) {
+            if (type == 0) {
+                sPthreadKeyCallback.onPthreadCreate(ret, keySeq, soPath, backtrace);
+            } else if (type == 1) {
+                sPthreadKeyCallback.onPthreadDelete(ret, keySeq, soPath, backtrace);
+            }
+
+        }
     }
 
     public interface MainThreadPriorityModifiedListener {
         void onMainThreadPriorityModified(int priorityBefore, int priorityAfter);
-
         void onMainThreadTimerSlackModified(long timerSlack);
+    }
+
+    public interface PthreadKeyCallback {
+        void onPthreadCreate(int ret, int keyIndex, String soPath, String backtrace);
+        void onPthreadDelete(int ret, int keyIndex, String soPath, String backtrace);
     }
 }

@@ -18,14 +18,14 @@ package com.tencent.matrix.hook.memory;
 
 import android.os.Build;
 
-import androidx.annotation.Nullable;
+import androidx.annotation.NonNull;
 
 import com.tencent.matrix.hook.AbsHook;
 
 public class WVPreAllocHook extends AbsHook {
     public static final WVPreAllocHook INSTANCE = new WVPreAllocHook();
 
-    @Nullable
+    @NonNull
     @Override
     protected String getNativeLibraryName() {
         return "matrix-memoryhook";

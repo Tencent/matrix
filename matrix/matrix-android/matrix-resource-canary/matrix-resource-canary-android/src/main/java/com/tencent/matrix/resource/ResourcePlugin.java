@@ -25,8 +25,10 @@ import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.plugin.PluginListener;
 import com.tencent.matrix.resource.config.ResourceConfig;
 import com.tencent.matrix.resource.config.SharePluginInfo;
+import com.tencent.matrix.resource.dumper.HprofFileManager;
 import com.tencent.matrix.resource.processor.BaseLeakProcessor;
 import com.tencent.matrix.resource.watcher.ActivityRefWatcher;
+import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 
 /**
@@ -78,6 +80,12 @@ public class ResourcePlugin extends Plugin {
             return;
         }
         mWatcher.start();
+        MatrixHandlerThread.getDefaultHandler().post(new Runnable() {
+            @Override
+            public void run() {
+                HprofFileManager.INSTANCE.checkExpiredFile();
+            }
+        });
     }
 
     @Override

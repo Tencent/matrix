@@ -85,6 +85,13 @@ public class SamplerTest {
     }
 
     @Test
+    public void testInvalidSamplingResult() {
+        Number result = Integer.MIN_VALUE;
+        Assert.assertTrue(result.equals(Integer.MIN_VALUE));
+        Assert.assertEquals(Integer.MIN_VALUE, result);
+    }
+
+    @Test
     public void testSampling() throws InterruptedException {
         final BatteryMonitorCore monitor = mockMonitor();
         BatteryMonitorPlugin plugin = new BatteryMonitorPlugin(monitor.getConfig());
@@ -95,7 +102,7 @@ public class SamplerTest {
         final int samplingCount = 10;
 
         final AtomicInteger counter = new AtomicInteger(0);
-        final MonitorFeature.Snapshot.Sampler sampler = new MonitorFeature.Snapshot.Sampler(monitor.getHandler(), new Callable<Integer>() {
+        final MonitorFeature.Snapshot.Sampler sampler = new MonitorFeature.Snapshot.Sampler("test-1", monitor.getHandler(), new Callable<Integer>() {
             @Override
             public Integer call() throws InterruptedException {
                 int count = counter.incrementAndGet();
@@ -128,7 +135,7 @@ public class SamplerTest {
         Assert.assertEquals(55d / samplingCount, result.sampleAvg, 0.1);
 
         final AtomicInteger counterDec = new AtomicInteger(0);
-        final MonitorFeature.Snapshot.Sampler samplerDec = new MonitorFeature.Snapshot.Sampler(monitor.getHandler(), new Callable<Integer>() {
+        final MonitorFeature.Snapshot.Sampler samplerDec = new MonitorFeature.Snapshot.Sampler("test-2", monitor.getHandler(), new Callable<Integer>() {
             @Override
             public Integer call() throws InterruptedException {
                 int count = counterDec.incrementAndGet();

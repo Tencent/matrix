@@ -10,14 +10,13 @@ cmake_minimum_required(VERSION 3.4.1)
 # and CMake builds them for you. When you build your app, Gradle
 # automatically packages shared libraries with your APK.
 
-set(TARGET matrix-jectl)
+set(TARGET matrix-mallctl)
 
 set(SOURCE_DIR src/main/cpp)
 
 set(
         SOURCE_FILES
-        ${SOURCE_DIR}/jectl/JeCtl.cpp
-        ${SOURCE_DIR}/jectl/JeHooks.cpp
+        ${SOURCE_DIR}/mallctl/MallCtl.cpp
 )
 
 add_library( # Specifies the name of the library.

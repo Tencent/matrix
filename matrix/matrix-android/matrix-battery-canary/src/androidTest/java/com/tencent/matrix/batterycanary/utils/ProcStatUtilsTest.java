@@ -24,12 +24,9 @@ import android.os.Looper;
 import android.os.Process;
 import android.os.SystemClock;
 import android.text.TextUtils;
-import android.util.Pair;
 import android.util.SparseArray;
 
 import com.tencent.matrix.batterycanary.TestUtils;
-import com.tencent.matrix.batterycanary.monitor.feature.JiffiesMonitorFeature;
-import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature;
 import com.tencent.matrix.util.MatrixLog;
 
 import org.junit.After;
@@ -41,6 +38,7 @@ import org.mockito.internal.util.io.IOUtil;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileFilter;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -51,10 +49,15 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import androidx.arch.core.util.Function;
+import androidx.core.util.Consumer;
+import androidx.core.util.Pair;
+import androidx.core.util.Supplier;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 
@@ -92,6 +95,165 @@ public class ProcStatUtilsTest {
 
         StackTraceElement[] ste = Thread.currentThread().getStackTrace();
         Assert.assertEquals("testGetCurrentMethodName", ste[2].getMethodName());
+    }
+
+    @Test
+    public void testGetRootProcStat() {
+        List<String> names = Arrays.asList(
+                "asound",
+                "ath_pktlog",
+                "bldrlog",
+                "buddyinfo",
+                "bus",
+                "cgroups",
+                "cld",
+                "cmdline",
+                "config.gz",
+                "consoles",
+                "crypto",
+                "debugdriver",
+                "driver",
+                "dynamic_debug",
+                "device-tree",
+                "devices",
+                "diskstats",
+                "execdomains",
+                "fs",
+                "fts",
+                "fb",
+                "filesystems",
+                "interrupts",
+                "iomem",
+                "ioports",
+                "irq",
+                "kallsyms",
+                "key-users",
+                "keys",
+                "kmsg",
+                "kpagecount",
+                "kpageflags",
+                "loadavg",
+                "locks",
+                "misc",
+                "modules",
+                "net",
+                "pressure",
+                "pagetypeinfo",
+                "partitions",
+                "sched_debug",
+                "slabinfo",
+                "sysrq-trigger",
+                "schedstat",
+                "softirqs",
+                "stat",
+                "swaps",
+                "sysrq-trigger",
+                "scsi",
+                "sys",
+                "tty",
+                "timer_list",
+                "uid",
+                "uid_concurrent_active_time",
+                "uid_concurrent_policy_time",
+                "uid_cputime",
+                "uid_io",
+                "uid_procstat",
+                "uid_time_in_state",
+                "uptime",
+                "version",
+                "vmallocinfo",
+                "vmstat",
+                "zoneinfo"
+        );
+
+        final Function<File, Boolean> inWhiteList = new Function<File, Boolean>() {
+            @Override
+            public Boolean apply(File input) {
+                for (String item : Arrays.asList(
+                        "/proc/sys/kernel/perf_",
+                        "/proc/sys/kernel/random/"
+                )) {
+                    if (input.getAbsolutePath().startsWith(item)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+        };
+
+        final Consumer<File> fileConsumer = new Consumer<File>() {
+            @Override
+            public void accept(File file) {
+                if (file.canRead()) {
+                    if (file.isDirectory()) {
+                        File[] files = file.listFiles();
+                        if (files != null && files.length > 0) {
+                            for (File item : files) {
+                                this.accept(item);
+                            }
+                        }
+                    } else {
+                        try (InputStream is = new FileInputStream(file)) {
+                            Collection<String> cat = IOUtil.readLines(is);
+                            if (!inWhiteList.apply(file)) {
+                                Assert.assertNull("Should be null-content: " + file.getAbsolutePath(), cat);
+                            }
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                }
+            }
+        };
+        for (String item : names) {
+            File file = new File("proc/" + item);
+            Assert.assertTrue("shoud exits: " + item, file.exists());
+            fileConsumer.accept(file);
+        }
+    }
+
+    @Test
+    public void testGetReadableRootProcStat() {
+        List<String> names = Arrays.asList(
+                "cpuinfo",
+                "meminfo",
+                "mounts",
+                "sys/kernel"
+        );
+
+        final Function<Pair<File, List<String[]>>, Pair<File, List<String[]>>> func = new Function<Pair<File, List<String[]>>, Pair<File, List<String[]>>>() {
+            @SuppressWarnings("ConstantConditions")
+            @Override
+            public Pair<File, List<String[]>> apply(Pair<File, List<String[]>> input) {
+                if (input.first.canRead()) {
+                    if (input.first.isDirectory()) {
+                        File[] files = input.first.listFiles();
+                        if (files != null && files.length > 0) {
+                            for (File item : files) {
+                                this.apply(new Pair<>(item, input.second));
+                            }
+                        }
+                    } else {
+                        try (InputStream is = new FileInputStream(input.first)) {
+                            Collection<String> cat = IOUtil.readLines(is);
+                            Assert.assertNotNull("Should not be empty: " + input.first.getAbsolutePath(), cat);
+                            input.second.add(cat.toArray(new String[0]));
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                }
+                return input;
+            }
+        };
+
+        for (String item : names) {
+            File file = new File("proc/" + item);
+            Assert.assertTrue("shoud exits: " + item, file.exists());
+            Assert.assertTrue("shoud readable: " + item, file.canRead());
+            Pair<File, List<String[]>> ret = func.apply(new Pair<File, List<String[]>>(file, new ArrayList<String[]>()));
+            Assert.assertNotEquals("shoud not empty: " + item, 0, ret.second.size());
+        }
     }
 
     @Test
@@ -188,6 +350,18 @@ public class ProcStatUtilsTest {
     public void testGetProcStat() {
         String cat = BatteryCanaryUtil.cat("/proc/stat");
         Assert.assertTrue(TextUtils.isEmpty(cat));
+
+        File file = new File("/proc");
+        File[] files = file.listFiles(new FileFilter() {
+            @Override
+            public boolean accept(File pathname) {
+                return pathname.isFile();
+            }
+        });
+        for (File item : files) {
+            cat = BatteryCanaryUtil.cat("/proc/stat");
+            Assert.assertTrue(TextUtils.isEmpty(cat));
+        }
     }
 
     /**

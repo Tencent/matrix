@@ -202,6 +202,7 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher {
         final UUID uuid = UUID.randomUUID();
         final StringBuilder keyBuilder = new StringBuilder();
         keyBuilder.append(ACTIVITY_REFKEY_PREFIX).append(activityName)
+                .append("@").append(activity.hashCode())
                 .append('_').append(Long.toHexString(uuid.getMostSignificantBits())).append(Long.toHexString(uuid.getLeastSignificantBits()));
         final String key = keyBuilder.toString();
         final DestroyedActivityInfo destroyedActivityInfo
@@ -310,6 +311,10 @@ public class ActivityRefWatcher extends FilePublisher implements Watcher {
 
     public ResourcePlugin getResourcePlugin() {
         return mResourcePlugin;
+    }
+
+    public Handler getDetectHandler() {
+        return mHandler;
     }
 
     public Collection<DestroyedActivityInfo> getDestroyedActivityInfos() {

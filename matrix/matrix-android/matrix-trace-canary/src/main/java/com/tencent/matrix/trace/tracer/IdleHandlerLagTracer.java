@@ -86,7 +86,7 @@ public class IdleHandlerLagTracer extends Tracer {
                 String scene = AppActiveMatrixDelegate.INSTANCE.getVisibleScene();
 
                 JSONObject jsonObject = new JSONObject();
-                jsonObject = DeviceUtil.getDeviceInfo(jsonObject, Matrix.with().getApplication());
+                DeviceUtil.getDeviceInfo(jsonObject, Matrix.with().getApplication());
                 jsonObject.put(SharePluginInfo.ISSUE_STACK_TYPE, Constants.Type.LAG_IDLE_HANDLER);
                 jsonObject.put(SharePluginInfo.ISSUE_SCENE, scene);
                 jsonObject.put(SharePluginInfo.ISSUE_THREAD_STACK, stackTrace);

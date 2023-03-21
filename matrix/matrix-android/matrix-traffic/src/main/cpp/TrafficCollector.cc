@@ -29,124 +29,81 @@
 #include <arpa/inet.h>
 #include "MatrixTraffic.h"
 
+#include <shared_mutex>
 #include <queue>
 #include <thread>
+#include <unordered_set>
 
 using namespace std;
 
 namespace MatrixTraffic {
 
 static mutex queueMutex;
-static lock_guard<mutex> lock(queueMutex);
+static condition_variable cv;
+
 static bool loopRunning = false;
 static bool sDumpStackTrace = false;
-static bool sLookupIpAddress = false;
-static map<int, int> fdFamilyMap;
+
+static unordered_set<int> activeFdSet;
+static shared_mutex activeFdSetMutex;
+
+static unordered_set<int> invalidFdSet;
+
 static blocking_queue<shared_ptr<TrafficMsg>> msgQueue;
-static map<string, long> rxTrafficInfoMap;
-static map<string, long> txTrafficInfoMap;
-static mutex rxTrafficInfoMapLock;
-static mutex txTrafficInfoMapLock;
+
+static map<int, long> rxFdTrafficInfoMap;
+static map<int, long> txFdTrafficInfoMap;
+static shared_mutex rxTrafficInfoMapLock;
+static shared_mutex txTrafficInfoMapLock;
 
 static map<int, string> fdThreadNameMap;
-static map<int, string> fdIpAddressMap;
-static mutex fdThreadNameMapLock;
-static mutex fdIpAddressMapLock;
+static shared_mutex fdThreadNameMapSharedLock;
 
-string getIpAddressFromAddr(sockaddr* _addr) {
-    string ipAddress;
-    if (_addr != nullptr) {
-        if ((int)_addr->sa_family == AF_LOCAL) {
-            ipAddress = _addr->sa_data;
-            ipAddress.append(":LOCAL");
-        } else if ((int)_addr->sa_family == AF_INET) {
-            auto *sin4 = reinterpret_cast<sockaddr_in*>(_addr);
-            char ipv4str[INET_ADDRSTRLEN];
-            if (inet_ntop(AF_INET, &(sin4->sin_addr), ipv4str, INET6_ADDRSTRLEN) != nullptr) {
-                ipAddress = ipv4str;
-                int port = ntohs(sin4->sin_port);
-                if (port != -1) {
-                    ipAddress.append(":");
-                    ipAddress.append(to_string(port));
-                }
-            }
-        } else if ((int)_addr->sa_family == AF_INET6) {
-            auto *sin6 = reinterpret_cast<sockaddr_in6 *>(_addr);
-            char ipv6str[INET6_ADDRSTRLEN];
-            if (inet_ntop(AF_INET6, &(sin6->sin6_addr), ipv6str, INET6_ADDRSTRLEN) != nullptr) {
-                ipAddress = ipv6str;
-                int port = ntohs(sin6->sin6_port);
-                if (port != -1) {
-                    ipAddress.append(":");
-                    ipAddress.append(to_string(port));
-                }
-            }
+int isNetworkSocketFd(int fd) {
+    struct sockaddr c;
+    socklen_t cLen = sizeof(c);
+    int getSockNameRet = getsockname(fd, (struct sockaddr*) &c, &cLen);
+    if (getSockNameRet == 0) {
+        if (c.sa_family != AF_LOCAL && c.sa_family != AF_NETLINK) {
+            return 1;
         }
     }
-    return ipAddress;
+    return 0;
 }
 
-void saveIpAddress(int fd, sockaddr* addr) {
-    fdIpAddressMapLock.lock();
-    if (fdIpAddressMap.count(fd) == 0) {
-        fdIpAddressMap[fd] = getIpAddressFromAddr(addr);
-    }
-    fdIpAddressMapLock.unlock();
-}
-
-string getIpAddress(int fd) {
-    fdIpAddressMapLock.lock();
-    string ipAddress = fdIpAddressMap[fd];
-    fdIpAddressMapLock.unlock();
-    return ipAddress;
-}
-
-
-string getKeyAndSaveStack(int fd) {
-    fdThreadNameMapLock.lock();
+string saveFdInfo(int fd) {
+    fdThreadNameMapSharedLock.lock_shared();
     if (fdThreadNameMap.count(fd) == 0) {
-        string key;
-        if (sLookupIpAddress) {
-            key = getIpAddress(fd);
-            key.append(";");
+        fdThreadNameMapSharedLock.unlock_shared();
+
+        char threadName[15];
+        prctl(PR_GET_NAME, threadName);
+        char key[32];
+        snprintf(key, sizeof(key), "%d-%s", fd, threadName);
+
+        if (sDumpStackTrace) {
+            setFdStackTraceCall(key);
         }
 
-        auto threadName = new char[15];
-        prctl(PR_GET_NAME, threadName);
-        key.append(threadName);
+        fdThreadNameMapSharedLock.lock();
         fdThreadNameMap[fd] = key;
-        fdThreadNameMapLock.unlock();
-        if (sDumpStackTrace) {
-            setStackTrace(key.data());
-        }
+        fdThreadNameMapSharedLock.unlock();
+
         return key;
     } else {
         auto key = fdThreadNameMap[fd];
-        fdThreadNameMapLock.unlock();
+        fdThreadNameMapSharedLock.unlock_shared();
         return key;
     }
-}
-
-void TrafficCollector::enQueueConnect(int fd, sockaddr *addr, socklen_t addr_length) {
-    if (!loopRunning) {
-        return;
-    }
-    if (sLookupIpAddress) {
-        saveIpAddress(fd, addr);
-    }
-    shared_ptr<TrafficMsg> msg = make_shared<TrafficMsg>(MSG_TYPE_CONNECT, fd, addr->sa_family, getKeyAndSaveStack(fd), 0);
-
-    msgQueue.push(msg);
-    queueMutex.unlock();
 }
 
 void TrafficCollector::enQueueClose(int fd) {
     if (!loopRunning) {
         return;
     }
-    shared_ptr<TrafficMsg> msg = make_shared<TrafficMsg>(MSG_TYPE_CLOSE, fd, 0, "", 0);
+    shared_ptr<TrafficMsg> msg = make_shared<TrafficMsg>(MSG_TYPE_CLOSE, fd, 0);
     msgQueue.push(msg);
-    queueMutex.unlock();
+    cv.notify_one();
 }
 
 void enQueueMsg(int type, int fd, size_t len) {
@@ -154,9 +111,18 @@ void enQueueMsg(int type, int fd, size_t len) {
         return;
     }
 
-    shared_ptr<TrafficMsg> msg = make_shared<TrafficMsg>(type, fd, 0, getKeyAndSaveStack(fd), len);
+    activeFdSetMutex.lock_shared();
+    if (activeFdSet.count(fd) > 0) {
+        activeFdSetMutex.unlock_shared();
+        saveFdInfo(fd);
+    } else {
+        activeFdSetMutex.unlock_shared();
+    }
+
+    shared_ptr<TrafficMsg> msg = make_shared<TrafficMsg>(type, fd, len);
     msgQueue.push(msg);
-    queueMutex.unlock();
+
+    cv.notify_one();
 }
 
 void TrafficCollector::enQueueTx(int type, int fd, size_t len) {
@@ -173,58 +139,72 @@ void TrafficCollector::enQueueRx(int type, int fd, size_t len) {
     enQueueMsg(type, fd, len);
 }
 
-void appendRxTraffic(const string& threadName, long len) {
+void appendRxTraffic(int fd, long len) {
     rxTrafficInfoMapLock.lock();
-    rxTrafficInfoMap[threadName] += len;
+    rxFdTrafficInfoMap[fd] += len;
     rxTrafficInfoMapLock.unlock();
 }
 
-void appendTxTraffic(const string& threadName, long len) {
+void appendTxTraffic(int fd, long len) {
     txTrafficInfoMapLock.lock();
-    txTrafficInfoMap[threadName] += len;
+    txFdTrafficInfoMap[fd] += len;
     txTrafficInfoMapLock.unlock();
 }
 
 void loop() {
+    unique_lock lk(queueMutex);
     while (loopRunning) {
         if (msgQueue.empty()) {
-            queueMutex.lock();
+            cv.wait(lk);
         } else {
             shared_ptr<TrafficMsg> msg = msgQueue.front();
-            if (msg->type == MSG_TYPE_CONNECT) {
-                fdFamilyMap[msg->fd] = msg->sa_family;
-            } else if (msg->type == MSG_TYPE_READ) {
-                if (fdFamilyMap.count(msg->fd) > 0) {
-                    appendRxTraffic(msg->threadName, msg->len);
+            int fd = msg->fd;
+            int type = msg->type;
+            if (type == MSG_TYPE_CLOSE) {
+                if (activeFdSet.count(fd) > 0) {
+                    fdThreadNameMapSharedLock.lock();
+                    fdThreadNameMap.erase(fd);
+                    fdThreadNameMapSharedLock.unlock();
+
+                    activeFdSetMutex.lock();
+                    activeFdSet.erase(fd);
+                    activeFdSetMutex.unlock();
                 }
-            } else if (msg->type >= MSG_TYPE_RECV && msg->type <= MSG_TYPE_RECVMSG) {
-                if (fdFamilyMap[msg->fd] != AF_LOCAL) {
-                    appendRxTraffic(msg->threadName, msg->len);
+                invalidFdSet.erase(fd);
+            } else {
+                if (activeFdSet.count(fd) == 0 && invalidFdSet.count(fd) == 0) {
+                    if (!isNetworkSocketFd(fd)) {
+                        invalidFdSet.insert(fd);
+                        fdThreadNameMapSharedLock.lock();
+                        fdThreadNameMap.erase(fd);
+                        fdThreadNameMapSharedLock.unlock();
+                    } else {
+                        activeFdSetMutex.lock();
+                        activeFdSet.insert(fd);
+                        activeFdSetMutex.unlock();
+                    }
                 }
-            } else if (msg->type == MSG_TYPE_WRITE) {
-                if (fdFamilyMap.count(msg->fd) > 0) {
-                    appendTxTraffic(msg->threadName, msg->len);
+                if (type >= MSG_TYPE_READ && type <= MSG_TYPE_RECVMSG) {
+                    if (activeFdSet.count(fd) > 0 && invalidFdSet.count(fd) == 0) {
+                        appendRxTraffic(fd, msg->len);
+                    }
+                } else if (type >= MSG_TYPE_WRITE && type <= MSG_TYPE_SENDMSG) {
+                    if (activeFdSet.count(fd) > 0 && invalidFdSet.count(fd) == 0) {
+                        appendTxTraffic(fd, msg->len);
+                    }
                 }
-            } else if (msg->type >= MSG_TYPE_SEND && msg->type <= MSG_TYPE_SENDMSG) {
-                if (fdFamilyMap[msg->fd] != AF_LOCAL) {
-                    appendTxTraffic(msg->threadName, msg->len);
-                }
-            } else if (msg->type == MSG_TYPE_CLOSE) {
-                fdThreadNameMapLock.lock();
-                fdThreadNameMap.erase(msg->fd);
-                fdThreadNameMapLock.unlock();
-                fdFamilyMap.erase(msg->fd);
             }
             msgQueue.pop();
         }
     }
 }
 
-
-void TrafficCollector::startLoop(bool dumpStackTrace, bool lookupIpAddress) {
-    sDumpStackTrace = dumpStackTrace;
-    sLookupIpAddress = lookupIpAddress;
+void TrafficCollector::startLoop(bool dumpStackTrace) {
+    if (loopRunning) {
+        return;
+    }
     loopRunning = true;
+    sDumpStackTrace = dumpStackTrace;
     thread loopThread(loop);
     loopThread.detach();
 }
@@ -233,7 +213,7 @@ void TrafficCollector::stopLoop() {
     loopRunning = false;
 }
 
-jobject TrafficCollector::getTrafficInfoMap(int type) {
+jobject TrafficCollector::getFdTrafficInfoMap(int type) {
     JNIEnv *env = JniInvocation::getEnv();
     jclass mapClass = env->FindClass("java/util/HashMap");
     if(mapClass == nullptr) {
@@ -245,25 +225,54 @@ jobject TrafficCollector::getTrafficInfoMap(int type) {
                                         "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;");
 
     if (type == TYPE_GET_TRAFFIC_RX) {
-        rxTrafficInfoMapLock.lock();
-        for (auto & it : rxTrafficInfoMap) {
-            jstring threadName = env->NewStringUTF(it.first.c_str());
+        rxTrafficInfoMapLock.lock_shared();
+        for (auto & it : rxFdTrafficInfoMap) {
+            int fd = it.first;
+            if (fdThreadNameMap.count(fd) == 0) {
+                continue;
+            }
+            fdThreadNameMapSharedLock.lock_shared();
+            const char* key = fdThreadNameMap[fd].c_str();
+            fdThreadNameMapSharedLock.unlock_shared();
+            if (key == nullptr || strlen(key) == 0) {
+                continue;
+            }
+
+            if (it.second <= 0) {
+                continue;
+            }
+            jstring jKey = env->NewStringUTF(key);
             jstring traffic = env->NewStringUTF(to_string(it.second).c_str());
-            env->CallObjectMethod(jHashMap, mapPut, threadName, traffic);
-            env->DeleteLocalRef(threadName);
+            env->CallObjectMethod(jHashMap, mapPut, jKey, traffic);
+            env->DeleteLocalRef(jKey);
             env->DeleteLocalRef(traffic);
+
         }
-        rxTrafficInfoMapLock.unlock();
+        rxTrafficInfoMapLock.unlock_shared();
     } else if (type == TYPE_GET_TRAFFIC_TX) {
-        txTrafficInfoMapLock.lock();
-        for (auto & it : txTrafficInfoMap) {
-            jstring threadName = env->NewStringUTF(it.first.c_str());
+        txTrafficInfoMapLock.lock_shared();
+        for (auto & it : txFdTrafficInfoMap) {
+            int fd = it.first;
+            if (fdThreadNameMap.count(fd) == 0) {
+                continue;
+            }
+            fdThreadNameMapSharedLock.lock_shared();
+            const char* key = fdThreadNameMap[fd].c_str();
+            fdThreadNameMapSharedLock.unlock_shared();
+            if (key == nullptr || strlen(key) == 0) {
+                continue;
+            }
+
+            if (it.second <= 0) {
+                continue;
+            }
+            jstring jKey = env->NewStringUTF(key);
             jstring traffic = env->NewStringUTF(to_string(it.second).c_str());
-            env->CallObjectMethod(jHashMap, mapPut, threadName, traffic);
-            env->DeleteLocalRef(threadName);
+            env->CallObjectMethod(jHashMap, mapPut, jKey, traffic);
+            env->DeleteLocalRef(jKey);
             env->DeleteLocalRef(traffic);
         }
-        txTrafficInfoMapLock.unlock();
+        txTrafficInfoMapLock.unlock_shared();
     }
     env->DeleteLocalRef(mapClass);
     return jHashMap;
@@ -271,16 +280,18 @@ jobject TrafficCollector::getTrafficInfoMap(int type) {
 
 void TrafficCollector::clearTrafficInfo() {
     rxTrafficInfoMapLock.lock();
-    rxTrafficInfoMap.clear();
+    rxFdTrafficInfoMap.clear();
     rxTrafficInfoMapLock.unlock();
 
     txTrafficInfoMapLock.lock();
-    txTrafficInfoMap.clear();
+    txFdTrafficInfoMap.clear();
     txTrafficInfoMapLock.unlock();
 
-    fdThreadNameMapLock.lock();
+    fdThreadNameMapSharedLock.lock();
     fdThreadNameMap.clear();
-    fdThreadNameMapLock.unlock();
+    fdThreadNameMapSharedLock.unlock();
+
+
 }
 
 TrafficCollector::~TrafficCollector() {

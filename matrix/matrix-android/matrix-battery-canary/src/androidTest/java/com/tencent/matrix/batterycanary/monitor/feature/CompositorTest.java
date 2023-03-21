@@ -198,10 +198,10 @@ public class CompositorTest {
         compositeMonitor.start();
         Thread.sleep(1000L);
         compositeMonitor.finish();
-        int cpuLoad = compositeMonitor.getCpuLoad();
-        Assert.assertTrue(cpuLoad >= 0 && cpuLoad <= BatteryCanaryUtil.getCpuCoreNum() * 100);
+        int devCpuLoad = compositeMonitor.getDevCpuLoad();
+        Assert.assertTrue("devCpuLoad: " + devCpuLoad, devCpuLoad >= 0 && devCpuLoad <= BatteryCanaryUtil.getCpuCoreNum() * 100);
 
-        Assert.assertEquals(cpuLoad, cpuLoadR, 10);
+        Assert.assertEquals(devCpuLoad, cpuLoadR, 10);
 
         compositeMonitor = new CompositeMonitors(monitor);
         Assert.assertFalse(compositeMonitor.mMetrics.contains(JiffiesSnapshot.class));
@@ -214,8 +214,8 @@ public class CompositorTest {
         compositeMonitor.finish();
         long wallTimeEnd = System.currentTimeMillis();
         long upTimeEnd = SystemClock.uptimeMillis();
-        cpuLoad = compositeMonitor.getCpuLoad();
-        Assert.assertTrue(cpuLoad >= 0 && cpuLoad <= BatteryCanaryUtil.getCpuCoreNum() * 100);
+        devCpuLoad = compositeMonitor.getDevCpuLoad();
+        Assert.assertTrue("devCpuLoad: " + devCpuLoad,devCpuLoad >= 0 && devCpuLoad <= BatteryCanaryUtil.getCpuCoreNum() * 100);
 
         long wallTimeDelta = wallTimeEnd - wallTimeBgn;
         long uptimeDelta = upTimeEnd - upTimeBgn;
@@ -229,7 +229,7 @@ public class CompositorTest {
 
         cpuLoadR = (int) ((appJiffies.dlt.totalJiffies.get() / (uptimeDelta / 10f)) * 100);
         Assert.assertTrue("cpuLoadR: " + cpuLoadR, cpuLoadR >= 0 && cpuLoadR <= BatteryCanaryUtil.getCpuCoreNum() * 100);
-        Assert.assertEquals(cpuLoad, cpuLoadR, 10);
+        Assert.assertEquals(devCpuLoad, cpuLoadR, 10);
     }
 
     @Test
@@ -259,5 +259,34 @@ public class CompositorTest {
         Assert.assertTrue(compositeMonitor.getSamplingResult(DeviceStatMonitorFeature.CpuFreqSnapshot.class).duringMillis >= 100L);
 
         Assert.assertTrue(compositeMonitor.getSamplingResult(DeviceStatMonitorFeature.BatteryTmpSnapshot.class).count > compositeMonitor.getSamplingResult(DeviceStatMonitorFeature.CpuFreqSnapshot.class).count);
+    }
+
+    @Test
+    public void testSamplingStop() throws InterruptedException {
+        final BatteryMonitorCore monitor = mockMonitor();
+        BatteryMonitorPlugin plugin = new BatteryMonitorPlugin(monitor.getConfig());
+        Matrix.with().getPlugins().add(plugin);
+        monitor.enableForegroundLoopCheck(true);
+        monitor.start();
+
+        long interval = 100L;
+        long samplingTime = 1000L;
+        CompositeMonitors compositeMonitor = new CompositeMonitors(monitor);
+        compositeMonitor.sample(DeviceStatMonitorFeature.BatteryTmpSnapshot.class, interval);
+        compositeMonitor.sample(DeviceStatMonitorFeature.CpuFreqSnapshot.class, interval);
+        compositeMonitor.sample(DeviceStatMonitorFeature.ChargeWattageSnapshot.class, interval);
+        compositeMonitor.sample(CpuStatFeature.CpuStateSnapshot.class, interval);
+        compositeMonitor.sample(JiffiesMonitorFeature.UidJiffiesSnapshot.class, interval);
+
+        compositeMonitor.start();
+        Thread.sleep(samplingTime);
+        compositeMonitor.finish();
+
+        Thread.sleep(4000L);
+        Assert.assertEquals(samplingTime/interval, compositeMonitor.getSamplingResult(DeviceStatMonitorFeature.BatteryTmpSnapshot.class).count, 2);
+        Assert.assertEquals(samplingTime/interval, compositeMonitor.getSamplingResult(DeviceStatMonitorFeature.CpuFreqSnapshot.class).count, 2);
+        Assert.assertEquals(samplingTime/interval, compositeMonitor.getSamplingResult(DeviceStatMonitorFeature.ChargeWattageSnapshot.class).count, 2);
+        Assert.assertEquals(samplingTime/interval, compositeMonitor.getSamplingResult(CpuStatFeature.CpuStateSnapshot.class).count, 3);
+        Assert.assertEquals(samplingTime/interval, compositeMonitor.getSamplingResult(JiffiesMonitorFeature.UidJiffiesSnapshot.class).count, 2);
     }
 }

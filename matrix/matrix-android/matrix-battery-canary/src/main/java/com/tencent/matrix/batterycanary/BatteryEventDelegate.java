@@ -165,6 +165,13 @@ public final class BatteryEventDelegate {
                                 mCore.getHandler().post(new Runnable() {
                                     @Override
                                     public void run() {
+                                        // Full charged
+                                        int status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
+                                        if (status == BatteryManager.BATTERY_STATUS_FULL) {
+                                            onBatteryFullCharged();
+                                            return;
+                                        }
+
                                         // Power percentage
                                         int currPct = BatteryCanaryUtil.getBatteryPercentage(mContext);
                                         if (currPct >= 0 && currPct <= 1000) {
@@ -179,6 +186,7 @@ public final class BatteryEventDelegate {
                                                 onBatteryPowerChanged(currPct);
                                             }
                                         }
+
                                         // Battery temperature
                                         try {
                                             int currTemp = intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1);
@@ -343,6 +351,19 @@ public final class BatteryEventDelegate {
         }
     }
 
+    private void onBatteryFullCharged() {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            dispatchBatteryFullCharged();
+        } else {
+            mUiHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    dispatchBatteryFullCharged();
+                }
+            });
+        }
+    }
+
     private void onBatteryTemperatureChanged(final int temp) {
         if (Looper.myLooper() == Looper.getMainLooper()) {
             dispatchBatteryTemperatureChanged(temp);
@@ -416,6 +437,21 @@ public final class BatteryEventDelegate {
             for (Listener item : mListenerList) {
                 if (item instanceof Listener.ExListener) {
                     if (((Listener.ExListener) item).onBatteryPowerChanged(batteryState, pct)) {
+                        removeListener(item);
+                    }
+                }
+            }
+        }
+    }
+
+    @VisibleForTesting
+    void dispatchBatteryFullCharged() {
+        MatrixLog.i(TAG, "dispatchBatteryFullCharged");
+        synchronized (mListenerList) {
+            BatteryState batteryState = currentState();
+            for (Listener item : mListenerList) {
+                if (item instanceof Listener.ExListener) {
+                    if (((Listener.ExListener) item).onBatteryFullCharged(batteryState)) {
                         removeListener(item);
                     }
                 }
@@ -600,6 +636,15 @@ public final class BatteryEventDelegate {
             boolean onBatteryPowerChanged(BatteryState batteryState, int levelPct);
 
             /**
+             * On battery power full charged.
+             *
+             * @param batteryState {@link BatteryState}
+             * @return return true if your listening is done, thus we remove your listener
+             */
+            @UiThread
+            boolean onBatteryFullCharged(BatteryState batteryState);
+
+            /**
              * On battery power low or ok.
              *
              * @param batteryState {@link BatteryState}
@@ -621,7 +666,7 @@ public final class BatteryEventDelegate {
 
             @Override
             public boolean onStateChanged(String event) {
-                return !mKeepAlive;
+                throw new RuntimeException("Use #onStateChanged(BatteryState, String) instead");
             }
 
             @Override
@@ -641,6 +686,11 @@ public final class BatteryEventDelegate {
 
             @Override
             public boolean onBatteryPowerChanged(BatteryState batteryState, int levelPct) {
+                return !mKeepAlive;
+            }
+
+            @Override
+            public boolean onBatteryFullCharged(BatteryState batteryState) {
                 return !mKeepAlive;
             }
 

@@ -31,6 +31,11 @@
 #include <linux/prctl.h>
 #include <sys/prctl.h>
 #include <sys/resource.h>
+#include <dlfcn.h>
+
+#include "BacktraceDefine.h"
+#include "Backtrace.h"
+#include "cxxabi.h"
 
 #include <cstdio>
 #include <ctime>
@@ -55,8 +60,10 @@
 #define HOOK_CONNECT_PATH "/dev/socket/tombstoned_java_trace"
 #define HOOK_OPEN_PATH "/data/anr/traces.txt"
 #define VALIDATE_RET 50
+#define KEY_VALID_FLAG (1 << 31)
 
-#define HOOK_REQUEST_GROUPID_THREAD_PRIO_TRACE 0x01
+#define HOOK_REQUEST_GROUPID_THREAD_PRIORITY_TRACE 0x01
+#define HOOK_REQUEST_GROUPID_THREAD_PTHREAD_KEY_TRACE 0x13
 #define HOOK_REQUEST_GROUPID_TOUCH_EVENT_TRACE 0x07
 #define HOOK_REQUEST_GROUPID_ANR_DUMP_TRACE 0x12
 
@@ -85,6 +92,7 @@ static struct StacktraceJNI {
 
     jmethodID ThreadPriorityDetective_onMainThreadPriorityModified;
     jmethodID ThreadPriorityDetective_onMainThreadTimerSlackModified;
+    jmethodID ThreadPriorityDetective_pthreadKeyCallback;
 
     jmethodID TouchEventLagTracer_onTouchEvenLag;
     jmethodID TouchEventLagTracer_onTouchEvenLagDumpTrace;
@@ -92,7 +100,6 @@ static struct StacktraceJNI {
 
 int (*original_setpriority)(int __which, id_t __who, int __priority);
 int my_setpriority(int __which, id_t __who, int __priority) {
-
     if ((__who == 0 && getpid() == gettid()) || __who == getpid()) {
         int priorityBefore = getpriority(__which, __who);
         JNIEnv *env = JniInvocation::getEnv();
@@ -224,6 +231,106 @@ ssize_t my_sendto(int sockfd, const void *buf, size_t len, int flags,
     return ret;
 }
 
+void pthreadKeyCallback(int type, int ret, int keySeq, const char* soName, const char* backtrace) {
+    JNIEnv *env = JniInvocation::getEnv();
+    if (!env) return;
+
+    jstring soNameJS = env->NewStringUTF(soName);
+    jstring nativeBacktraceJS = env->NewStringUTF(backtrace);
+
+    env->CallStaticVoidMethod(gJ.ThreadPriorityDetective, gJ.ThreadPriorityDetective_pthreadKeyCallback, type, ret, keySeq, soNameJS, nativeBacktraceJS);
+    env->DeleteLocalRef(soNameJS);
+    env->DeleteLocalRef(nativeBacktraceJS);
+}
+
+void makeNativeStack(wechat_backtrace::Backtrace* backtrace, char *&stack) {
+    std::string caller_so_name;
+    std::stringstream full_stack_builder;
+    std::stringstream brief_stack_builder;
+    std::string last_so_name;
+    int index = 0;
+    auto _callback = [&](wechat_backtrace::FrameDetail it) {
+        std::string so_name = it.map_name;
+
+        char *demangled_name = nullptr;
+        int status = 0;
+
+        demangled_name = abi::__cxa_demangle(it.function_name, nullptr, 0, &status);
+
+        if (strstr(it.map_name, "libtrace-canary.so") || strstr(it.map_name, "libwechatbacktrace.so")) {
+            return;
+        }
+
+        full_stack_builder
+                << "#" << std::dec << (index++)
+                << " pc " << std::hex << it.rel_pc << " "
+                << it.map_name
+                << " ("
+                << (demangled_name ? demangled_name : "null")
+                << ")"
+                << std::endl;
+        if (last_so_name != it.map_name) {
+            last_so_name = it.map_name;
+            brief_stack_builder << it.map_name << ";";
+        }
+
+        brief_stack_builder << std::hex << it.rel_pc << ";";
+
+        if (demangled_name) {
+            free(demangled_name);
+        }
+    };
+
+    wechat_backtrace::restore_frame_detail(backtrace->frames.get(), backtrace->frame_size,
+                                           _callback);
+
+    stack = new char[full_stack_builder.str().size() + 1];
+    strcpy(stack, full_stack_builder.str().c_str());
+}
+
+static char* getNativeBacktrace() {
+    wechat_backtrace::Backtrace backtrace_zero = BACKTRACE_INITIALIZER(
+            16);
+    wechat_backtrace::unwind_adapter(backtrace_zero.frames.get(), backtrace_zero.max_frames,
+                                     backtrace_zero.frame_size);
+    char* nativeStack;
+    makeNativeStack(&backtrace_zero, nativeStack);
+    return nativeStack;
+}
+
+int (*original_pthread_key_create)(pthread_key_t *key, void (*destructor)(void*));
+int my_pthread_key_create(pthread_key_t *key, void (*destructor)(void*)) {
+    int ret = original_pthread_key_create(key, destructor);
+    int keySeq = *key & ~KEY_VALID_FLAG;
+
+    void * __caller_addr = __builtin_return_address(0);
+    Dl_info dl_info;
+    dladdr(__caller_addr, &dl_info);
+    const char* soName = dl_info.dli_fname;
+    char* backtrace = getNativeBacktrace();
+    if (!strstr(soName, "libc.so")) {
+        pthreadKeyCallback(0, ret, keySeq, soName, backtrace);
+    }
+    delete[] backtrace;
+    return ret;
+}
+
+int (*original_pthread_key_delete)(pthread_key_t key);
+int my_pthread_key_delete(pthread_key_t key) {
+    int ret = original_pthread_key_delete(key);
+    int keySeq = key & ~KEY_VALID_FLAG;
+    void * __caller_addr = __builtin_return_address(0);
+    Dl_info dl_info;
+    dladdr(__caller_addr, &dl_info);
+    const char* soName = dl_info.dli_fname;
+    char* backtrace = getNativeBacktrace();
+    if (!strstr(soName, "libc.so")) {
+        pthreadKeyCallback(1, ret, keySeq, soName, backtrace);
+    }
+    delete[] backtrace;
+    return 0;
+}
+
 bool anrDumpCallback() {
     JNIEnv *env = JniInvocation::getEnv();
     if (!env) return false;
@@ -319,12 +426,37 @@ static void nativeFreeSignalAnrDetective(JNIEnv *env, jclass) {
     sAnrDumper.reset();
 }
 
-static void nativeInitMainThreadPriorityDetective(JNIEnv *env, jclass) {
-    xhook_grouped_register(HOOK_REQUEST_GROUPID_THREAD_PRIO_TRACE, ".*\\.so$", "setpriority",
-            (void *) my_setpriority, (void **) (&original_setpriority));
-    xhook_grouped_register(HOOK_REQUEST_GROUPID_THREAD_PRIO_TRACE, ".*\\.so$", "prctl",
-            (void *) my_prctl, (void **) (&original_prctl));
-    xhook_refresh(true);
+static int nativeGetPthreadKeySeq(JNIEnv *env, jclass) {
+    pthread_key_t key;
+    pthread_key_create(&key, nullptr);
+    int key_seq = key & ~KEY_VALID_FLAG;
+    pthread_key_delete(key);
+    return key_seq;
+}
+
+static void nativeInitThreadHook(JNIEnv *env, jclass, jint priority, jint pthreadKey) {
+    if (priority == 1) {
+        xhook_grouped_register(HOOK_REQUEST_GROUPID_THREAD_PRIORITY_TRACE, ".*\\.so$", "setpriority",
+                               (void *) my_setpriority, (void **) (&original_setpriority));
+        xhook_grouped_register(HOOK_REQUEST_GROUPID_THREAD_PRIORITY_TRACE, ".*\\.so$", "prctl",
+                               (void *) my_prctl, (void **) (&original_prctl));
+    }
+
+    if (pthreadKey == 1) {
+        xhook_grouped_register(HOOK_REQUEST_GROUPID_THREAD_PTHREAD_KEY_TRACE, ".*\\.so$", "pthread_key_create",
+                               (void *) my_pthread_key_create, (void **) (&original_pthread_key_create));
+
+        xhook_grouped_register(HOOK_REQUEST_GROUPID_THREAD_PTHREAD_KEY_TRACE, ".*\\.so$", "pthread_key_delete",
+                               (void *) my_pthread_key_delete, (void **) (&original_pthread_key_delete));
+
+        xhook_export_symtable_hook("libc.so", "pthread_key_create",
+                                   (void *) my_pthread_key_create, (void **) (&original_pthread_key_create));
+        xhook_export_symtable_hook("libc.so", "pthread_key_delete",
+                                   (void *) my_pthread_key_delete, (void **) (&original_pthread_key_delete));
+    }
+
+    xhook_enable_sigsegv_protection(0);
+    xhook_refresh(0);
 }
 
 static void nativeInitTouchEventLagDetective(JNIEnv *env, jclass, jint threshold) {
@@ -355,8 +487,8 @@ static const JNINativeMethod ANR_METHODS[] = {
 };
 
 static const JNINativeMethod THREAD_PRIORITY_METHODS[] = {
-        {"nativeInitMainThreadPriorityDetective", "()V", (void *) nativeInitMainThreadPriorityDetective},
-
+        {"nativeInitThreadHook", "(II)V", (void *) nativeInitThreadHook},
+        {"nativeGetPthreadKeySeq", "()I", (void *) nativeGetPthreadKeySeq},
 };
 
 static const JNINativeMethod TOUCH_EVENT_TRACE_METHODS[] = {
@@ -374,6 +506,8 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *) {
     jclass anrDetectiveCls = env->FindClass("com/tencent/matrix/trace/tracer/SignalAnrTracer");
     if (!anrDetectiveCls)
         return -1;
+
+
     gJ.AnrDetective = static_cast<jclass>(env->NewGlobalRef(anrDetectiveCls));
     gJ.AnrDetector_onANRDumped =
             env->GetStaticMethodID(anrDetectiveCls, "onANRDumped", "()V");
@@ -393,7 +527,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *) {
     env->DeleteLocalRef(anrDetectiveCls);
 
 
-    jclass threadPriorityDetectiveCls = env->FindClass("com/tencent/matrix/trace/tracer/ThreadPriorityTracer");
+    jclass threadPriorityDetectiveCls = env->FindClass("com/tencent/matrix/trace/tracer/ThreadTracer");
 
     jclass touchEventLagTracerCls = env->FindClass("com/tencent/matrix/trace/tracer/TouchEventLagTracer");
 
@@ -405,6 +539,10 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *vm, void *) {
 
     gJ.ThreadPriorityDetective_onMainThreadPriorityModified =
             env->GetStaticMethodID(threadPriorityDetectiveCls, "onMainThreadPriorityModified", "(II)V");
+
+    gJ.ThreadPriorityDetective_pthreadKeyCallback =
+            env->GetStaticMethodID(threadPriorityDetectiveCls, "pthreadKeyCallback", "(IIILjava/lang/String;Ljava/lang/String;)V");
+
     gJ.ThreadPriorityDetective_onMainThreadTimerSlackModified =
             env->GetStaticMethodID(threadPriorityDetectiveCls, "onMainThreadTimerSlackModified", "(J)V");
 

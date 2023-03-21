@@ -8,6 +8,7 @@ import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanSettings
 import android.content.Context
+import android.hardware.Camera
 import android.location.Criteria
 import android.location.LocationListener
 import android.location.LocationManager
@@ -78,5 +79,11 @@ class KotlinTesting {
         am.setRepeating(AlarmManager.RTC, 1000L, 3000L, pendingIntent);
         am.cancel(pendingIntent)
         am.cancel {}
+    }
+
+    fun testCamera(context: Context) {
+        val camera = Camera.open()
+        camera.startPreview()
+        camera.release()
     }
 }
