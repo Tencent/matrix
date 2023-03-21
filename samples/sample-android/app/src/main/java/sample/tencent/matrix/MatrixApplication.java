@@ -49,6 +49,7 @@ import com.tencent.sqlitelint.config.SQLiteLintConfig;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Map;
 
 import sample.tencent.matrix.battery.BatteryCanaryInitHelper;
 import sample.tencent.matrix.battery.BatteryCanarySimpleInitHelper;
@@ -210,6 +211,17 @@ public class MatrixApplication extends Application {
             public void onNativeBacktraceDetected(String backtrace, String mMessageString, long mMessageWhen, boolean fromProcessErrorState) {
 
             }
+
+            @Override
+            public void onDeadLockAnrDetected(String mainThreadStackTrace, String lockHeldThread1, String lockHeldThread2, Map.Entry<int[], String[]> waitingList) {
+
+            }
+
+            @Override
+            public void onMainThreadStuckAtNativePollOnce(String mainThreadStackTrace) {
+
+            }
+
         });
         signalAnrTracer.onStartTrace();
     }

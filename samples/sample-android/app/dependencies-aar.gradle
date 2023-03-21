@@ -34,7 +34,7 @@ dependencies {
     apkCheckerDependency group: "com.tencent.matrix", name: "matrix-apk-canary", version: MATRIX_VERSION, changing: true
 
     testImplementation 'junit:junit:4.12'
-    androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
+    androidTestImplementation('com.android.support.test.espresso:espresso-core:2.2.2', {
         exclude group: 'com.android.support', module: 'support-annotations'
     })
 
