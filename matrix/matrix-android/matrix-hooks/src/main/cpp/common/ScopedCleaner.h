@@ -31,7 +31,7 @@ namespace matrix {
         ScopedCleaner(const TDtor& dtor): mDtor(dtor), mOmitted(false) {}
 
         ScopedCleaner(ScopedCleaner&& other): mDtor(other.mDtor), mOmitted(other.mOmitted) {
-            other.omit();
+            other.Omit();
         }
 
         ~ScopedCleaner() {

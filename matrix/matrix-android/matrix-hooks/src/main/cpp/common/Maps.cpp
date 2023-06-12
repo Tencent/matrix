@@ -55,9 +55,11 @@ bool matrix::IterateMaps(const MapsEntryCallback& cb, void* args) {
         }
 
         if (cb(start, end, perm, pathname, args)) {
+            ::fclose(fp);
             return true;
         }
     }
 
+    ::fclose(fp);
     return false;
 }
