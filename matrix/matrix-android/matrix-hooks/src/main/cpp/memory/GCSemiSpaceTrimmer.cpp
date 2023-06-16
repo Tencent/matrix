@@ -13,6 +13,7 @@
 #include <condition_variable>
 #include <android/log.h>
 #include <sys/system_properties.h>
+#include <android/api-level.h>
 #include <unistd.h>
 #include <syscall.h>
 #include <common/Maps.h>
@@ -35,13 +36,43 @@ static std::condition_variable sBlocker;
 class SemiSpaceSearcher {
 public:
     SemiSpaceSearcher()
-        : mStatus(STATUS_OUTSIDE_TARGETS),
+        : mIsSpaceNameSame(false),
+          mVMHeapSize(0),
+          mStatus(STATUS_OUTSIDE_TARGETS),
           mSpace1Start(0),
           mSpace1End(0),
           mSpace1Size(0),
           mSpace2Start(0),
           mSpace2End(0),
-          mSpace2Size(0) {}
+          mSpace2Size(0) {
+        int api_level = android_get_device_api_level();
+        // Android 5.x
+        if (api_level >= 21 && api_level <= 22) {
+            mIsSpaceNameSame = true;
+        }
+
+        char vmHeapSize[16] = {0};
+        if (__system_property_get("dalvik.vm.heapsize", vmHeapSize) > 0) {
+            char* hsCh = vmHeapSize + sizeof(vmHeapSize) - 1;
+            size_t hsUnit = 1;
+            while (hsCh >= vmHeapSize) {
+                if (::isdigit(*hsCh)) {
+                    break;
+                } else if (*hsCh == 'G' || *hsCh == 'g') {
+                    hsUnit = 1024 * 1024 * 1024;
+                } else if (*hsCh == 'M' || *hsCh == 'm') {
+                    hsUnit = 1024 * 1024;
+                } else if (*hsCh == 'K' || *hsCh == 'k') {
+                    hsUnit = 1024;
+                }
+                *hsCh = '\0';
+                --hsCh;
+            }
+            if (hsCh >= vmHeapSize) {
+                mVMHeapSize = ::strtol(vmHeapSize, nullptr, 10) * hsUnit;
+            }
+        }
+    }
 
     bool operator()(uintptr_t start, uintptr_t end, char perms[4], const char *path, void *args) {
         while (true) {
@@ -50,15 +81,29 @@ public:
                     if (mSpace1Start != 0 && mSpace1End != 0 && mSpace2Start != 0 && mSpace2End != 0) {
                         mStatus = STATUS_ALL_SPACES_FOUND;
                     } else {
-                        if (strstr(path, SS_MAIN_SPACE_NAMES[1]) != nullptr
-                            || strstr(path, SS_BUMPER_SPACE_NAMES[1]) != nullptr) {
-                            mStatus = STATUS_FOUND_FRIST_SPACE_TWO_ENTRY;
-                        } else if (strstr(path, SS_MAIN_SPACE_NAMES[0]) != nullptr
-                                   || strstr(path, SS_BUMPER_SPACE_NAMES[0]) != nullptr) {
-                            mStatus = STATUS_FOUND_FRIST_SPACE_ONE_ENTRY;
+                        if (mIsSpaceNameSame) {
+                            if (strstr(path, SS_MAIN_SPACE_NAMES[0]) != nullptr
+                                || strstr(path, SS_BUMPER_SPACE_NAMES[0]) != nullptr) {
+                                if (mSpace1Start == 0) {
+                                    mStatus = STATUS_FOUND_FRIST_SPACE_ONE_ENTRY;
+                                } else if (mSpace2Start == 0) {
+                                    mStatus = STATUS_FOUND_FRIST_SPACE_TWO_ENTRY;
+                                }
+                            } else {
+                                // Continue searching next entry.
+                                return false;
+                            }
                         } else {
-                            // Continue searching next entry.
-                            return false;
+                            if (strstr(path, SS_MAIN_SPACE_NAMES[1]) != nullptr
+                                || strstr(path, SS_BUMPER_SPACE_NAMES[1]) != nullptr) {
+                                mStatus = STATUS_FOUND_FRIST_SPACE_TWO_ENTRY;
+                            } else if (strstr(path, SS_MAIN_SPACE_NAMES[0]) != nullptr
+                                       || strstr(path, SS_BUMPER_SPACE_NAMES[0]) != nullptr) {
+                                mStatus = STATUS_FOUND_FRIST_SPACE_ONE_ENTRY;
+                            } else {
+                                // Continue searching next entry.
+                                return false;
+                            }
                         }
                     }
                     break;
@@ -76,20 +121,40 @@ public:
                     break;
                 }
                 case STATUS_INSIDE_SPACE_ONE_REGION: {
-                    if (strstr(path, SS_MAIN_SPACE_NAMES[1]) != nullptr
-                        || strstr(path, SS_BUMPER_SPACE_NAMES[1]) != nullptr) {
-                        mStatus = STATUS_FOUND_FRIST_SPACE_TWO_ENTRY;
-                    } else if (strstr(path, SS_MAIN_SPACE_NAMES[0]) != nullptr
-                               || strstr(path, SS_BUMPER_SPACE_NAMES[0]) != nullptr) {
-                        if (start == mSpace1End) {
-                            mSpace1End = end;
-                            // Continue searching next entry.
-                            return false;
+                    if (mIsSpaceNameSame) {
+                        if (strstr(path, SS_MAIN_SPACE_NAMES[0]) != nullptr
+                            || strstr(path, SS_BUMPER_SPACE_NAMES[0]) != nullptr) {
+                            // 512M or 256M in Anroid 5.x
+                            if (end - mSpace1Start != mVMHeapSize) {
+                                mStatus = STATUS_FOUND_FRIST_SPACE_TWO_ENTRY;
+                            } else {
+                                if (start == mSpace1End) {
+                                    mSpace1End = end;
+                                    // Continue searching next entry.
+                                    return false;
+                                } else {
+                                    mStatus = STATUS_DISCONTINOUS_SPACE_FOUND;
+                                }
+                            }
                         } else {
-                            mStatus = STATUS_DISCONTINOUS_SPACE_FOUND;
+                            mStatus = STATUS_OUTSIDE_TARGETS;
                         }
                     } else {
-                        mStatus = STATUS_OUTSIDE_TARGETS;
+                        if (strstr(path, SS_MAIN_SPACE_NAMES[1]) != nullptr
+                            || strstr(path, SS_BUMPER_SPACE_NAMES[1]) != nullptr) {
+                            mStatus = STATUS_FOUND_FRIST_SPACE_TWO_ENTRY;
+                        } else if (strstr(path, SS_MAIN_SPACE_NAMES[0]) != nullptr
+                                   || strstr(path, SS_BUMPER_SPACE_NAMES[0]) != nullptr) {
+                            if (start == mSpace1End) {
+                                mSpace1End = end;
+                                // Continue searching next entry.
+                                return false;
+                            } else {
+                                mStatus = STATUS_DISCONTINOUS_SPACE_FOUND;
+                            }
+                        } else {
+                            mStatus = STATUS_OUTSIDE_TARGETS;
+                        }
                     }
                     break;
                 }
@@ -106,20 +171,40 @@ public:
                     break;
                 }
                 case STATUS_INSIDE_SPACE_TWO_REGION: {
-                    if (strstr(path, SS_MAIN_SPACE_NAMES[1]) != nullptr
-                        || strstr(path, SS_BUMPER_SPACE_NAMES[1]) != nullptr) {
-                        if (start == mSpace2End) {
-                            mSpace2End = end;
-                            // Continue searching next entry.
-                            return false;
+                    if (mIsSpaceNameSame) {
+                        if (strstr(path, SS_MAIN_SPACE_NAMES[0]) != nullptr
+                            || strstr(path, SS_BUMPER_SPACE_NAMES[0]) != nullptr) {
+                            // 512M or 256M in Anroid 5.x
+                            if (end - mSpace2Start != mVMHeapSize) {
+                                mStatus = STATUS_FOUND_FRIST_SPACE_ONE_ENTRY;
+                            } else {
+                                if (start == mSpace2End) {
+                                    mSpace2End = end;
+                                    // Continue searching next entry.
+                                    return false;
+                                } else {
+                                    mStatus = STATUS_DISCONTINOUS_SPACE_FOUND;
+                                }
+                            }
                         } else {
-                            mStatus = STATUS_DISCONTINOUS_SPACE_FOUND;
+                            mStatus = STATUS_OUTSIDE_TARGETS;
                         }
-                    } else if (strstr(path, SS_MAIN_SPACE_NAMES[0]) != nullptr
-                               || strstr(path, SS_BUMPER_SPACE_NAMES[0]) != nullptr) {
-                        mStatus = STATUS_FOUND_FRIST_SPACE_ONE_ENTRY;
                     } else {
-                        mStatus = STATUS_OUTSIDE_TARGETS;
+                        if (strstr(path, SS_MAIN_SPACE_NAMES[1]) != nullptr
+                            || strstr(path, SS_BUMPER_SPACE_NAMES[1]) != nullptr) {
+                            if (start == mSpace2End) {
+                                mSpace2End = end;
+                                // Continue searching next entry.
+                                return false;
+                            } else {
+                                mStatus = STATUS_DISCONTINOUS_SPACE_FOUND;
+                            }
+                        } else if (strstr(path, SS_MAIN_SPACE_NAMES[0]) != nullptr
+                                   || strstr(path, SS_BUMPER_SPACE_NAMES[0]) != nullptr) {
+                            mStatus = STATUS_FOUND_FRIST_SPACE_ONE_ENTRY;
+                        } else {
+                            mStatus = STATUS_OUTSIDE_TARGETS;
+                        }
                     }
                     break;
                 }
@@ -166,11 +251,17 @@ public:
         return mSpace2Size;
     }
 
+    size_t getVMHeapSize() const {
+        return mVMHeapSize;
+    }
+
     bool foundAllSpaces() const {
         return (mStatus == STATUS_ALL_SPACES_FOUND);
     }
 
     void reset() {
+        mIsSpaceNameSame = false;
+        mVMHeapSize = 0;
         mStatus = STATUS_OUTSIDE_TARGETS;
         mSpace1Start = 0;
         mSpace1End = 0;
@@ -194,6 +285,8 @@ private:
     static constexpr const char* SS_MAIN_SPACE_NAMES[2] = {"dalvik-main space", "dalvik-main space 1"};
     static constexpr const char* SS_BUMPER_SPACE_NAMES[2] = {"Bump pointer space 1", "Bump pointer space 2"};
 
+    bool mIsSpaceNameSame;
+    size_t mVMHeapSize;
     int mStatus;
     uintptr_t mSpace1Start;
     uintptr_t mSpace1End;
@@ -248,36 +341,12 @@ bool matrix::gc_ss_trimmer::Install(JNIEnv* env) {
             }
 
             // Found target spaces.
-            char vmHeapSize[16] = {};
-            if (__system_property_get("dalvik.vm.heapsize", vmHeapSize) < 1) {
-                LOGE(LOG_TAG, "Fail to get vm heap size, skip processing.");
-                break;
-            }
-            char* hsCh = vmHeapSize + sizeof(vmHeapSize) - 1;
-            size_t hsUnit = 1;
-            while (hsCh >= vmHeapSize) {
-                if (::isdigit(*hsCh)) {
-                    break;
-                } else if (*hsCh == 'G' || *hsCh == 'g') {
-                    hsUnit = 1024 * 1024 * 1024;
-                } else if (*hsCh == 'M' || *hsCh == 'm') {
-                    hsUnit = 1024 * 1024;
-                } else if (*hsCh == 'K' || *hsCh == 'k') {
-                    hsUnit = 1024;
-                }
-                *hsCh = '\0';
-                --hsCh;
-            }
-            if (hsCh < vmHeapSize) {
-                LOGE(LOG_TAG, "Illegal vm heap size value, skip processing.");
-                break;
-            }
-            size_t vmHeapSizeNum = ::strtol(vmHeapSize, nullptr, 10) * hsUnit;
             const size_t space1Size = semiSpaceSearcher.getSpace1Size();
             const size_t space2Size = semiSpaceSearcher.getSpace2Size();
-            if (space1Size != space2Size || space1Size != vmHeapSizeNum) {
-                LOGE(LOG_TAG, "Unexpected space size, expected: %u, actual_space1: %u, actual_space2: %u",
-                     vmHeapSizeNum, space1Size, space2Size);
+            const size_t vmHeapSize = semiSpaceSearcher.getVMHeapSize();
+            if (space1Size != space2Size || space1Size > vmHeapSize) {
+                LOGE(LOG_TAG, "Unexpected space size, vmHeapSize: %u, actual_space1: %u, actual_space2: %u",
+                     vmHeapSize, space1Size, space2Size);
                 break;
             }
             jbyteArray leakedArr = env->NewByteArray(1);
