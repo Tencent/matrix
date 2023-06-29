@@ -49,7 +49,7 @@ bool matrix::IterateMaps(const MapsEntryCallback& cb, void* args) {
             continue;
         }
         char* pathname = line + pathnamePos;
-        while (pathLen >= 0 && pathname[pathLen - 1] == '\n') {
+        while (pathLen > 0 && pathname[pathLen - 1] == '\n') {
             pathname[pathLen - 1] = '\0';
             --pathLen;
         }
