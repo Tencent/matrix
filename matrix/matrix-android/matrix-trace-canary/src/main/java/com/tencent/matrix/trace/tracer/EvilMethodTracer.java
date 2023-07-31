@@ -81,10 +81,16 @@ public class EvilMethodTracer extends Tracer implements ILooperListener {
     @Override
     public void onDispatchBegin(String log) {
         indexRecord = AppMethodBeat.getInstance().maskIndex("EvilMethodTracer#dispatchBegin");
+        if (config.isAppMethodBeatEnable()) {
+            AppMethodBeat.i(AppMethodBeat.METHOD_ID_DISPATCH);
+        }
     }
 
     @Override
     public void onDispatchEnd(String log, long beginNs, long endNs) {
+        if (config.isAppMethodBeatEnable()) {
+            AppMethodBeat.o(AppMethodBeat.METHOD_ID_DISPATCH);
+        }
         long dispatchCost = (endNs - beginNs) / Constants.TIME_MILLIS_TO_NANO;
         try {
             if (dispatchCost >= evilThresholdMs) {
