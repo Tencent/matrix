@@ -839,6 +839,11 @@ Options:
 
 Matrix is under the BSD license. See the [LICENSE](https://github.com/Tencent/Matrix/blob/master/LICENSE) file for details
 
-# 个人信息保护规则
+# 信息公示
 
-[Matrix SDK个人信息保护规则](https://support.weixin.qq.com/cgi-bin/mmsupportacctnodeweb-bin/pages/yTezupX6yF028Mpf)
+- SDK名称：Matrix
+- 版本号：2.1.0
+- 开发者：深圳市腾讯计算机系统有限公司
+- 主要功能：Matrix是微信研发并日常使用的应用性能监控工具，支持iOS、macOS和Android。Matrix通过接入闪退、卡顿、耗电、内存等方面的监控方案，对性能监控项的异常数据进行采集和分析，输出相应的问题分析、定位与优化建议，从而帮助开发者开发出更高质量的应用。
+- [Matrix SDK使用说明](https://github.com/Tencent/matrix)
+- [Matrix SDK个人信息保护规则](https://support.weixin.qq.com/cgi-bin/mmsupportacctnodeweb-bin/pages/yTezupX6yF028Mpf)
