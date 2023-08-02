@@ -40,6 +40,7 @@ class AgpCompat {
         @JvmStatic
         val asmApi: Int
             get() = when {
+                VersionsCompat.greatThanOrEqual(AGPVersion.AGP_7_3_1) -> Opcodes.ASM7
                 VersionsCompat.greatThanOrEqual(AGPVersion.AGP_7_0_0) -> Opcodes.ASM6
                 else -> Opcodes.ASM5
             }
