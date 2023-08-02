@@ -37,6 +37,7 @@ import com.tencent.matrix.util.MatrixLog;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import androidx.swiperefreshlayout.widget.CircularProgressDrawable;
 
 /**
  * Created by tangyinsheng on 2017/6/20.
@@ -258,6 +259,7 @@ public final class ActivityLeakFixer {
             // Ignored.
         }
 
+
         if (view.getBackground() != null) {
             view.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
                 @Override
@@ -267,9 +269,16 @@ public final class ActivityLeakFixer {
 
                 @Override
                 public void onViewDetachedFromWindow(View v) {
+                    Drawable drawable = v.getDrawable();
+                    if (drawable instanceof CircularProgressDrawable) {
+                        v.removeOnAttachStateChangeListener(this);
+                        return;
+                    }
                     try {
-                        v.getBackground().setCallback(null);
-                        v.setBackgroundDrawable(null);
+                        if (drawable != null) {
+                            v.getBackground().setCallback(null);
+                            v.setBackgroundDrawable(null);
+                        }
                     } catch (Throwable ignored) {
                         // Ignored.
                     }
@@ -432,4 +441,5 @@ public final class ActivityLeakFixer {
             unbindDrawablesAndRecycle(vg.getChildAt(i));
         }
     }
+
 }
