@@ -22,7 +22,7 @@ void bundleHelperGetAppBundleName(char *outBuffer, unsigned int bufferSize) {
         return;
     }
 
-    NSString *bundleName = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleName"];
+    NSString *bundleName = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleExecutable"];
     if (bundleName) {
         const char *cStr = [[NSString stringWithFormat:@"/%@.app/", bundleName] cStringUsingEncoding:NSUTF8StringEncoding];
         strncpy(outBuffer, cStr, bufferSize);
@@ -37,7 +37,7 @@ void bundleHelperGetAppName(char *outBuffer, unsigned int bufferSize) {
         return;
     }
 
-    NSString *bundleName = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleName"];
+    NSString *bundleName = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleExecutable"];
     if (bundleName) {
         const char *cStr = [[NSString stringWithFormat:@"/%@.app/%@", bundleName, bundleName] cStringUsingEncoding:NSUTF8StringEncoding];
         strncpy(outBuffer, cStr, bufferSize);
