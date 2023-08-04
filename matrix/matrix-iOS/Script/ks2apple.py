@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 #-*- coding: utf-8 -*-
 '''
 @Author: mattzheng
@@ -12,13 +12,15 @@ import json
 import os
 import sys
 import cgi
+import html
 import optparse
 import traceback
 from datetime import datetime
+import importlib
 
 
-reload(sys)
-sys.setdefaultencoding('utf-8')
+importlib.reload(sys)
+# sys.setdefaultencoding('utf-8')
 
 device_map = {
     'iPod1,1' : 'iPod touch 1G',
@@ -234,7 +236,7 @@ def get_crash_thread(report):
     crash = get_crash_info(report)
     if not crash:
         return [] 
-    #print crash
+    print(crash)
     threads = crash['threads']
     for thread in threads:
         crashed = thread.get('crashed', False)
@@ -294,7 +296,7 @@ def parse_system_info(report):
 
     headers = ['System Info: {']
     device = _s('machine')
-    if device_map.has_key(device):
+    if device in device_map:
         device = device_map[device]
     headers.append('    Device:      {0}'.format(device))
     headers.append('    OS Version:  {0} {1} ({2})'.format(_s('system_name'), _s('system_version'), _s('os_version')))
@@ -348,7 +350,7 @@ def parse_error_info(report):
         return [] 
     error = crash.get('error')
     if not error:
-        print "waring: no error found in crash"
+        print("waring: no error found in crash")
         return []
     mach = error['mach']
     signal = error['signal']
@@ -372,10 +374,10 @@ def parse_error_info(report):
     result.append('Crashed Thread:  {0}'.format(crash_thread))
 
     diagnosis = crash.get('diagnosis', None)
-    #print "fuck haha", diagnosis
+    print("fuck haha", diagnosis)
     if diagnosis:
         result.append('\nCrashDoctor Diagnosis: {0}'.format(diagnosis))
-        #print result
+        print(result)
     return result
 
 def parse_crash_reason(report):
@@ -391,7 +393,7 @@ def parse_crash_reason(report):
 
     error = crash.get('error')
     if not error:
-        print "warning: no error found in crash"
+        # print "warning: no error found in crash"
         return []
     crash_type = error['type']
 
@@ -435,7 +437,7 @@ def parse_backtrace(report, backtrace):
         
         img = get_belong_img(report, pc)
         if not img:
-            print "error, no img found for pc: %s" % pc
+            print("error, no img found for pc: %s" % pc)
             result.append('{0:<4}{1:31} 0x{2:016x}'.format(num, 'unknown', pc))
             num += 1
             continue
@@ -499,7 +501,7 @@ def parse_thread_list(report):
     crash = get_crash_info(report)
     if not crash:
         return [] 
-    #print dump_json( crash)
+    print(dump_json( crash))
     threads = crash['threads']
 
     result = []
@@ -511,7 +513,7 @@ def parse_thread_list(report):
 
 def get_register_order(cpu):
     cpu = cpu.lower()
-    #print "cpu %s" % cpu
+    print("cpu %s" % cpu)
     arm = [ 'x'+str(i) for i in range(30)] + ['fp','sp', 'lr', 'pc',
            'cpsr']
     x86 = ['eax', 'ebx', 'ecx', 'edx', 'edi', 'esi', 'ebp',
@@ -594,7 +596,7 @@ def parse_binary_images(report):
                             uuid, path))
             else:
                 if name == 'WeChat':
-                    print '{0:>#18x} - {1:>#18x} {2}{3}  <{4}> {5}'.format(addr, addr+size-1, is_base, name,uuid, path)
+                    print('{0:>#18x} - {1:>#18x} {2}{3}  <{4}> {5}'.format(addr, addr+size-1, is_base, name,uuid, path))
                 result.append('{0:>#18x} - {1:>#18x} {2}{3}  <{4}> {5}'\
                     .format(addr, addr+size-1, is_base, name,
                             uuid, path))
@@ -765,7 +767,7 @@ def parse_other_info(report):
     result = ['']
     user_info = report.get("user", None)
     if not user_info or not user_info.get(APP_NAME, None) or not user_info[APP_NAME].get("log"):
-        print "no log found..."
+        print("no log found...")
         return result 
 
     log_list = user_info[APP_NAME]["log"][-2:]
@@ -788,7 +790,7 @@ def ks_json_2_apple(report, fout):
         traceback.print_exc()
         errors = []
     for line in errors:
-        line = cgi.escape(line)
+        line = html.escape(line)
         fout.write(line+'\n')
 
     try:
@@ -797,7 +799,7 @@ def ks_json_2_apple(report, fout):
         traceback.print_exc()
         reason = []
     for line in reason:
-        line = cgi.escape(line)
+        line = html.escape(line)
         fout.write(line+'\n')
 
     try:
@@ -826,17 +828,17 @@ def ks_json_2_apple(report, fout):
     #    fout.write(line+'\n')
     click_info = parse_click_info(report)
     for line in click_info:
-        line = cgi.escape(line)
+        line = html.escape(line)
         fout.write(line+'\n')
     
     threads = parse_thread_list(report)
     for line in threads:
-        line = cgi.escape(line)
+        line = html.escape(line)
         fout.write(line+'\n')
 
     cpu_state = parse_cpu_state(report)
     for line in cpu_state:
-        line = cgi.escape(line)
+        line = html.escape(line)
         fout.write(line+'\n')
 
     images = parse_binary_images(report)
@@ -846,12 +848,12 @@ def ks_json_2_apple(report, fout):
 
     extra = parse_extra_info(report)
     for line in extra:
-        line = cgi.escape(line)
+        line = html.escape(line)
         fout.write(line+'\n')
     
     log_info = parse_log_info(report)
     for line in log_info:
-        line = cgi.escape(line)
+        line = html.escape(line)
         fout.write(line+'\n')
     
 if __name__ == '__main__':
@@ -868,7 +870,7 @@ if __name__ == '__main__':
     fout = open(options.output_file, 'w')
 
     if type(reports) is list:
-        print("this intput file contains %d report" %(len(reports)))
+        print(("this intput file contains %d report" %(len(reports))))
         for report in reports:
             fout.write("*------------------------------- report split line----------------------------*\n")
             ks_json_2_apple(report, fout)

@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 #-*- coding: utf-8 -*-
 '''
 @Author: mattzheng
@@ -11,14 +11,16 @@ import json
 import os
 import sys
 import cgi
+import html
 from datetime import datetime
 import traceback
+import importlib
 
 MM_IMG_LIST = ['MicroMessenger', 'WeChat', 'WeChatShareExtension', 'WeChatWatchExtension']
 Component_IMG_LIST = ['MMCommon', 'MMCoreFoundation', 'MMPLCrashReporter', 'PublicComponentDylib', 'MMFoundationDylib','MMLibHooks', 'matrixreport', 'Matrix', 'QBar']
 
-reload(sys)
-sys.setdefaultencoding('utf8')
+importlib.reload(sys)
+# sys.setdefaultencoding('utf8')
 
 def is_image_wechat(image_name):
     return image_name in MM_IMG_LIST + Component_IMG_LIST
@@ -142,7 +144,7 @@ def get_crash_thread(report):
     crash = get_crash_info(report)
     if not crash:
         return [] 
-    #print crash
+    print(crash)
     threads = crash['threads']
     for thread in threads:
         crashed = thread.get('crashed', False)
@@ -211,7 +213,7 @@ def parse_system_info(report):
     os_table ='%s_%s' %(_s('system_version').replace('.','_'),  _s('os_version'))
     if _s('cpu_arch') == "arm64e":
         os_table += '_%s' % _s('cpu_arch')
-    print "os_table:", os_table
+    print("os_table:", os_table)
     
     user_info = report.get("user", None)
     if user_info and user_info.get('WeChat'):
@@ -261,7 +263,7 @@ def parse_error_info(report):
         return [] 
     error = crash.get('error')
     if not error:
-        print "waring: no error found in crash"
+        print("waring: no error found in crash")
         return []
     mach = error['mach']
     signal = error['signal']
@@ -285,10 +287,10 @@ def parse_error_info(report):
     result.append('Crashed Thread:  {0}'.format(crash_thread))
 
     diagnosis = crash.get('diagnosis', None)
-    #print "fuck haha", diagnosis
+    print("fuck haha", diagnosis)
     if diagnosis:
         result.append('\nCrashDoctor Diagnosis: {0}'.format(diagnosis))
-        #print result
+        print(result)
     return result
 
 def parse_crash_reason(report):
@@ -304,7 +306,7 @@ def parse_crash_reason(report):
 
     error = crash.get('error')
     if not error:
-        print "warning: no error found in crash"
+        print("warning: no error found in crash")
         return []
     crash_type = error['type']
 
@@ -351,14 +353,14 @@ def parse_backtrace(result, img_info, stack_string, mask_pc=True):
         img_name = os.path.basename(trace['image_name'])
         img = img_info.get(img_name)
         if not img:
-            print "fuck"
+            print("fuck")
             for name in img_info:
                 if img_info[name]['image_addr'] <= pc <= img_info[name]['image_addr']+ img_info[name]['image_size']:
                     img = img_info[name] 
                     break
         if not img:
-            print "error, no img found for pc: %s, instruction_address: %s" % (pc, trace['instruction_address'])
-            print img_name
+            print("error, no img found for pc: %s, instruction_address: %s" % (pc, trace['instruction_address']))
+            print(img_name)
             result.append('{0:<4}{1:31} 0x{2:016x}'.format(num, 'unknown', pc))
             num += 1
             continue
@@ -432,7 +434,7 @@ def parse_thread_list(report):
     crash = get_crash_info(report)
     if not crash:
         return [] 
-    #print dump_json( crash)
+    print(dump_json( crash))
     threads = crash['threads']
 
     result = []
@@ -444,7 +446,7 @@ def parse_thread_list(report):
 
 def get_register_order(cpu):
     cpu = cpu.lower()
-    #print "cpu %s" % cpu
+    print("cpu %s" % cpu)
     arm = [ 'x'+str(i) for i in range(30)] + ['fp','sp', 'lr', 'pc',
            'cpsr']
     x86 = ['eax', 'ebx', 'ecx', 'edx', 'edi', 'esi', 'ebp',
@@ -519,8 +521,8 @@ def parse_binary_images(report):
             path = image['name']
             name = os.path.basename(path)
             uuid = image['uuid'].lower().replace('-', '')
-            print 'parse_binary_images'
-            print name, uuid
+            print('parse_binary_images')
+            print(name, uuid)
             is_base = '+' if path==exe_path else ' '
             if False:#image_count <=10 and not is_image_wechat(name) and simple_symbol_find.uuid_find(uuid) == False:
                 #name =  "<em style=\"color: red;\">%s</em>"%name
@@ -529,14 +531,14 @@ def parse_binary_images(report):
                             uuid, path))
             else:
                 if name == 'WeChat':
-                    print '{0:>#18x} - {1:>#18x} {2}{3}  <{4}> {5}'.format(addr, addr+size-1, is_base, name,uuid, path)
+                    print('{0:>#18x} - {1:>#18x} {2}{3}  <{4}> {5}'.format(addr, addr+size-1, is_base, name,uuid, path))
                     pass
                 result.append('{0:>#18x} - {1:>#18x} {2}{3}  <{4}> {5}'\
                     .format(addr, addr+size-1, is_base, name,
                             uuid, path))
         except:
             traceback.print_exc()
-            print image
+            print(image)
             return
             continue
 
@@ -703,7 +705,7 @@ def parse_other_info(report):
     result = ['']
     user_info = report.get("user", None)
     if not user_info or not user_info.get("WeChat", None) or not user_info["WeChat"].get("log"):
-        print "no log found..."
+        print("no log found...")
         return result 
 
     log_list = user_info["WeChat"]["log"][-2:]
@@ -733,34 +735,34 @@ def ks_json_2_apple(report, fout):
     #    fout.write(line+'\n')
     stack_info = parse_stack_info(report)
     for line in stack_info:
-        line = cgi.escape(line)
+        line = html.escape(line)
         fout.write(line+'\n')
 
     cpu_state = parse_cpu_state(report)
     for line in cpu_state:
-        line = cgi.escape(line)
+        line = html.escape(line)
         fout.write(line+'\n')
 
     images = parse_binary_images(report)
     for line in images:
-        line = cgi.escape(line)
+        line = html.escape(line)
         fout.write(line+'\n')
 
     extra = parse_extra_info(report)
     for line in extra:
-        line = cgi.escape(line)
+        line = html.escape(line)
         fout.write(line+'\n')
     
     log_info = parse_log_info(report)
     for line in log_info:
-        line = cgi.escape(line)
+        line = html.escape(line)
         fout.write(line+'\n')
     
 if __name__ == '__main__':
-    reload(sys)
-    sys.setdefaultencoding('utf-8')
+    importlib.reload(sys)
+    # sys.setdefaultencoding('utf-8')
     if len(sys.argv) != 3:
-        print "usage: python2.7 %s json_file out_file" % sys.argv[0]
+        print("usage: python3 %s json_file out_file" % sys.argv[0])
         sys.exit(1)
 
     report = json.load(open(sys.argv[1]))
