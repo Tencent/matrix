@@ -27,6 +27,7 @@ dependencies {
 
     implementation "androidx.appcompat:appcompat:1.1.0"
     implementation 'androidx.recyclerview:recyclerview:1.1.0'
+    implementation 'com.tencent:mmkv:1.2.14'
 
     implementation(project(':libkt'))
 
