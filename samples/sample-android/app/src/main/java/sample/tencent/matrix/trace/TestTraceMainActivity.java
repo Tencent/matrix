@@ -49,16 +49,23 @@ public class TestTraceMainActivity extends Activity implements IAppForeground {
     private static final int PERMISSION_REQUEST_CODE = 0x02;
 
     @Override
-    protected void onCreate(@Nullable Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.test_trace);
-        IssueFilter.setCurrentFilter(IssueFilter.ISSUE_TRACE);
+    protected void attachBaseContext(Context newBase) {
+        super.attachBaseContext(newBase);
 
+        // If this is the first time you call this function in activity,you should call it before onCreate
         Plugin plugin = Matrix.with().getPluginByClass(TracePlugin.class);
         if (!plugin.isPluginStarted()) {
             MatrixLog.i(TAG, "plugin-trace start");
             plugin.start();
         }
+    }
+
+    @Override
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.test_trace);
+        IssueFilter.setCurrentFilter(IssueFilter.ISSUE_TRACE);
+
         decorator = FrameDecorator.getInstance(this);
         if (!canDrawOverlays()) {
             requestWindowPermission();
