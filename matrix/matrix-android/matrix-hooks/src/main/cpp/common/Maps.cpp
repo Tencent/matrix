@@ -31,7 +31,7 @@ bool matrix::IterateMaps(const MapsEntryCallback& cb, void* args) {
         char perm[4] = {};
         int pathnamePos = 0;
 
-        if (::sscanf(line, "%" PRIxPTR "-%" PRIxPTR " %4s %*x %*x:%*x %*d%n", &start, &end, perm, &pathnamePos) != 3) {
+        if (::sscanf(line, "%" PRIxPTR "-%" PRIxPTR " %4c %*x %*x:%*x %*d%n", &start, &end, perm, &pathnamePos) != 3) {
             continue;
         }
 
@@ -49,15 +49,17 @@ bool matrix::IterateMaps(const MapsEntryCallback& cb, void* args) {
             continue;
         }
         char* pathname = line + pathnamePos;
-        while (pathLen >= 0 && pathname[pathLen - 1] == '\n') {
+        while (pathLen > 0 && pathname[pathLen - 1] == '\n') {
             pathname[pathLen - 1] = '\0';
             --pathLen;
         }
 
         if (cb(start, end, perm, pathname, args)) {
+            ::fclose(fp);
             return true;
         }
     }
 
+    ::fclose(fp);
     return false;
 }
