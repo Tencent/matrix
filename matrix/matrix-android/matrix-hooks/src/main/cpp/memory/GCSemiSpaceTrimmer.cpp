@@ -125,7 +125,7 @@ public:
                         if (strstr(path, SS_MAIN_SPACE_NAMES[0]) != nullptr
                             || strstr(path, SS_BUMPER_SPACE_NAMES[0]) != nullptr) {
                             // 512M or 256M in Anroid 5.x
-                            if (end - mSpace1Start != mVMHeapSize) {
+                            if (end - mSpace1Start > mVMHeapSize) {
                                 mStatus = STATUS_FOUND_FRIST_SPACE_TWO_ENTRY;
                             } else {
                                 if (start == mSpace1End) {
@@ -175,9 +175,7 @@ public:
                         if (strstr(path, SS_MAIN_SPACE_NAMES[0]) != nullptr
                             || strstr(path, SS_BUMPER_SPACE_NAMES[0]) != nullptr) {
                             // 512M or 256M in Anroid 5.x
-                            if (end - mSpace2Start != mVMHeapSize) {
-                                mStatus = STATUS_FOUND_FRIST_SPACE_ONE_ENTRY;
-                            } else {
+                            if (end - mSpace2Start <= mVMHeapSize) {
                                 if (start == mSpace2End) {
                                     mSpace2End = end;
                                     // Continue searching next entry.
@@ -185,6 +183,8 @@ public:
                                 } else {
                                     mStatus = STATUS_DISCONTINOUS_SPACE_FOUND;
                                 }
+                            } else {
+                                mStatus = STATUS_FOUND_FRIST_SPACE_ONE_ENTRY;
                             }
                         } else {
                             mStatus = STATUS_OUTSIDE_TARGETS;
