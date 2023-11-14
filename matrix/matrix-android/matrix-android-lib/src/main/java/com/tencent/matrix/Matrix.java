@@ -18,6 +18,9 @@ package com.tencent.matrix;
 
 import android.app.Application;
 
+import com.tencent.matrix.lifecycle.MatrixLifecycleConfig;
+import com.tencent.matrix.lifecycle.MatrixLifecycleOwnerInitializer;
+import com.tencent.matrix.lifecycle.supervisor.ProcessSupervisor;
 import com.tencent.matrix.plugin.DefaultPluginListener;
 import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.plugin.PluginListener;
@@ -32,23 +35,19 @@ import java.util.HashSet;
 public class Matrix {
     private static final String TAG = "Matrix.Matrix";
 
-
     private static volatile Matrix sInstance;
 
     private final HashSet<Plugin> plugins;
-    private final Application application;
-    private final PluginListener pluginListener;
+    private final Application     application;
 
-    private Matrix(Application app, PluginListener listener, HashSet<Plugin> plugins) {
+    private Matrix(Application app, PluginListener listener, HashSet<Plugin> plugins, MatrixLifecycleConfig config) {
         this.application = app;
-        this.pluginListener = listener;
         this.plugins = plugins;
-        AppActiveMatrixDelegate.INSTANCE.init(application);
+        MatrixLifecycleOwnerInitializer.init(app, config);
+        ProcessSupervisor.INSTANCE.init(app, config.getSupervisorConfig());
         for (Plugin plugin : plugins) {
-            plugin.init(application, pluginListener);
-            pluginListener.onInit(plugin);
+            plugin.init(application, listener);
         }
-
     }
 
     public static void setLogIml(MatrixLog.MatrixLogImp imp) {
@@ -127,9 +126,16 @@ public class Matrix {
 
     public static class Builder {
         private final Application application;
-        private PluginListener pluginListener;
 
-        private HashSet<Plugin> plugins = new HashSet<>();
+        private PluginListener   pluginListener;
+
+        private MatrixLifecycleConfig mLifecycleConfig = new MatrixLifecycleConfig(); // default config
+
+//        private SupervisorConfig supervisorConfig;
+//        private boolean          enableFgServiceMonitor;
+//        private boolean          enableOverlayWindowMonitor;
+
+        private final HashSet<Plugin> plugins = new HashSet<>();
 
         public Builder(Application app) {
             if (app == null) {
@@ -154,11 +160,16 @@ public class Matrix {
             return this;
         }
 
+        public Builder matrixLifecycleConfig(MatrixLifecycleConfig config) {
+            this.mLifecycleConfig = config;
+            return this;
+        }
+
         public Matrix build() {
             if (pluginListener == null) {
                 pluginListener = new DefaultPluginListener(application);
             }
-            return new Matrix(application, pluginListener, plugins);
+            return new Matrix(application, pluginListener, plugins, mLifecycleConfig);
         }
 
     }

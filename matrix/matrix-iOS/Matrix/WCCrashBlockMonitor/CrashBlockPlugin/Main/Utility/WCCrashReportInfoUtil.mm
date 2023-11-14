@@ -138,7 +138,12 @@ const char *wxg_lastPathEntry(const char *const path) {
         if (!header) {
             continue;
         }
-
+        // detect if corrupt or not
+        uintptr_t cmdPtr = __ks_first_cmd_after_header((const struct mach_header *)header);
+        if (cmdPtr == 0) {
+            continue;
+        }
+        
         NSInteger cpuType = header->cputype;
         NSInteger cpuSubType = header->cpusubtype;
         uint8_t *uuid = NULL;
@@ -149,7 +154,7 @@ const char *wxg_lastPathEntry(const char *const path) {
         // This is parsing the mach header in order to extract the slide.
         // See https://developer.apple.com/library/mac/documentation/DeveloperTools/Conceptual/MachORuntime/index.html
         // For the structure of mach headers
-        const struct load_command *cmd = reinterpret_cast<const struct load_command *>((header + 1));
+        const struct load_command *cmd = reinterpret_cast<const struct load_command *>(cmdPtr);
 
         for (unsigned int c = 0; cmd && (c < header->ncmds); c++) {
             if (cmd->cmd == LC_SEGMENT_ARCH) {

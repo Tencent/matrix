@@ -20,6 +20,7 @@ import android.app.Application;
 import android.content.Context;
 
 import com.tencent.matrix.Matrix;
+import com.tencent.matrix.batterycanary.monitor.AppStats;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.batterycanary.monitor.feature.AlarmMonitorFeature;
@@ -36,12 +37,18 @@ import com.tencent.matrix.batterycanary.monitor.feature.NotificationMonitorFeatu
 import com.tencent.matrix.batterycanary.monitor.feature.TrafficMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.WakeLockMonitorFeature;
 import com.tencent.matrix.batterycanary.monitor.feature.WifiMonitorFeature;
+import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
+import com.tencent.matrix.batterycanary.utils.Consumer;
 
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 import androidx.test.core.app.ApplicationProvider;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
@@ -54,6 +61,11 @@ public class Examples {
 
     Context mContext;
 
+    /**
+     * 计算 Cpu Load:
+     * 1. CpuLoad 计算口径与 adb shell top 里的 CPU 负载计算一致
+     * 2. CpuLoad = [0, 100 * cpu 核心数]
+     */
     @Test
     public void exampleForCpuLoad() {
         if (TestUtils.isAssembleTest()) {
@@ -65,20 +77,28 @@ public class Examples {
         if (Matrix.isInstalled()) {
             BatteryMonitorPlugin monitor = Matrix.with().getPluginByClass(BatteryMonitorPlugin.class);
             if (monitor != null) {
+                /*
+                 * 注意:
+                 * 1. CompositeMonitors 设计为非线程安全, 需要做好并发控制
+                 * 2. #start() 和 #finish() 必须成对调用, 以下代码监控了 doSomething() 这段时间内的功耗数据
+                 * 3. 监控结束后可通过 CompositeMonitors 实例访问功耗数据
+                 */
                 CompositeMonitors compositor = new CompositeMonitors(monitor.core());
                 compositor.metric(JiffiesMonitorFeature.JiffiesSnapshot.class);
-                compositor.metric(CpuStatFeature.CpuStateSnapshot.class);
                 compositor.start();
 
                 doSomething();
 
                 compositor.finish();
                 int cpuLoad = compositor.getCpuLoad();
-                Assert.assertTrue(cpuLoad > 0);
+                Assert.assertTrue("cpuLoad: " + cpuLoad, cpuLoad >= 0);
             }
         }
     }
 
+    /**
+     * CpuFreq 采样
+     */
     @Test
     public void exampleForCpuFreqSampling() {
         if (TestUtils.isAssembleTest()) {
@@ -90,8 +110,16 @@ public class Examples {
         if (Matrix.isInstalled()) {
             BatteryMonitorPlugin monitor = Matrix.with().getPluginByClass(BatteryMonitorPlugin.class);
             if (monitor != null) {
+                /*
+                 * 注意:
+                 * 1. CompositeMonitors 设计为非线程安全, 需要做好并发控制
+                 * 2. #start() 和 #finish() 必须成对调用, 以下代码监控了 doSomething() 这段时间内的功耗数据
+                 * 3. 监控结束后可通过 CompositeMonitors 实例访问功耗数据
+                 * 4. samplingIntervalMs 为采样周期, 建议取值 1minute, 最低值不应低于 5s (此处 10ms 仅为单元测试)
+                 */
                 CompositeMonitors compositor = new CompositeMonitors(monitor.core());
-                compositor.sample(DeviceStatMonitorFeature.CpuFreqSnapshot.class, 10L);
+                long samplingIntervalMs = 10L;
+                compositor.sample(DeviceStatMonitorFeature.CpuFreqSnapshot.class, samplingIntervalMs);
                 compositor.start();
 
                 doSomething();
@@ -104,6 +132,70 @@ public class Examples {
         }
     }
 
+    /**
+     * 计算 Cpu Load（叠加 CpuFreq 采样权重）:
+     * 1. CpuLoad 计算口径与 adb shell top 里的 CPU 负载计算一致
+     * 2. CpuLoad = [0, 100 * cpu 核心数]
+     * 3. CpuLoad 只能反馈 CPU 资源的使用率, 如果需要考虑 CPU 整体负载还要考虑 CPU 大小核的工作频率, 因此需要额外加多 CpuFreq 的数据
+     * 4. CpuLoadNormalized = cpuLoad * avgCpuFreq / maxCpuFreq
+     */
+    @Test
+    public void exampleForCpuLoadNormalize() {
+        if (TestUtils.isAssembleTest()) {
+            return;
+        } else {
+            mockSetup();
+        }
+
+        if (Matrix.isInstalled()) {
+            BatteryMonitorPlugin monitor = Matrix.with().getPluginByClass(BatteryMonitorPlugin.class);
+            if (monitor != null) {
+                /*
+                 * 注意:
+                 * 1. CompositeMonitors 设计为非线程安全, 需要做好并发控制
+                 * 2. #start() 和 #finish() 必须成对调用, 以下代码监控了 doSomething() 这段时间内的功耗数据
+                 * 3. 监控结束后可通过 CompositeMonitors 实例访问功耗数据
+                 * 4. samplingIntervalMs 为采样周期, 建议取值 1minute, 最低值不应低于 5s (此处 10ms 仅为单元测试)
+                 */
+                CompositeMonitors compositor = new CompositeMonitors(monitor.core());
+                compositor.metric(JiffiesMonitorFeature.JiffiesSnapshot.class);
+                long samplingIntervalMs = 10L;
+                compositor.sample(DeviceStatMonitorFeature.CpuFreqSnapshot.class, samplingIntervalMs);
+                compositor.start();
+
+                doSomething();
+
+                compositor.finish();
+                int cpuLoad = compositor.getCpuLoad();
+                Assert.assertTrue("cpuLoad: " + cpuLoad, cpuLoad >= 0);
+
+                MonitorFeature.Snapshot.Sampler.Result result = compositor.getSamplingResult(DeviceStatMonitorFeature.CpuFreqSnapshot.class);
+                Assert.assertNotNull(result);
+                List<int[]> cpuFreqSteps = BatteryCanaryUtil.getCpuFreqSteps();
+                Assert.assertEquals(BatteryCanaryUtil.getCpuCoreNum(), cpuFreqSteps.size());
+
+                long sumMax = 0;
+                for (int[] steps : cpuFreqSteps) {
+                    int max = 0;
+                    for (int item : steps) {
+                        if (item > max) {
+                            max = item;
+                        }
+                    }
+                    sumMax += max;
+                }
+                Assert.assertTrue("cpuFreqSumAvg: " + result.sampleAvg + "vs cpuFreqSumMax: " + sumMax, sumMax >= result.sampleAvg);
+                int cpuLoadNormalized  = (int) (cpuLoad * result.sampleAvg / sumMax);
+                Assert.assertTrue("cpuLoadNormalized: " + cpuLoadNormalized + "vs cpuLoad: " + sumMax, cpuLoad >= cpuLoadNormalized);
+
+                Assert.assertEquals(cpuLoadNormalized, compositor.getNorCpuLoad());
+            }
+        }
+    }
+
+    /**
+     * 电量温度采样
+     */
     @Test
     public void exampleForTemperatureSampling() {
         if (TestUtils.isAssembleTest()) {
@@ -115,8 +207,16 @@ public class Examples {
         if (Matrix.isInstalled()) {
             BatteryMonitorPlugin monitor = Matrix.with().getPluginByClass(BatteryMonitorPlugin.class);
             if (monitor != null) {
+                /*
+                 * 注意:
+                 * 1. CompositeMonitors 设计为非线程安全, 需要做好并发控制
+                 * 2. #start() 和 #finish() 必须成对调用, 以下代码监控了 doSomething() 这段时间内的功耗数据
+                 * 3. 监控结束后可通过 CompositeMonitors 实例访问功耗数据
+                 * 4. samplingIntervalMs 为采样周期, 建议取值 1minute, 最低值不应低于 5s (此处 10ms 仅为单元测试)
+                 */
                 CompositeMonitors compositor = new CompositeMonitors(monitor.core());
-                compositor.sample(DeviceStatMonitorFeature.BatteryTmpSnapshot.class, 10L);
+                long samplingIntervalMs = 10L;
+                compositor.sample(DeviceStatMonitorFeature.CpuFreqSnapshot.class, samplingIntervalMs);
                 compositor.start();
 
                 doSomething();
@@ -129,9 +229,130 @@ public class Examples {
         }
     }
 
+    /**
+     * 综合监控示例
+     */
+    @Test
+    public void exampleForGeneralUseCase() {
+        if (TestUtils.isAssembleTest()) {
+            return;
+        } else {
+            mockSetup();
+        }
+
+        if (Matrix.isInstalled()) {
+            BatteryMonitorPlugin monitor = Matrix.with().getPluginByClass(BatteryMonitorPlugin.class);
+            if (monitor != null) {
+                // 设置监控器
+                CompositeMonitors compositor = new CompositeMonitors(monitor.core())
+                        .metric(JiffiesMonitorFeature.JiffiesSnapshot.class)
+                        .metric(CpuStatFeature.CpuStateSnapshot.class)
+                        .sample(DeviceStatMonitorFeature.BatteryTmpSnapshot.class)
+                        .sample(DeviceStatMonitorFeature.CpuFreqSnapshot.class, 10L);
+
+                // 开始监控
+                compositor.start();
+
+                doSomething();
+
+                // 结束监控
+                compositor.finish();
+
+                // 获取监控数据:
+                // 1. 获取 App & Dev 状态
+                compositor.getAppStats(new Consumer<AppStats>() {
+                    @Override
+                    public void accept(AppStats appStats) {
+                        if (appStats.isValid) {
+                            long minute = appStats.getMinute();  // 时间窗口(分钟)
+
+                            int appStat = appStats.getAppStat();     // App 状态
+                            int fgRatio = appStats.appFgRatio;       // 前台时间占比
+                            int bgRatio = appStats.appBgRatio;       // 后台时间占比
+                            int fgSrvRatio = appStats.appFgSrvRatio; // 前台服务时间占比
+                            int floatRatio = appStats.appFloatRatio; // 浮窗时间占比
+
+                            int devStat = appStats.getDevStat();               // Device 状态
+                            int unChargingRatio = appStats.devUnChargingRatio; // 未充电状态时间占比
+                            int screenOff = appStats.devSceneOffRatio;         // 息屏状态时间占比
+                            int lowEnergyRatio = appStats.devLowEnergyRatio;   // 低电耗状态时间占比
+                            int chargingRatio = appStats.devChargingRatio;     // 充电状态时间占比
+
+                            String scene = appStats.sceneTop1;         // Top1 Activity
+                            int sceneRatio = appStats.sceneTop1Ratio;  // Top1 Activity 占比
+                            String scene2 = appStats.sceneTop2;        // Top2 Activity
+                            int scene2Ratio = appStats.sceneTop2Ratio; // Top2 Activity 占比
+
+                            if (appStats.isForeground()) {
+                                // 监控期间 App 是否前台
+                            }
+                            if (appStats.isCharging()) {
+                                // 监控期间 Dev 是否充电
+                            }
+                        }
+                    }
+                });
+
+                // 2. 获取采样数据
+                // 2.1 电池温度
+                compositor.getSamplingResult(DeviceStatMonitorFeature.BatteryTmpSnapshot.class, new Consumer<MonitorFeature.Snapshot.Sampler.Result>() {
+                    @Override
+                    public void accept(MonitorFeature.Snapshot.Sampler.Result sampling) {
+                        long duringMillis = sampling.duringMillis; // 时间窗口
+                        long interval = sampling.interval   ;      // 采样周期
+                        int count = sampling.count;                // 采样次数
+                        double sampleFst = sampling.sampleFst;     // 第一次采样
+                        double sampleLst = sampling.sampleLst;     // 最后一次采样
+                        double sampleMax = sampling.sampleMax;     // 最大采样值
+                        double sampleMin = sampling.sampleMin;     // 最小采样值
+                        double sampleAvg = sampling.sampleAvg;     // 平均采样值
+                    }
+                });
+                // 2.3 CpuFreq
+                compositor.getSamplingResult(DeviceStatMonitorFeature.BatteryTmpSnapshot.class, new Consumer<MonitorFeature.Snapshot.Sampler.Result>() {
+                    @Override
+                    public void accept(MonitorFeature.Snapshot.Sampler.Result sampling) {
+                        long duringMillis = sampling.duringMillis; // 时间窗口
+                        long interval = sampling.interval   ;      // 采样周期
+                        int count = sampling.count;                // 采样次数
+                        double sampleFst = sampling.sampleFst;     // 第一次采样
+                        double sampleLst = sampling.sampleLst;     // 最后一次采样
+                        double sampleMax = sampling.sampleMax;     // 最大采样值
+                        double sampleMin = sampling.sampleMin;     // 最小采样值
+                        double sampleAvg = sampling.sampleAvg;     // 平均采样值
+                    }
+                });
+
+                // 3. 进程 & 线程 Cpu Load
+                // 3.1 进程 Cpu Load, 值区间 [0, Cpu Core Num * 100]
+                final int procCpuLoad = compositor.getCpuLoad();
+                // 3.2 获取线程数据
+                compositor.getDelta(JiffiesMonitorFeature.JiffiesSnapshot.class, new Consumer<MonitorFeature.Snapshot.Delta<JiffiesMonitorFeature.JiffiesSnapshot>>() {
+                    @Override
+                    public void accept(MonitorFeature.Snapshot.Delta<JiffiesMonitorFeature.JiffiesSnapshot> procDelta) {
+                        long totalJiffies = procDelta.dlt.totalJiffies.get();
+                        for (JiffiesMonitorFeature.JiffiesSnapshot.ThreadJiffiesEntry threadEntry : procDelta.dlt.threadEntries.getList()) {
+                            String name = threadEntry.name;   // 线程名
+                            int tid = threadEntry.tid;        // tid
+                            String status = threadEntry.stat; // 线程状态
+                            long jiffies = threadEntry.get(); // 线程在这段时间内的 Jiffies
+                            int threadCpuLoad = (int) (procCpuLoad * ((float) jiffies / totalJiffies));
+                        }
+                    }
+                });
+            }
+        }
+    }
+
     private void doSomething() {
+        Thread Thread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                for (;;) {}
+            }
+        }, "CpuLoadTest");
         try {
-            Thread.sleep(1000L);
+            Thread.sleep(2000L);
         } catch (InterruptedException ignored) {
         }
     }

@@ -69,7 +69,7 @@
 - (void)setupPluginListener:(id<MatrixPluginListenerDelegate>)pluginListener;
 
 /***
- * @brief report matrix issue. advise: you should implement this reportIssue in your own plguin.
+ * @brief report matrix issue. advise: you should implement this reportIssue in your own plugin.
  * After call reportIssue, this method will call the listener onReportIssue.
  * @param issue The issue you want to be reported
  */

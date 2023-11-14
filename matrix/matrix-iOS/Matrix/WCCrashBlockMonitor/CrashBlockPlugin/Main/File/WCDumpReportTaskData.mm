@@ -24,8 +24,11 @@ const NSDictionary *WXGDumpReportTypeConfig = @{
     IntNumberObject(EDumpType_BlockThreadTooMuch) : IntNumberObject(EReportPriority_High),
     IntNumberObject(EDumpType_LaunchBlock) : IntNumberObject(EReportPriority_High),
     IntNumberObject(EDumpType_PowerConsume) : IntNumberObject(EReportPriority_High),
+    IntNumberObject(EDumpType_DiskIO) : IntNumberObject(EReportPriority_High),
     IntNumberObject(EDumpType_BackgroundMainThreadBlock) : IntNumberObject(EReportPriority_Low),
     IntNumberObject(EDumpType_CPUBlock) : IntNumberObject(EReportPriority_Low),
+    IntNumberObject(EDumpType_SelfDefinedDump) : IntNumberObject(EReportPriority_Low),
+    IntNumberObject(EDumpType_FPS) : IntNumberObject(EReportPriority_Low),
 };
 
 @implementation WCDumpReportTaskData

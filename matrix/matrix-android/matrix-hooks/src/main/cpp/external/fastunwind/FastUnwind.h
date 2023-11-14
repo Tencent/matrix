@@ -8,8 +8,15 @@
 #include <cstddef>
 
 namespace fastunwind {
-    extern __attribute__((no_sanitize("address", "hwaddress"))) int Unwind(void** pcs, size_t max_count);
-    extern __attribute__((no_sanitize("address", "hwaddress"))) int Unwind(void* ucontext, void** pcs, size_t max_count);
+    extern
+    __attribute__((no_sanitize("address", "hwaddress")))
+    __attribute__ ((visibility ("default")))
+    int Unwind(void** pcs, size_t max_count);
+
+    extern
+    __attribute__((no_sanitize("address", "hwaddress")))
+    __attribute__ ((visibility ("default")))
+    int Unwind(void* ucontext, void** pcs, size_t max_count);
 }
 
 

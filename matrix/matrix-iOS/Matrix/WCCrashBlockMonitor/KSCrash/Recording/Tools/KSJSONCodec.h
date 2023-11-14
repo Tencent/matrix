@@ -42,6 +42,8 @@ extern "C" {
  */
 #define KSJSON_SIZE_AUTOMATIC -1
 
+#define KSJSON_MAX_OBJECT_COUNT 2048
+
 enum {
     /** Encoding or decoding: Everything completed without error */
     KSJSON_OK = 0,
@@ -67,6 +69,9 @@ enum {
      * semantic or structural reasons.
      */
     KSJSON_ERROR_INVALID_DATA = 5,
+
+    /** Encoding: Too many objects */
+    KSJSON_ERROR_TOO_MANY_OBJECTS = 6,
 };
 
 /** Get a description for an error code.
@@ -105,7 +110,7 @@ typedef struct {
     int containerLevel;
 
     /** Whether or not the current container is an object. */
-    bool isObject[200];
+    bool isObject[KSJSON_MAX_OBJECT_COUNT];
 
     /** true if this is the first entry at the current container level. */
     bool containerFirstEntry;

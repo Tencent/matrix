@@ -13,9 +13,10 @@ dependencies {
             "matrix-sqlite-lint-android-sdk",
             "matrix-hooks",
             "matrix-fd",
-            "matrix-jectl",
+            "matrix-mallctl",
             "matrix-backtrace",
             "matrix-traffic",
+            "matrix-memory-canary",
     ]
 
     matrixModules.each { moduleName ->
@@ -27,11 +28,13 @@ dependencies {
     implementation "androidx.appcompat:appcompat:1.1.0"
     implementation 'androidx.recyclerview:recyclerview:1.1.0'
 
+    implementation(project(':libkt'))
+
     // TODO
     apkCheckerDependency group: "com.tencent.matrix", name: "matrix-apk-canary", version: MATRIX_VERSION, changing: true
 
     testImplementation 'junit:junit:4.12'
-    androidTestCompile('com.android.support.test.espresso:espresso-core:2.2.2', {
+    androidTestImplementation('com.android.support.test.espresso:espresso-core:2.2.2', {
         exclude group: 'com.android.support', module: 'support-annotations'
     })
 
@@ -42,4 +45,5 @@ dependencies {
             type = 'exe'
         }
     }
+    implementation 'com.tencent:mmkv:1.2.11'
 }

@@ -231,4 +231,7 @@ private:
     const char *_file_name;
 };
 
+bool shared_memory_pool_file_init(const char *dir);
+void *shared_memory_pool_file_alloc(size_t size);
+
 #endif /* buffer_source_h */

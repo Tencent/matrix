@@ -771,20 +771,27 @@ static void xh_elf_dump(xh_elf_t *self)
 
 #endif
 
-int xh_elf_init(xh_elf_t *self, uintptr_t base_addr, const char *pathname)
+int xh_elf_init(xh_elf_t *self, uintptr_t bias_addr, ElfW(Phdr)* phdrs, ElfW(Half) phdr_count, const char *pathname)
 {
-    if(0 == base_addr || NULL == pathname) return XH_ERRNO_INVAL;
+    if(0 == bias_addr || NULL == pathname) return XH_ERRNO_INVAL;
 
     //always reset
     memset(self, 0, sizeof(xh_elf_t));
 
     self->pathname = pathname;
-    self->base_addr = (ElfW(Addr))base_addr;
-    self->ehdr = (ElfW(Ehdr) *)base_addr;
-    self->phdr = (ElfW(Phdr) *)(base_addr + self->ehdr->e_phoff); //segmentation fault sometimes
+    self->bias_addr = (ElfW(Addr)) bias_addr;
+    self->phdr = phdrs;
 
-    //find the first load-segment with offset 0
-    ElfW(Phdr) *phdr0 = xh_elf_get_first_segment_by_type_offset(self, PT_LOAD, 0);
+    XH_LOG_DEBUG("xh_elf_init: pathname: %s, phdr: %p, phdr_count: %u", pathname, phdrs, phdr_count);
+
+    ElfW(Phdr)* phdr0 = NULL;
+    for (int i = 0; i < phdr_count; ++i) {
+        ElfW(Phdr)* phdr = phdrs + i;
+        if (phdr->p_type == PT_LOAD) {
+            phdr0 = phdr;
+            break;
+        }
+    }
     if(NULL == phdr0)
     {
         XH_LOG_ERROR("Can NOT found the first load segment. %s", pathname);
@@ -797,9 +804,9 @@ int xh_elf_init(xh_elf_t *self, uintptr_t base_addr, const char *pathname)
                      (void *)(phdr0->p_vaddr), pathname);
 #endif
 
-    //save load bias addr
+    self->base_addr = self->bias_addr + phdr0->p_vaddr;
     if(self->base_addr < phdr0->p_vaddr) return XH_ERRNO_FORMAT;
-    self->bias_addr = self->base_addr - phdr0->p_vaddr;
+    self->ehdr = (ElfW(Ehdr) *) self->base_addr;
 
     //find dynamic-segment
     ElfW(Phdr) *dhdr = xh_elf_get_first_segment_by_type(self, PT_DYNAMIC);

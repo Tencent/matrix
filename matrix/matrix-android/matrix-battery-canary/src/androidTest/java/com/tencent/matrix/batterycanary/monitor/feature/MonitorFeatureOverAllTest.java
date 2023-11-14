@@ -81,10 +81,16 @@ public class MonitorFeatureOverAllTest {
                         BatteryPrinter core = super.attach(monitorCore);
                         mCompositeMonitors.sample(DeviceStatMonitorFeature.BatteryTmpSnapshot.class, 100L);
                         mCompositeMonitors.sample(DeviceStatMonitorFeature.CpuFreqSnapshot.class, 100L);
+                        mCompositeMonitors.sample(DeviceStatMonitorFeature.ChargeWattageSnapshot.class, 100L);
+                        mCompositeMonitors.sample(CpuStatFeature.CpuStateSnapshot.class, 100L);
+                        mCompositeMonitors.sample(JiffiesMonitorFeature.UidJiffiesSnapshot.class, 100L);
+                        mCompositeMonitors.sample(TrafficMonitorFeature.RadioStatSnapshot.class, 100L);
                         return core;
                     }
                 })
                 .build();
+
+
         return new BatteryMonitorCore(config);
     }
 

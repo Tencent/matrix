@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 
 import com.tencent.matrix.batterycanary.BatteryEventDelegate;
+import com.tencent.matrix.batterycanary.monitor.AppStats;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Differ.DigitDiffer;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Differ.ListDiffer;
@@ -74,19 +75,23 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
             @SuppressLint("VisibleForTests")
             @Override
             public void accept(Integer integer) {
-                BatteryCanaryUtil.getProxy().updateDevStat(integer);
-                synchronized (TAG) {
-                    if (mStampList != Collections.EMPTY_LIST) {
-                        MatrixLog.i(BatteryEventDelegate.TAG, "onStat >> " + BatteryCanaryUtil.convertDevStat(integer));
-                        mStampList.add(0, new TimeBreaker.Stamp(String.valueOf(integer)));
-                        checkOverHeat();
-                    }
-                }
+                onStatDevStat(integer);
             }
         });
 
         if (!mDevStatListener.isListening()) {
             mDevStatListener.startListen(mCore.getContext());
+        }
+    }
+
+    public void onStatDevStat(int devStat) {
+        BatteryCanaryUtil.getProxy().updateDevStat(devStat);
+        synchronized (TAG) {
+            if (mStampList != Collections.EMPTY_LIST) {
+                MatrixLog.i(BatteryEventDelegate.TAG, "onStat >> " + BatteryCanaryUtil.convertDevStat(devStat));
+                mStampList.add(0, new TimeBreaker.Stamp(String.valueOf(devStat)));
+                checkOverHeat();
+            }
         }
     }
 
@@ -112,13 +117,18 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
     }
 
     public CpuFreqSnapshot currentCpuFreq() {
-        CpuFreqSnapshot snapshot = new CpuFreqSnapshot();
         try {
-            snapshot.cpuFreqs = Snapshot.Entry.ListEntry.ofDigits(BatteryCanaryUtil.getCpuCurrentFreq());
+            int[] cpuFreqs = BatteryCanaryUtil.getCpuCurrentFreq();
+            return currentCpuFreq(cpuFreqs);
         } catch (Throwable e) {
             MatrixLog.printErrStackTrace(TAG, e, "#currentCpuFreq error");
-            snapshot.cpuFreqs = Snapshot.Entry.ListEntry.ofDigits(new int[]{});
+            return currentCpuFreq(new int[]{});
         }
+    }
+
+    public CpuFreqSnapshot currentCpuFreq(int[] cpuFreqs) {
+        CpuFreqSnapshot snapshot = new CpuFreqSnapshot();
+        snapshot.cpuFreqs = Snapshot.Entry.ListEntry.ofDigits(cpuFreqs);
         return snapshot;
     }
 
@@ -163,6 +173,30 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
         return new ArrayList<>(mStampList);
     }
 
+    public ThermalStatSnapshot currentThermalStat(Context context) {
+        ThermalStatSnapshot snapshot = new ThermalStatSnapshot();
+        snapshot.stat = Snapshot.Entry.DigitEntry.of(BatteryCanaryUtil.getThermalStat(context));
+        return snapshot;
+    }
+
+    public ThermalHeadroomSnapshot currentThermalHeadroom(Context context, int forecastSeconds) {
+        ThermalHeadroomSnapshot snapshot = new ThermalHeadroomSnapshot();
+        snapshot.stat = Snapshot.Entry.DigitEntry.of(BatteryCanaryUtil.getThermalHeadroom(context, forecastSeconds));
+        return snapshot;
+    }
+
+    public ChargeWattageSnapshot currentChargeWattage(Context context) {
+        ChargeWattageSnapshot snapshot = new ChargeWattageSnapshot();
+        snapshot.stat = Snapshot.Entry.DigitEntry.of(BatteryCanaryUtil.getChargingWatt(context));
+        return snapshot;
+    }
+
+    public BatteryCurrentSnapshot currentBatteryCurrency(Context context) {
+        BatteryCurrentSnapshot snapshot = new BatteryCurrentSnapshot();
+        snapshot.stat = Snapshot.Entry.DigitEntry.of(BatteryCanaryUtil.getBatteryCurrencyImmediately(context));
+        return snapshot;
+    }
+
 
     static final class DevStatListener {
         Consumer<Integer> mListener = new Consumer<Integer>() {
@@ -197,20 +231,20 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
                         switch (event) {
                             case Intent.ACTION_POWER_CONNECTED:
                                 mIsCharging = true;
-                                mListener.accept(1);
+                                mListener.accept(AppStats.DEV_STAT_CHARGING);
                                 break;
                             case Intent.ACTION_POWER_DISCONNECTED:
                                 mIsCharging = false;
-                                mListener.accept(2);
+                                mListener.accept(AppStats.DEV_STAT_UN_CHARGING);
                                 break;
                             case Intent.ACTION_SCREEN_ON:
                                 if (!mIsCharging) {
-                                    mListener.accept(2);
+                                    mListener.accept(AppStats.DEV_STAT_SCREEN_ON);
                                 }
                                 break;
                             case Intent.ACTION_SCREEN_OFF:
                                 if (!mIsCharging) {
-                                    mListener.accept(3);
+                                    mListener.accept(AppStats.DEV_STAT_SCREEN_OFF);
                                 }
                                 break;
                             default:
@@ -271,6 +305,71 @@ public final class DeviceStatMonitorFeature extends AbsMonitorFeature {
                 protected BatteryTmpSnapshot computeDelta() {
                     BatteryTmpSnapshot delta = new BatteryTmpSnapshot();
                     delta.temp = DigitDiffer.globalDiff(bgn.temp, end.temp);
+                    return delta;
+                }
+            };
+        }
+    }
+
+    public static class ThermalStatSnapshot extends Snapshot<ThermalStatSnapshot> {
+        public Entry.DigitEntry<Integer> stat;
+
+        @Override
+        public Delta<ThermalStatSnapshot> diff(ThermalStatSnapshot bgn) {
+            return new Delta<ThermalStatSnapshot>(bgn, this) {
+                @Override
+                protected ThermalStatSnapshot computeDelta() {
+                    ThermalStatSnapshot delta = new ThermalStatSnapshot();
+                    delta.stat = DigitDiffer.globalDiff(bgn.stat, end.stat);
+                    return delta;
+                }
+            };
+        }
+    }
+
+    public static class ThermalHeadroomSnapshot extends Snapshot<ThermalHeadroomSnapshot> {
+        public Entry.DigitEntry<Float> stat;
+
+        @Override
+        public Delta<ThermalHeadroomSnapshot> diff(ThermalHeadroomSnapshot bgn) {
+            return new Delta<ThermalHeadroomSnapshot>(bgn, this) {
+                @Override
+                protected ThermalHeadroomSnapshot computeDelta() {
+                    ThermalHeadroomSnapshot delta = new ThermalHeadroomSnapshot();
+                    delta.stat = DigitDiffer.globalDiff(bgn.stat, end.stat);
+                    return delta;
+                }
+            };
+        }
+    }
+
+    public static class ChargeWattageSnapshot extends Snapshot<ChargeWattageSnapshot> {
+        public Entry.DigitEntry<Integer> stat;
+
+        @Override
+        public Delta<ChargeWattageSnapshot> diff(ChargeWattageSnapshot bgn) {
+            return new Delta<ChargeWattageSnapshot>(bgn, this) {
+                @Override
+                protected ChargeWattageSnapshot computeDelta() {
+                    ChargeWattageSnapshot delta = new ChargeWattageSnapshot();
+                    delta.stat = DigitDiffer.globalDiff(bgn.stat, end.stat);
+                    return delta;
+                }
+            };
+        }
+
+    }
+
+    public static class BatteryCurrentSnapshot extends Snapshot<BatteryCurrentSnapshot> {
+        public Entry.DigitEntry<Long> stat;
+
+        @Override
+        public Delta<BatteryCurrentSnapshot> diff(BatteryCurrentSnapshot bgn) {
+            return new Delta<BatteryCurrentSnapshot>(bgn, this) {
+                @Override
+                protected BatteryCurrentSnapshot computeDelta() {
+                    BatteryCurrentSnapshot delta = new BatteryCurrentSnapshot();
+                    delta.stat = DigitDiffer.globalDiff(bgn.stat, end.stat);
                     return delta;
                 }
             };

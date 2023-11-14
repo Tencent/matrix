@@ -19,12 +19,24 @@ package sample.tencent.matrix;
 import android.app.Application;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.pm.ServiceInfo;
 import android.os.Build;
+import android.util.Log;
 
 import com.tencent.matrix.Matrix;
+import com.tencent.matrix.batterycanary.BatteryEventDelegate;
 import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
+import com.tencent.matrix.hook.HookManager;
+import com.tencent.matrix.hook.pthread.PthreadHook;
 import com.tencent.matrix.iocanary.IOCanaryPlugin;
 import com.tencent.matrix.iocanary.config.IOConfig;
+import com.tencent.matrix.lifecycle.LifecycleThreadConfig;
+import com.tencent.matrix.lifecycle.MatrixLifecycleConfig;
+import com.tencent.matrix.lifecycle.supervisor.SupervisorConfig;
+import com.tencent.matrix.memory.canary.MemoryCanaryPlugin;
+import com.tencent.matrix.memory.canary.trim.TrimCallback;
+import com.tencent.matrix.memory.canary.trim.TrimMemoryNotifier;
 import com.tencent.matrix.resource.ResourcePlugin;
 import com.tencent.matrix.resource.config.ResourceConfig;
 import com.tencent.matrix.trace.TracePlugin;
@@ -36,9 +48,15 @@ import com.tencent.sqlitelint.SQLiteLintPlugin;
 import com.tencent.sqlitelint.config.SQLiteLintConfig;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Map;
 
 import sample.tencent.matrix.battery.BatteryCanaryInitHelper;
+import sample.tencent.matrix.battery.BatteryCanarySimpleInitHelper;
 import sample.tencent.matrix.config.DynamicConfigImplDemo;
+import sample.tencent.matrix.kt.lifecycle.MatrixLifecycleLogger;
+import sample.tencent.matrix.kt.memory.canary.MemoryCanaryBoot;
+import sample.tencent.matrix.lifecycle.LifecycleTest;
 import sample.tencent.matrix.listener.TestPluginListener;
 import sample.tencent.matrix.resource.ManualDumpActivity;
 
@@ -51,9 +69,39 @@ public class MatrixApplication extends Application {
 
     private static Context sContext;
 
+    public static boolean is64BitRuntime() {
+        final String currRuntimeABI = Build.CPU_ABI;
+        return "arm64-v8a".equalsIgnoreCase(currRuntimeABI)
+                || "x86_64".equalsIgnoreCase(currRuntimeABI)
+                || "mips64".equalsIgnoreCase(currRuntimeABI);
+    }
+
     @Override
     public void onCreate() {
         super.onCreate();
+
+        System.loadLibrary("c++_shared");
+
+        if (!is64BitRuntime()) {
+            try {
+                final PthreadHook.ThreadStackShrinkConfig config = new PthreadHook.ThreadStackShrinkConfig()
+                        .setEnabled(true)
+                        .addIgnoreCreatorSoPatterns(".*/app_tbs/.*")
+                        .addIgnoreCreatorSoPatterns(".*/libany\\.so$");
+                HookManager.INSTANCE.addHook(PthreadHook.INSTANCE.setThreadStackShrinkConfig(config)).commitHooks();
+            } catch (HookManager.HookFailedException e) {
+                e.printStackTrace();
+            }
+        }
+
+        try {
+            ServiceInfo[] services = getPackageManager().getPackageInfo(getPackageName(), PackageManager.GET_SERVICES).services;
+            for (ServiceInfo service : services) {
+                MatrixLog.d(TAG, "name = %s, processName = %s", service.name, service.processName);
+            }
+        } catch (PackageManager.NameNotFoundException e) {
+            e.printStackTrace();
+        }
 
         // Switch.
         DynamicConfigImplDemo dynamicConfig = new DynamicConfigImplDemo();
@@ -67,9 +115,12 @@ public class MatrixApplication extends Application {
         // Reporter. Matrix will callback this listener when found issue then emitting it.
         builder.pluginListener(new TestPluginListener(this));
 
+        MemoryCanaryPlugin memoryCanaryPlugin = new MemoryCanaryPlugin(MemoryCanaryBoot.configure(this));
+        builder.plugin(memoryCanaryPlugin);
+
         // Configure trace canary.
-        TracePlugin tracePlugin = configureTracePlugin(dynamicConfig);
-        builder.plugin(tracePlugin);
+//        TracePlugin tracePlugin = configureTracePlugin(dynamicConfig);
+//        builder.plugin(tracePlugin);
 
         // Configure resource canary.
         ResourcePlugin resourcePlugin = configureResourcePlugin(dynamicConfig);
@@ -84,16 +135,31 @@ public class MatrixApplication extends Application {
         builder.plugin(sqLiteLintPlugin);
 
         // Configure battery canary.
-        BatteryMonitorPlugin batteryMonitorPlugin = configureBatteryCanary();
+        BatteryMonitorPlugin batteryMonitorPlugin = configureBatteryCanary(this);
         builder.plugin(batteryMonitorPlugin);
 
+        builder.matrixLifecycleConfig(configureMatrixLifecycle());
         Matrix.init(builder.build());
 
         // Trace Plugin need call start() at the beginning.
-        tracePlugin.start();
+//        tracePlugin.start();
+//        memoryCanaryPlugin.start();
+
+        Matrix.with().startAllPlugins();
+        MatrixLifecycleLogger.INSTANCE.start();
+        TrimMemoryNotifier.INSTANCE.addProcessBackgroundTrimCallback(new TrimCallback() {
+            @Override
+            public void systemTrim(int i) {
+                MatrixLog.d(TAG, "systemTrim: ");
+            }
+
+            @Override
+            public void backgroundTrim() {
+                MatrixLog.d(TAG, "backgroundTrim: ");
+            }
+        });
 
         MatrixLog.i(TAG, "Matrix configurations done.");
-
     }
 
     private TracePlugin configureTracePlugin(DynamicConfigImplDemo dynamicConfig) {
@@ -119,7 +185,6 @@ public class MatrixApplication extends Application {
                 .enableAnrTrace(traceEnable)
                 .enableStartup(traceEnable)
                 .enableIdleHandlerTrace(traceEnable)                    // Introduced in Matrix 2.0
-                .enableMainThreadPriorityTrace(true)                    // Introduced in Matrix 2.0
                 .enableSignalAnrTrace(signalAnrTraceEnable)             // Introduced in Matrix 2.0
                 .anrTracePath(anrTraceFile.getAbsolutePath())
                 .printTracePath(printTraceFile.getAbsolutePath())
@@ -146,6 +211,17 @@ public class MatrixApplication extends Application {
             public void onNativeBacktraceDetected(String backtrace, String mMessageString, long mMessageWhen, boolean fromProcessErrorState) {
 
             }
+
+            @Override
+            public void onDeadLockAnrDetected(String mainThreadStackTrace, String lockHeldThread1, String lockHeldThread2, Map.Entry<int[], String[]> waitingList) {
+
+            }
+
+            @Override
+            public void onMainThreadStuckAtNativePollOnce(String mainThreadStackTrace) {
+
+            }
+
         });
         signalAnrTracer.onStartTrace();
     }
@@ -187,10 +263,18 @@ public class MatrixApplication extends Application {
         return new SQLiteLintPlugin(sqlLiteConfig);
     }
 
-    private BatteryMonitorPlugin configureBatteryCanary() {
+    private BatteryMonitorPlugin configureBatteryCanary(Context context) {
+        if (!BatteryEventDelegate.isInit()) {
+            BatteryEventDelegate.init((Application) context.getApplicationContext());
+        }
         // Configuration of battery plugin is really complicated.
         // See it in BatteryCanaryInitHelper.
-        return BatteryCanaryInitHelper.createMonitor();
+        // return BatteryCanarySimpleInitHelper.createMonitor(context);  // for simplified showcase
+        return BatteryCanaryInitHelper.createMonitor(context);
+    }
+
+    private MatrixLifecycleConfig configureMatrixLifecycle() {
+        return new MatrixLifecycleConfig(new SupervisorConfig(true, true, new ArrayList<String>()), true, true, new LifecycleThreadConfig(), true);
     }
 
     public static Context getContext() {

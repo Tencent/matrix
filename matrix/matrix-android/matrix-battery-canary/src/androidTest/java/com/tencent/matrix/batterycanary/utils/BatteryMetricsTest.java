@@ -23,10 +23,12 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Process;
 import android.os.SystemClock;
+import android.system.Os;
 import android.text.TextUtils;
 import android.util.Log;
 
 import com.tencent.matrix.batterycanary.TestUtils;
+import com.tencent.matrix.batterycanary.monitor.feature.CompositeMonitors;
 
 import org.junit.After;
 import org.junit.Assert;
@@ -44,6 +46,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Stack;
+import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -53,7 +56,6 @@ import androidx.test.platform.app.InstrumentationRegistry;
 
 import static com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil.JIFFY_MILLIS;
 import static com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil.ONE_HOR;
-import static com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil.ONE_MIN;
 
 
 @RunWith(AndroidJUnit4.class)
@@ -101,6 +103,88 @@ public class BatteryMetricsTest {
         Assert.assertNotNull(powerProfile);
         Assert.assertNotNull(PowerProfile.getInstance());
         Assert.assertTrue(PowerProfile.getInstance().isSupported());
+    }
+
+    @Test
+    public void testReadPowerProfileTest() throws Exception {
+        Class<?> clazz = Class.forName("com.android.internal.os.PowerProfile");
+        Constructor<?> constructor = clazz.getConstructor(Context.class);
+        Object obj = constructor.newInstance(mContext);
+        Assert.assertNotNull(obj);
+
+        int id = mContext.getResources().getIdentifier("power_profile_test", "xml", "android");
+        Assert.assertTrue(id > 0);
+    }
+
+    @Test
+    public void testFindPowerProfileFile() throws Exception {
+        Callable<File> findBlock = new Callable<File>() {
+            @Override
+            public File call() {
+                String customDirs = Os.getenv("CUST_POLICY_DIRS");
+                Assert.assertFalse(TextUtils.isEmpty(customDirs));
+                for (String dir : customDirs.split(":")) {
+                    // example: /hw_product/etc/xml/power_profile.xml
+                    File file = new File(dir, "/xml/power_profile.xml");
+                    if (file.exists() && file.canRead()) {
+                        return file;
+                    }
+                }
+                return null;
+            }
+        };
+
+        File file = findBlock.call();
+        if (file != null) {
+            PowerProfile powerProfile = new PowerProfile(mContext);
+            Assert.fail(PowerProfile.getResType());
+            powerProfile.readPowerValuesFromFilePath(mContext, file);
+            powerProfile.initCpuClusters();
+            powerProfile.smoke();
+        }
+    }
+
+    @Test
+    public void KernelCpuUidFreqTimeReaderCompat() throws IOException {
+        PowerProfile powerProfile = PowerProfile.init(mContext);
+        Assert.assertNotNull(powerProfile);
+        Assert.assertTrue(powerProfile.isSupported());
+
+        int[] clusterSteps = new int[powerProfile.getNumCpuClusters()];
+        for (int i = 0; i < clusterSteps.length; i++) {
+            clusterSteps[i] = powerProfile.getNumSpeedStepsInCpuCluster(i);
+        }
+        KernelCpuUidFreqTimeReader reader = new KernelCpuUidFreqTimeReader(Process.myPid(), clusterSteps);
+        reader.smoke();
+    }
+
+    @Test
+    public void testCpuCoreStepSpeedsSampling() throws IOException, InterruptedException {
+        PowerProfile powerProfile = PowerProfile.init(mContext);
+        Assert.assertNotNull(powerProfile);
+        Assert.assertTrue(powerProfile.isSupported());
+
+        List<int[]> cpuFreqSteps = BatteryCanaryUtil.getCpuFreqSteps();
+        int[] cpuCurrentFreq = BatteryCanaryUtil.getCpuCurrentFreq();
+        Assert.assertNotNull(cpuFreqSteps);
+        Assert.assertNotNull(cpuCurrentFreq);
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (true) {
+                }
+            }
+        }).start();
+
+        CompositeMonitors.CpuFreqSampler sampler = new CompositeMonitors.CpuFreqSampler(BatteryCanaryUtil.getCpuFreqSteps());
+        Assert.assertTrue(sampler.isCompat(powerProfile));
+        if (!TestUtils.isAssembleTest()) {
+            while (true) {
+                sampler.count(BatteryCanaryUtil.getCpuCurrentFreq());
+                Thread.sleep(5000L);
+            }
+        }
     }
 
     @Test
@@ -259,7 +343,7 @@ public class BatteryMetricsTest {
         for (int i = 0; i < readers.length; i++) {
             KernelCpuSpeedReader kernelCpuSpeedReader = readers[i];
             Assert.assertNotNull(kernelCpuSpeedReader);
-            Assert.assertTrue(kernelCpuSpeedReader.readTotoal() > 0);
+            Assert.assertTrue(kernelCpuSpeedReader.readTotal() > 0);
             long[] cpuCoreJiffies = kernelCpuSpeedReader.readAbsolute();
             Assert.assertEquals(powerProfile.getNumSpeedStepsInCpuCluster(i), cpuCoreJiffies.length);
             for (int j = 0; j < cpuCoreJiffies.length; j++) {
@@ -291,7 +375,7 @@ public class BatteryMetricsTest {
         for (int i = 0; i < readers.length; i++) {
             KernelCpuSpeedReader kernelCpuSpeedReader = readers[i];
             Assert.assertNotNull(kernelCpuSpeedReader);
-            long cpuCoreJiffies = kernelCpuSpeedReader.readTotoal();
+            long cpuCoreJiffies = kernelCpuSpeedReader.readTotal();
             Assert.assertTrue("idx = " + i + ",  read = " + Arrays.toString(kernelCpuSpeedReader.readAbsolute()), cpuCoreJiffies > 0);
             cpuJiffiesBgn += cpuCoreJiffies;
         }
@@ -303,7 +387,7 @@ public class BatteryMetricsTest {
         for (int i = 0; i < readers.length; i++) {
             KernelCpuSpeedReader kernelCpuSpeedReader = readers[i];
             Assert.assertNotNull(kernelCpuSpeedReader);
-            long cpuCoreJiffies = kernelCpuSpeedReader.readTotoal();
+            long cpuCoreJiffies = kernelCpuSpeedReader.readTotal();
             Assert.assertTrue(cpuCoreJiffies > 0);
             cpuJiffiesEnd += cpuCoreJiffies;
         }
@@ -346,7 +430,7 @@ public class BatteryMetricsTest {
         for (int i = 0; i < readers.length; i++) {
             KernelCpuSpeedReader kernelCpuSpeedReader = readers[i];
             Assert.assertNotNull(kernelCpuSpeedReader);
-            long cpuCoreJiffies = kernelCpuSpeedReader.readTotoal();
+            long cpuCoreJiffies = kernelCpuSpeedReader.readTotal();
             Assert.assertTrue("idx = " + i + ",  read = " + Arrays.toString(kernelCpuSpeedReader.readAbsolute()), cpuCoreJiffies > 0);
             cpuJiffiesBgn += cpuCoreJiffies;
         }
@@ -366,7 +450,7 @@ public class BatteryMetricsTest {
         for (int i = 0; i < readers.length; i++) {
             KernelCpuSpeedReader kernelCpuSpeedReader = readers[i];
             Assert.assertNotNull(kernelCpuSpeedReader);
-            long cpuCoreJiffies = kernelCpuSpeedReader.readTotoal();
+            long cpuCoreJiffies = kernelCpuSpeedReader.readTotal();
             Assert.assertTrue(cpuCoreJiffies > 0);
             cpuJiffiesEnd += cpuCoreJiffies;
         }
@@ -513,7 +597,7 @@ public class BatteryMetricsTest {
         for (int i = 0; i < readers.length; i++) {
             KernelCpuSpeedReader kernelCpuSpeedReader = readers[i];
             Assert.assertNotNull(kernelCpuSpeedReader);
-            long cpuCoreJiffies = kernelCpuSpeedReader.readTotoal();
+            long cpuCoreJiffies = kernelCpuSpeedReader.readTotal();
             Assert.assertTrue("idx = " + i + ",  read = " + Arrays.toString(kernelCpuSpeedReader.readAbsolute()), cpuCoreJiffies > 0);
             cpuJiffiesBgn += cpuCoreJiffies;
         }
@@ -532,7 +616,7 @@ public class BatteryMetricsTest {
         for (int i = 0; i < readers.length; i++) {
             KernelCpuSpeedReader kernelCpuSpeedReader = readers[i];
             Assert.assertNotNull(kernelCpuSpeedReader);
-            long cpuCoreJiffies = kernelCpuSpeedReader.readTotoal();
+            long cpuCoreJiffies = kernelCpuSpeedReader.readTotal();
             Assert.assertTrue(cpuCoreJiffies > 0);
             cpuJiffiesEnd += cpuCoreJiffies;
         }
@@ -807,6 +891,64 @@ public class BatteryMetricsTest {
         if (!TestUtils.isAssembleTest()) {
             Assert.fail(sb.toString());
         }
+    }
+
+    @Test
+    public void testRead() throws IOException {
+        PowerProfile powerProfile = PowerProfile.init(mContext);
+        Assert.assertNotNull(powerProfile);
+        Assert.assertTrue(powerProfile.isSupported());
+
+        List<KernelCpuFreqPolicyReader> read = KernelCpuFreqPolicyReader.read();
+        long uptimeBgn = SystemClock.uptimeMillis();
+        long policyBgn = 0;
+        long kernelBgn = 0;
+        long procBgn = ProcStatUtil.of(Process.myPid()).getJiffies();
+
+        for (KernelCpuFreqPolicyReader item : read) {
+            policyBgn += item.readTotal();
+        }
+        KernelCpuSpeedReader[] readers = new KernelCpuSpeedReader[BatteryCanaryUtil.getCpuCoreNum()];
+        for (int i = 0; i < BatteryCanaryUtil.getCpuCoreNum(); i++) {
+            final int numSpeedSteps = powerProfile.getNumSpeedStepsInCpuCluster(powerProfile.getClusterByCpuNum(i));
+            readers[i] = new KernelCpuSpeedReader(i, numSpeedSteps);
+        }
+        for (int i = 0; i < readers.length; i++) {
+            KernelCpuSpeedReader kernelCpuSpeedReader = readers[i];
+            Assert.assertNotNull(kernelCpuSpeedReader);
+            long cpuCoreJiffies = kernelCpuSpeedReader.readTotal();
+            Assert.assertTrue("idx = " + i + ",  read = " + Arrays.toString(kernelCpuSpeedReader.readAbsolute()), cpuCoreJiffies > 0);
+            kernelBgn += cpuCoreJiffies;
+        }
+
+        // No matter full-running or sleep, the delta of cpufreq policy & cpu speed time is always the same?
+        CpuConsumption.hanoi(20);
+        // try {
+        //     Thread.sleep(10000L);
+        // } catch (InterruptedException e) {
+        //     e.printStackTrace();
+        // }
+
+        long uptimeEnd = SystemClock.uptimeMillis();
+        long policyEnd = 0;
+        long kernelEnd = 0;
+        long procEnd = ProcStatUtil.of(Process.myPid()).getJiffies();
+
+        for (KernelCpuFreqPolicyReader item : read) {
+            policyEnd += item.readTotal();
+        }
+        for (int i = 0; i < readers.length; i++) {
+            KernelCpuSpeedReader kernelCpuSpeedReader = readers[i];
+            Assert.assertNotNull(kernelCpuSpeedReader);
+            long cpuCoreJiffies = kernelCpuSpeedReader.readTotal();
+            Assert.assertTrue(cpuCoreJiffies > 0);
+            kernelEnd += cpuCoreJiffies;
+        }
+
+        Assert.fail("policy: " + (policyEnd - policyBgn) * 10f / (uptimeEnd - uptimeBgn)
+                + ", kernel: " + (kernelEnd - kernelBgn) * 10f / (uptimeEnd - uptimeBgn)
+                + ", procStat: " + (procEnd - procBgn) * 10f / (uptimeEnd - uptimeBgn)
+        );
     }
 
     public static class CpuConsumption {

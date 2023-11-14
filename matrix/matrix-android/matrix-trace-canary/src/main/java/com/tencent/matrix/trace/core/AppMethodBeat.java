@@ -22,10 +22,11 @@ import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.SystemClock;
 
-import com.tencent.matrix.AppActiveMatrixDelegate;
+import com.tencent.matrix.lifecycle.owners.ProcessUILifecycleOwner;
 import com.tencent.matrix.trace.constants.Constants;
 import com.tencent.matrix.trace.hacker.ActivityThreadHacker;
 import com.tencent.matrix.trace.listeners.IAppMethodBeatListener;
+import com.tencent.matrix.trace.listeners.ILooperListener;
 import com.tencent.matrix.trace.util.Utils;
 import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
@@ -68,21 +69,19 @@ public class AppMethodBeat implements BeatLifecycle {
     private static final Object updateTimeLock = new Object();
     private static volatile boolean isPauseUpdateTime = false;
     private static Runnable checkStartExpiredRunnable = null;
-    private static LooperMonitor.LooperDispatchListener looperMonitorListener = new LooperMonitor.LooperDispatchListener() {
+    private static ILooperListener looperMonitorListener = new ILooperListener() {
         @Override
         public boolean isValid() {
             return status >= STATUS_READY;
         }
 
         @Override
-        public void dispatchStart() {
-            super.dispatchStart();
+        public void onDispatchBegin(String log) {
             AppMethodBeat.dispatchBegin();
         }
 
         @Override
-        public void dispatchEnd() {
-            super.dispatchEnd();
+        public void onDispatchEnd(String log, long beginNs, long endNs) {
             AppMethodBeat.dispatchEnd();
         }
     };
@@ -311,7 +310,7 @@ public class AppMethodBeat implements BeatLifecycle {
     }
 
     public static String getVisibleScene() {
-        return AppActiveMatrixDelegate.INSTANCE.getVisibleScene();
+        return ProcessUILifecycleOwner.INSTANCE.getVisibleScene();
     }
 
     /**

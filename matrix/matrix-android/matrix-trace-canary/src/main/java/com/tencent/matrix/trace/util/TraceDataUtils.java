@@ -58,7 +58,7 @@ public class TraceDataUtils {
                 }
 
                 if (!isBegin) {
-                    MatrixLog.d(TAG, "never begin! pass this method[%s]", getMethodId(trueId));
+                    // MatrixLog.d(TAG, "never begin! pass this method[%s]", getMethodId(trueId));
                     continue;
                 }
 

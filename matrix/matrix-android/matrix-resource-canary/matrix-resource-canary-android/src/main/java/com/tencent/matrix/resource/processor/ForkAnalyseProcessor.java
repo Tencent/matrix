@@ -2,15 +2,17 @@ package com.tencent.matrix.resource.processor;
 
 import android.os.Build;
 
-import com.tencent.matrix.memorydump.MemoryDumpManager;
+import com.tencent.matrix.resource.MemoryUtil;
 import com.tencent.matrix.resource.analyzer.model.ActivityLeakResult;
 import com.tencent.matrix.resource.analyzer.model.DestroyedActivityInfo;
 import com.tencent.matrix.resource.config.ResourceConfig;
 import com.tencent.matrix.resource.config.SharePluginInfo;
+import com.tencent.matrix.resource.dumper.HprofFileManager;
 import com.tencent.matrix.resource.watcher.ActivityRefWatcher;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 
 /**
  * HPROF file analysis processor using fork dump.
@@ -28,6 +30,8 @@ public class ForkAnalyseProcessor extends BaseLeakProcessor {
 
     @Override
     public boolean process(DestroyedActivityInfo destroyedActivityInfo) {
+        publishIssue(SharePluginInfo.IssueType.LEAK_FOUND, ResourceConfig.DumpMode.NO_DUMP, destroyedActivityInfo.mActivityName, destroyedActivityInfo.mKey, "no dump", "0");
+
         if (Build.VERSION.SDK_INT > ResourceConfig.FORK_DUMP_SUPPORTED_API_GUARD) {
             MatrixLog.e(TAG, "cannot fork-dump with unsupported API version " + Build.VERSION.SDK_INT);
             publishIssue(
@@ -57,10 +61,15 @@ public class ForkAnalyseProcessor extends BaseLeakProcessor {
 
         final long dumpStart = System.currentTimeMillis();
 
-        final File hprof = getDumpStorageManager().newHprofFile();
+        File hprof = null;
+        try {
+            hprof = HprofFileManager.INSTANCE.prepareHprofFile("FAP", true);
+        } catch (FileNotFoundException e) {
+            MatrixLog.printErrStackTrace(TAG, e, "");
+        }
 
         if (hprof != null) {
-            if (!MemoryDumpManager.dumpBlock(hprof.getPath())) {
+            if (!MemoryUtil.dump(hprof.getPath(), 600)) {
                 MatrixLog.e(TAG, String.format("heap dump for further analyzing activity with key [%s] was failed, just ignore.",
                         key));
                 return false;

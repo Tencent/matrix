@@ -1,4 +1,7 @@
 apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+
+apply from: rootProject.file('gradle/WeChatNativeDepend.gradle')
 
 android {
     compileSdkVersion rootProject.ext.compileSdkVersion
@@ -10,6 +13,7 @@ android {
         versionCode 1
         versionName rootProject.ext.VERSION_NAME
     }
+
     buildTypes {
         release {
             minifyEnabled false
@@ -17,17 +21,26 @@ android {
             consumerProguardFiles 'proguard-rules.pro'
         }
     }
+
+    externalNativeBuild {
+        cmake {
+            path "src/main/cpp/CMakeLists.txt"
+        }
+    }
 }
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    testImplementation 'junit:junit:4.12'
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:$gradle.KOTLIN_VERSION"
 
     implementation project(':matrix-resource-canary:matrix-resource-canary-common')
     implementation "com.tencent.tinker:tinker-ziputils:1.9.2"
     implementation project(':matrix-android-lib')
+    implementation project(':matrix-android-commons')
+    implementation project(':matrix-backtrace')
     implementation project(':matrix-resource-canary:matrix-resource-canary-analyzer')
-    implementation project(':matrix-memory-dump')
+
+    testImplementation 'junit:junit:4.12'
 }
 
 version = rootProject.ext.VERSION_NAME
@@ -38,7 +51,6 @@ if("External" == rootProject.ext.PUBLISH_CHANNEL) {
 }
 else {
     apply from: rootProject.file('gradle/WeChatPublish.gradle')
-    apply from: rootProject.file('gradle/WeChatNativeDepend.gradle')
     wechatPublish {
         artifactId = POM_ARTIFACT_ID
     }

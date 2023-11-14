@@ -143,4 +143,19 @@ task buildAndPublishRepo(type: Copy, dependsOn: ['build', 'publish']) {
     }
 }
 
+task publishRepo(type: Copy, dependsOn: ['publish']) {
+    group = "publishing"
+
+    // save artifacts files to artifacts folder
+    from configurations.archives.allArtifacts.files
+    into "${rootProject.buildDir}/outputs/artifacts/"
+    rename { String fileName ->
+        fileName.replace("release.aar", "${version}.aar")
+    }
+
+    doLast {
+        println "* published to repo: ${project.group}:${project.name}:${project.version}"
+    }
+}
+
 apply from: rootProject.file('gradle/check.gradle')

@@ -2,12 +2,12 @@
 buildscript {
     ext {
         minSdkVersion = 19
-        targetSdkVersion = 23
+        targetSdkVersion = 29
         compileSdkVersion = 29
         buildToolsVersion = '29.0.2'
         javaVersion = JavaVersion.VERSION_1_8
-        
-        MATRIX_VERSION = "2.0.5"
+
+        MATRIX_VERSION = "2.1.0"
 
         GROUP = 'com.tencent.matrix'
         VERSION_NAME = "${MATRIX_VERSION}"
@@ -39,13 +39,14 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:4.1.0'
+        classpath 'com.android.tools.build:gradle:7.2.2'
         classpath 'com.google.code.gson:gson:2.7'
         classpath  'com.google.gradle:osdetector-gradle-plugin:1.6.0'
         classpath ("com.tencent.matrix:matrix-gradle-plugin:${MATRIX_VERSION}") {
             changing = true
             exclude group: 'com.android.tools.build', module: 'gradle'
         }
+        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.4.32'
     }
 }
 

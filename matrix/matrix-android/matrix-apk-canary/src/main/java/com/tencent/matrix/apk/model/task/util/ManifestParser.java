@@ -126,7 +126,7 @@ public class ManifestParser {
         } else {
             JsonObject preObject = jsonStack.peek();
             JsonArray jsonArray = null;
-            if (preObject.has(name)) {
+            if (preObject.has(name)&&preObject.isJsonArray()) {
                 jsonArray = preObject.getAsJsonArray(name);
                 jsonArray.add(jsonObject);
             } else {

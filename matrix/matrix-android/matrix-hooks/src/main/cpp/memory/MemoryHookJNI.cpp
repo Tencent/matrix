@@ -29,83 +29,88 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-// @formatter:off
-const HookFunction HOOK_MALL_FUNCTIONS[] = {
-        {"malloc", (void *) h_malloc, NULL},
-        {"calloc", (void *) h_calloc, NULL},
-        {"realloc", (void *) h_realloc, NULL},
-        {"free", (void *) h_free, NULL},
-        {"memalign", (void *) HANDLER_FUNC_NAME(memalign), NULL},
-        {"posix_memalign", (void *) HANDLER_FUNC_NAME(posix_memalign), NULL},
-        // CXX functions
-#ifndef __LP64__
-        {"_Znwj",                               (void*) HANDLER_FUNC_NAME(_Znwj), NULL},
-        {"_ZnwjSt11align_val_t",                (void*) HANDLER_FUNC_NAME(_ZnwjSt11align_val_t), NULL},
-        {"_ZnwjSt11align_val_tRKSt9nothrow_t",  (void*) HANDLER_FUNC_NAME(_ZnwjSt11align_val_tRKSt9nothrow_t), NULL},
-        {"_ZnwjRKSt9nothrow_t",                 (void*) HANDLER_FUNC_NAME(_ZnwjRKSt9nothrow_t), NULL},
 
-        {"_Znaj",                               (void*) HANDLER_FUNC_NAME(_Znaj), NULL},
-        {"_ZnajSt11align_val_t",                (void*) HANDLER_FUNC_NAME(_ZnajSt11align_val_t), NULL},
-        {"_ZnajSt11align_val_tRKSt9nothrow_t",  (void*) HANDLER_FUNC_NAME(_ZnajSt11align_val_tRKSt9nothrow_t), NULL},
-        {"_ZnajRKSt9nothrow_t",                 (void*) HANDLER_FUNC_NAME(_ZnajRKSt9nothrow_t), NULL},
+#define HOOK_REGISTER(regex, target_sym, target_so) \
+    do {                                            \
+        FETCH_ORIGIN_FUNC_OF_SO(target_sym, target_so); \
+        if(!ORIGINAL_FUNC_NAME(target_sym)) {       \
+             LOGE(TAG, "hook failed: fetch origin func failed: %s", #target_sym);                                       \
+             break;                                       \
+        } \
+        int ret = xhook_grouped_register(HOOK_REQUEST_GROUPID_MEMORY, regex, #target_sym, (void*) HANDLER_FUNC_NAME(target_sym), nullptr); \
+        LOGD(TAG, "hook fn, regex: %s, sym: %s, ret: %d", regex, #target_sym, ret);                                                         \
+    } while(0);
 
-        {"_ZdlPvj",                             (void*) HANDLER_FUNC_NAME(_ZdlPvj), NULL},
-        {"_ZdlPvjSt11align_val_t",              (void*) HANDLER_FUNC_NAME(_ZdlPvjSt11align_val_t), NULL},
-        {"_ZdaPvj",                             (void*) HANDLER_FUNC_NAME(_ZdaPvj), NULL},
-        {"_ZdaPvjSt11align_val_t",              (void*) HANDLER_FUNC_NAME(_ZdaPvjSt11align_val_t), NULL},
-#else
-        {"_Znwm",                               (void*) HANDLER_FUNC_NAME(_Znwm), NULL},
-        {"_ZnwmSt11align_val_t",                (void*) HANDLER_FUNC_NAME(_ZnwmSt11align_val_t), NULL},
-        {"_ZnwmSt11align_val_tRKSt9nothrow_t",  (void*) HANDLER_FUNC_NAME(_ZnwmSt11align_val_tRKSt9nothrow_t), NULL},
-        {"_ZnwmRKSt9nothrow_t",                 (void*) HANDLER_FUNC_NAME(_ZnwmRKSt9nothrow_t), NULL},
+#define HOOK_REGISTER_REGEX_LIBC(target_sym) \
+    HOOK_REGISTER(regex, target_sym, "libc.so")
 
-        {"_Znam",                               (void*) HANDLER_FUNC_NAME(_Znam), NULL},
-        {"_ZnamSt11align_val_t",                (void*) HANDLER_FUNC_NAME(_ZnamSt11align_val_t), NULL},
-        {"_ZnamSt11align_val_tRKSt9nothrow_t",  (void*) HANDLER_FUNC_NAME(_ZnamSt11align_val_tRKSt9nothrow_t), NULL},
-        {"_ZnamRKSt9nothrow_t",                 (void*) HANDLER_FUNC_NAME(_ZnamRKSt9nothrow_t), NULL},
+#define HOOK_REGISTER_REGEX_LIBCXX(target_sym) \
+    HOOK_REGISTER(regex, target_sym, "libc++_shared.so")
 
-        {"_ZdlPvm",                             (void*) HANDLER_FUNC_NAME(_ZdlPvm), NULL},
-        {"_ZdlPvmSt11align_val_t",              (void*) HANDLER_FUNC_NAME(_ZdlPvmSt11align_val_t), NULL},
-        {"_ZdaPvm",                             (void*) HANDLER_FUNC_NAME(_ZdaPvm), NULL},
-        {"_ZdaPvmSt11align_val_t",              (void*) HANDLER_FUNC_NAME(_ZdaPvmSt11align_val_t), NULL},
-#endif
-        {"_ZdlPv",                              (void*) HANDLER_FUNC_NAME(_ZdlPv), NULL},
-        {"_ZdlPvSt11align_val_t",               (void*) HANDLER_FUNC_NAME(_ZdlPvSt11align_val_t), NULL},
-        {"_ZdlPvSt11align_val_tRKSt9nothrow_t", (void*) HANDLER_FUNC_NAME(_ZdlPvSt11align_val_tRKSt9nothrow_t), NULL},
-        {"_ZdlPvRKSt9nothrow_t",                (void*) HANDLER_FUNC_NAME(_ZdlPvRKSt9nothrow_t), NULL},
-
-        {"_ZdaPv",                              (void*) HANDLER_FUNC_NAME(_ZdaPv), NULL},
-        {"_ZdaPvSt11align_val_t",               (void*) HANDLER_FUNC_NAME(_ZdaPvSt11align_val_t), NULL},
-        {"_ZdaPvSt11align_val_tRKSt9nothrow_t", (void*) HANDLER_FUNC_NAME(_ZdaPvSt11align_val_tRKSt9nothrow_t), NULL},
-        {"_ZdaPvRKSt9nothrow_t",                (void*) HANDLER_FUNC_NAME(_ZdaPvRKSt9nothrow_t), NULL},
-
-        {"strdup", (void*) HANDLER_FUNC_NAME(strdup), (void **) ORIGINAL_FUNC_NAME(strdup)},
-        {"strndup", (void*) HANDLER_FUNC_NAME(strndup), (void **) ORIGINAL_FUNC_NAME(strndup)},
-};
-
-static const HookFunction HOOK_MMAP_FUNCTIONS[] = {
-        {"mmap", (void *) h_mmap, NULL},
-        {"munmap", (void *) h_munmap, NULL},
-        {"mremap", (void *) h_mremap, NULL},
-#if __ANDROID_API__ >= __ANDROID_API_L__
-        {"mmap64", (void *) h_mmap64, NULL},
-#endif
-};
-// @formatter:on
 
 bool enable_mmap_hook = false;
 
 static void hook(const char *regex) {
+    HOOK_REGISTER_REGEX_LIBC(malloc)
+    HOOK_REGISTER_REGEX_LIBC(calloc)
+    HOOK_REGISTER_REGEX_LIBC(realloc)
+    HOOK_REGISTER_REGEX_LIBC(free)
 
-    for (auto f : HOOK_MALL_FUNCTIONS) {
-        int ret = xhook_grouped_register(HOOK_REQUEST_GROUPID_MEMORY, regex, f.name, f.handler_ptr, f.origin_ptr);
-        LOGD(TAG, "hook fn, regex: %s, sym: %s, ret: %d", regex, f.name, ret);
-    }
+    HOOK_REGISTER_REGEX_LIBC(memalign)
+    HOOK_REGISTER_REGEX_LIBC(posix_memalign)
+    HOOK_REGISTER_REGEX_LIBC(strdup)
+    HOOK_REGISTER_REGEX_LIBC(strndup)
+
+    // CXX functions
+#ifndef __LP64__
+    HOOK_REGISTER_REGEX_LIBCXX(_Znwj)
+    HOOK_REGISTER_REGEX_LIBCXX(_ZnwjSt11align_val_t)
+    HOOK_REGISTER_REGEX_LIBCXX(_ZnwjSt11align_val_tRKSt9nothrow_t)
+    HOOK_REGISTER_REGEX_LIBCXX(_ZnwjRKSt9nothrow_t)
+
+    HOOK_REGISTER_REGEX_LIBCXX(_Znaj)
+    HOOK_REGISTER_REGEX_LIBCXX(_ZnajSt11align_val_t)
+    HOOK_REGISTER_REGEX_LIBCXX(_ZnajSt11align_val_tRKSt9nothrow_t)
+    HOOK_REGISTER_REGEX_LIBCXX(_ZnajRKSt9nothrow_t)
+
+    HOOK_REGISTER_REGEX_LIBCXX(_ZdlPvj)
+    HOOK_REGISTER_REGEX_LIBCXX(_ZdlPvjSt11align_val_t)
+    HOOK_REGISTER_REGEX_LIBCXX(_ZdaPvj)
+    HOOK_REGISTER_REGEX_LIBCXX(_ZdaPvjSt11align_val_t)
+#else
+    HOOK_REGISTER_REGEX_LIBCXX(_Znwm)
+    HOOK_REGISTER_REGEX_LIBCXX(_ZnwmSt11align_val_t)
+    HOOK_REGISTER_REGEX_LIBCXX(_ZnwmSt11align_val_tRKSt9nothrow_t)
+    HOOK_REGISTER_REGEX_LIBCXX(_ZnwmRKSt9nothrow_t)
+
+    HOOK_REGISTER_REGEX_LIBCXX(_Znam)
+    HOOK_REGISTER_REGEX_LIBCXX(_ZnamSt11align_val_t)
+    HOOK_REGISTER_REGEX_LIBCXX(_ZnamSt11align_val_tRKSt9nothrow_t)
+    HOOK_REGISTER_REGEX_LIBCXX(_ZnamRKSt9nothrow_t)
+
+    HOOK_REGISTER_REGEX_LIBCXX(_ZdlPvm)
+    HOOK_REGISTER_REGEX_LIBCXX(_ZdlPvmSt11align_val_t)
+    HOOK_REGISTER_REGEX_LIBCXX(_ZdaPvm)
+    HOOK_REGISTER_REGEX_LIBCXX(_ZdaPvmSt11align_val_t)
+#endif
+    HOOK_REGISTER_REGEX_LIBCXX(_ZdlPv)
+    HOOK_REGISTER_REGEX_LIBCXX(_ZdlPvSt11align_val_t)
+    HOOK_REGISTER_REGEX_LIBCXX(_ZdlPvSt11align_val_tRKSt9nothrow_t)
+    HOOK_REGISTER_REGEX_LIBCXX(_ZdlPvRKSt9nothrow_t)
+
+    HOOK_REGISTER_REGEX_LIBCXX(_ZdaPv)
+    HOOK_REGISTER_REGEX_LIBCXX(_ZdaPvSt11align_val_t)
+    HOOK_REGISTER_REGEX_LIBCXX(_ZdaPvSt11align_val_tRKSt9nothrow_t)
+    HOOK_REGISTER_REGEX_LIBCXX(_ZdaPvRKSt9nothrow_t)
+
     LOGD(TAG, "mmap enabled ? %d", enable_mmap_hook);
     if (enable_mmap_hook) {
-        for (auto f: HOOK_MMAP_FUNCTIONS) {
-            xhook_grouped_register(HOOK_REQUEST_GROUPID_MEMORY, regex, f.name, f.handler_ptr, f.origin_ptr);
-        }
+        HOOK_REGISTER_REGEX_LIBC(mmap)
+        HOOK_REGISTER_REGEX_LIBC(munmap)
+        HOOK_REGISTER_REGEX_LIBC(mremap)
+#if __ANDROID_API__ >= __ANDROID_API_L__
+        HOOK_REGISTER_REGEX_LIBC(mmap64)
+#endif
     }
 }
 

@@ -11,27 +11,26 @@ public class MatrixTraceExtension {
 
     public void setEnable(boolean enable) {
         this.enable = enable;
-        onTraceEnabled(enable);
     }
 
     public void setBlackListFile(String blackListFile) {
-        this.blackListFile = blackListFile
+        this.blackListFile = blackListFile;
     }
 
     public void setCustomDexTransformName(String customDexTransformName) {
-        this.customDexTransformName = customDexTransformName
+        this.customDexTransformName = customDexTransformName;
     }
 
     public void setBaseMethodMapFile(String baseMethodMapFile) {
-        this.baseMethodMapFile = baseMethodMapFile
+        this.baseMethodMapFile = baseMethodMapFile;
     }
 
     public void setTransformInjectionForced(boolean transformInjectionForced) {
-        this.transformInjectionForced = transformInjectionForced
+        this.transformInjectionForced = transformInjectionForced;
     }
 
     public void setSkipCheckClass(boolean skipCheckClass) {
-        this.skipCheckClass = skipCheckClass
+        this.skipCheckClass = skipCheckClass;
     }
 
     public String getBaseMethodMapFile() {

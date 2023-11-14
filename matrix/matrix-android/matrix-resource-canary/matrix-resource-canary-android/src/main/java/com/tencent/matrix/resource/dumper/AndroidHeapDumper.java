@@ -30,6 +30,7 @@ import com.tencent.matrix.resource.analyzer.model.HeapDump;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -42,25 +43,28 @@ public class AndroidHeapDumper {
     private static final String TAG = "Matrix.AndroidHeapDumper";
 
     private final Context mContext;
-    private final DumpStorageManager mDumpStorageManager;
     private final Handler mMainHandler;
 
     public interface HeapDumpHandler {
         void process(HeapDump result);
     }
 
-    public AndroidHeapDumper(Context context, DumpStorageManager dumpStorageManager) {
-        this(context, dumpStorageManager, new Handler(Looper.getMainLooper()));
+    public AndroidHeapDumper(Context context) {
+        this(context, new Handler(Looper.getMainLooper()));
     }
 
-    public AndroidHeapDumper(Context context, DumpStorageManager dumpStorageManager, Handler mainHandler) {
+    public AndroidHeapDumper(Context context, Handler mainHandler) {
         mContext = context;
-        mDumpStorageManager = dumpStorageManager;
         mMainHandler = mainHandler;
     }
 
     public File dumpHeap(boolean isShowToast) {
-        final File hprofFile = mDumpStorageManager.newHprofFile();
+        File hprofFile = null;
+        try {
+            hprofFile = HprofFileManager.INSTANCE.prepareHprofFile("", false);
+        } catch (FileNotFoundException e) {
+            MatrixLog.printErrStackTrace(TAG, e, "");
+        }
 
         if (null == hprofFile) {
             MatrixLog.w(TAG, "hprof file is null.");

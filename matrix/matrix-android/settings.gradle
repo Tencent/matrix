@@ -18,21 +18,23 @@ include ':matrix-sqlite-lint:matrix-sqlite-lint-android-sdk'
 include ':matrix-battery-canary'
 include ':matrix-arscutil'
 include ':matrix-opengl-leak'
-include ':matrix-memory-dump'
 include ':matrix-traffic'
 
 // Components for memory hook
 include ':matrix-backtrace'
 include ':matrix-hooks'
-include ':matrix-jectl'
+include ':matrix-memguard'
+include ':matrix-mallctl'
 include ':matrix-fd'
 
-// Benchmark
-include ':test:matrix-backtrace-benchmark'
-
-// TEST
-include ':test:test-backtrace'
-include ':test:test-memoryhook'
+//// Benchmark
+//include ':test:matrix-backtrace-benchmark'
+//
+//// TEST
+//include ':test:test-backtrace'
+//include ':test:test-memoryhook'
+//include ':test:test-openglhook'
+include ':matrix-memory-canary'
 
 if (gradle.staticLinkCXX()) {
     include ':matrix-hooks:cxx-static'

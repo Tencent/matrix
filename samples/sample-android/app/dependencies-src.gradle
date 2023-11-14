@@ -13,9 +13,10 @@ dependencies {
             "matrix-sqlite-lint-android-sdk",
             "matrix-hooks",
             "matrix-fd",
-            "matrix-jectl",
+            "matrix-mallctl",
             "matrix-backtrace",
             "matrix-traffic",
+            "matrix-memory-canary",
     ]
 
     matrixModules.each { moduleName ->

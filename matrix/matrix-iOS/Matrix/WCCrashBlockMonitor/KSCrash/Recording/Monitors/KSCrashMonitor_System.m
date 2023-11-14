@@ -335,18 +335,7 @@ static NSString *getReceiptUrlPath() {
  * @return The stringified hex representation of the hash for this device + app.
  */
 static const char *getDeviceAndAppHash() {
-    NSMutableData *data = nil;
-
-#if KSCRASH_HAS_UIDEVICE
-    if ([[UIDevice currentDevice] respondsToSelector:@selector(identifierForVendor)]) {
-        data = [NSMutableData dataWithLength:16];
-        [[UIDevice currentDevice].identifierForVendor getUUIDBytes:data.mutableBytes];
-    } else
-#endif
-    {
-        data = [NSMutableData dataWithLength:6];
-        kssysctl_getMacAddress("en0", [data mutableBytes]);
-    }
+    NSMutableData *data = [[NSMutableData alloc] init];
 
     // Append some device-specific data.
     [data appendData:(NSData * _Nonnull)[nsstringSysctl(@"hw.machine") dataUsingEncoding:NSUTF8StringEncoding]];

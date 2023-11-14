@@ -224,6 +224,8 @@ typedef int (*KSReportWritePointCpuHighThreadCountCallback)(void);
 
 typedef float *(*KSReportWritePointCpuHighThreadValueCallback)(void);
 
+typedef char *(*KSReportWritePointThreadProfileCallback)(void);
+
 #ifdef __cplusplus
 }
 #endif

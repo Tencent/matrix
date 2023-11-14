@@ -1,19 +1,21 @@
 package com.tencent.matrix.batterycanary.monitor.feature;
 
+import android.content.Context;
+import android.os.Handler;
+import android.os.HandlerThread;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.os.Process;
 import android.os.SystemClock;
 import android.text.TextUtils;
 
-import androidx.annotation.AnyThread;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.annotation.RestrictTo;
-import androidx.annotation.WorkerThread;
-
 import com.tencent.matrix.Matrix;
-import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
+import com.tencent.matrix.batterycanary.monitor.BatteryMonitorConfig;
+import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore.Callback;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.DigitEntry;
 import com.tencent.matrix.batterycanary.monitor.feature.MonitorFeature.Snapshot.Entry.ListEntry;
+import com.tencent.matrix.batterycanary.shell.TopThreadFeature;
+import com.tencent.matrix.batterycanary.shell.ui.TopThreadIndicator;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.ProcStatUtil;
 import com.tencent.matrix.util.MatrixLog;
@@ -26,9 +28,17 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
+import androidx.annotation.AnyThread;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.RestrictTo;
+import androidx.annotation.WorkerThread;
+import androidx.core.util.Pair;
+
 @SuppressWarnings("NotNullFieldNotInitialized")
 public final class JiffiesMonitorFeature extends AbsMonitorFeature {
     private static final String TAG = "Matrix.battery.JiffiesMonitorFeature";
+    private static boolean sSkipNewAdded = false; // FIXME: move to feature's configuration
 
     public interface JiffiesListener {
         @Deprecated
@@ -43,6 +53,12 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
     @Override
     protected String getTag() {
         return TAG;
+    }
+
+    @Override
+    public void onTurnOn() {
+        super.onTurnOn();
+        sSkipNewAdded = mCore.getConfig().isSkipNewAddedPidTid;
     }
 
     @Override
@@ -75,8 +91,18 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
         return JiffiesSnapshot.currentJiffiesSnapshot(ProcessInfo.getProcessInfo(), mCore.getConfig().isStatPidProc);
     }
 
+    @WorkerThread
+    public JiffiesSnapshot currentJiffiesSnapshot(int pid) {
+        return JiffiesSnapshot.currentJiffiesSnapshot(ProcessInfo.getProcessInfo(pid), mCore.getConfig().isStatPidProc);
+    }
+
+    @WorkerThread
+    public UidJiffiesSnapshot currentUidJiffiesSnapshot() {
+        return UidJiffiesSnapshot.of(mCore.getContext(), mCore.getConfig());
+    }
+
     @AnyThread
-    public void currentJiffiesSnapshot(@NonNull final BatteryMonitorCore.Callback<JiffiesSnapshot> callback) {
+    public void currentJiffiesSnapshot(@NonNull final Callback<JiffiesSnapshot> callback) {
         mCore.getHandler().post(new Runnable() {
             @Override
             public void run() {
@@ -85,12 +111,36 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
         });
     }
 
+    @AnyThread
+    public void currentJiffiesSnapshot(final int pid, @NonNull final Callback<JiffiesSnapshot> callback) {
+        mCore.getHandler().post(new Runnable() {
+            @Override
+            public void run() {
+                callback.onGetJiffies(currentJiffiesSnapshot(pid));
+            }
+        });
+    }
+
+
     @SuppressWarnings("SpellCheckingInspection")
     @RestrictTo(RestrictTo.Scope.LIBRARY)
     public static class ProcessInfo {
         static ProcessInfo getProcessInfo() {
             ProcessInfo processInfo = new ProcessInfo();
             processInfo.pid = Process.myPid();
+            processInfo.name = Matrix.isInstalled() ? MatrixUtil.getProcessName(Matrix.with().getApplication()) : "default";
+            processInfo.threadInfo = ThreadInfo.parseThreadsInfo(processInfo.pid);
+            processInfo.upTime = SystemClock.uptimeMillis();
+            processInfo.time = System.currentTimeMillis();
+            return processInfo;
+        }
+
+        static ProcessInfo getProcessInfo(int pid) {
+            if (pid == Process.myPid()) {
+                return getProcessInfo();
+            }
+            ProcessInfo processInfo = new ProcessInfo();
+            processInfo.pid = pid;
             processInfo.name = Matrix.isInstalled() ? MatrixUtil.getProcessName(Matrix.with().getApplication()) : "default";
             processInfo.threadInfo = ThreadInfo.parseThreadsInfo(processInfo.pid);
             processInfo.upTime = SystemClock.uptimeMillis();
@@ -231,12 +281,16 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
         }
 
         public int pid;
+        public boolean isNewAdded;
         public String name;
         public DigitEntry<Long> totalJiffies;
         public ListEntry<ThreadJiffiesSnapshot> threadEntries;
         public DigitEntry<Integer> threadNum;
+        public ListEntry<ThreadJiffiesSnapshot> deadThreadEntries;
 
         private JiffiesSnapshot() {
+            isNewAdded = false;
+            deadThreadEntries = ListEntry.ofEmpty();
         }
 
         @Override
@@ -246,11 +300,13 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
                 protected JiffiesSnapshot computeDelta() {
                     JiffiesSnapshot delta = new JiffiesSnapshot();
                     delta.pid = end.pid;
+                    delta.isNewAdded = end.isNewAdded;
                     delta.name = end.name;
                     delta.totalJiffies = Differ.DigitDiffer.globalDiff(bgn.totalJiffies, end.totalJiffies);
                     delta.threadNum = Differ.DigitDiffer.globalDiff(bgn.threadNum, end.threadNum);
                     delta.threadEntries = ListEntry.ofEmpty();
 
+                    // for Existing threads
                     if (end.threadEntries.getList().size() > 0) {
                         List<ThreadJiffiesSnapshot> deltaThreadEntries = new ArrayList<>();
                         for (ThreadJiffiesSnapshot endRecord : end.threadEntries.getList()) {
@@ -269,7 +325,10 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
                                 deltaThreadJiffies.name = endRecord.name;
                                 deltaThreadJiffies.stat = endRecord.stat;
                                 deltaThreadJiffies.isNewAdded = isNewAdded;
-                                deltaThreadEntries.add(deltaThreadJiffies);
+                                if (!isNewAdded || !sSkipNewAdded) {
+                                    // Skip new added tid for now
+                                    deltaThreadEntries.add(deltaThreadJiffies);
+                                }
                             }
                         }
                         if (deltaThreadEntries.size() > 0) {
@@ -285,6 +344,30 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
                             delta.threadEntries = ListEntry.of(deltaThreadEntries);
                         }
                     }
+
+                    // for Dead threads
+                    if (bgn.threadEntries.getList().size() > 0) {
+                        List<ThreadJiffiesSnapshot> deadThreadEntries = Collections.emptyList();
+                        for (ThreadJiffiesSnapshot bgn : bgn.threadEntries.getList()) {
+                            boolean isDead = true;
+                            for (ThreadJiffiesSnapshot exist : delta.threadEntries.getList()) {
+                                if (exist.tid == bgn.tid) {
+                                    isDead = false;
+                                    break;
+                                }
+                            }
+                            if (isDead) {
+                                if (deadThreadEntries.isEmpty()) {
+                                    deadThreadEntries = new ArrayList<>();
+                                }
+                                deadThreadEntries.add(bgn);
+                            }
+                        }
+                        if (!deadThreadEntries.isEmpty()) {
+                            delta.deadThreadEntries = ListEntry.of(deadThreadEntries);
+                        }
+                    }
+
                     return delta;
                 }
             };
@@ -323,6 +406,8 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
             public boolean isNewAdded;
             @NonNull
             public String stat;
+            @Nullable
+            public String stack;
 
             public ThreadJiffiesEntry(Long value) {
                 super(value);
@@ -338,6 +423,7 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
     class ThreadWatchDog implements Runnable {
         private long duringMillis;
         private final List<ProcessInfo.ThreadInfo> mWatchingThreads = new ArrayList<>();
+        @Nullable private Handler mWatchHandler;
 
         @Override
         public void run() {
@@ -361,14 +447,20 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
             }
 
             // next loop
-            if (duringMillis <= 5 * 60 * 1000L) {
-                mCore.getHandler().postDelayed(this, setNext(5 * 60 * 1000L));
-            } else if (duringMillis <= 10 * 60 * 1000L) {
-                mCore.getHandler().postDelayed(this, setNext(10 * 60 * 1000L));
-            } else {
-                // done
-                synchronized (mWatchingThreads) {
-                    mWatchingThreads.clear();
+            synchronized (mWatchingThreads) {
+                if (duringMillis <= 5 * 60 * 1000L) {
+                    if (mWatchHandler != null) {
+                        mWatchHandler.postDelayed(this, setNext(5 * 60 * 1000L));
+                    }
+                } else if (duringMillis <= 10 * 60 * 1000L) {
+                    if (mWatchHandler != null) {
+                        mWatchHandler.postDelayed(this, setNext(10 * 60 * 1000L));
+                    }
+                } else {
+                    // done
+                    synchronized (mWatchingThreads) {
+                        mWatchingThreads.clear();
+                    }
                 }
             }
         }
@@ -389,13 +481,22 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
             synchronized (mWatchingThreads) {
                 MatrixLog.i(TAG, "ThreadWatchDog start watching, count = " + mWatchingThreads.size());
                 if (!mWatchingThreads.isEmpty()) {
-                    mCore.getHandler().postDelayed(this, reset());
+                    HandlerThread handlerThread = new HandlerThread("matrix_watchdog");
+                    handlerThread.start();
+                    mWatchHandler = new Handler(handlerThread.getLooper());
+                    mWatchHandler.postDelayed(this, reset());
                 }
             }
         }
 
         void stop() {
-            mCore.getHandler().removeCallbacks(this);
+            synchronized (mWatchingThreads) {
+                if (mWatchHandler != null) {
+                    mWatchHandler.removeCallbacks(this);
+                    mWatchHandler.getLooper().quit();
+                    mWatchHandler = null;
+                }
+            }
         }
 
         private long reset() {
@@ -407,6 +508,234 @@ public final class JiffiesMonitorFeature extends AbsMonitorFeature {
         private long setNext(long millis) {
             duringMillis += millis;
             return millis;
+        }
+    }
+
+    public static class UidJiffiesSnapshot extends Snapshot<UidJiffiesSnapshot> {
+        public static UidJiffiesSnapshot of(Context context, BatteryMonitorConfig config) {
+            UidJiffiesSnapshot curr = new UidJiffiesSnapshot();
+            List<Pair<Integer, String>> procList = TopThreadFeature.getProcList(context);
+            curr.pidCurrJiffiesList = new ArrayList<>(procList.size());
+            long sum = 0;
+            MatrixLog.i(TAG, "currProcList: " + procList);
+            for (Pair<Integer, String> item : procList) {
+                //noinspection ConstantConditions
+                int pid = item.first;
+                String procName = String.valueOf(item.second);
+                if (ProcStatUtil.exists(pid)) {
+                    MatrixLog.i(TAG, "proc: " + pid);
+                    JiffiesSnapshot snapshot = JiffiesSnapshot.currentJiffiesSnapshot(ProcessInfo.getProcessInfo(pid), config.isStatPidProc);
+                    snapshot.name = TopThreadIndicator.getProcSuffix(procName);
+                    sum += snapshot.totalJiffies.get();
+                    curr.pidCurrJiffiesList.add(snapshot);
+                } else {
+                    if (config.ipcJiffiesCollector != null) {
+                        IpcJiffies.IpcProcessJiffies ipcProcessJiffies = config.ipcJiffiesCollector.apply(item);
+                        if (ipcProcessJiffies != null) {
+                            MatrixLog.i(TAG, "ipc: " + pid);
+                            JiffiesSnapshot snapshot = IpcJiffies.toLocal(ipcProcessJiffies);
+                            snapshot.name = TopThreadIndicator.getProcSuffix(procName);
+                            sum += snapshot.totalJiffies.get();
+                            curr.pidCurrJiffiesList.add(snapshot);
+                            continue;
+                        }
+                    }
+                    MatrixLog.i(TAG, "skip: " + pid);
+                }
+            }
+            curr.totalUidJiffies = DigitEntry.of(sum);
+            return curr;
+        }
+
+        public DigitEntry<Long> totalUidJiffies = DigitEntry.of(0L);
+        public List<JiffiesSnapshot> pidCurrJiffiesList = Collections.emptyList();
+        public List<Delta<JiffiesSnapshot>> pidDeltaJiffiesList = Collections.emptyList();
+
+        @Override
+        public Delta<UidJiffiesSnapshot> diff(UidJiffiesSnapshot bgn) {
+            return new Delta<UidJiffiesSnapshot>(bgn, this) {
+                @Override
+                protected UidJiffiesSnapshot computeDelta() {
+                    UidJiffiesSnapshot delta = new UidJiffiesSnapshot();
+                    delta.totalUidJiffies = Differ.DigitDiffer.globalDiff(bgn.totalUidJiffies, end.totalUidJiffies);
+                    if (end.pidCurrJiffiesList.size() > 0) {
+                        delta.pidDeltaJiffiesList = new ArrayList<>();
+                        for (JiffiesSnapshot end : end.pidCurrJiffiesList) {
+                            JiffiesSnapshot last = null;
+                            for (JiffiesSnapshot bgn : bgn.pidCurrJiffiesList) {
+                                if (bgn.pid == end.pid) {
+                                    last = bgn;
+                                    break;
+                                }
+                            }
+                            if (last == null) {
+                                // newAdded Pid
+                                end.isNewAdded = true;
+                                JiffiesSnapshot empty = new JiffiesSnapshot();
+                                empty.pid = end.pid;
+                                empty.name = end.name;
+                                empty.totalJiffies = DigitEntry.of(0L);
+                                empty.threadEntries = ListEntry.ofEmpty();
+                                empty.threadNum = DigitEntry.of(0);
+                                last = empty;
+                            }
+                            if (!end.isNewAdded || !sSkipNewAdded) {
+                                // Skip new added pid for now
+                                Delta<JiffiesSnapshot> deltaPidJiffies = end.diff(last);
+                                delta.pidDeltaJiffiesList.add(deltaPidJiffies);
+                            }
+                        }
+
+                        Collections.sort(delta.pidDeltaJiffiesList, new Comparator<Delta<JiffiesSnapshot>>() {
+                            @Override
+                            public int compare(Delta<JiffiesSnapshot> o1, Delta<JiffiesSnapshot> o2) {
+                                long minus = o1.dlt.totalJiffies.get() - o2.dlt.totalJiffies.get();
+                                if (minus == 0) return 0;
+                                if (minus > 0) return -1;
+                                return 1;
+                            }
+                        });
+                    }
+                    return delta;
+                }
+            };
+        }
+
+
+        public static final class IpcJiffies {
+            public static IpcProcessJiffies toIpc(JiffiesSnapshot local) {
+                IpcProcessJiffies ipc = new IpcProcessJiffies();
+                ipc.pid = local.pid;
+                ipc.name = local.name;
+                ipc.threadNum = local.threadNum.get();
+                ipc.totalJiffies = local.totalJiffies.get();
+                ipc.threadJiffyList = new ArrayList<>(local.threadEntries.getList().size());
+                for (JiffiesSnapshot.ThreadJiffiesSnapshot item : local.threadEntries.getList()) {
+                    ipc.threadJiffyList.add(toIpc(item));
+                }
+                return ipc;
+            }
+
+            public static IpcProcessJiffies.IpcThreadJiffies toIpc(JiffiesSnapshot.ThreadJiffiesSnapshot local) {
+                IpcProcessJiffies.IpcThreadJiffies ipc = new IpcProcessJiffies.IpcThreadJiffies();
+                ipc.tid = local.tid;
+                ipc.name = local.name;
+                ipc.stat = local.stat;
+                ipc.jiffies = local.get();
+                return ipc;
+            }
+
+            public static JiffiesSnapshot toLocal(IpcProcessJiffies ipc) {
+                JiffiesSnapshot local = new JiffiesSnapshot();
+                local.pid = ipc.pid;
+                local.name = ipc.name;
+                local.totalJiffies = DigitEntry.of(ipc.totalJiffies);
+                List<JiffiesSnapshot.ThreadJiffiesSnapshot> threadJiffiesList = Collections.emptyList();
+                if (!ipc.threadJiffyList.isEmpty()) {
+                    threadJiffiesList = new ArrayList<>(ipc.threadJiffyList.size());
+                    for (IpcProcessJiffies.IpcThreadJiffies item : ipc.threadJiffyList) {
+                        JiffiesSnapshot.ThreadJiffiesSnapshot threadJiffies = toLocal(item);
+                        threadJiffiesList.add(threadJiffies);
+                    }
+                }
+                local.threadEntries = ListEntry.of(threadJiffiesList);
+                local.threadNum = DigitEntry.of(threadJiffiesList.size());
+                return local;
+            }
+
+            public static JiffiesSnapshot.ThreadJiffiesSnapshot toLocal(IpcProcessJiffies.IpcThreadJiffies ipc) {
+                JiffiesSnapshot.ThreadJiffiesSnapshot local = new JiffiesSnapshot.ThreadJiffiesSnapshot(ipc.jiffies);
+                local.name = ipc.name;
+                local.stat = ipc.stat;
+                local.tid = ipc.tid;
+                local.isNewAdded = true;
+                return local;
+            }
+
+            public static class IpcProcessJiffies implements Parcelable {
+                public int pid;
+                public String name;
+                public long totalJiffies;
+                public int threadNum;
+                public List<IpcThreadJiffies> threadJiffyList;
+
+                protected IpcProcessJiffies(Parcel in) {
+                    pid = in.readInt();
+                    name = in.readString();
+                    totalJiffies = in.readLong();
+                    threadNum = in.readInt();
+                    threadJiffyList = in.createTypedArrayList(IpcThreadJiffies.CREATOR);
+                }
+
+                public static final Creator<IpcProcessJiffies> CREATOR = new Creator<IpcProcessJiffies>() {
+                    @Override
+                    public IpcProcessJiffies createFromParcel(Parcel in) {
+                        return new IpcProcessJiffies(in);
+                    }
+                    @Override
+                    public IpcProcessJiffies[] newArray(int size) {
+                        return new IpcProcessJiffies[size];
+                    }
+                };
+
+                public IpcProcessJiffies() {
+                }
+
+                @Override
+                public int describeContents() {
+                    return 0;
+                }
+
+                @Override
+                public void writeToParcel(Parcel dest, int flags) {
+                    dest.writeInt(pid);
+                    dest.writeString(name);
+                    dest.writeLong(totalJiffies);
+                    dest.writeInt(threadNum);
+                    dest.writeTypedList(threadJiffyList);
+                }
+
+                public static class IpcThreadJiffies implements Parcelable {
+                    public int tid;
+                    public String name;
+                    public String stat;
+                    public long jiffies;
+
+                    protected IpcThreadJiffies(Parcel in) {
+                        tid = in.readInt();
+                        name = in.readString();
+                        stat = in.readString();
+                        jiffies = in.readLong();
+                    }
+
+                    public static final Creator<IpcThreadJiffies> CREATOR = new Creator<IpcThreadJiffies>() {
+                        @Override
+                        public IpcThreadJiffies createFromParcel(Parcel in) {
+                            return new IpcThreadJiffies(in);
+                        }
+                        @Override
+                        public IpcThreadJiffies[] newArray(int size) {
+                            return new IpcThreadJiffies[size];
+                        }
+                    };
+
+                    public IpcThreadJiffies() {
+                    }
+
+                    @Override
+                    public int describeContents() {
+                        return 0;
+                    }
+
+                    @Override
+                    public void writeToParcel(Parcel dest, int flags) {
+                        dest.writeInt(tid);
+                        dest.writeString(name);
+                        dest.writeString(stat);
+                        dest.writeLong(jiffies);
+                    }
+                }
+            }
         }
     }
 }

@@ -20,7 +20,7 @@
 @implementation WCCrashBlockJsonUtil
 
 + (NSData *)jsonEncode:(id)object withError:(NSError **)error {
-    return [KSJSONCodec encode:object options:KSJSONEncodeOptionPretty error:nil];
+    return [KSJSONCodec encode:object options:KSJSONEncodeOptionNone error:nil];
 }
 
 + (id)jsonDecode:(NSData *)jsonData withError:(NSError **)error {

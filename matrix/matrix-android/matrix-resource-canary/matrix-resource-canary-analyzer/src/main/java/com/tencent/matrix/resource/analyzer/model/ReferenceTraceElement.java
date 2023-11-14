@@ -79,6 +79,14 @@ public final class ReferenceTraceElement implements Serializable {
 
     @Override
     public String toString() {
+        return toString(false);
+    }
+
+    public String toCollectableString() {
+        return toString(true);
+    }
+
+    private String toString(final boolean collectable) {
         String string = "";
 
         if (type == STATIC_FIELD) {
@@ -92,7 +100,11 @@ public final class ReferenceTraceElement implements Serializable {
         string += className;
 
         if (referenceName != null) {
-            string += " " + referenceName;
+            if (collectable && holder == ARRAY) {
+                string += " [*]";
+            } else {
+                string += " " + referenceName;
+            }
         } else {
             string += " instance";
         }

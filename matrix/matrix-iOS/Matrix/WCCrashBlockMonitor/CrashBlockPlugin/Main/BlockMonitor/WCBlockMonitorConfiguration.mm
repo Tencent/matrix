@@ -16,32 +16,18 @@
 
 #import "WCBlockMonitorConfiguration.h"
 
-#define kMonitor "Monitor"
-#define kRunloopTimeOut "RunloopTimeOut"
-#define kCheckPeriodTime "CheckPeriodTime"
-#define kMainThreadHandle "MainThreadHandle"
-#define kPerStackInterval "PerStackInterval"
-#define kMainThreadCount "MainThreadCount"
-#define kFrameDropLimit "FrameDropLimit"
-#define kGetFPSLog "GetFPSLog"
-#define kCPUPercentLimit "CPUPercentLimit"
-#define kPrintCPUUsage "PrintCPUUsage"
-#define kGetCPUHighLog "GetCPUHigh"
-#define kGetPowerConsumeStack "GetPowerConsumeStack"
-#define kPowerConsumeCPULimit "PowerConsumeCPULimit"
-#define kFilterSameStack "FilterSameStack"
-#define kTriggerFilteredCount "TriggerFilteredCount"
-#define kPrintMemoryUsage "PrintMemoryUse"
-
 @implementation WCBlockMonitorConfiguration
 
 + (id)defaultConfig {
     WCBlockMonitorConfiguration *configuration = [[WCBlockMonitorConfiguration alloc] init];
     configuration.runloopTimeOut = g_defaultRunLoopTimeOut;
+    configuration.runloopLowThreshold = g_defaultRunLoopTimeOut;
+    configuration.bRunloopDynamicThreshold = NO;
     configuration.checkPeriodTime = g_defaultCheckPeriodTime;
     configuration.bMainThreadHandle = NO;
     configuration.perStackInterval = g_defaultPerStackInterval;
     configuration.mainThreadCount = g_defaultMainThreadCount;
+    configuration.bMainThreadProfile = NO;
     configuration.limitCPUPercent = g_defaultCPUUsagePercent;
     configuration.bPrintCPUUsage = NO;
     configuration.bGetCPUHighLog = NO;
@@ -50,66 +36,44 @@
     configuration.powerConsumeStackCPULimit = g_defaultPowerConsumeCPULimit;
     configuration.bFilterSameStack = NO;
     configuration.triggerToBeFilteredCount = 10;
+    configuration.dumpDailyLimit = g_defaultDumpDailyLimit;
     configuration.bPrintMemomryUse = NO;
-    configuration.bEnableLocalSymbolicate = YES;
+    configuration.bPrintCPUFrequency = NO;
+    configuration.bGetDiskIOStack = NO;
+    configuration.singleReadLimit = g_defaultSingleReadLimit;
+    configuration.singleWriteLimit = g_defaultSingleWriteLimit;
+    configuration.totalReadLimit = g_defaultTotalReadLimit;
+    configuration.totalWriteLimit = g_defaultTotalWriteLimit;
+    configuration.memoryWarningThresholdInMB = g_defaultMemoryThresholdInMB;
+    configuration.bSensitiveRunloopHangDetection = NO;
+    configuration.bSuspendAllThreads = YES;
+    configuration.bEnableSnapshot = YES;
+
     return configuration;
 }
 
-- (id)initWithCoder:(NSCoder *)aDecoder {
-    self = [super init];
-    if (self) {
-        _runloopTimeOut = (uint32_t)[aDecoder decodeInt32ForKey:@kRunloopTimeOut];
-        _checkPeriodTime = (uint32_t)[aDecoder decodeInt32ForKey:@kCheckPeriodTime];
-        _bMainThreadHandle = [aDecoder decodeBoolForKey:@kMainThreadHandle];
-        _perStackInterval = (uint32_t)[aDecoder decodeInt64ForKey:@kPerStackInterval];
-        _mainThreadCount = (uint32_t)[aDecoder decodeInt32ForKey:@kMainThreadCount];
-        _limitCPUPercent = [aDecoder decodeFloatForKey:@kCPUPercentLimit];
-        _bPrintCPUUsage = [aDecoder decodeBoolForKey:@kPrintCPUUsage];
-        _bGetCPUHighLog = [aDecoder decodeBoolForKey:@kGetCPUHighLog];
-        _bGetPowerConsumeStack = [aDecoder decodeBoolForKey:@kGetPowerConsumeStack];
-        _powerConsumeStackCPULimit = [aDecoder decodeFloatForKey:@kPowerConsumeCPULimit];
-        _bFilterSameStack = [aDecoder decodeBoolForKey:@kFilterSameStack];
-        _triggerToBeFilteredCount = (uint32_t)[aDecoder decodeInt32ForKey:@kTriggerFilteredCount];
-        _bPrintMemomryUse = [aDecoder decodeBoolForKey:@kPrintMemoryUsage];
-    }
-    return self;
-}
-
-- (void)encodeWithCoder:(NSCoder *)aCoder {
-    [aCoder encodeInt64:_runloopTimeOut forKey:@kRunloopTimeOut];
-    [aCoder encodeInt32:_checkPeriodTime forKey:@kCheckPeriodTime];
-    [aCoder encodeBool:_bMainThreadHandle forKey:@kMainThreadHandle];
-    [aCoder encodeInt32:_perStackInterval forKey:@kPerStackInterval];
-    [aCoder encodeInt32:_mainThreadCount forKey:@kMainThreadCount];
-    [aCoder encodeFloat:_limitCPUPercent forKey:@kCPUPercentLimit];
-    [aCoder encodeBool:_bPrintCPUUsage forKey:@kPrintCPUUsage];
-    [aCoder encodeBool:_bGetCPUHighLog forKey:@kGetCPUHighLog];
-    [aCoder encodeBool:_bGetPowerConsumeStack forKey:@kGetPowerConsumeStack];
-    [aCoder encodeFloat:_powerConsumeStackCPULimit forKey:@kPowerConsumeCPULimit];
-    [aCoder encodeBool:_bFilterSameStack forKey:@kFilterSameStack];
-    [aCoder encodeInt32:_triggerToBeFilteredCount forKey:@kTriggerFilteredCount];
-    [aCoder encodeBool:_bPrintMemomryUse forKey:@kPrintMemoryUsage];
-}
-
 - (NSString *)description {
-    return [NSString stringWithFormat:@"RunLoopTimeOut[%u],CheckPeriodTime[%d],\
-            \nMainThreadHandle[%d],PerStackInterval[%d],MainThreadCount[%d],\
-            \nCPUUsagePercent[%f],PrintCPU[%d],GetCPUHighLog[%d],GetPowerConsumeStack[%d],\
-            \nPowerConsumeCPULimit[%f],FilterSameStact[%d],TriggerBeFilteredCount[%u],\
-            \nPrintMemory[%d]",
-                                      self.checkPeriodTime,
-                                      self.runloopTimeOut,
-                                      self.bMainThreadHandle,
-                                      self.perStackInterval,
-                                      self.mainThreadCount,
-                                      self.limitCPUPercent,
-                                      self.bPrintCPUUsage,
-                                      self.bGetCPUHighLog,
-                                      self.bGetPowerConsumeStack,
-                                      self.powerConsumeStackCPULimit,
-                                      self.bFilterSameStack,
-                                      self.triggerToBeFilteredCount,
-                                      self.bPrintMemomryUse];
+    NSDictionary *properties = @{
+        @"runloopTimeOut": @(self.runloopTimeOut),
+        @"runloopLowThreshold": @(self.runloopLowThreshold),
+        @"bRunloopDynamicThreshold": @(self.bRunloopDynamicThreshold),
+        @"bMainThreadHandle": @(self.bMainThreadHandle),
+        @"perStackInterval": @(self.perStackInterval),
+        @"bMainThreadProfile": @(self.bMainThreadProfile),
+        @"limitCPUPercent": @(self.limitCPUPercent),
+        @"bPrintCPUUsage": @(self.bPrintCPUUsage),
+        @"bGetCPUHighLog": @(self.bGetCPUHighLog),
+        @"bGetPowerConsumeStack": @(self.bGetPowerConsumeStack),
+        @"powerConsumeStackCPULimit": @(self.powerConsumeStackCPULimit),
+        @"dumpDailyLimit": @(self.dumpDailyLimit),
+        @"bPrintMemomryUse": @(self.bPrintMemomryUse),
+        @"bPrintCPUFrequency": @(self.bPrintCPUFrequency),
+        @"memoryWarningThresholdInMB": @(self.memoryWarningThresholdInMB),
+        @"bSensitiveRunloopHangDetection": @(self.bSensitiveRunloopHangDetection),
+        @"bSuspendAllThreads": @(self.bSuspendAllThreads),
+        @"bEnableSnapshot": @(self.bEnableSnapshot),
+    };
+    return [properties description];
 }
 
 @end

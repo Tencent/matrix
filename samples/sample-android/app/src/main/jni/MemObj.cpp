@@ -68,6 +68,10 @@ Java_sample_tencent_matrix_hooks_JNIObj_reallocTest(JNIEnv *env, jobject instanc
 
 }
 
+class AllocTest {
+    int i;
+};
+
 JNIEXPORT void JNICALL
 Java_sample_tencent_matrix_hooks_JNIObj_mallocTest(JNIEnv *env, jclass clazz) {
 //    malloc_test();
@@ -75,8 +79,15 @@ Java_sample_tencent_matrix_hooks_JNIObj_mallocTest(JNIEnv *env, jclass clazz) {
     void *p = malloc(300 * 1024 * 1024);
     LOGD(TAG, "p = %p", p);
     free(p);
-
+    p = new AllocTest;
+    LOGD(TAG, "p = %p", p);
     p = new int[1024]; // leak
+    LOGD(TAG, "p = %p", p);
+
+    int *i = new int;
+    delete i;
+    int *ia = new int[100];
+    delete[] ia;
 
 #undef LEN
 }

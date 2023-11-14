@@ -19,11 +19,10 @@ package com.tencent.matrix.hook.memory;
 import android.text.TextUtils;
 
 import androidx.annotation.Keep;
-import androidx.annotation.Nullable;
+import androidx.annotation.NonNull;
 
 import com.tencent.matrix.hook.AbsHook;
 import com.tencent.matrix.hook.HookManager;
-import com.tencent.matrix.memguard.MemGuard;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.HashSet;
@@ -46,6 +45,7 @@ public class MemoryHook extends AbsHook {
     private int     mStacktraceLogThreshold = 10 * 1024 * 1024;
     private boolean mEnableStacktrace;
     private boolean mEnableMmap;
+    private boolean mMemGuardInstalled = false;
     private boolean mHookInstalled = false;
 
     private MemoryHook() {
@@ -109,6 +109,10 @@ public class MemoryHook extends AbsHook {
         return this;
     }
 
+    public void notifyMemGuardInstalled() {
+        mMemGuardInstalled = true;
+    }
+
     /**
      * notice: it is an exclusive interface
      */
@@ -119,7 +123,7 @@ public class MemoryHook extends AbsHook {
                 .commitHooks();
     }
 
-    @Nullable
+    @NonNull
     @Override
     protected String getNativeLibraryName() {
         return "matrix-memoryhook";
@@ -127,7 +131,7 @@ public class MemoryHook extends AbsHook {
 
     @Override
     public boolean onConfigure() {
-        if (MemGuard.isInstalled()) {
+        if (mMemGuardInstalled) {
             MatrixLog.w(TAG, "MemGuard has been installed, skip MemoryHook install logic.");
             return false;
         }

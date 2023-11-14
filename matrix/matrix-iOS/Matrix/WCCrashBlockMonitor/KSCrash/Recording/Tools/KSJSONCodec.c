@@ -207,7 +207,7 @@ static int addQuotedEscapedString(KSJSONEncodeContext *const context, const char
     // Always close string, even if we failed to write its content
     int closeResult = addJSONData(context, "\"", 1);
 
-    return result || closeResult;
+    return closeResult;
 }
 
 int ksjson_beginElement(KSJSONEncodeContext *const context, const char *const name) {
@@ -223,7 +223,7 @@ int ksjson_beginElement(KSJSONEncodeContext *const context, const char *const na
     unlikely_if(context->prettyPrint && context->containerLevel > 0) {
         unlikely_if((result = addJSONData(context, "\n", 1)) != KSJSON_OK) { return result; }
         for (int i = 0; i < context->containerLevel; i++) {
-            unlikely_if((result = addJSONData(context, "    ", 4)) != KSJSON_OK) { return result; }
+            unlikely_if((result = addJSONData(context, "\t", 1)) != KSJSON_OK) { return result; }
         }
     }
 
@@ -258,19 +258,83 @@ int ksjson_addBooleanElement(KSJSONEncodeContext *const context, const char *con
     }
 }
 
+void ksjson_floatingPointSPrintf(char *buff, double value) {
+    char *pos = buff;
+
+    if (value < 0) {
+        *pos++ = '-';
+        value = -value;
+    }
+
+    int64_t intPart = (int64_t)value;
+    double floatPart = value - intPart;
+    int len = 0;
+    do {
+        *pos++ = (intPart % 10) + '0';
+        intPart /= 10;
+        len++;
+    } while (intPart > 0);
+
+    for (int i = 0; i < len / 2; ++i) {
+        char tmp = *(pos - 1 - i);
+        *(pos - 1 - i) = *(pos - len + i);
+        *(pos - len + i) = tmp;
+    }
+
+    if (floatPart > 0) {
+        *pos++ = '.';
+
+        int mod = 1000000;
+        intPart = (int64_t)(floatPart * mod + 0.5);
+
+        do {
+            mod /= 10;
+            *pos++ = intPart / mod + '0';
+            intPart %= mod;
+        } while (intPart > 0);
+    }
+    *pos++ = 0;
+}
+
 int ksjson_addFloatingPointElement(KSJSONEncodeContext *const context, const char *const name, double value) {
     int result = ksjson_beginElement(context, name);
     unlikely_if(result != KSJSON_OK) { return result; }
     char buff[30];
-    sprintf(buff, "%lg", value);
+    ksjson_floatingPointSPrintf(buff, value);
+    //sprintf(buff, "%lg", value); // avoid malloc
     return addJSONData(context, buff, (int)strlen(buff));
+}
+
+void ksjson_integerSPrintf(char *buff, int64_t value) {
+    char *pos = buff;
+
+    if (value < 0) {
+        *pos++ = '-';
+        value = -value;
+    }
+
+    int len = 0;
+    do {
+        *pos++ = (value % 10) + '0';
+        value /= 10;
+        len++;
+    } while (value > 0);
+
+    for (int i = 0; i < len / 2; ++i) {
+        char tmp = *(pos - 1 - i);
+        *(pos - 1 - i) = *(pos - len + i);
+        *(pos - len + i) = tmp;
+    }
+
+    *pos++ = 0;
 }
 
 int ksjson_addIntegerElement(KSJSONEncodeContext *const context, const char *const name, int64_t value) {
     int result = ksjson_beginElement(context, name);
     unlikely_if(result != KSJSON_OK) { return result; }
     char buff[30];
-    sprintf(buff, "%" PRId64, value);
+    ksjson_integerSPrintf(buff, value);
+//    sprintf(buff, "%" PRId64, value); // avoid localeconv_l
     return addJSONData(context, buff, (int)strlen(buff));
 }
 
@@ -348,6 +412,9 @@ int ksjson_beginArray(KSJSONEncodeContext *const context, const char *const name
     }
 
     context->containerLevel++;
+    if (context->containerLevel >= KSJSON_MAX_OBJECT_COUNT) {
+        return KSJSON_ERROR_TOO_MANY_OBJECTS;
+    }
     context->isObject[context->containerLevel] = false;
     context->containerFirstEntry = true;
 
@@ -361,6 +428,9 @@ int ksjson_beginObject(KSJSONEncodeContext *const context, const char *const nam
     }
 
     context->containerLevel++;
+    if (context->containerLevel >= KSJSON_MAX_OBJECT_COUNT) {
+        return KSJSON_ERROR_TOO_MANY_OBJECTS;
+    }
     context->isObject[context->containerLevel] = true;
     context->containerFirstEntry = true;
 
@@ -378,7 +448,7 @@ int ksjson_endContainer(KSJSONEncodeContext *const context) {
         int result;
         unlikely_if((result = addJSONData(context, "\n", 1)) != KSJSON_OK) { return result; }
         for (int i = 0; i < context->containerLevel; i++) {
-            unlikely_if((result = addJSONData(context, "    ", 4)) != KSJSON_OK) { return result; }
+            unlikely_if((result = addJSONData(context, "\t", 1)) != KSJSON_OK) { return result; }
         }
     }
     context->containerFirstEntry = false;

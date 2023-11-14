@@ -19,8 +19,6 @@
 #include "nsobject_hook_method.h"
 #include "sb_tree.h"
 
-#include <dlfcn.h>
-
 #pragma mark -
 #pragma mark Types
 
@@ -305,11 +303,11 @@ void disable_object_event_logger() {
         *object_record_allocation_event_enable = false;
     }
 #endif
-    //nsobject_hook_alloc_method();
+    nsobject_hook_alloc_method();
 }
 
 object_type_db *object_type_db_open_or_create(const char *event_dir) {
-    object_type_db *db_context = (object_type_db *)inter_malloc(sizeof(object_type_db));
+    object_type_db *db_context = (object_type_db *)inter_calloc(1, sizeof(object_type_db));
 
     db_context->lock = __malloc_lock_init();
     db_context->buffer_source0 = new buffer_source_memory();
@@ -336,10 +334,22 @@ void object_type_db_close(object_type_db *db_context) {
         return;
     }
 
-    delete db_context->object_type_list;
-    delete db_context->object_type_exists;
-    delete db_context->buffer_source0;
-    delete db_context->buffer_source1;
+    if (db_context == s_object_type_db) {
+        s_object_type_db = NULL;
+    }
+
+    if (db_context->object_type_list) {
+        delete db_context->object_type_list;
+    }
+    if (db_context->object_type_exists) {
+        delete db_context->object_type_exists;
+    }
+    if (db_context->buffer_source0) {
+        delete db_context->buffer_source0;
+    }
+    if (db_context->buffer_source1) {
+        delete db_context->buffer_source1;
+    }
     inter_free(db_context);
 }
 

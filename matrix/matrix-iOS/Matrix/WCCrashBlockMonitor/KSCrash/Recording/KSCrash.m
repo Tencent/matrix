@@ -130,6 +130,7 @@ static NSString *getBasePath() {
 @synthesize onHandleSignalCallBack = _onHandleSignalCallBack;
 @synthesize onWritePointThread = _onWritePointThread;
 @synthesize onWritePointThreadRepeatNumber = _onWritePointThreadRepeatNumber;
+@synthesize onWriteProfileCallBack = _onWriteProfileCallBack;
 @synthesize onWritePointCpuHighThread = _onWritePointCpuHighThread;
 @synthesize onWritePointCpuHighThreadCount = _onWritePointCpuHighThreadCount;
 @synthesize onWritePointCpuHighThreadValue = _onWritePointCpuHighThreadValue;
@@ -252,6 +253,11 @@ static NSString *getBasePath() {
 - (void)setOnWritePointThreadRepeatNumber:(KSReportWritePointThreadRepeatNumberCallback)onWritePointThreadRepeatNumber {
     _onWritePointThreadRepeatNumber = onWritePointThreadRepeatNumber;
     kscrash_setPointThreadRepeatNumberCallback(onWritePointThreadRepeatNumber);
+}
+
+- (void)setOnWriteProfileCallBack:(KSReportWritePointThreadProfileCallback)onWriteProfileCallBack {
+    _onWriteProfileCallBack = onWriteProfileCallBack;
+    kscrash_setPointThreadProfileCallback(onWriteProfileCallBack);
 }
 
 - (void)setOnWritePointCpuHighThread:(KSReportWritePointCpuHighThreadCallback)onWritePointCpuHighThread {
@@ -401,34 +407,9 @@ static NSString *getBasePath() {
                  lineOfCode:(NSString *)lineOfCode
                  stackTrace:(NSArray *)stackTrace
               logAllThreads:(BOOL)logAllThreads
-           terminateProgram:(BOOL)terminateProgram {
-    const char *cName = [name cStringUsingEncoding:NSUTF8StringEncoding];
-    const char *cReason = [reason cStringUsingEncoding:NSUTF8StringEncoding];
-    const char *cLanguage = [language cStringUsingEncoding:NSUTF8StringEncoding];
-    const char *cLineOfCode = [lineOfCode cStringUsingEncoding:NSUTF8StringEncoding];
-
-    const char *cStackTrace = NULL;
-    if (stackTrace != NULL) {
-        NSError *error = nil;
-        NSData *jsonData = [KSJSONCodec encode:stackTrace options:0 error:&error];
-        if (jsonData == nil || error != nil) {
-            KSLOG_ERROR(@"Error encoding stack trace to JSON: %@", error);
-            // Don't return, since we can still record other useful information.
-        }
-        NSString *jsonString = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
-        cStackTrace = [jsonString cStringUsingEncoding:NSUTF8StringEncoding];
-    }
-
-    kscrash_reportUserException(cName, cReason, cLanguage, cLineOfCode, cStackTrace, logAllThreads, terminateProgram);
-}
-
-- (void)reportUserException:(NSString *)name
-                     reason:(NSString *)reason
-                   language:(NSString *)language
-                 lineOfCode:(NSString *)lineOfCode
-                 stackTrace:(NSArray *)stackTrace
-              logAllThreads:(BOOL)logAllThreads
+             enableSnapshot:(BOOL)enableSnapshot
            terminateProgram:(BOOL)terminateProgram
+              writeCpuUsage:(BOOL)writeCpuUsage
                dumpFilePath:(NSString *)dumpFilePath
                    dumpType:(int)dumpType {
     const char *cName = [name cStringUsingEncoding:NSUTF8StringEncoding];
@@ -449,15 +430,17 @@ static NSString *getBasePath() {
         cStackTrace = [jsonString cStringUsingEncoding:NSUTF8StringEncoding];
     }
 
-    kscrash_reportUserExceptionWithSelfDefinedPath(cName,
-                                                   cReason,
-                                                   cLanguage,
-                                                   cLineOfCode,
-                                                   cStackTrace,
-                                                   logAllThreads,
-                                                   terminateProgram,
-                                                   cDumpFilePath,
-                                                   dumpType);
+    kscrash_reportUserException(cName,
+                                cReason,
+                                cLanguage,
+                                cLineOfCode,
+                                cStackTrace,
+                                logAllThreads,
+                                enableSnapshot,
+                                terminateProgram,
+                                writeCpuUsage,
+                                cDumpFilePath,
+                                dumpType);
 }
 
 // ============================================================================

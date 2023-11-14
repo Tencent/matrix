@@ -133,6 +133,8 @@ void kscrash_setPointThreadCallback(const KSReportWritePointThreadCallback onWri
 
 void kscrash_setPointThreadRepeatNumberCallback(const KSReportWritePointThreadRepeatNumberCallback onWritePointThreadRepeatNumber);
 
+void kscrash_setPointThreadProfileCallback(const KSReportWritePointThreadProfileCallback onWritePointProfileThread);
+
 void kscrash_setPointCpuHighThreadCallback(const KSReportWritePointCpuHighThreadCallback onWritePointCpuHighThread);
 
 void kscrash_setPointCpuHighThreadCountCallback(const KSReportWritePointCpuHighThreadCountCallback onWritePointCpuHighThreadCount);
@@ -176,6 +178,9 @@ void kscrash_setMaxReportCount(int maxReportCount);
  * @param logAllThreads If true, suspend all threads and log their state. Note that this incurs a
  *                      performance penalty, so it's best to use only on fatal errors.
  *
+ * @param enableSnapshot This option is valid only when `logAllThreads` is enabled.
+ * If ture, take a snapshot of callstack and registers of all other suspended threads, and resume them as early as possible.
+ *
  * @param terminateProgram If true, do not return from this function call. Terminate the program instead.
  */
 void kscrash_reportUserException(const char *name,
@@ -184,17 +189,11 @@ void kscrash_reportUserException(const char *name,
                                  const char *lineOfCode,
                                  const char *stackTrace,
                                  bool logAllThreads,
-                                 bool terminateProgram);
-
-void kscrash_reportUserExceptionWithSelfDefinedPath(const char *name,
-                                                    const char *reason,
-                                                    const char *language,
-                                                    const char *lineOfCode,
-                                                    const char *stackTrace,
-                                                    bool logAllThreads,
-                                                    bool terminateProgram,
-                                                    const char *dumpFilePath,
-                                                    int dumpType);
+                                 bool enableSnapshot,
+                                 bool terminateProgram,
+                                 bool writeCpuUsage,
+                                 const char *dumpFilePath,
+                                 int dumpType);
 
 #pragma mark-- Notifications --
 

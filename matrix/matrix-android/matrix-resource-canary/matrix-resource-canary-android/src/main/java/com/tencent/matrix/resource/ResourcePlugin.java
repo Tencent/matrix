@@ -20,13 +20,15 @@ import android.app.Activity;
 import android.app.Application;
 import android.os.Build;
 
+import com.tencent.matrix.lifecycle.EmptyActivityLifecycleCallbacks;
 import com.tencent.matrix.plugin.Plugin;
 import com.tencent.matrix.plugin.PluginListener;
 import com.tencent.matrix.resource.config.ResourceConfig;
 import com.tencent.matrix.resource.config.SharePluginInfo;
+import com.tencent.matrix.resource.dumper.HprofFileManager;
 import com.tencent.matrix.resource.processor.BaseLeakProcessor;
-import com.tencent.matrix.resource.watcher.ActivityLifeCycleCallbacksAdapter;
 import com.tencent.matrix.resource.watcher.ActivityRefWatcher;
+import com.tencent.matrix.util.MatrixHandlerThread;
 import com.tencent.matrix.util.MatrixLog;
 
 /**
@@ -45,7 +47,7 @@ public class ResourcePlugin extends Plugin {
 
     public static void activityLeakFixer(Application application) {
         // Auto break the path from Views in their holder to gc root when activity is destroyed.
-        application.registerActivityLifecycleCallbacks(new ActivityLifeCycleCallbacksAdapter() {
+        application.registerActivityLifecycleCallbacks(new EmptyActivityLifecycleCallbacks() {
             @Override
             public void onActivityDestroyed(Activity activity) {
                 ActivityLeakFixer.fixInputMethodManagerLeak(activity);
@@ -78,6 +80,12 @@ public class ResourcePlugin extends Plugin {
             return;
         }
         mWatcher.start();
+        MatrixHandlerThread.getDefaultHandler().post(new Runnable() {
+            @Override
+            public void run() {
+                HprofFileManager.INSTANCE.checkExpiredFile();
+            }
+        });
     }
 
     @Override

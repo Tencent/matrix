@@ -146,7 +146,7 @@ public class PthreadHook extends AbsHook {
         }
     }
 
-    @Nullable
+    @NonNull
     @Override
     protected String getNativeLibraryName() {
         return "matrix-pthreadhook";

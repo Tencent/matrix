@@ -1,7 +1,10 @@
 package com.tencent.matrix.openglleak.detector;
 
+import androidx.annotation.Keep;
+
 import com.tencent.matrix.openglleak.comm.FuncNameString;
 
+@Keep
 class FuncSeeker {
 
     public static int getFuncIndex(String targetFuncName) {

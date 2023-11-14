@@ -4,33 +4,43 @@ import android.app.ActivityManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.os.Looper;
-import androidx.annotation.NonNull;
-import androidx.annotation.WorkerThread;
 import android.text.TextUtils;
 
 import com.tencent.matrix.batterycanary.BatteryEventDelegate;
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
+import com.tencent.matrix.batterycanary.stats.BatteryRecord;
+import com.tencent.matrix.batterycanary.stats.BatteryStatsFeature;
 import com.tencent.matrix.batterycanary.utils.BatteryCanaryUtil;
 import com.tencent.matrix.batterycanary.utils.TimeBreaker;
+import com.tencent.matrix.lifecycle.IStateObserver;
+import com.tencent.matrix.lifecycle.owners.ForegroundServiceLifecycleOwner;
+import com.tencent.matrix.lifecycle.owners.OverlayWindowLifecycleOwner;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.WorkerThread;
+
+import static com.tencent.matrix.batterycanary.monitor.AppStats.APP_STAT_BACKGROUND;
+import static com.tencent.matrix.batterycanary.monitor.AppStats.APP_STAT_FLOAT_WINDOW;
+import static com.tencent.matrix.batterycanary.monitor.AppStats.APP_STAT_FOREGROUND;
+import static com.tencent.matrix.batterycanary.monitor.AppStats.APP_STAT_FOREGROUND_SERVICE;
+
 /**
  * @author Kaede
  * @since 2020/12/8
  */
 public final class AppStatMonitorFeature extends AbsMonitorFeature {
-    private static final String TAG = "Matrix.battery.AppStatMonitorFeature";
 
     public interface AppStatListener {
         void onForegroundServiceLeak(boolean isMyself, int appImportance, int globalAppImportance, ComponentName componentName, long millis);
-
         void onAppSateLeak(boolean isMyself, int appImportance, ComponentName componentName, long millis);
     }
 
+    private static final String TAG = "Matrix.battery.AppStatMonitorFeature";
     /**
      * Less important than {@link ActivityManager.RunningAppProcessInfo.IMPORTANCE_GONE}
      */
@@ -62,6 +72,62 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
         }
     };
 
+    private final IStateObserver mFgSrvObserver = new IStateObserver() {
+        @Override
+        public void on() {
+            MatrixLog.i(TAG, "fgSrv >> on");
+            boolean foreground = mCore.isForeground();
+            int appStat = BatteryCanaryUtil.getAppStatImmediately(mCore.getContext(), foreground);
+            if (appStat != APP_STAT_FOREGROUND) {
+                MatrixLog.i(TAG, "statAppStat: " + APP_STAT_FOREGROUND_SERVICE);
+                onStatAppStat(APP_STAT_FOREGROUND_SERVICE);
+            } else {
+                MatrixLog.i(TAG, "skip statAppStat, fg = " + foreground + ", currAppStat = " + appStat);
+            }
+        }
+
+        @Override
+        public void off() {
+            MatrixLog.i(TAG, "fgSrv >> off");
+            boolean foreground = mCore.isForeground();
+            int appStat = BatteryCanaryUtil.getAppStatImmediately(mCore.getContext(), foreground);
+            if (appStat != APP_STAT_FOREGROUND && appStat != APP_STAT_FOREGROUND_SERVICE && appStat != APP_STAT_FLOAT_WINDOW) {
+                MatrixLog.i(TAG, "statAppStat: " + APP_STAT_BACKGROUND);
+                onStatAppStat(APP_STAT_BACKGROUND);
+            } else {
+                MatrixLog.i(TAG, "skip statAppStat, fg = " + foreground + ", currAppStat = " + appStat);
+            }
+        }
+    };
+
+    private final IStateObserver mFloatViewObserver = new IStateObserver() {
+        @Override
+        public void on() {
+            MatrixLog.i(TAG, "floatView >> on");
+            boolean foreground = mCore.isForeground();
+            int appStat = BatteryCanaryUtil.getAppStatImmediately(mCore.getContext(), foreground);
+            if (appStat != APP_STAT_FOREGROUND && appStat != APP_STAT_FOREGROUND_SERVICE) {
+                MatrixLog.i(TAG, "statAppStat: " + APP_STAT_FLOAT_WINDOW);
+                onStatAppStat(APP_STAT_FLOAT_WINDOW);
+            } else {
+                MatrixLog.i(TAG, "skip statAppStat, fg = " + foreground + ", currAppStat = " + appStat);
+            }
+        }
+
+        @Override
+        public void off() {
+            MatrixLog.i(TAG, "floatView >> off");
+            boolean foreground = mCore.isForeground();
+            int appStat = BatteryCanaryUtil.getAppStatImmediately(mCore.getContext(), foreground);
+            if (appStat != APP_STAT_FOREGROUND && appStat != APP_STAT_FOREGROUND_SERVICE && appStat != APP_STAT_FLOAT_WINDOW) {
+                MatrixLog.i(TAG, "statAppStat: " + APP_STAT_BACKGROUND);
+                onStatAppStat(APP_STAT_BACKGROUND);
+            } else {
+                MatrixLog.i(TAG, "skip statAppStat, fg = " + foreground + ", currAppStat = " + appStat);
+            }
+        }
+    };
+
     @Override
     protected String getTag() {
         return TAG;
@@ -76,7 +142,7 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
     @Override
     public void onTurnOn() {
         super.onTurnOn();
-        TimeBreaker.Stamp firstStamp = new TimeBreaker.Stamp("1");
+        TimeBreaker.Stamp firstStamp = new TimeBreaker.Stamp(String.valueOf(APP_STAT_FOREGROUND));
         TimeBreaker.Stamp firstSceneStamp = new TimeBreaker.Stamp(mCore.getScene());
         synchronized (TAG) {
             mStampList = new ArrayList<>();
@@ -84,11 +150,16 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
             mSceneStampList = new ArrayList<>();
             mSceneStampList.add(0, firstSceneStamp);
         }
+
+        ForegroundServiceLifecycleOwner.INSTANCE.observeForever(mFgSrvObserver);
+        OverlayWindowLifecycleOwner.INSTANCE.observeForever(mFloatViewObserver);
     }
 
     @Override
     public void onTurnOff() {
         super.onTurnOff();
+        ForegroundServiceLifecycleOwner.INSTANCE.removeObserver(mFgSrvObserver);
+        OverlayWindowLifecycleOwner.INSTANCE.removeObserver(mFloatViewObserver);
         synchronized (TAG) {
             mStampList.clear();
             mSceneStampList.clear();
@@ -100,13 +171,7 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
         super.onForeground(isForeground);
         int appStat = BatteryCanaryUtil.getAppStatImmediately(mCore.getContext(), isForeground);
         BatteryCanaryUtil.getProxy().updateAppStat(appStat);
-        synchronized (TAG) {
-            if (mStampList != Collections.EMPTY_LIST) {
-                MatrixLog.i(BatteryEventDelegate.TAG, "onStat >> " + BatteryCanaryUtil.convertAppStat(appStat));
-                mStampList.add(0, new TimeBreaker.Stamp(String.valueOf(appStat)));
-                checkOverHeat();
-            }
-        }
+        onStatAppStat(appStat);
 
         MatrixLog.i(TAG, "updateAppImportance when app " + (isForeground ? "foreground" : "background"));
         updateAppImportance();
@@ -163,7 +228,25 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
         // checkBackgroundAppState(duringMillis);
     }
 
+    public void onStatAppStat(int appStat) {
+        synchronized (TAG) {
+            if (mStampList != Collections.EMPTY_LIST) {
+                MatrixLog.i(BatteryEventDelegate.TAG, "onStat >> " + BatteryCanaryUtil.convertAppStat(appStat));
+                mStampList.add(0, new TimeBreaker.Stamp(String.valueOf(appStat)));
+                checkOverHeat();
+            }
+        }
+    }
+
+    @SuppressWarnings("unused")
     public void onStatScene(@NonNull String scene) {
+        BatteryStatsFeature statsFeature = mCore.getMonitorFeature(BatteryStatsFeature.class);
+        if (statsFeature != null) {
+            BatteryRecord.SceneStatRecord statRecord = new BatteryRecord.SceneStatRecord();
+            statRecord.scene = scene;
+            statsFeature.writeRecord(statRecord);
+        }
+
         synchronized (TAG) {
             if (mSceneStampList != Collections.EMPTY_LIST) {
                 mSceneStampList.add(0, new TimeBreaker.Stamp(scene));
@@ -294,9 +377,10 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
             AppStatSnapshot snapshot = new AppStatSnapshot();
             snapshot.setValid(timePortions.isValid());
             snapshot.uptime = Snapshot.Entry.DigitEntry.of(timePortions.totalUptime);
-            snapshot.fgRatio = Snapshot.Entry.DigitEntry.of((long) timePortions.getRatio("1"));
-            snapshot.bgRatio = Snapshot.Entry.DigitEntry.of((long) timePortions.getRatio("2"));
-            snapshot.fgSrvRatio = Snapshot.Entry.DigitEntry.of((long) timePortions.getRatio("3"));
+            snapshot.fgRatio = Snapshot.Entry.DigitEntry.of((long) timePortions.getRatio(String.valueOf(APP_STAT_FOREGROUND)));
+            snapshot.bgRatio = Snapshot.Entry.DigitEntry.of((long) timePortions.getRatio(String.valueOf(APP_STAT_BACKGROUND)));
+            snapshot.fgSrvRatio = Snapshot.Entry.DigitEntry.of((long) timePortions.getRatio(String.valueOf(APP_STAT_FOREGROUND_SERVICE)));
+            snapshot.floatRatio = Snapshot.Entry.DigitEntry.of((long) timePortions.getRatio(String.valueOf(APP_STAT_FLOAT_WINDOW)));
             return snapshot;
 
         } catch (Throwable e) {
@@ -350,6 +434,7 @@ public final class AppStatMonitorFeature extends AbsMonitorFeature {
         public Entry.DigitEntry<Long> fgRatio = Entry.DigitEntry.of(0L);
         public Entry.DigitEntry<Long> bgRatio = Entry.DigitEntry.of(0L);
         public Entry.DigitEntry<Long> fgSrvRatio = Entry.DigitEntry.of(0L);
+        public Entry.DigitEntry<Long> floatRatio = Entry.DigitEntry.of(0L);
 
         AppStatSnapshot() {
         }

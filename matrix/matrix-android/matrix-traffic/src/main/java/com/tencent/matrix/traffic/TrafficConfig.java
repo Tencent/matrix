@@ -4,11 +4,18 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class TrafficConfig {
+    public static final int STACK_TRACE_FILTER_MODE_FULL = 0;
+    public static final int STACK_TRACE_FILTER_MODE_STARTS_WITH = 1;
+    public static final int STACK_TRACE_FILTER_MODE_PATTERN = 2;
     private boolean rxCollectorEnable;
     private boolean txCollectorEnable;
     private boolean dumpStackTraceEnable;
     private boolean dumpNativeBackTraceEnable;
-    private boolean lookupIpAddressEnable;
+    private boolean hookAllSoReadWrite = true;
+    //TODO
+    //private boolean lookupIpAddressEnable;
+    private int stackTraceFilterMode = 0;
+    private String stackTraceFilterCore;
     private List<String> ignoreSoList = new ArrayList<>();
 
     public  TrafficConfig() {
@@ -20,15 +27,13 @@ public class TrafficConfig {
         this.txCollectorEnable = txCollectorEnable;
         this.dumpStackTraceEnable = dumpStackTraceEnable;
         this.dumpNativeBackTraceEnable = false;
-        this.lookupIpAddressEnable = false;
     }
 
-    public TrafficConfig(boolean rxCollectorEnable, boolean txCollectorEnable, boolean dumpStackTraceEnable, boolean dumpNativeBackTraceEnable, boolean lookupIpAddressEnable) {
+    public TrafficConfig(boolean rxCollectorEnable, boolean txCollectorEnable, boolean dumpStackTraceEnable, boolean dumpNativeBackTraceEnable) {
         this.rxCollectorEnable = rxCollectorEnable;
         this.txCollectorEnable = txCollectorEnable;
         this.dumpStackTraceEnable = dumpStackTraceEnable;
         this.dumpNativeBackTraceEnable = dumpNativeBackTraceEnable;
-        this.lookupIpAddressEnable = lookupIpAddressEnable;
     }
 
     public boolean isRxCollectorEnable() {
@@ -61,14 +66,6 @@ public class TrafficConfig {
         this.dumpNativeBackTraceEnable = dumpNativeBackTraceEnable;
     }
 
-    public boolean willLookupIpAddress() {
-        return lookupIpAddressEnable;
-    }
-
-    public void setLookupIpAddressEnable(boolean lookupIpAddressEnable) {
-        this.lookupIpAddressEnable = lookupIpAddressEnable;
-    }
-
     public void addIgnoreSoFile(String soName) {
         ignoreSoList.add(soName);
     }
@@ -76,4 +73,26 @@ public class TrafficConfig {
     public String[] getIgnoreSoFiles() {
         return ignoreSoList.toArray(new String[ignoreSoList.size()]);
     }
+
+    public void setStackTraceFilterMode(int mode, String filterCore) {
+        this.stackTraceFilterMode = mode;
+        this.stackTraceFilterCore = filterCore;
+    }
+
+    public int getStackTraceFilterMode() {
+        return this.stackTraceFilterMode;
+    }
+
+    public String getStackTraceFilterCore() {
+        return this.stackTraceFilterCore;
+    }
+
+    public boolean willHookAllSoReadWrite() {
+        return hookAllSoReadWrite;
+    }
+
+    public void setHookAllSoReadWrite(boolean hookAllSoReadWrite) {
+        this.hookAllSoReadWrite = hookAllSoReadWrite;
+    }
+
 }

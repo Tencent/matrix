@@ -47,16 +47,14 @@ DECLARE_HOOK_ORIG(void *, memalign, size_t __alignment, size_t __byte_count);
 DECLARE_HOOK_ORIG(int, posix_memalign, void** __memptr, size_t __alignment, size_t __size);
 
 #if defined(__USE_FILE_OFFSET64)
-// DECLARE_HOOK_ORIG not supports attrbute
-void *h_mmap(void* __addr, size_t __size, int __prot, int __flags, int __fd, off_t __offset) __RENAME(mmap64);
+DECLARE_HOOK_ORIG_ATTR(void *, mmap, void* __addr, size_t __size, int __prot, int __flags, int __fd, off_t __offset) __RENAME(mmap64);
 #else
 DECLARE_HOOK_ORIG(void *, mmap, void *__addr, size_t __size, int __prot, int __flags, int __fd, off_t __offset);
 #endif
 
 #if __ANDROID_API__ >= __ANDROID_API_L__
-// DECLARE_HOOK_ORIG not supports attrbute
-void *h_mmap64(void *__addr, size_t __size, int __prot, int __flags, int __fd,
-               off64_t __offset) __INTRODUCED_IN(21);
+DECLARE_HOOK_ORIG_ATTR(void *, mmap64, void *__addr, size_t __size, int __prot, int __flags, int __fd,
+                  off64_t __offset) __INTRODUCED_IN(21);
 #endif
 
 DECLARE_HOOK_ORIG(void *, mremap, void*, size_t, size_t, int, ...)

@@ -26,7 +26,7 @@
 
 bool kssymbolicator_symbolicate(KSStackCursor *cursor) {
     Dl_info symbolsBuffer;
-    if (ksdl_dladdr(CALL_INSTRUCTION_FROM_RETURN_ADDRESS(cursor->stackEntry.address), &symbolsBuffer)) {
+    if (ksdl_dladdr_use_cache(CALL_INSTRUCTION_FROM_RETURN_ADDRESS(cursor->stackEntry.address), &symbolsBuffer)) {
         cursor->stackEntry.imageAddress = (uintptr_t)symbolsBuffer.dli_fbase;
         cursor->stackEntry.imageName = symbolsBuffer.dli_fname;
         cursor->stackEntry.symbolAddress = (uintptr_t)symbolsBuffer.dli_saddr;
@@ -43,7 +43,7 @@ bool kssymbolicator_symbolicate(KSStackCursor *cursor) {
 
 uintptr_t kssymbolicate_symboladdress(uintptr_t stackAddress) {
     Dl_info symbolsBuffer;
-    if (ksdl_dladdr(CALL_INSTRUCTION_FROM_RETURN_ADDRESS(stackAddress), &symbolsBuffer)) {
+    if (ksdl_dladdr_use_cache(CALL_INSTRUCTION_FROM_RETURN_ADDRESS(stackAddress), &symbolsBuffer)) {
         return (uintptr_t)symbolsBuffer.dli_saddr;
     }
     return 0;

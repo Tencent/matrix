@@ -5,6 +5,7 @@ import android.os.Handler;
 import android.os.SystemClock;
 
 import com.tencent.matrix.batterycanary.monitor.BatteryMonitorCore;
+import com.tencent.matrix.batterycanary.utils.Function;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.util.ArrayList;
@@ -67,11 +68,29 @@ public interface MonitorFeature {
                 dlt.isDelta = true;
             }
 
+            public Delta(RECORD bgn, RECORD end, RECORD dlt) {
+                this.bgn = bgn;
+                this.end = end;
+                this.during = end.time - bgn.time;
+                this.dlt = dlt;
+                dlt.isDelta = true;
+            }
+
             public boolean isValid() {
                 return bgn.isValid() && end.isValid();
             }
 
             protected abstract RECORD computeDelta();
+
+            public static class SimpleDelta<RECORD extends Snapshot> extends Delta<RECORD> {
+                public SimpleDelta(RECORD bgn, RECORD end, RECORD dlt) {
+                    super(bgn, end, dlt);
+                }
+                @Override
+                protected RECORD computeDelta() {
+                    throw new RuntimeException("stub!");
+                }
+            }
         }
 
         public abstract static class Entry<ENTRY> {
@@ -419,28 +438,33 @@ public interface MonitorFeature {
 
         public static class Sampler {
             private static final String TAG = "Matrix.battery.Sampler";
+            public static final Integer INVALID = Integer.MIN_VALUE;
 
+            final String mTag;
             final Handler mHandler;
-            final Callable<? extends Number> mSamplingBlock;
+            final Function<Sampler, ? extends Number> mSamplingBlock;
 
             private final Runnable mSamplingTask = new Runnable() {
                 @Override
                 public void run() {
                     try {
-                        Number currSample = mSamplingBlock.call();
-                        mSampleLst = currSample.doubleValue();
-                        mCount++;
-                        mSampleAvg = (mSampleAvg * (mCount - 1) + mSampleLst) / mCount;
-                        if (mSampleFst == Double.MIN_VALUE) {
-                            mSampleFst = mSampleLst;
-                            mSampleMax = mSampleLst;
-                            mSampleMin = mSampleLst;
-                        } else {
-                            if (mSampleLst > mSampleMax) {
+                        Number currSample = mSamplingBlock.apply(Sampler.this);
+                        if (!currSample.equals(INVALID)) {
+                            mSampleLst = currSample.doubleValue();
+                            mCount++;
+                            // FIXME: calc vag on finished
+                            mSampleAvg = (mSampleAvg * (mCount - 1) + mSampleLst) / mCount;
+                            if (mSampleFst == Double.MIN_VALUE) {
+                                mSampleFst = mSampleLst;
                                 mSampleMax = mSampleLst;
-                            }
-                            if (mSampleLst < mSampleMin) {
                                 mSampleMin = mSampleLst;
+                            } else {
+                                if (mSampleLst > mSampleMax) {
+                                    mSampleMax = mSampleLst;
+                                }
+                                if (mSampleLst < mSampleMin) {
+                                    mSampleMin = mSampleLst;
+                                }
                             }
                         }
                     } catch (Exception e) {
@@ -465,8 +489,36 @@ public interface MonitorFeature {
             double mSampleAvg = Double.MIN_VALUE;
 
             public Sampler(Handler handler, Callable<? extends Number> onSampling) {
+                this("dft", handler, onSampling);
+            }
+
+            public Sampler(String tag, Handler handler, final Callable<? extends Number> onSampling) {
+                mTag = tag;
+                mHandler = handler;
+                mSamplingBlock = new Function<Sampler, Number>() {
+                    @Override
+                    public Number apply(Sampler sampler) {
+                        try {
+                            return onSampling.call();
+                        } catch (Exception e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                };
+            }
+
+            public Sampler(String tag, Handler handler, Function<Sampler, ? extends Number> onSampling) {
+                mTag = tag;
                 mHandler = handler;
                 mSamplingBlock = onSampling;
+            }
+
+            public String getTag() {
+                return mTag;
+            }
+
+            public int getCount() {
+                return mCount;
             }
 
             public void setInterval(long interval) {
@@ -518,6 +570,20 @@ public interface MonitorFeature {
                 public double sampleMax;
                 public double sampleMin;
                 public double sampleAvg;
+
+                @Override
+                public String toString() {
+                    return "Result{" +
+                            "interval=" + interval +
+                            ", count=" + count +
+                            ", duringMillis=" + duringMillis +
+                            ", sampleFst=" + sampleFst +
+                            ", sampleLst=" + sampleLst +
+                            ", sampleMax=" + sampleMax +
+                            ", sampleMin=" + sampleMin +
+                            ", sampleAvg=" + sampleAvg +
+                            '}';
+                }
             }
         }
     }

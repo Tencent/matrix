@@ -15,7 +15,7 @@
  */
 
 #import "TestLagViewController.h"
-#import <matrix-wechat/MatrixTester.h>
+#import <Matrix/MatrixTester.h>
 #import "Utility.h"
 #import "MatrixHandler.h"
 
@@ -26,8 +26,8 @@
 @property (nonatomic, strong) UIButton *startBlockMonitorBtn;
 @property (nonatomic, strong) UIButton *stopBlockMonitorBtn;
 @property (nonatomic, strong) UIButton *costCPUBtn;
-@property (nonatomic, strong) UIButton *costCPUOneMinuteBtn;
 @property (nonatomic, strong) UIButton *testResponseBtn;
+@property (nonatomic, strong) UIButton *testIOBtn;
 
 @property (nonatomic, assign) BOOL bCostCPUNow;
 
@@ -98,16 +98,16 @@
     [_costCPUBtn addTarget:self action:@selector(costAlotCPU) forControlEvents:UIControlEventTouchUpInside];
     [_costCPUBtn setTitle:@"Cost CPU A Lot" forState:UIControlStateNormal];
     [_mainScrollView addSubview:_costCPUBtn];
+    
+    contentY = contentY + btnHeight + btnGap;
+    
+    _testIOBtn = [Utility genBigGreenButtonWithFrame:CGRectMake(contentX, contentY, btnWidth, btnHeight)];
+    [_testIOBtn addTarget:self action:@selector(costDiskIOLag) forControlEvents:UIControlEventTouchUpInside];
+    [_testIOBtn setTitle:@"Disk IO" forState:UIControlStateNormal];
+    [_mainScrollView addSubview:_testIOBtn];
 
     contentY = contentY + btnHeight + btnGap;
     
-    _costCPUOneMinuteBtn = [Utility genBigRedButtonWithFrame:CGRectMake(contentX, contentY, btnWidth, btnHeight)];
-    [_costCPUOneMinuteBtn addTarget:self action:@selector(costCPUOneMinute) forControlEvents:UIControlEventTouchUpInside];
-    [_costCPUOneMinuteBtn setTitle:@"Cost CPU One Minute" forState:UIControlStateNormal];
-    [_mainScrollView addSubview:_costCPUOneMinuteBtn];
-
-    contentY = contentY + btnHeight + btnGap;
-
     _startBlockMonitorBtn = [Utility genBigGreenButtonWithFrame:CGRectMake(contentX, contentY, btnWidth, btnHeight)];
     [_startBlockMonitorBtn addTarget:self action:@selector(startBlockMonitor) forControlEvents:UIControlEventTouchUpInside];
     [_startBlockMonitorBtn setTitle:@"Start Block Monitor" forState:UIControlStateNormal];
@@ -153,17 +153,9 @@
     [self.maTester costCPUALot];
 }
 
-- (void)costCPUOneMinute
+- (void)costDiskIOLag
 {
-    [self.maTester costCPUALot];
-    
-    UIAlertController *alertController = [UIAlertController alertControllerWithTitle:@"Warning" message:@"high cpu now" preferredStyle:UIAlertControllerStyleAlert];
-    [self presentViewController:alertController animated:YES completion:nil];
-
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(60 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        [self.maTester costCPUALot];
-        [alertController dismissViewControllerAnimated:YES completion:nil];
-    });
+    [self.maTester writeMassData];
 }
 
 - (void)startBlockMonitor

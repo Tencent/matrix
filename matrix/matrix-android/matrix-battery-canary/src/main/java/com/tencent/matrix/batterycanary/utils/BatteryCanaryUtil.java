@@ -16,6 +16,7 @@
 
 package com.tencent.matrix.batterycanary.utils;
 
+import android.annotation.SuppressLint;
 import android.app.ActivityManager;
 import android.app.AlarmManager;
 import android.content.Context;
@@ -30,27 +31,38 @@ import android.text.TextUtils;
 import com.tencent.matrix.Matrix;
 import com.tencent.matrix.batterycanary.BatteryMonitorPlugin;
 import com.tencent.matrix.batterycanary.monitor.AppStats;
+import com.tencent.matrix.lifecycle.owners.OverlayWindowLifecycleOwner;
 import com.tencent.matrix.util.MatrixLog;
 
 import java.io.File;
 import java.io.FileFilter;
 import java.io.RandomAccessFile;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Map;
 import java.util.regex.Pattern;
 
+import androidx.annotation.IntRange;
 import androidx.annotation.Nullable;
 import androidx.annotation.RestrictTo;
 
 import static android.content.Context.ACTIVITY_SERVICE;
 import static com.tencent.matrix.batterycanary.monitor.AppStats.APP_STAT_BACKGROUND;
+import static com.tencent.matrix.batterycanary.monitor.AppStats.APP_STAT_FLOAT_WINDOW;
 import static com.tencent.matrix.batterycanary.monitor.AppStats.APP_STAT_FOREGROUND;
 import static com.tencent.matrix.batterycanary.monitor.AppStats.APP_STAT_FOREGROUND_SERVICE;
 import static com.tencent.matrix.batterycanary.monitor.AppStats.DEV_STAT_CHARGING;
-import static com.tencent.matrix.batterycanary.monitor.AppStats.DEV_STAT_SAVE_POWER_MODE;
+import static com.tencent.matrix.batterycanary.monitor.AppStats.DEV_STAT_DOZE_MODE_OFF;
+import static com.tencent.matrix.batterycanary.monitor.AppStats.DEV_STAT_DOZE_MODE_ON;
+import static com.tencent.matrix.batterycanary.monitor.AppStats.DEV_STAT_SAVE_POWER_MODE_OFF;
+import static com.tencent.matrix.batterycanary.monitor.AppStats.DEV_STAT_SAVE_POWER_MODE_ON;
 import static com.tencent.matrix.batterycanary.monitor.AppStats.DEV_STAT_SCREEN_OFF;
+import static com.tencent.matrix.batterycanary.monitor.AppStats.DEV_STAT_SCREEN_ON;
 import static com.tencent.matrix.batterycanary.monitor.AppStats.DEV_STAT_UN_CHARGING;
 
 /**
@@ -69,6 +81,7 @@ public final class BatteryCanaryUtil {
     public static final int JIFFY_MILLIS = 1000 / JIFFY_HZ;
 
     public interface Proxy {
+
         String getProcessName();
         String getPackageName();
         int getBatteryTemperature(Context context);
@@ -76,13 +89,17 @@ public final class BatteryCanaryUtil {
         @AppStats.DevStatusDef int getDevStat(Context context);
         void updateAppStat(int value);
         void updateDevStat(int value);
+        int getBatteryPercentage(Context context);
+        int getBatteryCapacity(Context context);
+        long getBatteryCurrency(Context context);
+        int getCpuCoreNum();
 
-        final class ExpireRef {
-            final int value;
+        final class ExpireRef<T extends Number> {
+            final T value;
             final long aliveMillis;
             final long lastMillis;
 
-            ExpireRef(int value, long aliveMillis) {
+            ExpireRef(T value, long aliveMillis) {
                 this.value = value;
                 this.aliveMillis = aliveMillis;
                 this.lastMillis = SystemClock.uptimeMillis();
@@ -94,12 +111,17 @@ public final class BatteryCanaryUtil {
         }
     }
 
+    @SuppressWarnings("SpellCheckingInspection")
     static Proxy sCacheStub = new Proxy() {
         private String mProcessName;
         private String mPackageName;
-        private ExpireRef mBatteryTemp;
-        private ExpireRef mLastAppStat;
-        private ExpireRef mLastDevStat;
+        private ExpireRef<Integer> mBatteryTemp;
+        private ExpireRef<Integer> mLastAppStat;
+        private ExpireRef<Integer> mLastDevStat;
+        private ExpireRef<Integer> mLastBattPct;
+        private ExpireRef<Integer> mLastBattCap;
+        private ExpireRef<Long>    mLastBattCur;
+        private ExpireRef<Integer> mLastCpuCoreNum;
 
         @Override
         public String getProcessName() {
@@ -133,7 +155,7 @@ public final class BatteryCanaryUtil {
                 return mBatteryTemp.value;
             }
             int tmp = getBatteryTemperatureImmediately(context);
-            mBatteryTemp = new ExpireRef(tmp, DEFAULT_AMS_CACHE_MILLIS);
+            mBatteryTemp = new ExpireRef<>(tmp, DEFAULT_AMS_CACHE_MILLIS);
             return mBatteryTemp.value;
         }
 
@@ -144,7 +166,7 @@ public final class BatteryCanaryUtil {
                 return mLastAppStat.value;
             }
             int value = getAppStatImmediately(context, false);
-            mLastAppStat = new ExpireRef(value, DEFAULT_AMS_CACHE_MILLIS);
+            mLastAppStat = new ExpireRef<>(value, DEFAULT_AMS_CACHE_MILLIS);
             return mLastAppStat.value;
         }
 
@@ -154,22 +176,65 @@ public final class BatteryCanaryUtil {
                 return mLastDevStat.value;
             }
             int value = getDeviceStatImmediately(context);
-            mLastDevStat = new ExpireRef(value, DEFAULT_AMS_CACHE_MILLIS);
+            mLastDevStat = new ExpireRef<>(value, DEFAULT_AMS_CACHE_MILLIS);
             return mLastDevStat.value;
         }
 
         @Override
         public void updateAppStat(int value) {
             synchronized (this) {
-                mLastAppStat = new ExpireRef(value, DEFAULT_AMS_CACHE_MILLIS);
+                mLastAppStat = new ExpireRef<>(value, DEFAULT_AMS_CACHE_MILLIS);
             }
         }
 
         @Override
         public void updateDevStat(int value) {
             synchronized (this) {
-                mLastDevStat = new ExpireRef(value, DEFAULT_AMS_CACHE_MILLIS);
+                mLastDevStat = new ExpireRef<>(value, DEFAULT_AMS_CACHE_MILLIS);
             }
+        }
+
+        @Override
+        public int getBatteryPercentage(Context context) {
+            if (mLastBattPct != null && !mLastBattPct.isExpired()) {
+                return mLastBattPct.value;
+            }
+            int val = getBatteryPercentageImmediately(context);
+            mLastBattPct = new ExpireRef<>(val, ONE_MIN);
+            return mLastBattPct.value;
+        }
+
+        @Override
+        public int getBatteryCapacity(Context context) {
+            if (mLastBattCap != null && !mLastBattCap.isExpired()) {
+                return mLastBattCap.value;
+            }
+            int val = getBatteryCapacityImmediately(context);
+            mLastBattCap = new ExpireRef<>(val, ONE_MIN);
+            return mLastBattCap.value;
+        }
+
+        @Override
+        public long getBatteryCurrency(Context context) {
+            if (mLastBattCur != null && !mLastBattCur.isExpired()) {
+                return mLastBattCur.value;
+            }
+            long val = getBatteryCurrencyImmediately(context);
+            mLastBattCur = new ExpireRef<>(val, ONE_MIN);
+            return mLastBattCur.value;
+        }
+
+        @Override
+        public int getCpuCoreNum() {
+            if (mLastCpuCoreNum != null && !mLastCpuCoreNum.isExpired()) {
+                return mLastCpuCoreNum.value;
+            }
+            int val = getCpuCoreNumImmediately();
+            if (val <= 1) {
+                return val;
+            }
+            mLastCpuCoreNum = new ExpireRef<>(val, ONE_HOR);
+            return mLastCpuCoreNum.value;
         }
     };
 
@@ -190,10 +255,13 @@ public final class BatteryCanaryUtil {
     }
 
     public static String stackTraceToString(final StackTraceElement[] arr) {
+        return stackTraceToString(arr, false);
+    }
+
+    public static String stackTraceToString(final StackTraceElement[] arr, boolean trim) {
         if (arr == null) {
             return "";
         }
-
         ArrayList<StackTraceElement> stacks = new ArrayList<>(arr.length);
         for (StackTraceElement traceElement : arr) {
             String className = traceElement.getClassName();
@@ -208,21 +276,24 @@ public final class BatteryCanaryUtil {
             stacks.add(traceElement);
         }
         // stack still too large
-        String pkg = getPackageName();
-        if (stacks.size() > DEFAULT_MAX_STACK_LAYER && !TextUtils.isEmpty(pkg)) {
-            ListIterator<StackTraceElement> iterator = stacks.listIterator(stacks.size());
-            // from backward to forward
-            while (iterator.hasPrevious()) {
-                StackTraceElement stack = iterator.previous();
-                String className = stack.getClassName();
-                if (!className.contains(pkg)) {
-                    iterator.remove();
-                }
-                if (stacks.size() <= DEFAULT_MAX_STACK_LAYER) {
-                    break;
+        if (trim) {
+            String pkg = getPackageName();
+            if (stacks.size() > DEFAULT_MAX_STACK_LAYER && !TextUtils.isEmpty(pkg)) {
+                ListIterator<StackTraceElement> iterator = stacks.listIterator(stacks.size());
+                // from backward to forward
+                while (iterator.hasPrevious()) {
+                    StackTraceElement stack = iterator.previous();
+                    String className = stack.getClassName();
+                    if (!className.contains(pkg)) {
+                        iterator.remove();
+                    }
+                    if (stacks.size() <= DEFAULT_MAX_STACK_LAYER) {
+                        break;
+                    }
                 }
             }
         }
+
         StringBuilder sb = new StringBuilder();
         for (StackTraceElement traceElement : stacks) {
             sb.append("\n").append("at ").append(traceElement);
@@ -234,7 +305,7 @@ public final class BatteryCanaryUtil {
         if (throwable == null) {
             return "";
         }
-        return stackTraceToString(throwable.getStackTrace());
+        return stackTraceToString(throwable.getStackTrace(), true);
     }
 
     public static long getUTCTriggerAtMillis(final long triggerAtMillis, final int type) {
@@ -267,8 +338,9 @@ public final class BatteryCanaryUtil {
     }
 
     public static int[] getCpuCurrentFreq() {
-        int[] output = new int[getCpuCoreNum()];
-        for (int i = 0; i < getCpuCoreNum(); i++) {
+        int cpuCoreNum = getCpuCoreNum();
+        int[] output = new int[cpuCoreNum];
+        for (int i = 0; i < cpuCoreNum; i++) {
             output[i] = 0;
             String path = "/sys/devices/system/cpu/cpu" + i + "/cpufreq/scaling_cur_freq";
             String cat = cat(path);
@@ -283,7 +355,35 @@ public final class BatteryCanaryUtil {
         return output;
     }
 
+    public static List<int[]> getCpuFreqSteps() {
+        int cpuCoreNum = getCpuCoreNum();
+        List<int[]> output = new ArrayList<>(cpuCoreNum);
+        for (int i = 0; i < cpuCoreNum; i++) {
+            String path = "/sys/devices/system/cpu/cpu" + i + "/cpufreq/scaling_available_frequencies";
+            String cat = cat(path);
+            if (!TextUtils.isEmpty(cat)) {
+                //noinspection ConstantConditions
+                String[] split = cat.split(" ");
+                int[] steps = new int[split.length];
+                for (int j = 0, splitLength = split.length; j < splitLength; j++) {
+                    try {
+                        String item = split[j];
+                        steps[j] = Integer.parseInt(item) / 1000;
+                    } catch (Exception ignored) {
+                        steps[j] = 0;
+                    }
+                }
+                output.add(steps);
+            }
+        }
+        return output;
+    }
+
     public static int getCpuCoreNum() {
+        return sCacheStub.getCpuCoreNum();
+    }
+
+    public static int getCpuCoreNumImmediately() {
         try {
             // Get directory containing CPU info
             File dir = new File("/sys/devices/system/cpu/");
@@ -295,11 +395,17 @@ public final class BatteryCanaryUtil {
                 }
             });
             // Return the number of cores (virtual CPU devices)
+            // noinspection ConstantConditions
             return files.length;
         } catch (Exception ignored) {
             // Default to return 1 core
-            return 1;
+            return getCpuCoreNumFromRuntime();
         }
+    }
+
+    public static int getCpuCoreNumFromRuntime() {
+        // fastest
+        return Runtime.getRuntime().availableProcessors();
     }
 
     @Nullable
@@ -319,12 +425,64 @@ public final class BatteryCanaryUtil {
 
     public static int getBatteryTemperatureImmediately(Context context) {
         try {
-            Intent batIntent = context.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+            Intent batIntent = getBatteryStickyIntent(context);
             if (batIntent == null) return 0;
             return batIntent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0);
-        } catch (Throwable ignored) {
+        } catch (Exception e) {
+            MatrixLog.w(TAG, "get EXTRA_TEMPERATURE failed: " + e.getMessage());
             return 0;
         }
+    }
+
+    public static int getThermalStat(Context context) {
+        return getThermalStatImmediately(context);
+    }
+
+    public static int getThermalStatImmediately(Context context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            try {
+                PowerManager powerManager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+                return powerManager.getCurrentThermalStatus();
+            } catch (Exception e) {
+                MatrixLog.w(TAG, "getCurrentThermalStatus failed: " + e.getMessage());
+            }
+        }
+        return -1;
+    }
+
+    public static float getThermalHeadroom(Context context, @IntRange(from = 0, to = 60) int forecastSeconds) {
+        return getThermalHeadroomImmediately(context, forecastSeconds);
+    }
+
+    public static float getThermalHeadroomImmediately(Context context, int forecastSeconds) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            try {
+                PowerManager powerManager = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+                return powerManager.getThermalHeadroom(forecastSeconds);
+            } catch (Exception e) {
+                MatrixLog.w(TAG, "getThermalHeadroom failed: " + e.getMessage());
+            }
+        }
+        return -1f;
+    }
+
+    public static int getChargingWatt(Context context) {
+        return getChargingWattImmediately(context);
+    }
+
+    public static int getChargingWattImmediately(Context context) {
+        // @See com.android.settingslib.fuelgauge.BatteryStatus
+        // Calculating muW = muA * muV / (10^6 mu^2 / mu); splitting up the divisor
+        // to maintain precision equally on both factors.
+        Intent intent = getBatteryStickyIntent(context);
+        if (intent != null) {
+            int maxCurrent = intent.getIntExtra("max_charging_current", -1);
+            int maxVoltage = intent.getIntExtra("max_charging_voltage", -1);
+            if (maxCurrent > 0 && maxVoltage > 0) {
+                return (maxCurrent / 1000) * (maxVoltage / 1000) / 1000000;
+            }
+        }
+        return -1;
     }
 
     @AppStats.AppStatusDef
@@ -337,6 +495,9 @@ public final class BatteryCanaryUtil {
         if (isForeground) return APP_STAT_FOREGROUND; // 前台
         if (hasForegroundService(context)) {
             return APP_STAT_FOREGROUND_SERVICE; // 后台（有前台服务）
+        }
+        if (OverlayWindowLifecycleOwner.INSTANCE.hasOverlayWindow()) {
+            return APP_STAT_FLOAT_WINDOW; // 浮窗
         }
         return APP_STAT_BACKGROUND; // 后台
     }
@@ -357,7 +518,7 @@ public final class BatteryCanaryUtil {
             return DEV_STAT_SCREEN_OFF; // 息屏
         }
         if (isDeviceOnPowerSave(context)) {
-            return DEV_STAT_SAVE_POWER_MODE; // 省电模式开启
+            return DEV_STAT_SAVE_POWER_MODE_ON; // 省电模式开启
         }
         return DEV_STAT_UN_CHARGING;
     }
@@ -370,6 +531,8 @@ public final class BatteryCanaryUtil {
                 return "bg";
             case APP_STAT_FOREGROUND_SERVICE:
                 return "fgSrv";
+            case APP_STAT_FLOAT_WINDOW:
+                return "float";
             default:
                 return "unknown";
         }
@@ -381,25 +544,28 @@ public final class BatteryCanaryUtil {
                 return "charging";
             case DEV_STAT_UN_CHARGING:
                 return "non_charge";
+            case DEV_STAT_SCREEN_ON:
+                return "screen_on";
             case DEV_STAT_SCREEN_OFF:
                 return "screen_off";
-            case DEV_STAT_SAVE_POWER_MODE:
-                return "doze";
+            case DEV_STAT_DOZE_MODE_ON:
+                return "doze_on";
+            case DEV_STAT_DOZE_MODE_OFF:
+                return "doze_off";
+            case DEV_STAT_SAVE_POWER_MODE_ON:
+                return "standby_on";
+            case DEV_STAT_SAVE_POWER_MODE_OFF:
+                return "standby_off";
             default:
                 return "unknown";
         }
     }
 
-
     public static boolean isDeviceChargingV1(Context context) {
-        try {
-            Intent batIntent = context.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
-            if (batIntent == null) return false;
-            int status = batIntent.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
-            return (status == BatteryManager.BATTERY_STATUS_CHARGING) || (status == BatteryManager.BATTERY_STATUS_FULL);
-        } catch (Throwable ignored) {
-            return false;
-        }
+        Intent batIntent = getBatteryStickyIntent(context);
+        if (batIntent == null) return false;
+        int status = batIntent.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
+        return (status == BatteryManager.BATTERY_STATUS_CHARGING) || (status == BatteryManager.BATTERY_STATUS_FULL);
     }
 
     public static boolean isDeviceChargingV2(Context context) {
@@ -410,7 +576,7 @@ public final class BatteryCanaryUtil {
             }
         }
         try {
-            Intent batIntent = context.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+            Intent batIntent = getBatteryStickyIntent(context);
             if (batIntent == null) return false;
             int plugged = batIntent.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1);
             return plugged == BatteryManager.BATTERY_PLUGGED_AC || plugged == BatteryManager.BATTERY_PLUGGED_USB || plugged == BatteryManager.BATTERY_PLUGGED_WIRELESS;
@@ -434,6 +600,25 @@ public final class BatteryCanaryUtil {
         return false;
     }
 
+    /**
+     * System Doze Mode
+     */
+    public static boolean isDeviceOnIdleMode(Context context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            try {
+                PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+                if (pm != null) {
+                    return pm.isDeviceIdleMode();
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        return false;
+    }
+
+    /**
+     * App Standby Mode
+     */
     public static boolean isDeviceOnPowerSave(Context context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             try {
@@ -445,6 +630,96 @@ public final class BatteryCanaryUtil {
             }
         }
         return false;
+    }
+
+    @Nullable
+    static Intent getBatteryStickyIntent(Context context) {
+        try {
+            return context.registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+        } catch (Exception e) {
+            MatrixLog.w(TAG, "get ACTION_BATTERY_CHANGED failed: " + e.getMessage());
+            return null;
+        }
+    }
+
+    public static boolean isLowBattery(Context context) {
+        Intent batIntent = getBatteryStickyIntent(context);
+        if (batIntent != null) {
+            batIntent.getBooleanExtra(Intent.ACTION_BATTERY_LOW, false);
+        }
+        return false;
+    }
+
+    public static int getBatteryPercentage(Context context) {
+        return sCacheStub.getBatteryPercentage(context);
+    }
+
+    public static int getBatteryPercentageImmediately(Context context) {
+        Intent batIntent = getBatteryStickyIntent(context);
+        if (batIntent != null) {
+            int level = batIntent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+            int scale = batIntent.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+            if (scale > 0) {
+                return level * 100 / scale;
+            }
+        }
+        return -1;
+    }
+
+    public static int getBatteryCapacity(Context context) {
+        return sCacheStub.getBatteryCapacity(context);
+    }
+
+    @SuppressWarnings("ConstantConditions")
+    @SuppressLint("PrivateApi")
+    public static int getBatteryCapacityImmediately(Context context) {
+        /*
+         * Matrix PowerProfile (static) >> OS PowerProfile (static) >> BatteryManager (dynamic)
+         */
+        try {
+            if (PowerProfile.getResType().equals("framework") || PowerProfile.getResType().equals("custom")) {
+                return (int) PowerProfile.init(context).getBatteryCapacity();
+            }
+        } catch (Throwable ignored) {
+        }
+
+        try {
+            Class<?> profileClass = Class.forName("com.android.internal.os.PowerProfile");
+            Object profileObject = profileClass.getConstructor(Context.class).newInstance(context);
+            Method method;
+            try {
+                method = profileClass.getMethod("getAveragePower", String.class);
+                double capacity = (double) method.invoke(profileObject, PowerProfile.POWER_BATTERY_CAPACITY);
+                return (int) capacity;
+            } catch (Throwable e) {
+                MatrixLog.w(TAG, "get PowerProfile failed: " + e.getMessage());
+            }
+            method = profileClass.getMethod("getBatteryCapacity");
+            return (int) method.invoke(profileObject);
+        } catch (Throwable ignored) {
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            BatteryManager mBatteryManager = (BatteryManager) context.getSystemService(Context.BATTERY_SERVICE);
+            int chargeCounter = mBatteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER);
+            int capacity = mBatteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
+            if (chargeCounter > 0 && capacity > 0) {
+                return (int) (((chargeCounter / (float) capacity) * 100) / 1000);
+            }
+        }
+        return -1;
+    }
+
+    public static long getBatteryCurrency(Context context) {
+        return sCacheStub.getBatteryCurrency(context);
+    }
+
+    public static long getBatteryCurrencyImmediately(Context context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            BatteryManager mBatteryManager = (BatteryManager) context.getSystemService(Context.BATTERY_SERVICE);
+            return mBatteryManager.getLongProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW);
+        }
+        return -1;
     }
 
     public static boolean hasForegroundService(Context context) {
@@ -518,5 +793,16 @@ public final class BatteryCanaryUtil {
         } else {
             return input / Math.max(1, (millis) / ONE_MIN);
         }
+    }
+
+    public static <K, V> Map<K, V> sortMapByValue(Map<K, V> map, Comparator<? super Map.Entry<K, V>> comparator) {
+        List<Map.Entry<K, V>> list = new ArrayList<>(map.entrySet());
+        Collections.sort(list, comparator);
+
+        Map<K, V> result = new LinkedHashMap<>();
+        for (Map.Entry<K, V> entry : list) {
+            result.put(entry.getKey(), entry.getValue());
+        }
+        return result;
     }
 }

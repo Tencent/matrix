@@ -147,12 +147,19 @@ static NSString *g_userDumpCachePath = nil;
 }
 
 + (NSArray *)getLagReportIDWithType:(EDumpType)dumpType withDate:(NSString *)limitDate {
+    return [WCCrashBlockFileHandler getLagReportIDWithType:dumpType withDate:limitDate withLimitReportID:@[]];
+}
+
++ (NSArray *)getLagReportIDWithType:(EDumpType)dumpType withDate:(NSString *)limitDate withLimitReportID:(NSArray<NSString *> *)limitReportIDs {
     NSString *fileSuffix = [WCCrashBlockFileHandler p_getFileSuffixWithType:dumpType withDate:limitDate];
-
     NSArray *reportIDArray = [[KSCrash sharedInstance] allReportIDWithPath:[WCCrashBlockFileHandler diretoryOfUserDumpWithType:dumpType]];
-
     NSMutableArray *arrResult = [[NSMutableArray alloc] init];
     for (NSString *reportID in reportIDArray) {
+        if (limitReportIDs && [limitReportIDs count] > 0) {
+            if ([limitReportIDs containsObject:reportID] == NO) {
+                continue;
+            }
+        }
         if ([reportID hasSuffix:fileSuffix]) {
             [arrResult addObject:reportID];
         }
@@ -166,28 +173,30 @@ static NSString *g_userDumpCachePath = nil;
     NSMutableArray *reportArray = [[NSMutableArray alloc] init];
 
     for (NSString *reportID in reportIDArray) {
-        NSError *error = nil;
-        NSString *path = [[KSCrash sharedInstance] pathToCrashReportWithID:reportID withStorePath:storePath];
-        NSData *jsonData = [NSData dataWithContentsOfFile:path];
-        if (jsonData == nil) {
-            MatrixError(@"get file %@ fail", path);
-            [WCCrashBlockFileHandler deleteLagDataWithReportID:reportID andReportType:dumpType];
-            continue;
-        }
-        if ([jsonData length] > 4 * 1000 * 1000) {
-            MatrixError(@"file is too big %@ fail", path);
-            [WCCrashBlockFileHandler deleteLagDataWithReportID:reportID andReportType:dumpType];
-            continue;
-        }
+        @autoreleasepool {
+            NSError *error = nil;
+            NSString *path = [[KSCrash sharedInstance] pathToCrashReportWithID:reportID withStorePath:storePath];
+            NSData *jsonData = [NSData dataWithContentsOfFile:path];
+            if (jsonData == nil) {
+                MatrixError(@"get file %@ fail", path);
+                [WCCrashBlockFileHandler deleteLagDataWithReportID:reportID andReportType:dumpType];
+                continue;
+            }
+            if ([jsonData length] > 4 * 1000 * 1000) {
+                MatrixError(@"file is too big %@ fail", path);
+                [WCCrashBlockFileHandler deleteLagDataWithReportID:reportID andReportType:dumpType];
+                continue;
+            }
 
-        NSMutableDictionary *report = [WCCrashBlockJsonUtil jsonDecode:jsonData withError:&error];
-        if (error != nil) {
-            MatrixError(@"get file JSON data from %@: %@", path, error);
-            [WCCrashBlockFileHandler deleteLagDataWithReportID:reportID andReportType:dumpType];
-            continue;
-        }
+            NSMutableDictionary *report = [WCCrashBlockJsonUtil jsonDecode:jsonData withError:&error];
+            if (error != nil) {
+                MatrixError(@"get file JSON data from %@: %@", path, error);
+                [WCCrashBlockFileHandler deleteLagDataWithReportID:reportID andReportType:dumpType];
+                continue;
+            }
 
-        [reportArray addObject:report];
+            [reportArray addObject:report];
+        }
     }
 
     return [WCCrashBlockJsonUtil jsonEncode:reportArray withError:nil];

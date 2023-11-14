@@ -1,6 +1,7 @@
 //
 // Created by 邓沛堆 on 2020-05-28.
 //
+// TODO: refactor
 
 #include "type.h"
 #include <GLES2/gl2.h>
@@ -10,13 +11,18 @@
 #include <thread>
 #include "BacktraceDefine.h"
 #include "Backtrace.h"
-#include <linux/prctl.h>
 #include <sys/prctl.h>
+#include "BufferQueue.h"
+#include <EGL/egl.h>
+#include <pthread.h>
+#include "StackMeta.h"
+#include <android/log.h>
 
 #ifndef OPENGL_API_HOOK_MY_FUNCTIONS_H
 #define OPENGL_API_HOOK_MY_FUNCTIONS_H
 
 using namespace std;
+using namespace matrix;
 
 #define MEMHOOK_BACKTRACE_MAX_FRAMES MAX_FRAME_SHORT
 #define RENDER_THREAD_NAME "RenderThread"
@@ -38,6 +44,8 @@ static System_GlBind_TYPE system_glBindFramebuffer = NULL;
 static System_GlBind_TYPE system_glBindRenderbuffer = NULL;
 static System_GlBufferData system_glBufferData = NULL;
 static System_GlRenderbufferStorage system_glRenderbufferStorage = NULL;
+static System_eglCreateContext system_eglCreateContext = NULL;
+static System_eglDestroyContext system_eglDestroyContext = NULL;
 
 static JavaVM *m_java_vm;
 
@@ -50,7 +58,6 @@ static jmethodID method_onGlGenFramebuffers;
 static jmethodID method_onGlDeleteFramebuffers;
 static jmethodID method_onGlGenRenderbuffers;
 static jmethodID method_onGlDeleteRenderbuffers;
-static jmethodID method_getStack;
 static jmethodID method_onGetError;
 static jmethodID method_onGlBindTexture;
 static jmethodID method_onGlBindBuffer;
@@ -60,44 +67,52 @@ static jmethodID method_onGlTexImage2D;
 static jmethodID method_onGlTexImage3D;
 static jmethodID method_onGlBufferData;
 static jmethodID method_onGlRenderbufferStorage;
-
+static jmethodID method_getThrowable;
+static jmethodID method_onEglContextCreate;
+static jmethodID method_onEglContextDestroy;
 const size_t BUF_SIZE = 1024;
-const int sample_num = 5;
 
 static pthread_once_t g_onceInitTls = PTHREAD_ONCE_INIT;
 static pthread_key_t g_tlsJavaEnv;
+static pthread_key_t g_thread_name_key;
 static bool is_stacktrace_enabled = true;
+static bool is_javastack_enabled = true;
+
+static matrix::BufferManagement *messages_containers;
+static char *curr_activity_info = nullptr;
 
 void enable_stacktrace(bool enable) {
     is_stacktrace_enabled = enable;
 }
 
-static bool is_javastack_enabled = true;
-
 void enable_javastack(bool enable) {
     is_javastack_enabled = enable;
 }
 
-void thread_id_to_string(thread::id thread_id, char *&result) {
+void thread_id_to_string(pid_t thread_id, char *&result) {
     stringstream stream;
     stream << thread_id;
     result = new char[stream.str().size() + 1];
     strcpy(result, stream.str().c_str());
 }
 
-inline void get_thread_name(char *thread_name) {
-    prctl(PR_GET_NAME, (char *) (thread_name));
+inline void get_thread_name(char *&thread_name) {
+    char *local_name = static_cast<char *>(pthread_getspecific(g_thread_name_key));
+    if (local_name == nullptr) {
+        thread_name = static_cast<char *>(malloc(BUF_SIZE));
+        prctl(PR_GET_NAME, (char *) (thread_name));
+        pthread_setspecific(g_thread_name_key, thread_name);
+    } else {
+        thread_name = local_name;
+    }
 }
 
-inline bool is_render_thread() {
+bool is_render_thread() {
     bool result = false;
-    char *thread_name = static_cast<char *>(malloc(BUF_SIZE));
+    char *thread_name;
     get_thread_name(thread_name);
     if (strcmp(RENDER_THREAD_NAME, thread_name) == 0) {
         result = true;
-    }
-    if (thread_name != nullptr) {
-        free(thread_name);
     }
     return result;
 }
@@ -113,61 +128,147 @@ JNIEnv *GET_ENV() {
             });
         });
 
-        if (m_java_vm->AttachCurrentThread(&env, nullptr) == JNI_OK) {
+        char *thread_name = static_cast<char *>(malloc(BUF_SIZE));
+        get_thread_name(thread_name);
+
+        JavaVMAttachArgs args{
+                .version = JNI_VERSION_1_6,
+                .name = thread_name,
+                .group = nullptr
+        };
+
+        if (m_java_vm->AttachCurrentThread(&env, &args) == JNI_OK) {
             pthread_setspecific(g_tlsJavaEnv, reinterpret_cast<const void *>(1));
         } else {
             env = nullptr;
+        }
+
+        if (thread_name != nullptr) {
+            free(thread_name);
         }
     }
     return env;
 }
 
-bool do_sample() {
-    int rand_num = rand() % 100;
-    if(rand_num <= sample_num) {
-        return true;
-    } else {
-        return false;
-    }
+bool is_need_get_java_stack() {
+    JNIEnv *env;
+    int ret = m_java_vm->GetEnv(reinterpret_cast<void **>(&env), JNI_VERSION_1_6);
+    return ret == JNI_OK;
 }
 
-bool get_java_stacktrace(char *__stack, size_t __size) {
+wechat_backtrace::Backtrace *get_native_backtrace() {
+    wechat_backtrace::Backtrace *backtracePrt = nullptr;
+    if (is_stacktrace_enabled) {
+        wechat_backtrace::Backtrace backtrace_zero = BACKTRACE_INITIALIZER(
+                MEMHOOK_BACKTRACE_MAX_FRAMES);
 
-    if (!__stack) {
-        return false;
+        backtracePrt = new wechat_backtrace::Backtrace;
+        backtracePrt->max_frames = backtrace_zero.max_frames;
+        backtracePrt->frame_size = backtrace_zero.frame_size;
+        backtracePrt->frames = backtrace_zero.frames;
+
+        wechat_backtrace::unwind_adapter(backtracePrt->frames.get(), backtracePrt->max_frames,
+                                         backtracePrt->frame_size);
     }
+    return backtracePrt;
+}
 
+int get_java_throwable() {
+    int throwable = -1;
+    if (is_javastack_enabled && is_need_get_java_stack()) {
+        JNIEnv *env = GET_ENV();
+        throwable = env->CallStaticIntMethod(class_OpenGLHook, method_getThrowable);
+    }
+    return throwable;
+}
+
+void
+gen_jni_callback(int alloc_count, GLuint *copy_resource, int throwable, const pid_t tid,
+                 wechat_backtrace::Backtrace *backtracePtr, EGLContext egl_context,
+                 EGLSurface egl_draw_surface, EGLSurface egl_read_surface,
+                 char *activity_info, jmethodID jmethodId) {
     JNIEnv *env = GET_ENV();
 
-    jstring j_stacktrace = (jstring) env->CallStaticObjectMethod(class_OpenGLHook, method_getStack);
-
-    const char *stack = env->GetStringUTFChars(j_stacktrace, NULL);
-    if (stack) {
-        const size_t cpy_len = std::min(strlen(stack) + 1, __size - 1);
-        memcpy(__stack, stack, cpy_len);
-        __stack[cpy_len] = '\0';
-    } else {
-        strncpy(__stack, "\tget java stacktrace failed", __size);
+    int *result = new int[alloc_count];
+    for (int i = 0; i < alloc_count; i++) {
+        result[i] = *(copy_resource + i);
     }
-    env->ReleaseStringUTFChars(j_stacktrace, stack);
-    env->DeleteLocalRef(j_stacktrace);
+    jintArray newArr = env->NewIntArray(alloc_count);
 
-    return true;
+    env->SetIntArrayRegion(newArr, 0, alloc_count, result);
 
-}
+    char *thread_id_c_str;
+    thread_id_to_string(tid, thread_id_c_str);
+    jstring j_thread_id = env->NewStringUTF(thread_id_c_str);
 
-char *get_java_stack() {
-    char *buf = static_cast<char *>(malloc(BUF_SIZE));
-    if (buf) {
-        get_java_stacktrace(buf, BUF_SIZE);
+    jstring j_activity_info = env->NewStringUTF(activity_info);
+
+    wechat_backtrace::Backtrace *backtrace = deduplicate_backtrace(backtracePtr);
+
+    env->CallStaticVoidMethod(
+            class_OpenGLHook,
+            jmethodId,
+            newArr,
+            j_thread_id,
+            (jint) throwable,
+            (jlong) backtrace,
+            (jlong) egl_context,
+            (jlong) egl_draw_surface,
+            (jlong) egl_read_surface,
+            j_activity_info);
+
+    delete[] result;
+    env->DeleteLocalRef(newArr);
+    env->DeleteLocalRef(j_thread_id);
+    env->DeleteLocalRef(j_activity_info);
+
+    if (copy_resource != nullptr) {
+        free(copy_resource);
     }
-    return buf;
+
+    if (thread_id_c_str != nullptr) {
+        free(thread_id_c_str);
+    }
+
+    if (activity_info != nullptr) {
+        free(activity_info);
+    }
 }
 
-void get_thread_id_string(char *&result) {
-    thread::id thread_id = this_thread::get_id();
-    thread_id_to_string(thread_id, result);
+void delete_jni_callback(int delete_count, GLuint *copy_resource, const pid_t tid,
+                         EGLContext egl_context, jmethodID jmethodId) {
+    JNIEnv *env = GET_ENV();
+
+    int *result = new int[delete_count];
+    for (int i = 0; i < delete_count; i++) {
+        result[i] = *(copy_resource + i);
+    }
+    jintArray newArr = env->NewIntArray(delete_count);
+    env->SetIntArrayRegion(newArr, 0, delete_count, result);
+
+    char *thread_id_c_str;
+    thread_id_to_string(tid, thread_id_c_str);
+    jstring j_thread_id = env->NewStringUTF(thread_id_c_str);
+
+    env->CallStaticVoidMethod(class_OpenGLHook,
+                              jmethodId,
+                              newArr,
+                              j_thread_id,
+                              (jlong) egl_context);
+
+    delete[] result;
+    env->DeleteLocalRef(newArr);
+    env->DeleteLocalRef(j_thread_id);
+
+    if (copy_resource != nullptr) {
+        free(copy_resource);
+    }
+
+    if (thread_id_c_str != nullptr) {
+        free(thread_id_c_str);
+    }
 }
+
 GL_APICALL void GL_APIENTRY my_glGenTextures(GLsizei n, GLuint *textures) {
     if (NULL != system_glGenTextures) {
         system_glGenTextures(n, textures);
@@ -176,58 +277,37 @@ GL_APICALL void GL_APIENTRY my_glGenTextures(GLsizei n, GLuint *textures) {
             return;
         }
 
-        JNIEnv *env = GET_ENV();
+        GLuint *copy_textures = new GLuint[n];
+        memcpy(copy_textures, textures, n * sizeof(GLuint));
 
-        int *result = new int[n];
-        for (int i = 0; i < n; i++) {
-            result[i] = *(textures + i);
-        }
-        jintArray newArr = env->NewIntArray(n);
-        env->SetIntArrayRegion(newArr, 0, n, result);
+        wechat_backtrace::Backtrace *backtracePrt = get_native_backtrace();
 
-        char *thread_id = nullptr;
-        get_thread_id_string(thread_id);
-        jstring j_thread_id = env->NewStringUTF(thread_id);
+        int throwable = get_java_throwable();
 
-        wechat_backtrace::Backtrace *backtracePrt = 0;
-        if (is_stacktrace_enabled) {
-            wechat_backtrace::Backtrace backtrace_zero = BACKTRACE_INITIALIZER(
-                    MEMHOOK_BACKTRACE_MAX_FRAMES);
+        pid_t tid = pthread_gettid_np(pthread_self());
 
-            backtracePrt = new wechat_backtrace::Backtrace;
-            backtracePrt->max_frames = backtrace_zero.max_frames;
-            backtracePrt->frame_size = backtrace_zero.frame_size;
-            backtracePrt->frames = backtrace_zero.frames;
+        EGLContext egl_context = eglGetCurrentContext();
 
-            wechat_backtrace::unwind_adapter(backtracePrt->frames.get(), backtracePrt->max_frames,
-                                             backtracePrt->frame_size);
-        }
+        EGLSurface egl_draw_surface = eglGetCurrentSurface(EGL_DRAW);
+        EGLSurface egl_read_surface = eglGetCurrentSurface(EGL_READ);
 
-        jstring java_stack;
-        char *javaStack = nullptr;
-        if (is_javastack_enabled) {
-            javaStack = get_java_stack();
-            java_stack = env->NewStringUTF(javaStack);
+        char *activity_info = static_cast<char *>(malloc(BUF_SIZE));
+        if (curr_activity_info != nullptr) {
+            strcpy(activity_info, curr_activity_info);
         } else {
-            java_stack = env->NewStringUTF("");
+            strcpy(activity_info, "null");
         }
 
-        env->CallStaticVoidMethod(class_OpenGLHook, method_onGlGenTextures, newArr, j_thread_id,
-                                  java_stack, (int64_t) backtracePrt);
+        messages_containers->
+                enqueue_message((uintptr_t) egl_context,
+                                [n, copy_textures, throwable, tid, backtracePrt, egl_context, egl_read_surface, egl_draw_surface, activity_info]() {
 
-        delete[] result;
-        if (is_javastack_enabled && javaStack != nullptr) {
-            free(javaStack);
-        }
+                                    gen_jni_callback(n, copy_textures, throwable, tid,
+                                                     backtracePrt, egl_context, egl_draw_surface,
+                                                     egl_read_surface,
+                                                     activity_info, method_onGlGenTextures);
 
-        env->DeleteLocalRef(newArr);
-        env->DeleteLocalRef(j_thread_id);
-        env->DeleteLocalRef(java_stack);
-
-        if (thread_id != nullptr) {
-            delete[] thread_id;
-            thread_id = nullptr;
-        }
+                                });
     }
 }
 
@@ -239,27 +319,21 @@ GL_APICALL void GL_APIENTRY my_glDeleteTextures(GLsizei n, GLuint *textures) {
             return;
         }
 
-        JNIEnv *env = GET_ENV();
+        GLuint *copy_textures = new GLuint[n];
+        memcpy(copy_textures, textures, n * sizeof(GLuint));
 
-        int *result = new int[n];
-        for (int i = 0; i < n; i++) {
-            result[i] = *(textures + i);
-        }
-        jintArray newArr = env->NewIntArray(n);
-        env->SetIntArrayRegion(newArr, 0, n, result);
+        pid_t tid = pthread_gettid_np(pthread_self());
 
-        char *thread_id = nullptr;
-        get_thread_id_string(thread_id);
-        jstring j_thread_id = env->NewStringUTF(thread_id);
+        EGLContext egl_context = eglGetCurrentContext();
 
-        env->CallStaticVoidMethod(class_OpenGLHook, method_onGlDeleteTextures, newArr, j_thread_id);
-        delete[] result;
-        env->DeleteLocalRef(newArr);
-        env->DeleteLocalRef(j_thread_id);
-        if (thread_id != nullptr) {
-            delete[] thread_id;
-            thread_id = nullptr;
-        }
+        messages_containers
+                ->enqueue_message((uintptr_t) egl_context,
+                                  [n, copy_textures, tid, egl_context] {
+
+                                      delete_jni_callback(n, copy_textures, tid, egl_context,
+                                                          method_onGlDeleteTextures);
+
+                                  });
     }
 }
 
@@ -271,57 +345,37 @@ GL_APICALL void GL_APIENTRY my_glGenBuffers(GLsizei n, GLuint *buffers) {
             return;
         }
 
-        JNIEnv *env = GET_ENV();
+        GLuint *copy_buffers = new GLuint[n];
+        memcpy(copy_buffers, buffers, n * sizeof(GLuint));
 
-        int *result = new int[n];
-        for (int i = 0; i < n; i++) {
-            result[i] = *(buffers + i);
-        }
-        jintArray newArr = env->NewIntArray(n);
-        env->SetIntArrayRegion(newArr, 0, n, result);
+        wechat_backtrace::Backtrace *backtracePrt = get_native_backtrace();
 
-        char *thread_id = nullptr;
-        get_thread_id_string(thread_id);
-        jstring j_thread_id = env->NewStringUTF(thread_id);
+        int throwable = get_java_throwable();
 
-        wechat_backtrace::Backtrace *backtracePrt = 0;
-        if (is_stacktrace_enabled) {
-            wechat_backtrace::Backtrace backtrace_zero = BACKTRACE_INITIALIZER(
-                    MEMHOOK_BACKTRACE_MAX_FRAMES);
+        pid_t tid = pthread_gettid_np(pthread_self());
 
-            backtracePrt = new wechat_backtrace::Backtrace;
-            backtracePrt->max_frames = backtrace_zero.max_frames;
-            backtracePrt->frame_size = backtrace_zero.frame_size;
-            backtracePrt->frames = backtrace_zero.frames;
+        EGLContext egl_context = eglGetCurrentContext();
 
-            wechat_backtrace::unwind_adapter(backtracePrt->frames.get(), backtracePrt->max_frames,
-                                             backtracePrt->frame_size);
-        }
+        EGLSurface egl_draw_surface = eglGetCurrentSurface(EGL_DRAW);
+        EGLSurface egl_read_surface = eglGetCurrentSurface(EGL_READ);
 
-        jstring java_stack;
-        char *javaStack = nullptr;
-        if (is_javastack_enabled) {
-            javaStack = get_java_stack();
-            java_stack = env->NewStringUTF(javaStack);
+        char *activity_info = static_cast<char *>(malloc(BUF_SIZE));
+        if (curr_activity_info != nullptr) {
+            strcpy(activity_info, curr_activity_info);
         } else {
-            java_stack = env->NewStringUTF("");
+            strcpy(activity_info, "null");
         }
+        messages_containers
+                ->enqueue_message((uintptr_t) egl_context,
+                                  [n, copy_buffers, throwable, tid, backtracePrt, egl_context, egl_draw_surface, egl_read_surface, activity_info]() {
 
-        env->CallStaticVoidMethod(class_OpenGLHook, method_onGlGenBuffers, newArr, j_thread_id,
-                                  java_stack, (int64_t) backtracePrt);
+                                      gen_jni_callback(n, copy_buffers, throwable, tid,
+                                                       backtracePrt, egl_context, egl_draw_surface,
+                                                       egl_read_surface,
+                                                       activity_info, method_onGlGenBuffers);
 
-        delete[] result;
-        if (is_javastack_enabled && javaStack != nullptr) {
-            free(javaStack);
-        }
+                                  });
 
-        env->DeleteLocalRef(newArr);
-        env->DeleteLocalRef(j_thread_id);
-        env->DeleteLocalRef(java_stack);
-        if (thread_id != nullptr) {
-            delete[] thread_id;
-            thread_id = nullptr;
-        }
     }
 }
 
@@ -333,27 +387,21 @@ GL_APICALL void GL_APIENTRY my_glDeleteBuffers(GLsizei n, GLuint *buffers) {
             return;
         }
 
-        JNIEnv *env = GET_ENV();
+        GLuint *copy_buffers = new GLuint[n];
+        memcpy(copy_buffers, buffers, n * sizeof(GLuint));
 
-        int *result = new int[n];
-        for (int i = 0; i < n; i++) {
-            result[i] = *(buffers + i);
-        }
-        jintArray newArr = env->NewIntArray(n);
-        env->SetIntArrayRegion(newArr, 0, n, result);
+        pid_t tid = pthread_gettid_np(pthread_self());
 
-        char *thread_id = nullptr;
-        get_thread_id_string(thread_id);
-        jstring j_thread_id = env->NewStringUTF(thread_id);
+        EGLContext egl_context = eglGetCurrentContext();
 
-        env->CallStaticVoidMethod(class_OpenGLHook, method_onGlDeleteBuffers, newArr, j_thread_id);
-        delete[] result;
-        env->DeleteLocalRef(newArr);
-        env->DeleteLocalRef(j_thread_id);
-        if (thread_id != nullptr) {
-            delete[] thread_id;
-            thread_id = nullptr;
-        }
+        messages_containers
+                ->enqueue_message((uintptr_t) egl_context,
+                                  [n, copy_buffers, tid, egl_context]() {
+
+                                      delete_jni_callback(n, copy_buffers, tid, egl_context,
+                                                          method_onGlDeleteBuffers);
+
+                                  });
     }
 }
 
@@ -364,58 +412,38 @@ GL_APICALL void GL_APIENTRY my_glGenFramebuffers(GLsizei n, GLuint *buffers) {
         if (is_render_thread()) {
             return;
         }
+        GLuint *copy_buffers = new GLuint[n];
+        memcpy(copy_buffers, buffers, n * sizeof(GLuint));
 
-        JNIEnv *env = GET_ENV();
+        wechat_backtrace::Backtrace *backtracePrt = get_native_backtrace();
 
-        int *result = new int[n];
-        for (int i = 0; i < n; i++) {
-            result[i] = *(buffers + i);
-        }
-        jintArray newArr = env->NewIntArray(n);
-        env->SetIntArrayRegion(newArr, 0, n, result);
+        int throwable = get_java_throwable();
 
-        char *thread_id = nullptr;
-        get_thread_id_string(thread_id);
-        jstring j_thread_id = env->NewStringUTF(thread_id);
+        pid_t tid = pthread_gettid_np(pthread_self());
 
-        wechat_backtrace::Backtrace *backtracePrt = 0;
-        if (is_stacktrace_enabled) {
-            wechat_backtrace::Backtrace backtrace_zero = BACKTRACE_INITIALIZER(
-                    MEMHOOK_BACKTRACE_MAX_FRAMES);
+        EGLContext egl_context = eglGetCurrentContext();
 
-            backtracePrt = new wechat_backtrace::Backtrace;
-            backtracePrt->max_frames = backtrace_zero.max_frames;
-            backtracePrt->frame_size = backtrace_zero.frame_size;
-            backtracePrt->frames = backtrace_zero.frames;
+        EGLSurface egl_draw_surface = eglGetCurrentSurface(EGL_DRAW);
+        EGLSurface egl_read_surface = eglGetCurrentSurface(EGL_READ);
 
-            wechat_backtrace::unwind_adapter(backtracePrt->frames.get(), backtracePrt->max_frames,
-                                             backtracePrt->frame_size);
-        }
-
-        jstring java_stack;
-        char *javaStack = nullptr;
-        if (is_javastack_enabled) {
-            javaStack = get_java_stack();
-            java_stack = env->NewStringUTF(javaStack);
+        char *activity_info = static_cast<char *>(malloc(BUF_SIZE));
+        if (curr_activity_info != nullptr) {
+            strcpy(activity_info, curr_activity_info);
         } else {
-            java_stack = env->NewStringUTF("");
+            strcpy(activity_info, "null");
         }
 
-        env->CallStaticVoidMethod(class_OpenGLHook, method_onGlGenFramebuffers, newArr,
-                                  j_thread_id, java_stack, (int64_t) backtracePrt);
+        messages_containers
+                ->enqueue_message((uintptr_t) egl_context,
+                                  [n, copy_buffers, throwable, tid, backtracePrt, egl_context, egl_draw_surface, egl_read_surface, activity_info]() {
 
-        delete[] result;
-        if (is_javastack_enabled && javaStack != nullptr) {
-            free(javaStack);
-        }
+                                      gen_jni_callback(n, copy_buffers, throwable, tid,
+                                                       backtracePrt, egl_context, egl_draw_surface,
+                                                       egl_read_surface,
+                                                       activity_info, method_onGlGenFramebuffers);
 
-        env->DeleteLocalRef(newArr);
-        env->DeleteLocalRef(j_thread_id);
-        env->DeleteLocalRef(java_stack);
-        if (thread_id != nullptr) {
-            delete[] thread_id;
-            thread_id = nullptr;
-        }
+                                  });
+
     }
 }
 
@@ -427,28 +455,20 @@ GL_APICALL void GL_APIENTRY my_glDeleteFramebuffers(GLsizei n, GLuint *buffers) 
             return;
         }
 
-        JNIEnv *env = GET_ENV();
+        GLuint *copy_buffers = new GLuint[n];
+        memcpy(copy_buffers, buffers, n * sizeof(GLuint));
 
-        int *result = new int[n];
-        for (int i = 0; i < n; i++) {
-            result[i] = *(buffers + i);
-        }
-        jintArray newArr = env->NewIntArray(n);
-        env->SetIntArrayRegion(newArr, 0, n, result);
+        pid_t tid = pthread_gettid_np(pthread_self());
 
-        char *thread_id = nullptr;
-        get_thread_id_string(thread_id);
-        jstring j_thread_id = env->NewStringUTF(thread_id);
+        EGLContext egl_context = eglGetCurrentContext();
 
-        env->CallStaticVoidMethod(class_OpenGLHook, method_onGlDeleteFramebuffers, newArr,
-                                  j_thread_id);
-        delete[] result;
-        env->DeleteLocalRef(newArr);
-        env->DeleteLocalRef(j_thread_id);
-        if (thread_id != nullptr) {
-            delete[] thread_id;
-            thread_id = nullptr;
-        }
+        messages_containers
+                ->enqueue_message((uintptr_t) egl_context,
+                                  [n, copy_buffers, tid, egl_context]() {
+                                      delete_jni_callback(n, copy_buffers, tid, egl_context,
+                                                          method_onGlDeleteFramebuffers);
+                                  });
+
     }
 }
 
@@ -456,61 +476,41 @@ GL_APICALL void GL_APIENTRY my_glGenRenderbuffers(GLsizei n, GLuint *buffers) {
     if (NULL != system_glGenRenderbuffers) {
         system_glGenRenderbuffers(n, buffers);
 
+        GLuint *copy_buffers = new GLuint[n];
+        memcpy(copy_buffers, buffers, n * sizeof(GLuint));
+
         if (is_render_thread()) {
             return;
         }
 
-        JNIEnv *env = GET_ENV();
+        wechat_backtrace::Backtrace *backtracePrt = get_native_backtrace();
 
-        int *result = new int[n];
-        for (int i = 0; i < n; i++) {
-            result[i] = *(buffers + i);
-        }
-        jintArray newArr = env->NewIntArray(n);
-        env->SetIntArrayRegion(newArr, 0, n, result);
+        int throwable = get_java_throwable();
 
-        char *thread_id = nullptr;
-        get_thread_id_string(thread_id);
-        jstring j_thread_id = env->NewStringUTF(thread_id);
+        pid_t tid = pthread_gettid_np(pthread_self());
 
-        wechat_backtrace::Backtrace *backtracePrt = 0;
-        if (is_stacktrace_enabled) {
-            wechat_backtrace::Backtrace backtrace_zero = BACKTRACE_INITIALIZER(
-                    MEMHOOK_BACKTRACE_MAX_FRAMES);
+        EGLContext egl_context = eglGetCurrentContext();
 
-            backtracePrt = new wechat_backtrace::Backtrace;
-            backtracePrt->max_frames = backtrace_zero.max_frames;
-            backtracePrt->frame_size = backtrace_zero.frame_size;
-            backtracePrt->frames = backtrace_zero.frames;
+        EGLSurface egl_draw_surface = eglGetCurrentSurface(EGL_DRAW);
+        EGLSurface egl_read_surface = eglGetCurrentSurface(EGL_READ);
 
-            wechat_backtrace::unwind_adapter(backtracePrt->frames.get(), backtracePrt->max_frames,
-                                             backtracePrt->frame_size);
-        }
-
-        jstring java_stack;
-        char *javaStack = nullptr;
-        if (is_javastack_enabled) {
-            javaStack = get_java_stack();
-            java_stack = env->NewStringUTF(javaStack);
+        char *activity_info = static_cast<char *>(malloc(BUF_SIZE));
+        if (curr_activity_info != nullptr) {
+            strcpy(activity_info, curr_activity_info);
         } else {
-            java_stack = env->NewStringUTF("");
+            strcpy(activity_info, "null");
         }
 
-        env->CallStaticVoidMethod(class_OpenGLHook, method_onGlGenRenderbuffers, newArr,
-                                  j_thread_id, java_stack, (int64_t) backtracePrt);
+        messages_containers
+                ->enqueue_message((uintptr_t) egl_context,
+                                  [n, copy_buffers, throwable, tid, backtracePrt, egl_context, egl_draw_surface, egl_read_surface, activity_info]() {
 
-        delete[] result;
-        if (is_javastack_enabled && javaStack != nullptr) {
-            free(javaStack);
-        }
+                                      gen_jni_callback(n, copy_buffers, throwable, tid,
+                                                       backtracePrt, egl_context, egl_draw_surface,
+                                                       egl_read_surface,
+                                                       activity_info, method_onGlGenRenderbuffers);
 
-        env->DeleteLocalRef(newArr);
-        env->DeleteLocalRef(j_thread_id);
-        env->DeleteLocalRef(java_stack);
-        if (thread_id != nullptr) {
-            delete[] thread_id;
-            thread_id = nullptr;
-        }
+                                  });
     }
 }
 
@@ -522,35 +522,27 @@ GL_APICALL void GL_APIENTRY my_glDeleteRenderbuffers(GLsizei n, GLuint *buffers)
             return;
         }
 
-        JNIEnv *env = GET_ENV();
+        GLuint *copy_buffers = new GLuint[n];
+        memcpy(copy_buffers, buffers, n * sizeof(GLuint));
 
-        int *result = new int[n];
-        for (int i = 0; i < n; i++) {
-            result[i] = *(buffers + i);
-        }
-        jintArray newArr = env->NewIntArray(n);
-        env->SetIntArrayRegion(newArr, 0, n, result);
+        pid_t tid = pthread_gettid_np(pthread_self());
 
-        char *thread_id = nullptr;
-        get_thread_id_string(thread_id);
-        jstring j_thread_id = env->NewStringUTF(thread_id);
+        EGLContext egl_context = eglGetCurrentContext();
 
-        env->CallStaticVoidMethod(class_OpenGLHook, method_onGlDeleteRenderbuffers, newArr,
-                                  j_thread_id);
-        delete[] result;
-        env->DeleteLocalRef(newArr);
-        env->DeleteLocalRef(j_thread_id);
-        if (thread_id != nullptr) {
-            delete[] thread_id;
-            thread_id = nullptr;
-        }
+        messages_containers
+                ->enqueue_message((uintptr_t) egl_context,
+                                  [n, copy_buffers, tid, egl_context]() {
+
+                                      delete_jni_callback(n, copy_buffers, tid, egl_context,
+                                                          method_onGlDeleteRenderbuffers);
+
+                                  });
     }
 }
 
 GL_APICALL int GL_APIENTRY my_glGetError() {
     if (NULL != system_glGetError) {
         int result = system_glGetError();
-
         JNIEnv *env = GET_ENV();
         jint jresult = result;
 
@@ -572,41 +564,38 @@ my_glTexImage2D(GLenum target, GLint level, GLint internalformat, GLsizei width,
         if (is_render_thread()) {
             return;
         }
-        int pixel = Utils::getSizeOfPerPixel(internalformat, format, type);
-        long size = width * height * pixel;
-        JNIEnv *env = GET_ENV();
 
-        wechat_backtrace::Backtrace *backtracePrt = 0;
-        if (is_stacktrace_enabled) {
-            wechat_backtrace::Backtrace backtrace_zero = BACKTRACE_INITIALIZER(
-                    MEMHOOK_BACKTRACE_MAX_FRAMES);
+        wechat_backtrace::Backtrace *backtracePrt = get_native_backtrace();
 
-            backtracePrt = new wechat_backtrace::Backtrace;
-            backtracePrt->max_frames = backtrace_zero.max_frames;
-            backtracePrt->frame_size = backtrace_zero.frame_size;
-            backtracePrt->frames = backtrace_zero.frames;
+        int throwable = get_java_throwable();
 
-            wechat_backtrace::unwind_adapter(backtracePrt->frames.get(), backtracePrt->max_frames,
-                                             backtracePrt->frame_size);
-        }
+        EGLContext egl_context = eglGetCurrentContext();
 
-        jstring java_stack;
-        char *javaStack = nullptr;
-        if (is_javastack_enabled && do_sample()) {
-            javaStack = get_java_stack();
-            java_stack = env->NewStringUTF(javaStack);
-        } else {
-            java_stack = env->NewStringUTF("");
-        }
+        messages_containers
+                ->enqueue_message((uintptr_t) egl_context,
+                                  [target, level, internalformat, width, height, border, format, type, throwable, backtracePrt, egl_context]() {
+                                      JNIEnv *env = GET_ENV();
 
-        env->CallStaticVoidMethod(class_OpenGLHook, method_onGlTexImage2D, target, level,
-                                  internalformat, width, height, border, format, type, (jlong) size,
-                                  java_stack, (jlong) backtracePrt);
+                                      int pixel = Utils::getSizeOfPerPixel(internalformat, format,
+                                                                           type);
+                                      long size = width * height * pixel;
 
-        if (is_javastack_enabled && javaStack != nullptr) {
-            free(javaStack);
-        }
-        env->DeleteLocalRef(java_stack);
+                                      wechat_backtrace::Backtrace *backtrace = deduplicate_backtrace(
+                                              backtracePrt);
+
+                                      env->CallStaticVoidMethod(class_OpenGLHook,
+                                                                method_onGlTexImage2D,
+                                                                target,
+                                                                level,
+                                                                internalformat, width,
+                                                                height, border, format,
+                                                                type,
+                                                                (jlong) size,
+                                                                (jint) throwable,
+                                                                (jlong) backtrace,
+                                                                (jlong) egl_context);
+                                  });
+
     }
 }
 
@@ -620,42 +609,42 @@ my_glTexImage3D(GLenum target, GLint level, GLint internalformat, GLsizei width,
         if (is_render_thread()) {
             return;
         }
-        int pixel = Utils::getSizeOfPerPixel(internalformat, format, type);
-        long size = width * height * depth * pixel;
-        JNIEnv *env = GET_ENV();
 
-        wechat_backtrace::Backtrace *backtracePrt = 0;
-        if (is_stacktrace_enabled) {
-            wechat_backtrace::Backtrace backtrace_zero = BACKTRACE_INITIALIZER(
-                    MEMHOOK_BACKTRACE_MAX_FRAMES);
+        wechat_backtrace::Backtrace *backtracePrt = get_native_backtrace();
 
-            backtracePrt = new wechat_backtrace::Backtrace;
-            backtracePrt->max_frames = backtrace_zero.max_frames;
-            backtracePrt->frame_size = backtrace_zero.frame_size;
-            backtracePrt->frames = backtrace_zero.frames;
+        int throwable = get_java_throwable();
 
-            wechat_backtrace::unwind_adapter(backtracePrt->frames.get(), backtracePrt->max_frames,
-                                             backtracePrt->frame_size);
-        }
+        EGLContext egl_context = eglGetCurrentContext();
 
-        jstring java_stack;
-        char *javaStack = nullptr;
-        if (is_javastack_enabled && do_sample()) {
-            javaStack = get_java_stack();
-            java_stack = env->NewStringUTF(javaStack);
-        } else {
-            java_stack = env->NewStringUTF("");
-        }
+        messages_containers
+                ->enqueue_message((uintptr_t) egl_context,
+                                  [target, level, internalformat, width, height, depth, border, format, type, backtracePrt, throwable, egl_context]() {
 
-        env->CallStaticVoidMethod(class_OpenGLHook, method_onGlTexImage3D, target, level,
-                                  internalformat, width, height, depth, border, format, type,
-                                  (jlong) size,
-                                  java_stack, (jlong) backtracePrt);
+                                      JNIEnv *env = GET_ENV();
 
-        if (is_javastack_enabled && javaStack != nullptr) {
-            free(javaStack);
-        }
-        env->DeleteGlobalRef(java_stack);
+                                      int pixel = Utils::getSizeOfPerPixel(internalformat,
+                                                                           format,
+                                                                           type);
+
+                                      long size = width * height * depth * pixel;
+
+                                      wechat_backtrace::Backtrace *backtrace = deduplicate_backtrace(
+                                              backtracePrt);
+
+                                      env->CallStaticVoidMethod(class_OpenGLHook,
+                                                                method_onGlTexImage3D,
+                                                                target,
+                                                                level,
+                                                                internalformat, width, height,
+                                                                depth, border,
+                                                                format,
+                                                                type,
+                                                                (jlong) size,
+                                                                (jint) throwable,
+                                                                (jlong) backtrace,
+                                                                (jlong) egl_context);
+
+                                  });
     }
 }
 
@@ -667,8 +656,18 @@ GL_APICALL void GL_APIENTRY my_glBindTexture(GLenum target, GLuint resourceId) {
         if (is_render_thread()) {
             return;
         }
-        JNIEnv *env = GET_ENV();
-        env->CallStaticVoidMethod(class_OpenGLHook, method_onGlBindTexture, target, resourceId);
+
+        EGLContext egl_context = eglGetCurrentContext();
+
+        messages_containers
+                ->enqueue_message((uintptr_t) egl_context, [target, resourceId, egl_context]() {
+                    JNIEnv *env = GET_ENV();
+                    env->CallStaticVoidMethod(class_OpenGLHook, method_onGlBindTexture, target,
+                                              (jint) resourceId,
+                                              (jlong) egl_context);
+
+                });
+
     }
 }
 
@@ -679,9 +678,18 @@ GL_APICALL void GL_APIENTRY my_glBindBuffer(GLenum target, GLuint resourceId) {
         if (is_render_thread()) {
             return;
         }
-        JNIEnv *env = GET_ENV();
-        env->CallStaticVoidMethod(class_OpenGLHook, method_onGlBindBuffer, target, resourceId);
 
+        EGLContext egl_context = eglGetCurrentContext();
+
+        messages_containers
+                ->enqueue_message((uintptr_t) egl_context, [target, resourceId, egl_context]() {
+                    JNIEnv *env = GET_ENV();
+
+                    env->CallStaticVoidMethod(class_OpenGLHook, method_onGlBindBuffer, target,
+                                              (jint) resourceId,
+                                              (jlong) egl_context);
+
+                });
     }
 }
 
@@ -692,9 +700,16 @@ GL_APICALL void GL_APIENTRY my_glBindFramebuffer(GLenum target, GLuint resourceI
         if (is_render_thread()) {
             return;
         }
-        JNIEnv *env = GET_ENV();
-        env->CallStaticVoidMethod(class_OpenGLHook, method_onGlBindFramebuffer, target, resourceId);
 
+        EGLContext egl_context = eglGetCurrentContext();
+
+        messages_containers
+                ->enqueue_message((uintptr_t) egl_context, [target, resourceId, egl_context]() {
+                    JNIEnv *env = GET_ENV();
+                    env->CallStaticVoidMethod(class_OpenGLHook, method_onGlBindFramebuffer,
+                                              target,
+                                              resourceId, (jlong) egl_context);
+                });
     }
 }
 
@@ -705,9 +720,15 @@ GL_APICALL void GL_APIENTRY my_glBindRenderbuffer(GLenum target, GLuint resource
         if (is_render_thread()) {
             return;
         }
-        JNIEnv *env = GET_ENV();
-        env->CallStaticVoidMethod(class_OpenGLHook, method_onGlBindRenderbuffer, target,
-                                  resourceId);
+        EGLContext egl_context = eglGetCurrentContext();
+
+        messages_containers
+                ->enqueue_message((uintptr_t) egl_context, [target, resourceId, egl_context]() {
+                    JNIEnv *env = GET_ENV();
+                    env->CallStaticVoidMethod(class_OpenGLHook, method_onGlBindRenderbuffer,
+                                              target,
+                                              (jint) resourceId, (jlong) egl_context);
+                });
     }
 }
 
@@ -719,39 +740,31 @@ my_glBufferData(GLenum target, GLsizeiptr size, const GLvoid *data, GLenum usage
         if (is_render_thread()) {
             return;
         }
-        JNIEnv *env = GET_ENV();
 
-        wechat_backtrace::Backtrace *backtracePrt = 0;
-        if (is_stacktrace_enabled) {
-            wechat_backtrace::Backtrace backtrace_zero = BACKTRACE_INITIALIZER(
-                    MEMHOOK_BACKTRACE_MAX_FRAMES);
+        wechat_backtrace::Backtrace *backtracePrt = get_native_backtrace();
 
-            backtracePrt = new wechat_backtrace::Backtrace;
-            backtracePrt->max_frames = backtrace_zero.max_frames;
-            backtracePrt->frame_size = backtrace_zero.frame_size;
-            backtracePrt->frames = backtrace_zero.frames;
+        int throwable = get_java_throwable();
 
-            wechat_backtrace::unwind_adapter(backtracePrt->frames.get(), backtracePrt->max_frames,
-                                             backtracePrt->frame_size);
-        }
+        EGLContext egl_context = eglGetCurrentContext();
 
-        jstring java_stack;
-        char *javaStack = nullptr;
-        if (is_javastack_enabled && do_sample()) {
-            javaStack = get_java_stack();
-            java_stack = env->NewStringUTF(javaStack);
-        } else {
-            java_stack = env->NewStringUTF("");
-        }
+        messages_containers
+                ->enqueue_message((uintptr_t) egl_context,
+                                  [target, size, usage, throwable, backtracePrt, egl_context]() {
 
-        env->CallStaticVoidMethod(class_OpenGLHook, method_onGlBufferData, target,
-                                  usage, (jlong) size,
-                                  java_stack, (jlong) backtracePrt);
+                                      JNIEnv *env = GET_ENV();
 
-        if (is_javastack_enabled && javaStack != nullptr) {
-            free(javaStack);
-        }
-        env->DeleteLocalRef(java_stack);
+                                      wechat_backtrace::Backtrace *backtrace = deduplicate_backtrace(
+                                              backtracePrt);
+
+                                      env->CallStaticVoidMethod(class_OpenGLHook,
+                                                                method_onGlBufferData,
+                                                                target,
+                                                                usage, (jlong) size,
+                                                                (jint) throwable,
+                                                                (jlong) backtrace,
+                                                                (jlong) egl_context);
+
+                                  });
     }
 }
 
@@ -763,42 +776,141 @@ my_glRenderbufferStorage(GLenum target, GLenum internalformat, GLsizei width, GL
         if (is_render_thread()) {
             return;
         }
-        JNIEnv *env = GET_ENV();
 
-        wechat_backtrace::Backtrace *backtracePrt = 0;
-        if (is_stacktrace_enabled) {
-            wechat_backtrace::Backtrace backtrace_zero = BACKTRACE_INITIALIZER(
-                    MEMHOOK_BACKTRACE_MAX_FRAMES);
+        wechat_backtrace::Backtrace *backtracePrt = get_native_backtrace();
 
-            backtracePrt = new wechat_backtrace::Backtrace;
-            backtracePrt->max_frames = backtrace_zero.max_frames;
-            backtracePrt->frame_size = backtrace_zero.frame_size;
-            backtracePrt->frames = backtrace_zero.frames;
+        int throwable = get_java_throwable();
 
-            wechat_backtrace::unwind_adapter(backtracePrt->frames.get(), backtracePrt->max_frames,
-                                             backtracePrt->frame_size);
-        }
+        EGLContext egl_context = eglGetCurrentContext();
 
-        jstring java_stack;
-        char *javaStack = nullptr;
-        if (is_javastack_enabled && do_sample()) {
-            javaStack = get_java_stack();
-            java_stack = env->NewStringUTF(javaStack);
-        } else {
-            java_stack = env->NewStringUTF("");
-        }
+        messages_containers
+                ->enqueue_message((uintptr_t) egl_context,
+                                  [target, internalformat, width, height, backtracePrt, throwable, egl_context]() {
 
-        long size = Utils::getRenderbufferSizeByFormula(internalformat, width, height);
-        env->CallStaticVoidMethod(class_OpenGLHook, method_onGlRenderbufferStorage, target,
-                                  width, height, internalformat, (jlong) size, java_stack,
-                                  (jlong) backtracePrt);
+                                      JNIEnv *env = GET_ENV();
 
-        if (is_javastack_enabled && javaStack != nullptr) {
-            free(javaStack);
-        }
-        env->DeleteLocalRef(java_stack);
+                                      long size = Utils::getRenderbufferSizeByFormula(
+                                              internalformat, width, height);
+
+                                      wechat_backtrace::Backtrace *backtrace = deduplicate_backtrace(
+                                              backtracePrt);
+
+                                      env->CallStaticVoidMethod(class_OpenGLHook,
+                                                                method_onGlRenderbufferStorage,
+                                                                target,
+                                                                width, height,
+                                                                internalformat,
+                                                                (jlong) size,
+                                                                (jint) throwable,
+                                                                (jlong) backtrace,
+                                                                (jlong) egl_context);
+                                  });
+
     }
 }
 
+EGLAPI EGLContext EGLAPIENTRY
+my_egl_context_create(EGLDisplay dpy, EGLConfig config, EGLContext share_context,
+                      const EGLint *attrib_list) {
+    EGLContext ret = NULL;
+    if (NULL != system_eglCreateContext) {
+        ret = system_eglCreateContext(dpy, config, share_context, attrib_list);
+
+        if (is_render_thread()) {
+            return ret;
+        }
+
+        wechat_backtrace::Backtrace *backtracePrt = get_native_backtrace();
+
+        int throwable = get_java_throwable();
+
+        char *thread_id_c_str;
+        thread_id_to_string(pthread_gettid_np(pthread_self()), thread_id_c_str);
+
+        char *activity_info = static_cast<char *>(malloc(BUF_SIZE));
+        if (curr_activity_info != nullptr) {
+            strcpy(activity_info, curr_activity_info);
+        } else {
+            strcpy(activity_info, "null");
+        }
+
+        messages_containers
+                ->enqueue_message((uintptr_t) ret,
+                                  [backtracePrt, throwable, thread_id_c_str, ret, share_context, activity_info]() {
+
+                                      JNIEnv *env = GET_ENV();
+
+                                      wechat_backtrace::Backtrace *backtrace = deduplicate_backtrace(
+                                              backtracePrt);
+
+                                      jstring j_activity_info = env->NewStringUTF(activity_info);
+                                      jstring j_thread_id = env->NewStringUTF(thread_id_c_str);
+
+                                      env->CallStaticVoidMethod(class_OpenGLHook,
+                                                                method_onEglContextCreate,
+                                                                j_thread_id,
+                                                                (jint) throwable,
+                                                                (jlong) backtrace,
+                                                                (jlong) ret,
+                                                                (jlong) share_context,
+                                                                j_activity_info);
+
+                                      env->DeleteLocalRef(j_activity_info);
+                                      env->DeleteLocalRef(j_thread_id);
+
+                                      if (activity_info != nullptr) {
+                                          free(activity_info);
+                                      }
+
+                                      if (thread_id_c_str) {
+                                          free(thread_id_c_str);
+                                      }
+                                  });
+    }
+    return ret;
+}
+
+/**
+ * EGL_BAD_DISPLAY is generated if display is not an EGL display connection.
+ * EGL_NOT_INITIALIZED is generated if display has not been initialized.
+ * EGL_BAD_CONTEXT is generated if context is not an EGL rendering context.
+ *
+ * @param dpy
+ * @param ctx
+ * @return EGL_FALSE is returned if destruction of the context fails, EGL_TRUE otherwise.
+ */
+EGLAPI EGLBoolean EGLAPIENTRY my_egl_context_destroy(EGLDisplay dpy, EGLContext ctx) {
+    EGLBoolean ret = EGL_FALSE;
+    if (NULL != system_eglDestroyContext) {
+        ret = system_eglDestroyContext(dpy, ctx);
+
+        if (is_render_thread()) {
+            return ret;
+        }
+
+        char *thread_id_c_str;
+        thread_id_to_string(pthread_gettid_np(pthread_self()), thread_id_c_str);
+
+        messages_containers
+                ->enqueue_message((uintptr_t) ctx,
+                                  [thread_id_c_str, ctx, ret]() {
+
+                                      JNIEnv *env = GET_ENV();
+                                      jstring j_thread_id = env->NewStringUTF(thread_id_c_str);
+
+                                      env->CallStaticVoidMethod(class_OpenGLHook,
+                                                                method_onEglContextDestroy,
+                                                                j_thread_id,
+                                                                (jlong) ctx,
+                                                                ret);
+
+                                      env->DeleteLocalRef(j_thread_id);
+                                      if (thread_id_c_str) {
+                                          free(thread_id_c_str);
+                                      }
+                                  });
+    }
+    return ret;
+}
 
 #endif //OPENGL_API_HOOK_MY_FUNCTIONS_H

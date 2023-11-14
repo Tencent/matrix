@@ -1,8 +1,8 @@
 /*
- * Tencent is pleased to support the open source community by making wechat-matrix available.
- * Copyright (C) 2019 THL A29 Limited, a Tencent company. All rights reserved.
- * Licensed under the BSD 3-Clause License (the "License");
- * you may not use this file except in compliance with the License.
+ * Tencent is pleased to support the open source community by making
+ * wechat-matrix available. Copyright (C) 2019 THL A29 Limited, a Tencent
+ * company. All rights reserved. Licensed under the BSD 3-Clause License (the
+ * "License"); you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *      https://opensource.org/licenses/BSD-3-Clause
@@ -14,21 +14,35 @@
  * limitations under the License.
  */
 
-#import <Foundation/Foundation.h>
 #import "bundle_name_helper.h"
+#import <Foundation/Foundation.h>
 
-const char *bundleHelperGetAppBundleName() {
-    NSString *bundleName = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleName"];
-    if (!bundleName) {
-        return "";
+void bundleHelperGetAppBundleName(char *outBuffer, unsigned int bufferSize) {
+    if (outBuffer == NULL || bufferSize == 0) {
+        return;
     }
-    return [[NSString stringWithFormat:@"/%@.app/", bundleName] cStringUsingEncoding:NSUTF8StringEncoding];
+
+    NSString *bundleName = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleName"];
+    if (bundleName) {
+        const char *cStr = [[NSString stringWithFormat:@"/%@.app/", bundleName] cStringUsingEncoding:NSUTF8StringEncoding];
+        strncpy(outBuffer, cStr, bufferSize);
+        outBuffer[bufferSize - 1] = 0;
+    } else {
+        outBuffer[0] = 0;
+    }
 }
 
-const char *bundleHelperGetAppName() {
-    NSString *bundleName = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleName"];
-    if (!bundleName) {
-        return "";
+void bundleHelperGetAppName(char *outBuffer, unsigned int bufferSize) {
+    if (outBuffer == NULL || bufferSize == 0) {
+        return;
     }
-    return [[NSString stringWithFormat:@"/%@.app/%@", bundleName, bundleName] cStringUsingEncoding:NSUTF8StringEncoding];
+
+    NSString *bundleName = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleName"];
+    if (bundleName) {
+        const char *cStr = [[NSString stringWithFormat:@"/%@.app/%@", bundleName, bundleName] cStringUsingEncoding:NSUTF8StringEncoding];
+        strncpy(outBuffer, cStr, bufferSize);
+        outBuffer[bufferSize - 1] = 0;
+    } else {
+        outBuffer[0] = 0;
+    }
 }

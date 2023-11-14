@@ -16,9 +16,12 @@
 
 package com.tencent.matrix.util;
 
+import android.app.Activity;
 import android.app.ActivityManager;
 import android.content.Context;
+import android.os.Build;
 import android.os.Looper;
+import android.util.ArrayMap;
 import android.util.Log;
 
 import java.io.BufferedReader;
@@ -28,12 +31,16 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.lang.reflect.Field;
 import java.math.BigInteger;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 /**
  * Created by zhangshaowen on 17/6/1.
@@ -42,6 +49,7 @@ import java.util.List;
 public final class MatrixUtil {
     private static final String TAG = "Matrix.MatrixUtil";
     private static String processName = null;
+    private static String packageName = null;
 
     private MatrixUtil() {
     }
@@ -50,8 +58,13 @@ public final class MatrixUtil {
         return new java.text.SimpleDateFormat(format).format(new java.util.Date(timeMilliSecond));
     }
 
+    @Deprecated
     public static boolean isInMainThread(final long threadId) {
         return Looper.getMainLooper().getThread().getId() == threadId;
+    }
+
+    public static boolean isInMainThread() {
+        return Looper.myLooper() == Looper.getMainLooper();
     }
 
     public static boolean isInMainProcess(Context context) {
@@ -62,6 +75,19 @@ public final class MatrixUtil {
         }
 
         return pkgName.equals(processName);
+    }
+
+    public static boolean isMainProcessName(String processName, Context context) {
+        String pkgName = context.getPackageName();
+        return Objects.equals(pkgName, processName);
+    }
+
+    public static String getPackageName(final Context context) {
+        if (packageName != null) {
+            return packageName;
+        }
+        packageName = context.getPackageName();
+        return packageName;
     }
 
     /**
@@ -326,5 +352,42 @@ public final class MatrixUtil {
                 reader.close();
             }
         }
+    }
+
+    public static String getTopActivityName() {
+        long start = System.currentTimeMillis();
+        try {
+            Class activityThreadClass = Class.forName("android.app.ActivityThread");
+            Object activityThread = activityThreadClass.getMethod("currentActivityThread").invoke(null);
+            Field activitiesField = activityThreadClass.getDeclaredField("mActivities");
+            activitiesField.setAccessible(true);
+
+            Map<Object, Object> activities;
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT) {
+                activities = (HashMap<Object, Object>) activitiesField.get(activityThread);
+            } else {
+                activities = (ArrayMap<Object, Object>) activitiesField.get(activityThread);
+            }
+            if (activities.size() < 1) {
+                return null;
+            }
+            for (Object activityRecord : activities.values()) {
+                Class activityRecordClass = activityRecord.getClass();
+                Field pausedField = activityRecordClass.getDeclaredField("paused");
+                pausedField.setAccessible(true);
+                if (!pausedField.getBoolean(activityRecord)) {
+                    Field activityField = activityRecordClass.getDeclaredField("activity");
+                    activityField.setAccessible(true);
+                    Activity activity = (Activity) activityField.get(activityRecord);
+                    return activity.getClass().getName();
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            long cost = System.currentTimeMillis() - start;
+            MatrixLog.d(TAG, "[getTopActivityName] Cost:%s", cost);
+        }
+        return null;
     }
 }

@@ -87,16 +87,12 @@ public class Utils {
         return stackTrace.toString();
     }
 
-    public static String calculateCpuUsage(long threadMs, long ms) {
-        if (threadMs <= 0) {
-            return ms > 1000 ? "0%" : "100%";
+    public static String getJavaStackTrace() {
+        StringBuilder stackTrace = new StringBuilder();
+        for (StackTraceElement stackTraceElement : Thread.currentThread().getStackTrace()) {
+            stackTrace.append(stackTraceElement.toString()).append("\n");
         }
-
-        if (threadMs >= ms) {
-            return "100%";
-        }
-
-        return String.format("%.2f", 1.f * threadMs / ms * 100) + "%";
+        return stackTrace.toString();
     }
 
     public static boolean isEmpty(String str) {

@@ -1,0 +1,264 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/BW_95">
+
+    <RelativeLayout
+        android:id="@+id/layout_logo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="5dp">
+
+        <ImageView
+            android:id="@+id/iv_logo"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:contentDescription="logo"
+            android:src="@drawable/ic_launcher"
+            tools:ignore="HardcodedText" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerVertical="true"
+            android:layout_marginLeft="5dp"
+            android:layout_toRightOf="@+id/iv_logo"
+            android:text="Matrix TOP"
+            android:textSize="12sp" />
+
+        <RelativeLayout
+            android:id="@+id/layout_check_power"
+            android:layout_width="70dp"
+            android:layout_height="20dp"
+            android:layout_centerVertical="true"
+            android:layout_marginRight="10dp"
+            android:layout_toLeftOf="@+id/layout_proc"
+            android:foreground="?attr/selectableItemBackground">
+
+            <CheckBox
+                android:id="@+id/check_power"
+                android:layout_width="25dp"
+                android:layout_height="20dp"
+                android:layout_alignParentLeft="true"
+                android:layout_marginTop="2dp"
+                android:checked="true"
+                android:clickable="false"
+                android:scaleX="0.35"
+                android:scaleY="0.35" />
+
+            <TextView
+                android:layout_marginLeft="-5dp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerVertical="true"
+                android:layout_gravity="center_vertical"
+                android:layout_toRightOf="@+id/check_power"
+                android:ellipsize="end"
+                android:gravity="right"
+                android:maxLines="1"
+                android:paddingLeft="5dp"
+                android:text="power"
+                android:textSize="12sp" />
+        </RelativeLayout>
+
+        <RelativeLayout
+            android:id="@+id/layout_proc"
+            android:layout_width="60dp"
+            android:layout_height="20dp"
+            android:layout_alignParentRight="true"
+            android:layout_centerVertical="true"
+            android:background="@color/BG_5"
+            android:foreground="?attr/selectableItemBackground">
+
+            <ImageView
+                android:id="@+id/iv_proc_indicator"
+                android:layout_width="8dp"
+                android:layout_height="8dp"
+                android:layout_centerVertical="true"
+                android:layout_marginLeft="5dp"
+                android:contentDescription="logo"
+                android:rotation="90"
+                android:src="@drawable/stats_icon_triangle"
+                tools:ignore="HardcodedText" />
+
+            <TextView
+                android:id="@+id/tv_proc"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentRight="true"
+                android:layout_centerVertical="true"
+                android:layout_gravity="center_vertical"
+                android:layout_toRightOf="@+id/iv_proc_indicator"
+                android:ellipsize="end"
+                android:gravity="right"
+                android:maxLines="1"
+                android:paddingLeft="5dp"
+                android:text=":main"
+                android:textSize="12sp" />
+        </RelativeLayout>
+    </RelativeLayout>
+
+    <TextView
+        android:id="@+id/tv_header_left"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/layout_logo"
+        android:layout_alignParentLeft="true"
+        android:text="电池温度"
+        android:textColor="@color/FG_2"
+        android:textSize="12sp" />
+
+    <TextView
+        android:id="@+id/tv_header_right"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/layout_logo"
+        android:layout_alignParentRight="true"
+        android:gravity="right"
+        android:text="进程负载"
+        android:textColor="@color/FG_2"
+        android:textSize="12sp"
+        android:visibility="visible" />
+
+
+    <LinearLayout
+        android:id="@+id/layout_entry_proc_group"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/tv_header_left"
+        android:orientation="vertical"
+        tools:background="#3000">
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            tools:background="#5000">
+
+            <include layout="@layout/float_item_proc_entry" />
+        </RelativeLayout>
+
+        <!-- More Entry Here -->
+    </LinearLayout>
+
+    <View
+        android:id="@+id/view_divider"
+        android:layout_width="match_parent"
+        android:layout_height="1px"
+        android:layout_below="@+id/layout_entry_proc_group"
+        android:layout_marginTop="4dp"
+        android:background="@color/BW_70" />
+
+    <LinearLayout
+        android:id="@+id/layout_entry_group"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/view_divider"
+        android:orientation="vertical"
+        tools:background="#3000">
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            tools:background="#5000">
+
+            <include layout="@layout/float_item_thread_entry" />
+        </RelativeLayout>
+
+        <!-- More Entry Here -->
+    </LinearLayout>
+
+    <View
+        android:id="@+id/view_divider_2"
+        android:layout_width="match_parent"
+        android:layout_height="1px"
+        android:layout_below="@+id/layout_entry_group"
+        android:layout_marginTop="4dp"
+        android:background="@color/BW_70" />
+
+    <LinearLayout
+        android:id="@+id/layout_entry_power_group"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/view_divider_2"
+        android:orientation="vertical"
+        tools:background="#3000">
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            tools:background="#5000">
+
+            <include layout="@layout/float_item_power_entry" />
+        </RelativeLayout>
+
+        <!-- More Entry Here -->
+    </LinearLayout>
+
+    <RelativeLayout
+        android:id="@+id/layout_bottom"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/layout_entry_power_group"
+        android:layout_marginTop="5dp">
+
+        <TextView
+            android:id="@+id/tv_curr_pid"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentLeft="true"
+            android:layout_centerVertical="true"
+            android:text="PID"
+            android:textColor="@color/FG_2"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/tv_minify"
+            android:layout_width="60dp"
+            android:layout_height="20dp"
+            android:layout_centerInParent="true"
+            android:foreground="?attr/selectableItemBackground"
+            android:gravity="center"
+            android:text="MINIFY"
+            android:textColor="@color/FG_2"
+            android:textSize="12sp" />
+
+        <RelativeLayout
+            android:id="@+id/layout_dump"
+            android:layout_width="60dp"
+            android:layout_height="20dp"
+            android:layout_alignParentRight="true"
+            android:layout_centerVertical="true"
+            android:background="@color/BG_5"
+            android:foreground="?attr/selectableItemBackground">
+
+            <ImageView
+                android:layout_width="10dp"
+                android:layout_height="10dp"
+                android:layout_centerVertical="true"
+                android:layout_marginLeft="5dp"
+                android:contentDescription="logo"
+                android:src="@drawable/stats_icon_circle_1"
+                tools:ignore="HardcodedText" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentRight="true"
+                android:layout_centerVertical="true"
+                android:layout_gravity="center_vertical"
+                android:layout_marginLeft="5dp"
+                android:gravity="right"
+                android:maxLines="1"
+                android:paddingLeft="5dp"
+                android:text="DUMP"
+                android:textSize="12sp" />
+
+        </RelativeLayout>
+    </RelativeLayout>
+
+</RelativeLayout>

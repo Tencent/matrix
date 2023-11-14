@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <TextView
+        android:id="@+id/tv_name"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:text="ThreadName"
+        android:textColor="@color/FG_2"
+        android:textSize="10sp" />
+
+   <LinearLayout
+       android:layout_width="wrap_content"
+       android:layout_alignParentRight="true"
+       android:orientation="horizontal"
+       android:layout_height="wrap_content">
+       <TextView
+           android:gravity="left"
+           android:id="@+id/tv_tid"
+           android:layout_marginRight="5dp"
+           android:layout_width="35dp"
+           android:layout_height="wrap_content"
+
+           android:ellipsize="end"
+           android:maxLines="1"
+           android:text="65535"
+           android:textColor="@color/FG_2"
+           android:textSize="10sp" />
+       <TextView
+           android:gravity="center"
+           android:id="@+id/tv_status"
+           android:layout_width="20dp"
+           android:layout_height="wrap_content"
+           android:layout_marginRight="5dp"
+           android:ellipsize="end"
+           android:maxLines="1"
+           android:text="~/S"
+           android:textColor="@color/FG_2"
+           android:textSize="10sp" />
+       <TextView
+           android:gravity="right"
+           android:id="@+id/tv_load"
+           android:layout_width="35dp"
+           android:layout_height="wrap_content"
+           android:ellipsize="end"
+           android:maxLines="1"
+           android:text="100%"
+           android:textColor="@color/FG_2"
+           android:textSize="10sp" />
+   </LinearLayout>
+
+</RelativeLayout>

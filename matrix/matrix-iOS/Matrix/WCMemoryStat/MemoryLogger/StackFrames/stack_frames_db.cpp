@@ -16,11 +16,14 @@
 
 #include <stdlib.h>
 #include <mach/mach.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
 #include <sys/sysctl.h>
 #include <assert.h>
+#include <unistd.h>
 
 #include "stack_frames_db.h"
-#include "splay_map_ptr.h"
+#include "stack_hash_map.h"
 
 #pragma mark -
 #pragma mark Defines
@@ -65,7 +68,6 @@ struct backtrace_uniquing_table {
 typedef uint64_t slot_address;
 typedef uint64_t slot_parent;
 
-#pragma pack(push, 8)
 struct table_slot_t {
     union {
         uint64_t value;
@@ -76,19 +78,15 @@ struct table_slot_t {
         } detail;
     };
 };
-#pragma pack(pop)
 
-typedef splay_map_ptr<uint64_t, uint32_t> stack_entry_list_t;
-
-struct backtrace_uniquing_table_index {
-    memory_pool_file *memory_pool;
-    stack_entry_list_t *stack_entry_list[STACK_FRAMES_MAX_LEVEL]; // stack_hash -> entry_identifier
-};
+typedef stack_hash_map backtrace_uniquing_table_index;
 
 struct stack_frames_db {
     backtrace_uniquing_table *table;
     backtrace_uniquing_table_index *table_index;
 };
+
+static_assert(sizeof(table_slot_t) == sizeof(uint64_t), "Not aligned!");
 
 #pragma mark -
 #pragma mark In-Memory Backtrace Uniquing
@@ -316,54 +314,20 @@ table_slot_t *__get_node_from_table(backtrace_uniquing_table *uniquing_table, ui
 #pragma mark Table Index
 
 static void __destory_uniquing_table_index(backtrace_uniquing_table_index *table_index) {
-    if (table_index == NULL) {
-        return;
-    }
-
-    for (int i = 0; i < STACK_FRAMES_MAX_LEVEL; ++i) {
-        delete table_index->stack_entry_list[i];
-    }
-    delete table_index->memory_pool;
-    inter_free(table_index);
+    backtrace_uniquing_table_index::release(table_index);
 }
 
-static backtrace_uniquing_table_index *__init_uniquing_table_index(const char *dir_path) {
-    backtrace_uniquing_table_index *table_index = (backtrace_uniquing_table_index *)inter_malloc(sizeof(backtrace_uniquing_table_index));
-
-    table_index->memory_pool = new memory_pool_file(dir_path, STACK_FRAMES_DB_INDEX_FILE);
-    if (table_index->memory_pool->init_fail()) {
-        goto init_fail;
-    }
-
-    for (int i = 0; i < STACK_FRAMES_MAX_LEVEL; ++i) {
-        table_index->stack_entry_list[i] = new stack_entry_list_t(table_index->memory_pool);
-    }
-
+static backtrace_uniquing_table_index *__init_uniquing_table_index() {
+    backtrace_uniquing_table_index *table_index = backtrace_uniquing_table_index::alloc(263167); // 131071, 514229
     return table_index;
-
-init_fail:
-    __destory_uniquing_table_index(table_index);
-    return NULL;
 }
 
 #pragma mark -
 #pragma mark Public Interface
 
-static uint64_t __frames_hash(uintptr_t *frames, int32_t count) {
-    uint64_t hash = 0;
-    uintptr_t *end = frames + count;
-    size_t seed = 131; // 31 131 1313 13131 131313 etc..
-
-    while (frames < end) {
-        hash = hash * seed + (*frames++);
-    }
-
-    return hash;
-}
-
 stack_frames_db *stack_frames_db_open_or_create(const char *db_dir) {
     backtrace_uniquing_table *table = __init_uniquing_table(db_dir);
-    backtrace_uniquing_table_index *table_index = __init_uniquing_table_index(db_dir);
+    backtrace_uniquing_table_index *table_index = __init_uniquing_table_index();
     if (table == NULL || table_index == NULL) {
         __malloc_printf("init uniquing table or index fail, %p, %p", table, table_index);
         return NULL;
@@ -384,43 +348,39 @@ void stack_frames_db_close(stack_frames_db *db_context) {
     __destory_uniquing_table_index(db_context->table_index);
 }
 
-uint32_t add_stack_frames_in_table(stack_frames_db *db_context, uintptr_t *frames, int32_t count) {
-    uint64_t stack_hash = __frames_hash(frames, count);
+uint32_t stack_frames_db_add_stack(stack_frames_db *db_context, uintptr_t *frames, int32_t frames_count, uint64_t stack_hash) {
+    assert(stack_hash > 0);
+
     uint32_t stack_identifier = 0;
-    stack_entry_list_t *list = db_context->table_index->stack_entry_list[count - 1];
 
     // Check whether this stack exists
-    if (list->exist(stack_hash)) {
-        stack_identifier = list->find();
+    if (db_context->table_index->exist(stack_hash)) {
+        stack_identifier = db_context->table_index->find();
+    } else if (frames_count > 0) {
+        stack_identifier = __enter_frames_in_table(db_context->table, frames, frames_count);
+        db_context->table_index->insert(stack_hash, stack_identifier);
     } else {
-        stack_identifier = __enter_frames_in_table(db_context->table, frames, count);
-        list->insert(stack_hash, stack_identifier);
+        abort();
     }
-
-#ifdef DEBUG
-    // check stack collision
-    uint64_t tmp[64];
-    uint32_t out_frames_count = 0;
-    static int64_t collise_count = 0;
-    unwind_stack_from_table_index(db_context, stack_identifier, tmp, &out_frames_count, 64);
-    if (out_frames_count != count) {
-        collise_count++;
-    } else {
-        for (int i = 0; i < out_frames_count; ++i) {
-            if (tmp[i] != frames[i]) {
-                uint64_t stack_hash2 = __frames_hash((uintptr_t *)tmp, count);
-                assert(stack_hash == stack_hash2);
-                collise_count++;
-                break;
-            }
-        }
-    }
-#endif
 
     return stack_identifier;
 }
 
-void unwind_stack_from_table_index(
+void stack_frames_db_check_stack(stack_frames_db *db_context, uintptr_t *frames, int32_t frames_count, uint64_t stack_hash) {
+    assert(stack_hash > 0);
+
+    // Check whether this stack exists
+    if (db_context->table_index->exist(stack_hash) == false) {
+        if (frames_count > 0) {
+            uint32_t stack_identifier = __enter_frames_in_table(db_context->table, frames, frames_count);
+            db_context->table_index->insert(stack_hash, stack_identifier);
+        } else {
+            abort();
+        }
+    }
+}
+
+void stack_frames_db_unwind_stack(
 stack_frames_db *db_context, uint32_t stack_identifier, uint64_t *out_frames_buffer, uint32_t *out_frames_count, uint32_t max_frames) {
     table_slot_t *node = __get_node_from_table(db_context->table, stack_identifier);
     uint32_t foundFrames = 0;

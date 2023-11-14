@@ -32,6 +32,7 @@
 
 #define LOG_TAG "Matrix.PthreadHook"
 #define ORIGINAL_LIB "libc.so"
+static void *pthread_handle = nullptr;
 
 static volatile bool sThreadTraceEnabled = false;
 static volatile bool sThreadStackShrinkEnabled = false;
@@ -67,11 +68,11 @@ DEFINE_HOOK_FUN(int, pthread_create,
     int ret = 0;
     if (sThreadTraceEnabled) {
         auto *routine_wrapper = thread_trace::wrap_pthread_routine(start_routine, args);
-        CALL_ORIGIN_FUNC_RET(int, tmpRet, pthread_create, pthread, &tmpAttr, routine_wrapper->wrapped_func,
+        CALL_ORIGIN_FUNC_RET(pthread_handle, int, tmpRet, pthread_create, pthread, &tmpAttr, routine_wrapper->wrapped_func,
                              routine_wrapper);
         ret = tmpRet;
     } else {
-        CALL_ORIGIN_FUNC_RET(int, tmpRet, pthread_create, pthread, &tmpAttr, start_routine, args);
+        CALL_ORIGIN_FUNC_RET(pthread_handle, int, tmpRet, pthread_create, pthread, &tmpAttr, start_routine, args);
         ret = tmpRet;
     }
 
@@ -87,7 +88,7 @@ DEFINE_HOOK_FUN(int, pthread_create,
 }
 
 DEFINE_HOOK_FUN(int, pthread_setname_np, pthread_t pthread, const char* name) {
-    CALL_ORIGIN_FUNC_RET(int, ret, pthread_setname_np, pthread, name);
+    CALL_ORIGIN_FUNC_RET(pthread_handle, int, ret, pthread_setname_np, pthread, name);
     if (LIKELY(ret == 0) && sThreadTraceEnabled) {
         thread_trace::handle_pthread_setname_np(pthread, name);
     }
@@ -95,7 +96,7 @@ DEFINE_HOOK_FUN(int, pthread_setname_np, pthread_t pthread, const char* name) {
 }
 
 DEFINE_HOOK_FUN(int, pthread_detach, pthread_t pthread) {
-    CALL_ORIGIN_FUNC_RET(int, ret, pthread_detach, pthread);
+    CALL_ORIGIN_FUNC_RET(pthread_handle, int, ret, pthread_detach, pthread);
     LOGD(LOG_TAG, "pthread_detach : %d", ret);
     if (LIKELY(ret == 0) && sThreadTraceEnabled) {
         thread_trace::handle_pthread_release(pthread);
@@ -104,7 +105,7 @@ DEFINE_HOOK_FUN(int, pthread_detach, pthread_t pthread) {
 }
 
 DEFINE_HOOK_FUN(int, pthread_join, pthread_t pthread, void** return_value_ptr) {
-    CALL_ORIGIN_FUNC_RET(int, ret, pthread_join, pthread, return_value_ptr);
+    CALL_ORIGIN_FUNC_RET(pthread_handle, int, ret, pthread_join, pthread, return_value_ptr);
     LOGD(LOG_TAG, "pthread_join : %d", ret);
     if (LIKELY(ret == 0) && sThreadTraceEnabled) {
         thread_trace::handle_pthread_release(pthread);

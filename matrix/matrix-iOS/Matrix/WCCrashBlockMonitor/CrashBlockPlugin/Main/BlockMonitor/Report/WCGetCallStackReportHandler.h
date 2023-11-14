@@ -19,17 +19,6 @@
 
 @interface WCGetCallStackReportHandler : NSObject
 
-+ (NSData *)getReportJsonDataWithCallStackArray:(KSStackCursor **)stackCursorArray
-                                 callStackCount:(NSUInteger)stackCount
-                                   withReportID:(NSString *)reportID
-                                   withDumpType:(EDumpType)dumpType;
-
-+ (NSData *)getReportJsonDataWithCallStackArray:(KSStackCursor **)stackCursorArray
-                                 callStackCount:(NSUInteger)stackCount
-                                   withReportID:(NSString *)reportID
-                                   withDumpType:(EDumpType)dumpType
-                                      withScene:(NSString *)scene;
-
 + (NSData *)getReportJsonDataWithCallStackString:(NSString *)callStackString
                                     withReportID:(NSString *)reportID
                                     withDumpType:(EDumpType)dumpType
@@ -38,5 +27,17 @@
 + (NSData *)getReportJsonDataWithPowerConsumeStack:(NSArray<NSDictionary *> *)PowerConsumeStackArray
                                       withReportID:(NSString *)reportID
                                       withDumpType:(EDumpType)dumpType;
+
++ (NSData *)getReportJsonDataWithDiskIOStack:(NSArray<NSDictionary *> *)stackArray
+                              withCustomInfo:(NSDictionary *)customInfo
+                                withReportID:(NSString *)reportID
+                                withDumpType:(EDumpType)dumpType;
+
++ (NSData *)getReportJsonDataWithFPSStack:(NSArray<NSDictionary *> *)stackArray
+                           withCustomInfo:(NSDictionary *)customInfo
+                             withReportID:(NSString *)reportID
+                             withDumpType:(EDumpType)dumpType;
+
++ (NSData *)getReportJsonDataWithLagProfileStack:(NSArray<NSDictionary *> *)stackArray;
 
 @end

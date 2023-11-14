@@ -14,8 +14,14 @@ add_library(trace-canary
         src/main/cpp/nativehelper/managed_jnienv.cc
              )
 
-TARGET_INCLUDE_DIRECTORIES(trace-canary PRIVATE ${EXT_DEP}/include)
+target_include_directories(
+        trace-canary
+        PRIVATE ${EXT_DEP}/include
+        PRIVATE ${EXT_DEP}/include/backtrace
+        PRIVATE ${EXT_DEP}/include/backtrace/common
+)
 
+TARGET_INCLUDE_DIRECTORIES(trace-canary PRIVATE ${EXT_DEP}/include)
 
 find_library( log-lib
               log )
@@ -24,6 +30,8 @@ find_library( log-lib
 target_link_libraries( trace-canary
         PRIVATE ${log-lib}
         PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/libxhook.a
+        PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/libsemi_dlfcn.a
+        PRIVATE ${EXT_DEP}/lib/${ANDROID_ABI}/libwechatbacktrace.so
         )
 
 set_target_properties(trace-canary PROPERTIES
