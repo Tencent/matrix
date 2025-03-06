@@ -250,10 +250,52 @@ public class AppMethodBeat implements BeatLifecycle {
             }
             assertIn = true;
             if (sIndex < Constants.BUFFER_SIZE) {
-                mergeData(methodId, sIndex, true);
+                if (methodId == AppMethodBeat.METHOD_ID_DISPATCH) {
+                    sCurrentDiffTime = SystemClock.uptimeMillis() - sDiffTime;
+                }
+                try {
+                    long trueId = 0L;
+                    trueId |= 1L << 63;
+                    trueId |= (long) methodId << 43;
+                    trueId |= sCurrentDiffTime & 0x7FFFFFFFFFFL;
+                    sBuffer[sIndex] = trueId;
+                    IndexRecord indexRecord = sIndexRecordHead;
+                    while (indexRecord != null) {
+                        if (indexRecord.index == sIndex || (indexRecord.index == -1 && sLastIndex == Constants.BUFFER_SIZE - 1)) {
+                            indexRecord.isValid = false;
+                            sIndexRecordHead = indexRecord = indexRecord.next;
+                        } else {
+                            break;
+                        }
+                    }
+                    sLastIndex = sIndex;
+                } catch (Throwable t) {
+                    MatrixLog.e(TAG, t.getMessage());
+                }
             } else {
                 sIndex = 0;
-                 mergeData(methodId, sIndex, true);
+                if (methodId == AppMethodBeat.METHOD_ID_DISPATCH) {
+                    sCurrentDiffTime = SystemClock.uptimeMillis() - sDiffTime;
+                }
+                try {
+                    long trueId = 0L;
+                    trueId |= 1L << 63;
+                    trueId |= (long) methodId << 43;
+                    trueId |= sCurrentDiffTime & 0x7FFFFFFFFFFL;
+                    sBuffer[sIndex] = trueId;
+                    IndexRecord indexRecord = sIndexRecordHead;
+                    while (indexRecord != null) {
+                        if (indexRecord.index == sIndex || (indexRecord.index == -1 && sLastIndex == Constants.BUFFER_SIZE - 1)) {
+                            indexRecord.isValid = false;
+                            sIndexRecordHead = indexRecord = indexRecord.next;
+                        } else {
+                            break;
+                        }
+                    }
+                    sLastIndex = sIndex;
+                } catch (Throwable t) {
+                    MatrixLog.e(TAG, t.getMessage());
+                }
             }
             ++sIndex;
             assertIn = false;
@@ -274,10 +316,50 @@ public class AppMethodBeat implements BeatLifecycle {
         }
         if (Thread.currentThread().getId() == sMainThreadId) {
             if (sIndex < Constants.BUFFER_SIZE) {
-                mergeData(methodId, sIndex, false);
+                if (methodId == AppMethodBeat.METHOD_ID_DISPATCH) {
+                    sCurrentDiffTime = SystemClock.uptimeMillis() - sDiffTime;
+                }
+                try {
+                    long trueId = 0L;
+                    trueId |= (long) methodId << 43;
+                    trueId |= sCurrentDiffTime & 0x7FFFFFFFFFFL;
+                    sBuffer[sIndex] = trueId;
+                    IndexRecord indexRecord = sIndexRecordHead;
+                    while (indexRecord != null) {
+                        if (indexRecord.index == sIndex || (indexRecord.index == -1 && sLastIndex == Constants.BUFFER_SIZE - 1)) {
+                            indexRecord.isValid = false;
+                            sIndexRecordHead = indexRecord = indexRecord.next;
+                        } else {
+                            break;
+                        }
+                    }
+                    sLastIndex = sIndex;
+                } catch (Throwable t) {
+                    MatrixLog.e(TAG, t.getMessage());
+                }
             } else {
                 sIndex = 0;
-                mergeData(methodId, sIndex, false);
+                if (methodId == AppMethodBeat.METHOD_ID_DISPATCH) {
+                    sCurrentDiffTime = SystemClock.uptimeMillis() - sDiffTime;
+                }
+                try {
+                    long trueId = 0L;
+                    trueId |= (long) methodId << 43;
+                    trueId |= sCurrentDiffTime & 0x7FFFFFFFFFFL;
+                    sBuffer[sIndex] = trueId;
+                    IndexRecord indexRecord = sIndexRecordHead;
+                    while (indexRecord != null) {
+                        if (indexRecord.index == sIndex || (indexRecord.index == -1 && sLastIndex == Constants.BUFFER_SIZE - 1)) {
+                            indexRecord.isValid = false;
+                            sIndexRecordHead = indexRecord = indexRecord.next;
+                        } else {
+                            break;
+                        }
+                    }
+                    sLastIndex = sIndex;
+                } catch (Throwable t) {
+                    MatrixLog.e(TAG, t.getMessage());
+                }
             }
             ++sIndex;
         }
@@ -313,32 +395,7 @@ public class AppMethodBeat implements BeatLifecycle {
         return ProcessUILifecycleOwner.INSTANCE.getVisibleScene();
     }
 
-    /**
-     * merge trace info as a long data
-     *
-     * @param methodId
-     * @param index
-     * @param isIn
-     */
-    private static void mergeData(int methodId, int index, boolean isIn) {
-        if (methodId == AppMethodBeat.METHOD_ID_DISPATCH) {
-            sCurrentDiffTime = SystemClock.uptimeMillis() - sDiffTime;
-        }
 
-        try {
-            long trueId = 0L;
-            if (isIn) {
-                trueId |= 1L << 63;
-            }
-            trueId |= (long) methodId << 43;
-            trueId |= sCurrentDiffTime & 0x7FFFFFFFFFFL;
-            sBuffer[index] = trueId;
-            checkPileup(index);
-            sLastIndex = index;
-        } catch (Throwable t) {
-            MatrixLog.e(TAG, t.getMessage());
-        }
-    }
 
     public void addListener(IAppMethodBeatListener listener) {
         synchronized (listeners) {
@@ -387,18 +444,6 @@ public class AppMethodBeat implements BeatLifecycle {
         }
     }
 
-    private static void checkPileup(int index) {
-        IndexRecord indexRecord = sIndexRecordHead;
-        while (indexRecord != null) {
-            if (indexRecord.index == index || (indexRecord.index == -1 && sLastIndex == Constants.BUFFER_SIZE - 1)) {
-                indexRecord.isValid = false;
-                MatrixLog.w(TAG, "[checkPileup] %s", indexRecord.toString());
-                sIndexRecordHead = indexRecord = indexRecord.next;
-            } else {
-                break;
-            }
-        }
-    }
 
     public static final class IndexRecord {
         public IndexRecord(int index) {
